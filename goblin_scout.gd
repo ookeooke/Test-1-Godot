@@ -9,18 +9,22 @@ var current_health := 50.0
 
 @onready var path_follower: PathFollow2D = get_parent() as PathFollow2D
 
+func _ready():
+	# Make sure enemy is on layer 1 and can be detected
+	collision_layer = 1  # Enemy layer
+	collision_mask = 0   # Doesn't collide with anything
+	print("Goblin spawned at: ", global_position)
+
 func _physics_process(delta):
 	if path_follower:
 		path_follower.progress += speed * delta
-		# no need to set global_position; you inherit it
 		if path_follower.progress_ratio >= 1.0:
 			reached_end()
 
 func reached_end():
 	print("Goblin reached the end!")
-	# Player loses a life
 	GameManager.lose_life(1)
-	enemy_died.emit()  # Notify the wave manager
+	enemy_died.emit()
 	queue_free()
 
 func take_damage(amount: float):
@@ -32,12 +36,10 @@ func take_damage(amount: float):
 
 func die():
 	print("Goblin died!")
-	# Give player gold
 	GameManager.add_gold(5)
-	enemy_died.emit()  # Notify the wave manager
+	enemy_died.emit()
 	queue_free()
-	
-	# Helper function for wave manager
+
 func set_path_follower(follower: PathFollow2D):
 	path_follower = follower
 	

@@ -9,17 +9,16 @@ var tower_cost = 100
 
 func _ready():
 	# Wait one frame for nodes to be ready
-	await get_tree().process_frame  # ← This line MUST be INSIDE _ready()
+	await get_tree().process_frame
 	setup_placement_zones()
 
 func setup_placement_zones():
-	var zones_parent = $TowerPlacementZones
-	if zones_parent:
-		for zone in zones_parent.get_children():
-			var click_area = zone.get_node_or_null("ClickArea")
-			if click_area:
-				click_area.input_event.connect(_on_placement_zone_clicked.bind(zone))
-				print("Connected placement zone: ", zone.name)
+	# Get all placement zones (they're children of this node)
+	for zone in get_children():
+		var click_area = zone.get_node_or_null("ClickArea")
+		if click_area:
+			click_area.input_event.connect(_on_placement_zone_clicked.bind(zone))
+			print("Connected placement zone: ", zone.name)
 
 func _on_placement_zone_clicked(viewport, event, shape_idx, zone):
 	# Called when player clicks a placement zone
@@ -38,7 +37,7 @@ func place_tower_at(zone):
 	
 	# Create tower
 	var tower = tower_to_place.instantiate()
-	add_child(tower)
+	get_parent().add_child(tower)  # Add to parent (TestLevel) not this node
 	tower.global_position = zone.global_position
 	
 	# Disable this placement zone

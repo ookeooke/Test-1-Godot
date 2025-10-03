@@ -20,6 +20,7 @@ var current_target = null  # Enemy we're currently aiming at
 
 # PROJECTILE
 @export var projectile_scene: PackedScene
+
 # ============================================
 # BUILT-IN FUNCTIONS
 # ============================================
@@ -28,6 +29,10 @@ func _ready():
 	# Get references to child nodes
 	detection_range = $DetectionRange
 	range_indicator = $RangeIndicator
+	
+	# IMPORTANT: Set collision mask to detect enemies (layer 1)
+	detection_range.collision_layer = 8  # Tower range is layer 4
+	detection_range.collision_mask = 1   # Detect enemies on layer 1
 	
 	# Connect detection signals
 	detection_range.body_entered.connect(_on_enemy_entered_range)
@@ -42,6 +47,8 @@ func _ready():
 	
 	# Draw range indicator
 	draw_range_circle()
+	
+	print("Archer tower ready at: ", global_position)
 
 func _process(delta):
 	# Always aim at the current target
@@ -62,6 +69,7 @@ func _on_enemy_exited_range(body):
 	# An enemy left our range
 	if body.is_in_group("enemy"):
 		enemies_in_range.erase(body)
+		print("Enemy left range. Total in range: ", enemies_in_range.size())
 
 func get_closest_enemy():
 	# Find the closest enemy from our list
@@ -98,6 +106,10 @@ func _on_shoot_timer_timeout():
 		shoot_at(current_target)
 
 func shoot_at(target):
+	if projectile_scene == null:
+		print("ERROR: No projectile scene assigned!")
+		return
+	
 	# Create projectile
 	var arrow = projectile_scene.instantiate()
 	get_tree().root.add_child(arrow)  # Add to scene root (not as child of tower)
