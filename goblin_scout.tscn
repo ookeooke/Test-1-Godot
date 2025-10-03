@@ -1,0 +1,29 @@
+[gd_scene load_steps=3 format=3 uid="uid://detc10envwuf"]
+
+[ext_resource type="Script" uid="uid://y6kgd43wkvmw" path="res://goblin_scout.gd" id="1_gndxd"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_vmpv5"]
+radius = 25.079872
+
+[node name="GoblinScout" type="CharacterBody2D" groups=["enemy"]]
+collision_mask = 0
+script = ExtResource("1_gndxd")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_left = -25.0
+offset_top = -25.0
+offset_right = 25.0
+offset_bottom = 25.0
+color = Color(0, 1, 0.2833333, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Label" type="Label" parent="ColorRect"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "Goblin"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_vmpv5")
