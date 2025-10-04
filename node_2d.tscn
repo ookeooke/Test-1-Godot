@@ -13,7 +13,7 @@ _data = {
 point_count = 4
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_kdubu"]
-radius = 29.068884
+radius = 84.83
 
 [node name="TestLevel" type="Node2D" node_paths=PackedStringArray("enemy_path", "wave_label")]
 script = ExtResource("1_0e48y")
@@ -54,6 +54,7 @@ text = "Gold: 500"
 script = ExtResource("5_q6r6c")
 
 [node name="PlacementZone1" type="Marker2D" parent="TowerPlacementZones"]
+gizmo_extents = 14.9
 
 [node name="ClickArea" type="Area2D" parent="TowerPlacementZones/PlacementZone1"]
 position = Vector2(185, 371)
@@ -62,3 +63,4 @@ collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="TowerPlacementZones/PlacementZone1/ClickArea"]
 shape = SubResource("CircleShape2D_kdubu")
+debug_color = Color(3.5616756e-06, 0.6287537, 0.49241167, 0.41960785)
