@@ -1,18 +1,16 @@
-[gd_scene load_steps=8 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=7 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://b25nm746mx3kt" path="res://wave_manager.gd" id="1_0e48y"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://goblin_scout.tscn" id="1_wtcfe"]
 [ext_resource type="PackedScene" uid="uid://crirequ6fnstj" path="res://orc_warrior.tscn" id="3_epypp"]
 [ext_resource type="Script" uid="uid://dn1okdsrbhdnb" path="res://ui.gd" id="4_q6r6c"]
-[ext_resource type="Script" path="res://tower_placement_manager.gd" id="5_tower_manager"]
+[ext_resource type="Script" path="res://tower_placement_manager.gd" id="5_manager"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
 "points": PackedVector2Array(0, 0, 0, 0, 60, 323, -231.07893, 54.23281, 231.07893, -54.23281, 474, 634, -61.306656, -367.83994, 61.306656, 367.83994, 1081, 212, 0, 0, 0, 0, 1769, 701)
 }
 point_count = 4
-
-[sub_resource type="PackedScene" id="SubScene_tower_spot"]
 
 [node name="TestLevel" type="Node2D" node_paths=PackedStringArray("enemy_path", "wave_label")]
 script = ExtResource("1_0e48y")
@@ -50,6 +48,6 @@ theme_override_font_sizes/font_size = 48
 text = "Gold: 500"
 
 [node name="TowerPlacementManager" type="Node2D" parent="."]
-script = ExtResource("5_tower_manager")
+script = ExtResource("5_manager")
 
-[node name="PlacementSpots" type="Node2D" parent="."]extends Node
+[node name="PlacementSpots" type="Node2D" parent="."]
