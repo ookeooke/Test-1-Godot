@@ -1,19 +1,18 @@
-[gd_scene load_steps=10 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=8 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://b25nm746mx3kt" path="res://wave_manager.gd" id="1_0e48y"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://goblin_scout.tscn" id="1_wtcfe"]
 [ext_resource type="PackedScene" uid="uid://crirequ6fnstj" path="res://orc_warrior.tscn" id="3_epypp"]
 [ext_resource type="Script" uid="uid://dn1okdsrbhdnb" path="res://ui.gd" id="4_q6r6c"]
-[ext_resource type="PackedScene" uid="uid://ysheh4t55e13" path="res://TowerPlacementSpot.tscn" id="5_kdubu"]
-[ext_resource type="Script" uid="uid://bfumpvvj0xebi" path="res://tower_placement_spot.gd" id="6_d21ai"]
-[ext_resource type="Script" uid="uid://d2qjsqbavkt8j" path="res://tower_placement_manager.gd" id="7_d21ai"]
-[ext_resource type="Script" uid="uid://cb0tgac2nqstl" path="res://node_2d.gd" id="8_rj586"]
+[ext_resource type="Script" path="res://tower_placement_manager.gd" id="5_tower_manager"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
 "points": PackedVector2Array(0, 0, 0, 0, 60, 323, -231.07893, 54.23281, 231.07893, -54.23281, 474, 634, -61.306656, -367.83994, 61.306656, 367.83994, 1081, 212, 0, 0, 0, 0, 1769, 701)
 }
 point_count = 4
+
+[sub_resource type="PackedScene" id="SubScene_tower_spot"]
 
 [node name="TestLevel" type="Node2D" node_paths=PackedStringArray("enemy_path", "wave_label")]
 script = ExtResource("1_0e48y")
@@ -23,7 +22,6 @@ orc_scene = ExtResource("3_epypp")
 wave_label = NodePath("UI/WaveLabel")
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(12, 70)
 offset = Vector2(1000, 1000)
 zoom = Vector2(0.5, 0.5)
 
@@ -51,15 +49,7 @@ offset_bottom = 80.0
 theme_override_font_sizes/font_size = 48
 text = "Gold: 500"
 
-[node name="TowerPlacementManager" type="Node" parent="."]
-script = ExtResource("7_d21ai")
+[node name="TowerPlacementManager" type="Node2D" parent="."]
+script = ExtResource("5_tower_manager")
 
-[node name="PlacementSpots" type="Node" parent="."]
-
-[node name="TowerPlacementSpot" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
-script = ExtResource("6_d21ai")
-
-[node name="TowerPlacementSpot2" parent="PlacementSpots/TowerPlacementSpot" instance=ExtResource("5_kdubu")]
-
-[node name="Node" type="Node" parent="."]
-script = ExtResource("8_rj586")
+[node name="PlacementSpots" type="Node2D" parent="."]extends Node
