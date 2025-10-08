@@ -50,12 +50,12 @@ offset_bottom = 80.0
 theme_override_font_sizes/font_size = 48
 text = "Gold: 500"
 
-[node name="TowerPlacementSpot" parent="." instance=ExtResource("5_kdubu")]
-script = ExtResource("6_d21ai")
-
 [node name="TowerPlacementManager" type="Node" parent="."]
 script = ExtResource("7_d21ai")
 
 [node name="PlacementSpots" type="Node" parent="."]
 
 [node name="TowerPlacementSpot" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
+script = ExtResource("6_d21ai")
+
+[node name="TowerPlacementSpot2" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
