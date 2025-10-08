@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=11 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://b25nm746mx3kt" path="res://wave_manager.gd" id="1_0e48y"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://goblin_scout.tscn" id="1_wtcfe"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://d2qjsqbavkt8j" path="res://tower_placement_manager.gd" id="5_tower_manager"]
 [ext_resource type="Script" uid="uid://bfumpvvj0xebi" path="res://tower_placement_spot.gd" id="6_d21ai"]
 [ext_resource type="PackedScene" uid="uid://qnw05e5e648g" path="res://scenes/towers/archer_tower.tscn" id="6_kdubu"]
+[ext_resource type="PackedScene" uid="uid://gglecng4ba5k" path="res://placement_spots.tscn" id="8_4d7sh"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
@@ -58,5 +59,10 @@ archer_tower_cost = 150
 
 [node name="PlacementSpots" type="Node2D" parent="."]
 script = ExtResource("6_d21ai")
+tower_scene = ExtResource("8_4d7sh")
 
 [node name="TowerPlacementSpot" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
+script = ExtResource("6_d21ai")
+
+[node name="TowerPlacementSpot2" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
+script = ExtResource("6_d21ai")
