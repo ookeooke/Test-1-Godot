@@ -59,7 +59,7 @@ archer_tower_scene = ExtResource("6_kdubu")
 script = ExtResource("6_d21ai")
 
 [node name="TowerPlacementSpot" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
-position = Vector2(281, 409)
+position = Vector2(494, 479)
 
 [node name="TowerPlacementSpot2" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
-position = Vector2(530, 433)
+position = Vector2(202, 376)
