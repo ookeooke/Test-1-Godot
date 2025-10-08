@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://gglecng4ba5k"]
+
+[ext_resource type="PackedScene" uid="uid://ysheh4t55e13" path="res://TowerPlacementSpot.tscn" id="1_663om"]
+
+[node name="PlacementSpots" type="Node"]
+
+[node name="TowerPlacementSpot" parent="." instance=ExtResource("1_663om")]
