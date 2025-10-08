@@ -58,4 +58,4 @@ script = ExtResource("7_d21ai")
 [node name="TowerPlacementSpot" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
 script = ExtResource("6_d21ai")
 
-[node name="TowerPlacementSpot2" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
+[node name="TowerPlacementSpot2" parent="PlacementSpots/TowerPlacementSpot" instance=ExtResource("5_kdubu")]
