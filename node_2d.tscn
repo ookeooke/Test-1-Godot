@@ -63,3 +63,5 @@ position = Vector2(494, 479)
 
 [node name="TowerPlacementSpot2" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
 position = Vector2(202, 376)
+
+[node name="TowerPlacementSpot3" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
