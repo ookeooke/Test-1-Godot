@@ -144,6 +144,10 @@ func set_hover_enabled(object: Node2D, enabled: bool) -> void:
 # ============================================
 
 func _input(event):
+	# Skip if camera is dragging
+	var camera = get_viewport().get_camera_2d()
+	if camera and "is_dragging" in camera and camera.is_dragging:
+		return
 	# skip world clicks if a menu is open
 	if get_tree().root.has_node("BuildMenu") or get_tree().root.has_node("TowerInfoMenu"):
 		return
