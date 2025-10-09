@@ -22,6 +22,13 @@ var mage_cost = 150
 @onready var mage_cost_label = $Panel/MarginContainer/HBoxContainer/MageButton/CostLabel
 
 func _ready():
+	# IMPORTANT: Set mouse filter to stop clicks from going through
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	
+	# CRITICAL: Make sure labels don't block button clicks
+	archer_cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mage_cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
 	# Connect button signals
 	archer_button.pressed.connect(_on_archer_button_pressed)
 	mage_button.pressed.connect(_on_mage_button_pressed)
@@ -35,6 +42,8 @@ func _ready():
 	
 	# Connect to gold changes
 	GameManager.gold_changed.connect(_on_gold_changed)
+	
+	print("Build menu ready!")
 
 func _on_gold_changed(new_amount):
 	update_button_states()
@@ -45,11 +54,13 @@ func update_button_states():
 	mage_button.disabled = GameManager.gold < mage_cost or mage_tower_scene == null
 
 func _on_archer_button_pressed():
+	print("🏹 Archer button pressed!")
 	if GameManager.spend_gold(archer_cost):
+		print("  ✓ Gold spent, emitting tower_selected signal")
 		tower_selected.emit(archer_tower_scene)
 		queue_free()
 	else:
-		print("Not enough gold for Archer Tower!")
+		print("  ✗ Not enough gold for Archer Tower!")
 
 func _on_mage_button_pressed():
 	if mage_tower_scene == null:
@@ -63,9 +74,17 @@ func _on_mage_button_pressed():
 		print("Not enough gold for Mage Tower!")
 
 func _input(event):
+	# CHANGED: Only consume clicks OUTSIDE the menu
 	if event is InputEventMouseButton:
 		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			if not get_global_rect().has_point(get_global_mouse_position()):
+			# Get the panel's global rect
+			var panel_rect = $Panel.get_global_rect()
+			var mouse_pos = get_global_mouse_position()
+			
+			# If clicked outside the panel, close menu
+			if not panel_rect.has_point(mouse_pos):
+				print("Clicked outside menu, closing")
 				menu_closed.emit()
-				get_viewport().set_input_as_handled()  # Consume the event
+				get_viewport().set_input_as_handled()
 				queue_free()
+			# If clicked inside, DON'T consume the event - let buttons handle it!
