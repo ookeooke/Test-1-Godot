@@ -1,13 +1,9 @@
-[gd_scene load_steps=10 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=6 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://b25nm746mx3kt" path="res://wave_manager.gd" id="1_0e48y"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://goblin_scout.tscn" id="1_wtcfe"]
 [ext_resource type="PackedScene" uid="uid://crirequ6fnstj" path="res://orc_warrior.tscn" id="3_epypp"]
 [ext_resource type="Script" uid="uid://dn1okdsrbhdnb" path="res://ui.gd" id="4_q6r6c"]
-[ext_resource type="PackedScene" uid="uid://ysheh4t55e13" path="res://TowerPlacementSpot.tscn" id="5_kdubu"]
-[ext_resource type="Script" uid="uid://d2qjsqbavkt8j" path="res://tower_placement_manager.gd" id="5_manager"]
-[ext_resource type="Script" uid="uid://bfumpvvj0xebi" path="res://tower_placement_spot.gd" id="6_d21ai"]
-[ext_resource type="PackedScene" uid="uid://qnw05e5e648g" path="res://scenes/towers/archer_tower.tscn" id="6_kdubu"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
@@ -49,19 +45,3 @@ offset_right = 594.0
 offset_bottom = 80.0
 theme_override_font_sizes/font_size = 48
 text = "Gold: 500"
-
-[node name="TowerPlacementManager" type="Node2D" parent="." node_paths=PackedStringArray("placement_spots_parent")]
-script = ExtResource("5_manager")
-placement_spots_parent = NodePath("../PlacementSpots")
-archer_tower_scene = ExtResource("6_kdubu")
-
-[node name="PlacementSpots" type="Node2D" parent="."]
-script = ExtResource("6_d21ai")
-
-[node name="TowerPlacementSpot" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
-position = Vector2(494, 479)
-
-[node name="TowerPlacementSpot2" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
-position = Vector2(202, 376)
-
-[node name="TowerPlacementSpot3" parent="PlacementSpots" instance=ExtResource("5_kdubu")]
