@@ -9,41 +9,80 @@ extends Node2D
 
 var current_hero = null
 
+# Print immediately when script loads
+func _init():
+	print("🔥 HERO MANAGER _init() CALLED")
+
+func _enter_tree():
+	print("🔥 HERO MANAGER _enter_tree() CALLED")
+
 func _ready():
 	print("========================================")
-	print("HERO MANAGER READY")
+	print("🔥 HERO MANAGER READY")
+	print("  Ranger hero scene: ", ranger_hero_scene)
+	print("  Scene is null: ", ranger_hero_scene == null)
+	print("  Node path: ", get_path())
 	print("========================================")
 	
 	# Wait for scene to be ready, then connect hero spots
 	await get_tree().process_frame
+	await get_tree().process_frame  # Wait an extra frame
 	connect_hero_spots()
 
 func connect_hero_spots():
-	print("Connecting hero spots...")
+	print("========================================")
+	print("🔥 CONNECTING HERO SPOTS...")
+	print("========================================")
+	
 	var spots = get_tree().get_nodes_in_group("hero_spot")
-	print("Found ", spots.size(), " hero spots")
+	print("Found ", spots.size(), " hero spots in 'hero_spot' group")
+	
+	if spots.size() == 0:
+		print("⚠️ WARNING: NO HERO SPOTS FOUND!")
+		print("  Searching all nodes...")
+		
+		# Manual search
+		var all_nodes = get_tree().root.get_children()
+		print("  Root has ", all_nodes.size(), " children")
+		for node in all_nodes:
+			print("    - ", node.name, " (", node.get_class(), ")")
+		
+		return
 	
 	for spot in spots:
-		print("  Connecting hero spot: ", spot.name)
+		print("  Checking spot: ", spot.name)
+		print("    Path: ", spot.get_path())
+		print("    Has signal 'spot_clicked': ", spot.has_signal("spot_clicked"))
+		
 		if spot.has_signal("spot_clicked"):
-			spot.spot_clicked.connect(_on_hero_spot_clicked)
-			print("    ✓ Connected hero spot: ", spot.name)
+			var err = spot.spot_clicked.connect(_on_hero_spot_clicked)
+			print("    Connection result: ", err)
+			if err == OK:
+				print("    ✓ Connected successfully!")
+			else:
+				print("    ✗ Connection FAILED with error: ", err)
 		else:
-			print("    ✗ ERROR: Spot doesn't have 'spot_clicked' signal!")
+			print("    ✗ ERROR: No 'spot_clicked' signal!")
+	
+	print("========================================")
 
 func _on_hero_spot_clicked(spot):
 	print("========================================")
-	print("!!! HERO SPOT CLICKED !!!")
+	print("🎉 !!! HERO_SPOT_CLICKED SIGNAL RECEIVED !!!")
 	print("  Spot: ", spot.name)
+	print("  Spot path: ", spot.get_path())
+	print("  Ranger scene: ", ranger_hero_scene)
 	print("========================================")
 	
 	# Spawn ranger hero at this spot
 	if ranger_hero_scene == null:
-		print("ERROR: No ranger hero scene assigned!")
+		print("❌ ERROR: No ranger hero scene assigned in HeroManager!")
+		print("   Check Inspector → HeroManager → Ranger Hero Scene")
 		return
 	
+	print("Calling spot.spawn_hero()...")
 	spot.spawn_hero(ranger_hero_scene)
-	print("Hero spawned at spot!")
+	print("spawn_hero() call completed")
 
 func _unhandled_input(event):
 	# Handle hero selection and movement
