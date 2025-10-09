@@ -37,7 +37,6 @@ theme_override_constants/separation = 10
 [node name="ArcherButton" type="Button" parent="Panel/MarginContainer/HBoxContainer"]
 custom_minimum_size = Vector2(130, 100)
 layout_mode = 2
-mouse_filter = 2
 text = "Archer Tower"
 
 [node name="CostLabel" type="Label" parent="Panel/MarginContainer/HBoxContainer/ArcherButton"]
@@ -50,10 +49,14 @@ text = "100g"
 horizontal_alignment = 1
 
 [node name="MageButton" type="Button" parent="Panel/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(130, 100)
 layout_mode = 2
+text = "Mage Tower"
 
 [node name="CostLabel" type="Label" parent="Panel/MarginContainer/HBoxContainer/MageButton"]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
-text = "CostLabel"
+theme_override_colors/font_color = Color(1, 1, 0, 1)
+text = "150g"
+horizontal_alignment = 1

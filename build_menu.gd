@@ -15,6 +15,9 @@ var mage_tower_scene = null  # Placeholder for second tower
 var archer_cost = 100
 var mage_cost = 150
 
+# IMPORTANT: Prevent race condition - wait for mouse release before accepting close clicks
+var mouse_was_released = false
+
 # References
 @onready var archer_button = $Panel/MarginContainer/HBoxContainer/ArcherButton
 @onready var mage_button = $Panel/MarginContainer/HBoxContainer/MageButton
@@ -24,6 +27,11 @@ var mage_cost = 150
 func _ready():
 	# IMPORTANT: Set mouse filter to stop clicks from going through
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	
+	# CRITICAL FIX: Override the broken mouse_filter setting from .tscn
+	# The .tscn file has mouse_filter = 2 (IGNORE) which blocks all clicks!
+	archer_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	mage_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	
 	# CRITICAL: Make sure labels don't block button clicks
 	archer_cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -44,9 +52,6 @@ func _ready():
 	GameManager.gold_changed.connect(_on_gold_changed)
 	
 	print("Build menu ready!")
-	
-
-
 
 func _on_gold_changed(new_amount):
 	update_button_states()
@@ -61,9 +66,6 @@ func _on_archer_button_pressed():
 	if GameManager.spend_gold(archer_cost):
 		print("  ✓ Gold spent, emitting tower_selected signal")
 		tower_selected.emit(archer_tower_scene)
-		# CHANGED: Don't queue_free() here - let PlacementManager close the menu
-		# This prevents race condition where menu closes before tower is placed
-		# queue_free()  # REMOVED
 	else:
 		print("  ✗ Not enough gold for Archer Tower!")
 
@@ -74,15 +76,19 @@ func _on_mage_button_pressed():
 	
 	if GameManager.spend_gold(mage_cost):
 		tower_selected.emit(mage_tower_scene)
-		# CHANGED: Don't queue_free() here
-		# queue_free()  # REMOVED
 	else:
 		print("Not enough gold for Mage Tower!")
 
 func _input(event):
-	# CHANGED: Only consume clicks OUTSIDE the menu
 	if event is InputEventMouseButton:
-		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# Track when mouse is released - this marks the end of the "opening click"
+		if not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			mouse_was_released = true
+			print("Mouse released - menu can now be closed by clicking outside")
+			return
+		
+		# Only process clicks AFTER the mouse has been released once
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT and mouse_was_released:
 			# Get the panel's global rect
 			var panel_rect = $Panel.get_global_rect()
 			var mouse_pos = get_global_mouse_position()
@@ -93,4 +99,4 @@ func _input(event):
 				menu_closed.emit()
 				get_viewport().set_input_as_handled()
 				queue_free()
-			# If clicked inside, DON'T consume the event - let buttons handle it!
+			# If clicked inside, the button will handle it
