@@ -19,8 +19,10 @@ script = ExtResource("1_hsk3w")
 arrow_scene = ExtResource("2_oks3e")
 
 [node name="Sprite2D" type="ColorRect" parent="."]
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = -25.0
+offset_top = -25.0
+offset_right = 25.0
+offset_bottom = 25.0
 color = Color(0.039215688, 0.07058824, 1, 1)
 
 [node name="Label" type="Label" parent="Sprite2D"]
