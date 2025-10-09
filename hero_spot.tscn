@@ -29,6 +29,7 @@ horizontal_alignment = 1
 [node name="ClickArea" type="Area2D" parent="."]
 collision_layer = 128
 collision_mask = 0
+input_pickable = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]
 shape = SubResource("CircleShape2D_click")
