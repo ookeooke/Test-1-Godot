@@ -144,17 +144,21 @@ func set_hover_enabled(object: Node2D, enabled: bool) -> void:
 # ============================================
 
 func _input(event):
-	# Left click
+	# skip world clicks if a menu is open
+	if get_tree().root.has_node("BuildMenu") or get_tree().root.has_node("TowerInfoMenu"):
+		return
+
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		handle_click(event.position, false)
 		return
-	
-	# Right click
+
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		handle_click(event.position, true)
 		return
 
 func _process(delta):
+	
+	
 	# Efficient hover checking (not every frame)
 	hover_timer += delta
 	if hover_timer >= hover_check_interval:
