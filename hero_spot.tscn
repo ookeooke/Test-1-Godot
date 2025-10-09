@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3 uid="uid://ckvxoisxu0tq1"]
+
+[ext_resource type="Script" uid="uid://bpgq31a3cqq4o" path="res://hero_spot.gd" id="1_jk3ha"]
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_esb7g"]
+size = Vector2(64, 64)
+
+[node name="HeroSpot" type="Node2D"]
+script = ExtResource("1_jk3ha")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+modulate = Color(0.49173188, 1, 0.6802005, 1)
+texture = SubResource("PlaceholderTexture2D_esb7g")
+
+[node name="RespawnLabel" type="Label" parent="." groups=["hero_spot"]]
+offset_left = -50.0
+offset_top = -60.0
+offset_right = 50.0
+offset_bottom = -37.0
+theme_override_font_sizes/font_size = 20
+text = "REspawn 10S"
+horizontal_alignment = 1

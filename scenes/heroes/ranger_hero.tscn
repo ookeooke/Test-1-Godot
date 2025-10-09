@@ -1,0 +1,61 @@
+[gd_scene load_steps=6 format=3 uid="uid://c52n66umx0j5h"]
+
+[ext_resource type="Script" uid="uid://bs2etc1qjtji2" path="res://scenes/heroes/ranger_hero.gd" id="1_hsk3w"]
+[ext_resource type="PackedScene" uid="uid://coirid61w00ks" path="res://scenes/projectiles/arrow.tscn" id="2_oks3e"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]
+radius = 20.09975
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_fxg0a"]
+radius = 155.29327
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ea74a"]
+radius = 53.009434
+
+[node name="RangerHero" type="CharacterBody2D" groups=["hero"]]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_hsk3w")
+arrow_scene = ExtResource("2_oks3e")
+
+[node name="Sprite2D" type="ColorRect" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+color = Color(0.039215688, 0.07058824, 1, 1)
+
+[node name="Label" type="Label" parent="Sprite2D"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "RANGER"
+horizontal_alignment = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(20, 19)
+shape = SubResource("CircleShape2D_df4ti")
+
+[node name="RangedDetection" type="Area2D" parent="."]
+collision_layer = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RangedDetection"]
+position = Vector2(21, 21)
+shape = SubResource("CircleShape2D_fxg0a")
+
+[node name="MeleeDetection" type="Area2D" parent="."]
+collision_layer = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeDetection"]
+position = Vector2(22, 19)
+shape = SubResource("CircleShape2D_ea74a")
+
+[node name="RangeIndicator" type="Line2D" parent="."]
+position = Vector2(22, 19.5)
+scale = Vector2(3.2, 2.95)
+points = PackedVector2Array(0, 0)
+default_color = Color(0.13333334, 1, 0.050980393, 1)
+
+[node name="HealthBar" type="ProgressBar" parent="."]
+offset_left = -9.0
+offset_top = -27.0
+offset_right = 52.0
+show_percentage = false

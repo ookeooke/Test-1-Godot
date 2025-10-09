@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=11 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://b25nm746mx3kt" path="res://wave_manager.gd" id="1_0e48y"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://goblin_scout.tscn" id="1_wtcfe"]
@@ -6,6 +6,9 @@
 [ext_resource type="Script" uid="uid://dn1okdsrbhdnb" path="res://ui.gd" id="4_q6r6c"]
 [ext_resource type="Script" uid="uid://bt5o2yvcrqr5m" path="res://placement_manager.gd" id="5_kdubu"]
 [ext_resource type="PackedScene" uid="uid://bar3soqilns7x" path="res://tower_spot.tscn" id="5_q6r6c"]
+[ext_resource type="Script" uid="uid://cnor3nu4wi0gp" path="res://hero_manager.gd" id="7_4d7sh"]
+[ext_resource type="PackedScene" uid="uid://c52n66umx0j5h" path="res://scenes/heroes/ranger_hero.tscn" id="8_ir8iy"]
+[ext_resource type="PackedScene" uid="uid://ckvxoisxu0tq1" path="res://hero_spot.tscn" id="9_hqns4"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
@@ -64,3 +67,12 @@ position = Vector2(1200, 600)
 
 [node name="TowerSpot4" parent="TowerSpots" groups=["tower_spot"] instance=ExtResource("5_q6r6c")]
 position = Vector2(1500, 300)
+
+[node name="HeroManager" type="Node2D" parent="."]
+script = ExtResource("7_4d7sh")
+ranger_hero_scene = ExtResource("8_ir8iy")
+
+[node name="HeroSpots" type="Node2D" parent="."]
+
+[node name="HeroSpot" parent="HeroSpots" instance=ExtResource("9_hqns4")]
+position = Vector2(907, 587)
