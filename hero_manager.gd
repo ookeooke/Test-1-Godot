@@ -85,9 +85,40 @@ func _on_hero_spot_clicked(spot):
 	print("spawn_hero() call completed")
 
 func _unhandled_input(event):
+	# Deselect hero with ESC or right-click
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if current_hero and is_instance_valid(current_hero):
+			current_hero.deselect()
+			current_hero = null
+			get_viewport().set_input_as_handled()
+			print("Hero deselected (ESC)")
+		return
+	
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		if current_hero and is_instance_valid(current_hero):
+			current_hero.deselect()
+			current_hero = null
+			get_viewport().set_input_as_handled()
+			print("Hero deselected (Right-click)")
+		return
+	
 	# Handle hero selection and movement
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var mouse_pos = get_global_mouse_position()
+		
+		# First, check if we clicked on a tower spot or hero spot
+		# (Let those handle their clicks first)
+		var tower_spots = get_tree().get_nodes_in_group("tower_spot")
+		for spot in tower_spots:
+			if spot.global_position.distance_to(mouse_pos) < 32:
+				# Clicked on tower spot - don't handle this click
+				return
+		
+		var hero_spots = get_tree().get_nodes_in_group("hero_spot")
+		for spot in hero_spots:
+			if spot.global_position.distance_to(mouse_pos) < 32:
+				# Clicked on hero spot - don't handle this click
+				return
 		
 		# Check if we clicked on a hero
 		var heroes = get_tree().get_nodes_in_group("hero")
@@ -107,10 +138,17 @@ func _unhandled_input(event):
 			# Select this hero
 			clicked_hero.select()
 			current_hero = clicked_hero
+			get_viewport().set_input_as_handled()
 			print("Selected hero: ", clicked_hero.name)
 		else:
+			# Clicked empty space
 			# If we have a selected hero, move them to clicked position
 			if current_hero and is_instance_valid(current_hero):
 				if current_hero.is_selected:
 					current_hero.move_to_position(mouse_pos)
+					get_viewport().set_input_as_handled()
 					print("Commanding hero to move to: ", mouse_pos)
+			else:
+				# No hero selected and clicked empty space - do nothing
+				# This allows deselection naturally
+				pass
