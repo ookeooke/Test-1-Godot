@@ -13,7 +13,7 @@ radius = 300.0
 radius = 100.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hsk3w"]
-radius = 25.0
+radius = 30.0
 
 [node name="RangerHero" type="CharacterBody2D" groups=["hero"]]
 collision_layer = 2
@@ -66,6 +66,7 @@ show_percentage = false
 [node name="ClickArea" type="Area2D" parent="."]
 collision_layer = 128
 collision_mask = 0
+input_pickable = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]
 shape = SubResource("CircleShape2D_hsk3w")
