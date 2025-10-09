@@ -21,6 +21,9 @@ var current_target = null  # Enemy we're currently aiming at
 # PROJECTILE
 @export var projectile_scene: PackedScene
 
+# TOWER SPOT reference (set by tower_spot when placing)
+var parent_spot = null
+
 # ============================================
 # BUILT-IN FUNCTIONS
 # ============================================
@@ -48,12 +51,51 @@ func _ready():
 	# Draw range indicator
 	draw_range_circle()
 	
-	print("Archer tower ready at: ", global_position)
+	# CHANGED: Register with ClickManager
+	# Wait a frame for parent_spot to be set
+	await get_tree().process_frame
+	ClickManager.register_clickable(self, ClickManager.ClickPriority.TOWER, 50.0)
+	print("✓ Archer tower registered with ClickManager at: ", global_position)
 
 func _process(delta):
 	# Always aim at the current target
 	if current_target and is_instance_valid(current_target):
 		look_at(current_target.global_position)
+
+# ============================================
+# CLICK CALLBACKS - Called by ClickManager
+# ============================================
+
+func on_clicked(is_double_click: bool):
+	"""Called when tower is clicked"""
+	print("🎯 Tower clicked!")
+	
+	# Find the parent tower spot and emit its signal
+	if parent_spot:
+		print("  Parent spot found: ", parent_spot.name)
+		print("  Emitting tower_clicked signal")
+		parent_spot.tower_clicked.emit(parent_spot, self)
+	else:
+		# Fallback: try to find parent spot by going up the tree
+		print("  WARNING: parent_spot not set, trying to find via parent")
+		var spot = get_parent()
+		if spot and spot.has_signal("tower_clicked"):
+			print("  Found parent spot via get_parent(): ", spot.name)
+			spot.tower_clicked.emit(spot, self)
+		else:
+			print("  ERROR: Could not find parent tower spot!")
+
+func on_hover_start():
+	"""Called when mouse enters tower area"""
+	# Brighten the tower visual
+	if $TowerVisual:
+		$TowerVisual.modulate = Color(1.3, 1.3, 1.3)
+
+func on_hover_end():
+	"""Called when mouse leaves tower area"""
+	# Reset tower visual
+	if $TowerVisual:
+		$TowerVisual.modulate = Color(1, 1, 1)
 
 # ============================================
 # TARGETING FUNCTIONS
@@ -63,13 +105,11 @@ func _on_enemy_entered_range(body):
 	# An enemy entered our range
 	if body.is_in_group("enemy"):
 		enemies_in_range.append(body)
-		print("Tower detected enemy! Total in range: ", enemies_in_range.size())
 
 func _on_enemy_exited_range(body):
 	# An enemy left our range
 	if body.is_in_group("enemy"):
 		enemies_in_range.erase(body)
-		print("Enemy left range. Total in range: ", enemies_in_range.size())
 
 func get_closest_enemy():
 	# Find the closest enemy from our list
@@ -119,8 +159,6 @@ func shoot_at(target):
 	
 	# Tell arrow where to go
 	arrow.setup(target, damage)
-	
-	print("Tower fired arrow at enemy!")
 
 # ============================================
 # VISUAL FUNCTIONS
@@ -138,3 +176,12 @@ func draw_range_circle():
 		points.append(Vector2(x, y))
 	
 	range_indicator.points = PackedVector2Array(points)
+
+# ============================================
+# CLEANUP
+# ============================================
+
+func _exit_tree():
+	# Unregister from ClickManager
+	ClickManager.unregister_clickable(self)
+	print("✓ Tower unregistered from ClickManager")

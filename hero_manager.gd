@@ -35,6 +35,12 @@ func connect_existing_heroes():
 				hero.hero_selected.connect(_on_hero_selected)
 				spawned_heroes.append(hero)
 				print("  ✓ Connected to hero: ", hero.name)
+	
+	# If no heroes found yet, wait and try again
+	if heroes.is_empty():
+		print("  No heroes found yet, will retry...")
+		await get_tree().create_timer(0.5).timeout
+		connect_existing_heroes()
 
 func _on_hero_selected(hero):
 	"""Called when a hero is clicked and selects itself"""

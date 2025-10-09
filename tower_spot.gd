@@ -28,6 +28,8 @@ func on_clicked(is_double_click: bool):
 		spot_clicked.emit(self)
 	else:
 		# Tower exists - open tower info
+		# NOTE: This shouldn't be called when tower is here since we disable clicking
+		# The tower itself should handle clicks
 		print("Clicked on existing tower at ", name)
 		tower_clicked.emit(self, current_tower)
 
@@ -50,6 +52,11 @@ func place_tower(tower_scene: PackedScene):
 	var tower = tower_scene.instantiate()
 	add_child(tower)
 	tower.global_position = global_position
+	
+	# Set parent spot reference on tower
+	if "parent_spot" in tower:
+		tower.parent_spot = self
+	
 	current_tower = tower
 	has_tower = true
 	
@@ -57,10 +64,6 @@ func place_tower(tower_scene: PackedScene):
 	
 	# Disable clicking on this spot now that tower is here
 	ClickManager.set_clickable_enabled(self, false)
-	
-	# Register the tower itself as clickable
-	if tower.has_method("register_with_click_manager"):
-		tower.register_with_click_manager()
 	
 	print("Tower placed successfully!")
 
