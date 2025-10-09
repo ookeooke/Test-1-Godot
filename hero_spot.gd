@@ -13,12 +13,12 @@ var is_respawning = false
 var respawn_time_left = 0.0
 
 # Hero scene to spawn
-@export var hero_scene: PackedScene  # NEW: Assign hero scene directly to spot
+@export var hero_scene: PackedScene
 
 # References
 @onready var sprite = $Sprite2D
 @onready var respawn_label = $RespawnLabel
-@onready var click_area = $ClickArea  # Add this if you want click-to-spawn later
+@onready var click_area = $ClickArea
 
 func _ready():
 	print("========================================")
@@ -27,12 +27,16 @@ func _ready():
 	print("========================================")
 	respawn_label.visible = false
 	
-	# Setup click detection (optional - for manual spawning later)
+	# Setup click detection
 	if click_area:
 		click_area.input_pickable = true
 		click_area.input_event.connect(_on_click_area_input_event)
 		click_area.collision_layer = 8
 		click_area.collision_mask = 0
+		
+		# NEW: Connect hover signals for optimized hover detection
+		click_area.mouse_entered.connect(_on_mouse_entered)
+		click_area.mouse_exited.connect(_on_mouse_exited)
 	
 	# AUTO-SPAWN: Wait a moment for scene to fully load, then spawn hero
 	await get_tree().process_frame
@@ -56,24 +60,23 @@ func _on_click_area_input_event(viewport, event, shape_idx):
 			spot_clicked.emit(self)
 			get_viewport().set_input_as_handled()
 
+# NEW: Optimized hover detection using Area2D signals
+func _on_mouse_entered():
+	if not has_hero and not is_respawning:
+		sprite.modulate = Color(1.2, 1.5, 1.2)  # Green tint
+
+func _on_mouse_exited():
+	if not has_hero and not is_respawning:
+		sprite.modulate = Color(1, 1, 1)
+
 func _process(delta):
-	# Handle respawn countdown
+	# CHANGED: Only handle respawn countdown, no more hover distance checks
 	if is_respawning:
 		respawn_time_left -= delta
 		respawn_label.text = "Respawn: " + str(ceil(respawn_time_left)) + "s"
 		
 		if respawn_time_left <= 0:
 			respawn_hero()
-	
-	# Hover effect (only if no hero and not respawning)
-	if not has_hero and not is_respawning:
-		var mouse_pos = get_global_mouse_position()
-		var distance = global_position.distance_to(mouse_pos)
-		
-		if distance < 32:
-			sprite.modulate = Color(1.2, 1.5, 1.2)  # Green tint
-		else:
-			sprite.modulate = Color(1, 1, 1)
 
 func spawn_hero(hero_scene_to_spawn: PackedScene):
 	"""Spawn a hero at this spot"""

@@ -4,17 +4,16 @@ extends Node2D
 # HERO MANAGER - Manages hero spawning and selection
 # ============================================
 
-@export var ranger_hero_scene: PackedScene  # Keep this for reference, but spots will handle spawning
+@export var ranger_hero_scene: PackedScene
 
 var current_hero = null
-var spawned_heroes = []  # Track all spawned heroes
+var spawned_heroes = []
 
 func _init():
 	print("🔥 HERO MANAGER _init() CALLED")
 
 func _enter_tree():
 	print("🔥 HERO MANAGER _enter_tree() CALLED")
-	# Add to group so hero spots can find us
 	add_to_group("hero_manager")
 
 func _ready():
@@ -73,24 +72,16 @@ func _unhandled_input(event):
 	
 	# Handle movement commands for selected hero
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# Check if UI was clicked
+		# Check if UI has focus - if so, ignore this click
 		var gui_control = get_viewport().gui_get_focus_owner()
 		if gui_control != null:
 			return
 		
-		var mouse_pos = get_global_mouse_position()
-		
-		# Only handle if we have a selected hero
-		# The event will be marked as handled by tower spots/heroes/etc if they were clicked
-		# So if we reach here with a selected hero, it's likely a ground click
+		# CHANGED: Removed async delay and event.is_pressed() check
+		# Since we're using _unhandled_input, if we reach here, no other handler consumed the event
+		# This is cleaner and more reliable
 		if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
-			# Small delay to let other input handlers process first
-			await get_tree().process_frame
-			
-			# Check if event was already handled
-			if not event.is_pressed():  # Event was consumed
-				return
-			
+			var mouse_pos = get_global_mouse_position()
 			current_hero.move_to_position(mouse_pos)
 			get_viewport().set_input_as_handled()
 			print("Hero moving to: ", mouse_pos)
