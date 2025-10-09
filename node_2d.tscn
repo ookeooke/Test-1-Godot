@@ -1,9 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=8 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://b25nm746mx3kt" path="res://wave_manager.gd" id="1_0e48y"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://goblin_scout.tscn" id="1_wtcfe"]
 [ext_resource type="PackedScene" uid="uid://crirequ6fnstj" path="res://orc_warrior.tscn" id="3_epypp"]
 [ext_resource type="Script" uid="uid://dn1okdsrbhdnb" path="res://ui.gd" id="4_q6r6c"]
+[ext_resource type="Script" uid="uid://bt5o2yvcrqr5m" path="res://placement_manager.gd" id="5_kdubu"]
+[ext_resource type="PackedScene" uid="uid://bar3soqilns7x" path="res://tower_spot.tscn" id="5_q6r6c"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
@@ -45,3 +47,11 @@ offset_right = 594.0
 offset_bottom = 80.0
 theme_override_font_sizes/font_size = 48
 text = "Gold: 500"
+
+[node name="PlacementManager" type="Node2D" parent="."]
+script = ExtResource("5_kdubu")
+
+[node name="TowerSpots" type="Node2D" parent="."]
+
+[node name="TowerSpot1" parent="TowerSpots" groups=["tower_spot"] instance=ExtResource("5_q6r6c")]
+position = Vector2(300, 500)

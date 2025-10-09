@@ -1,0 +1,58 @@
+[gd_scene load_steps=2 format=3 uid="uid://6tex4lcyt70d"]
+
+[ext_resource type="Script" uid="uid://cq72tgteky57f" path="res://build_menu.gd" id="1_rdxwr"]
+
+[node name="BuildMenu" type="Control"]
+custom_minimum_size = Vector2(300, 120)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_rdxwr")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ArcherButton" type="Button" parent="Panel/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(130, 100)
+layout_mode = 2
+text = "Archer Tower"
+
+[node name="CostLabel" type="Label" parent="Panel/MarginContainer/HBoxContainer/ArcherButton"]
+custom_minimum_size = Vector2(0, -23)
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+theme_override_colors/font_color = Color(1, 1, 0, 1)
+text = "100g"
+horizontal_alignment = 1
+
+[node name="MageButton" type="Button" parent="Panel/MarginContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="CostLabel" type="Label" parent="Panel/MarginContainer/HBoxContainer/MageButton"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "CostLabel"
