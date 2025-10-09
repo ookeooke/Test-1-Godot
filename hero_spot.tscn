@@ -1,12 +1,14 @@
-[gd_scene load_steps=3 format=3 uid="uid://ckvxoisxu0tq1"]
+[gd_scene load_steps=4 format=3 uid="uid://ckvxoisxu0tq1"]
 
 [ext_resource type="Script" uid="uid://bpgq31a3cqq4o" path="res://hero_spot.gd" id="1_jk3ha"]
+[ext_resource type="PackedScene" uid="uid://c52n66umx0j5h" path="res://scenes/heroes/ranger_hero.tscn" id="2_esb7g"]
 
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_esb7g"]
 size = Vector2(64, 64)
 
 [node name="HeroSpot" type="Node2D" groups=["hero_spot"]]
 script = ExtResource("1_jk3ha")
+hero_scene = ExtResource("2_esb7g")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 modulate = Color(0.49173188, 1, 0.6802005, 1)

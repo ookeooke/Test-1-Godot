@@ -1,6 +1,10 @@
 extends Node2D
 
-@export var ranger_hero_scene: PackedScene
+# ============================================
+# HERO MANAGER - Manages hero spawning and selection
+# ============================================
+
+@export var ranger_hero_scene: PackedScene  # Keep this for reference, but spots will handle spawning
 
 var current_hero = null
 var spawned_heroes = []  # Track all spawned heroes
@@ -10,54 +14,36 @@ func _init():
 
 func _enter_tree():
 	print("🔥 HERO MANAGER _enter_tree() CALLED")
+	# Add to group so hero spots can find us
+	add_to_group("hero_manager")
 
 func _ready():
 	print("========================================")
 	print("🔥 HERO MANAGER READY")
-	print("  Ranger hero scene: ", ranger_hero_scene)
+	print("  HeroManager will handle hero selection")
 	print("========================================")
 	
+	# Wait for heroes to spawn automatically
 	await get_tree().process_frame
 	await get_tree().process_frame
-	connect_hero_spots()
+	
+	# Find all heroes that were auto-spawned and connect their signals
+	connect_existing_heroes()
 
-func connect_hero_spots():
-	print("🔥 CONNECTING HERO SPOTS...")
+func connect_existing_heroes():
+	"""Connect to any heroes that already exist in the scene"""
+	print("Connecting to existing heroes...")
+	var heroes = get_tree().get_nodes_in_group("hero")
 	
-	var spots = get_tree().get_nodes_in_group("hero_spot")
-	print("Found ", spots.size(), " hero spots")
-	
-	for spot in spots:
-		if spot.has_signal("spot_clicked"):
-			spot.spot_clicked.connect(_on_hero_spot_clicked)
-			print("  ✓ Connected spot: ", spot.name)
-
-func _on_hero_spot_clicked(spot):
-	print("🎉 HERO_SPOT_CLICKED!")
-	
-	if ranger_hero_scene == null:
-		print("❌ ERROR: No ranger hero scene assigned!")
-		return
-	
-	# Spawn hero
-	var hero = ranger_hero_scene.instantiate()
-	spot.add_child(hero)
-	hero.global_position = spot.global_position
-	
-	if hero.has_method("set_home_position"):
-		hero.set_home_position(spot.global_position)
-	
-	# Connect hero signals
-	if hero.has_signal("hero_died"):
-		hero.hero_died.connect(spot._on_hero_died)
-	
-	if hero.has_signal("hero_selected"):
-		hero.hero_selected.connect(_on_hero_selected)
-	
-	spawned_heroes.append(hero)
-	print("✓ Hero spawned and connected!")
+	for hero in heroes:
+		if hero.has_signal("hero_selected"):
+			if not hero.hero_selected.is_connected(_on_hero_selected):
+				hero.hero_selected.connect(_on_hero_selected)
+				spawned_heroes.append(hero)
+				print("  ✓ Connected to hero: ", hero.name)
 
 func _on_hero_selected(hero):
+	"""Called when a hero is clicked"""
 	print("Hero selected via signal: ", hero.name)
 	
 	# Deselect all other heroes
@@ -70,7 +56,7 @@ func _on_hero_selected(hero):
 	current_hero = hero
 
 func _unhandled_input(event):
-	# Handle deselection
+	# Handle deselection with ESC or right-click
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if current_hero and is_instance_valid(current_hero):
 			current_hero.deselect()
@@ -88,14 +74,23 @@ func _unhandled_input(event):
 	# Handle movement commands for selected hero
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		# Check if UI was clicked
-		if get_viewport().gui_get_focus_owner() != null:
+		var gui_control = get_viewport().gui_get_focus_owner()
+		if gui_control != null:
 			return
 		
 		var mouse_pos = get_global_mouse_position()
 		
-		# Only handle if we have a selected hero and didn't click on anything else
+		# Only handle if we have a selected hero
+		# The event will be marked as handled by tower spots/heroes/etc if they were clicked
+		# So if we reach here with a selected hero, it's likely a ground click
 		if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
-			# The event will be marked as handled by tower spots/heroes if they were clicked
-			# So if we reach here, it's a ground click
+			# Small delay to let other input handlers process first
+			await get_tree().process_frame
+			
+			# Check if event was already handled
+			if not event.is_pressed():  # Event was consumed
+				return
+			
 			current_hero.move_to_position(mouse_pos)
+			get_viewport().set_input_as_handled()
 			print("Hero moving to: ", mouse_pos)

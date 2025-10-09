@@ -50,7 +50,7 @@ var is_selected = false
 @onready var range_indicator = $RangeIndicator
 @onready var health_bar = $HealthBar
 @onready var sprite = $Sprite2D
-@onready var click_area = $ClickArea
+@onready var click_area = $ClickArea  # NEW: For click detection
 
 # PROJECTILE
 @export var arrow_scene: PackedScene
@@ -70,7 +70,15 @@ func _ready():
 	melee_detection.collision_layer = 0
 	melee_detection.collision_mask = 1
 	
-	
+	# Setup click detection
+	if click_area:
+		click_area.input_pickable = true
+		click_area.input_event.connect(_on_click_area_input_event)
+		click_area.collision_layer = 8  # Clickable layer (layer 4)
+		click_area.collision_mask = 0
+		print("Hero click area configured")
+	else:
+		print("WARNING: No ClickArea found on hero! Add an Area2D child named 'ClickArea'")
 	
 	# Connect signals
 	ranged_detection.body_entered.connect(_on_ranged_enemy_entered)
@@ -95,6 +103,17 @@ func _ready():
 	update_health_bar()
 	
 	print("Ranger Hero ready at: ", global_position)
+
+# ============================================
+# INPUT HANDLING
+# ============================================
+
+func _on_click_area_input_event(viewport, event, shape_idx):
+	"""Handle clicks on the hero"""
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		print("Hero clicked directly!")
+		hero_selected.emit(self)
+		get_viewport().set_input_as_handled()
 
 # ============================================
 # MAIN LOOP
@@ -175,6 +194,7 @@ func handle_melee_combat_state():
 				# Only block if not already blocked
 				if not enemy.is_blocked or enemy.blocking_hero != self:
 					enemy.set_blocked_by_hero(self)
+
 func handle_returning_state(delta):
 	# Walk back to home position
 	var direction = (home_position - global_position).normalized()
