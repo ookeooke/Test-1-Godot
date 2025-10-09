@@ -1,10 +1,10 @@
 extends Node2D
 
 signal spot_clicked(spot)
+signal tower_clicked(spot, tower)  # NEW: Signal for tower interactions
 
 var has_tower = false
 var current_tower = null
-
 
 @onready var sprite = $Sprite2D
 @onready var click_area = $ClickArea
@@ -19,6 +19,10 @@ func _ready():
 	# Set collision layer for clickable objects
 	click_area.collision_layer = 8  # Layer 4 for clickable UI elements
 	click_area.collision_mask = 0
+	
+	# Connect hover signals for optimized hover detection
+	click_area.mouse_entered.connect(_on_mouse_entered)
+	click_area.mouse_exited.connect(_on_mouse_exited)
 
 func _on_click_area_input_event(viewport, event, shape_idx):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -29,22 +33,19 @@ func _on_click_area_input_event(viewport, event, shape_idx):
 			spot_clicked.emit(self)
 			get_viewport().set_input_as_handled()
 		else:
-			# Tower exists - handle tower click (upgrade menu, info, etc.)
+			# Tower exists - emit tower interaction signal
 			print("Clicked on existing tower at ", name)
-			# TODO: Emit signal for tower interaction
-			# tower_clicked.emit(self, current_tower)
+			tower_clicked.emit(self, current_tower)
 			get_viewport().set_input_as_handled()
 
-func _process(delta):
-	# Hover effect only for empty spots
+# Optimized hover detection using Area2D signals instead of distance checks
+func _on_mouse_entered():
 	if not has_tower:
-		var mouse_pos = get_global_mouse_position()
-		var distance = global_position.distance_to(mouse_pos)
-		
-		if distance < 32:
-			sprite.modulate = Color(1.2, 1.2, 1.2)
-		else:
-			sprite.modulate = Color(1, 1, 1)
+		sprite.modulate = Color(1.2, 1.2, 1.2)
+
+func _on_mouse_exited():
+	if not has_tower:
+		sprite.modulate = Color(1, 1, 1)
 
 func place_tower(tower_scene: PackedScene):
 	print("PLACING TOWER at ", name)
