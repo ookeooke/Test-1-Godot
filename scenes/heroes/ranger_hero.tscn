@@ -62,11 +62,3 @@ offset_left = -9.0
 offset_top = -27.0
 offset_right = 52.0
 show_percentage = false
-
-[node name="ClickArea" type="Area2D" parent="."]
-collision_layer = 16 
-collision_mask = 0
-input_pickable = true
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]
-shape = SubResource("CircleShape2D_hsk3w")

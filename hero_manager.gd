@@ -1,7 +1,7 @@
 extends Node2D
 
 # ============================================
-# HERO MANAGER - Manages hero spawning and selection
+# HERO MANAGER - Much simpler with ClickManager!
 # ============================================
 
 @export var ranger_hero_scene: PackedScene
@@ -9,24 +9,20 @@ extends Node2D
 var current_hero = null
 var spawned_heroes = []
 
-func _init():
-	print("🔥 HERO MANAGER _init() CALLED")
-
-func _enter_tree():
-	print("🔥 HERO MANAGER _enter_tree() CALLED")
-	add_to_group("hero_manager")
-
 func _ready():
 	print("========================================")
 	print("🔥 HERO MANAGER READY")
-	print("  HeroManager will handle hero selection")
 	print("========================================")
 	
-	# Wait for scene to be fully loaded
+	# Wait for scene to fully load
 	await get_tree().process_frame
 	await get_tree().process_frame
 	
 	connect_existing_heroes()
+	
+	# Connect to ClickManager signals
+	ClickManager.object_clicked.connect(_on_object_clicked)
+	ClickManager.empty_space_clicked.connect(_on_empty_space_clicked)
 
 func connect_existing_heroes():
 	"""Connect to any heroes that already exist in the scene"""
@@ -41,7 +37,7 @@ func connect_existing_heroes():
 				print("  ✓ Connected to hero: ", hero.name)
 
 func _on_hero_selected(hero):
-	"""Called when a hero is clicked"""
+	"""Called when a hero is clicked and selects itself"""
 	print("🎯 Hero selected via signal: ", hero.name)
 	
 	# Deselect all other heroes
@@ -53,11 +49,28 @@ func _on_hero_selected(hero):
 	hero.select()
 	current_hero = hero
 
-# CHANGED: Use _input instead of _unhandled_input for higher priority
+func _on_object_clicked(object, click_position):
+	"""Called when any object is clicked via ClickManager"""
+	# If we have a selected hero and clicked something else (not a hero)
+	if current_hero and is_instance_valid(current_hero):
+		if object and object.is_in_group("hero"):
+			# Clicked another hero - handled by hero_selected signal
+			return
+		elif object == null:
+			# Clicked empty space - handle as movement command
+			# (This is now handled by empty_space_clicked signal)
+			pass
+
+func _on_empty_space_clicked(click_position):
+	"""Called when empty space is clicked"""
+	if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
+		# Command hero to move to clicked position
+		current_hero.move_to_position(click_position)
+		print("✓ Hero moving to: ", click_position)
+
 func _input(event):
-	"""Handle hero commands with HIGH PRIORITY"""
-	
-	# ESC or Right-click to deselect
+	"""Handle deselection with ESC or Right-click"""
+	# ESC to deselect
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if current_hero and is_instance_valid(current_hero):
 			current_hero.deselect()
@@ -66,31 +79,17 @@ func _input(event):
 			print("Hero deselected (ESC)")
 		return
 	
+	# Right-click to deselect
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		if current_hero and is_instance_valid(current_hero):
-			current_hero.deselect()
-			current_hero = null
-			get_viewport().set_input_as_handled()
-			print("Hero deselected (Right-click)")
-		return
-	
-	# Left-click to move selected hero
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# Only handle if we have a selected hero
-		if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
-			# Check if UI has focus
-			var focused_control = get_viewport().gui_get_focus_owner()
-			if focused_control != null:
-				print("UI has focus, ignoring click")
-				return
+			# Check if we right-clicked on something
+			# If not, deselect
+			var click_pos = get_global_mouse_position()
+			var clicked_obj = ClickManager.find_clicked_object(click_pos)
 			
-			# IMPORTANT: Add small delay to let hero click events process first
-			await get_tree().process_frame
-			
-			# Check if event was already handled (by hero click)
-			if event.is_pressed():
-				# Event not handled yet, so this is a movement command
-				var mouse_pos = get_global_mouse_position()
-				current_hero.move_to_position(mouse_pos)
+			if not clicked_obj:
+				current_hero.deselect()
+				current_hero = null
 				get_viewport().set_input_as_handled()
-				print("✓ Hero moving to: ", mouse_pos)
+				print("Hero deselected (Right-click)")
+		return

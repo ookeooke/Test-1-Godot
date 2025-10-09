@@ -1,7 +1,7 @@
 extends CharacterBody2D
 
 # ============================================
-# RANGER HERO - Ranged/Melee hybrid hero
+# RANGER HERO - Now using ClickManager!
 # ============================================
 
 signal hero_died(respawn_time)
@@ -50,7 +50,6 @@ var is_selected = false
 @onready var range_indicator = $RangeIndicator
 @onready var health_bar = $HealthBar
 @onready var sprite = $Sprite2D
-@onready var click_area = $ClickArea
 
 # PROJECTILE
 @export var arrow_scene: PackedScene
@@ -61,7 +60,7 @@ var is_selected = false
 
 func _ready():
 	# Set collision layers
-	collision_layer = 2  # Heroes on layer 2
+	collision_layer = 2
 	collision_mask = 0
 	
 	# Setup detection areas
@@ -70,20 +69,9 @@ func _ready():
 	melee_detection.collision_layer = 0
 	melee_detection.collision_mask = 1
 	
-	# Setup click detection - FIXED: Use unique layer
-	if click_area:
-		click_area.input_pickable = true
-		click_area.input_event.connect(_on_click_area_input_event)
-		click_area.collision_layer = 16  # Layer 5 (bit 5) - unique for heroes
-		click_area.collision_mask = 0
-		
-		# Add mouse hover detection for better feedback
-		click_area.mouse_entered.connect(_on_mouse_entered)
-		click_area.mouse_exited.connect(_on_mouse_exited)
-		
-		print("✓ Hero click area configured on layer 16 (bit 5)")
-	else:
-		print("⚠️ WARNING: No ClickArea found on hero!")
+	# CHANGED: Register with ClickManager instead of using Area2D
+	ClickManager.register_clickable(self, ClickManager.ClickPriority.HERO, 40.0)
+	print("✓ Hero registered with ClickManager")
 	
 	# Connect signals
 	ranged_detection.body_entered.connect(_on_ranged_enemy_entered)
@@ -110,43 +98,36 @@ func _ready():
 	print("✓ Ranger Hero ready at: ", global_position)
 
 # ============================================
-# INPUT HANDLING - FIXED
+# CLICK CALLBACKS - Called by ClickManager
 # ============================================
 
-func _on_click_area_input_event(viewport, event, shape_idx):
-	"""Handle clicks on the hero - PRIORITY INPUT"""
-	if event is InputEventMouseButton:
-		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			print("🎯 HERO CLICKED DIRECTLY! Position: ", global_position)
-			hero_selected.emit(self)
-			# CRITICAL: Mark the event as handled immediately
-			get_viewport().set_input_as_handled()
+func on_clicked(is_double_click: bool) -> void:
+	"""Called when this hero is clicked"""
+	print("🎯 Hero clicked! Double: ", is_double_click)
+	
+	if is_double_click:
+		# Double-click: Center camera on hero (future feature)
+		print("  ⚡ Double-clicked hero!")
+		# TODO: Center camera
+	else:
+		# Single click: Select hero
+		hero_selected.emit(self)
 
-func _on_mouse_entered():
-	"""Visual feedback when hovering over hero"""
+func on_right_clicked() -> void:
+	"""Called when hero is right-clicked"""
+	print("Right-clicked hero - could open hero menu here")
+	# TODO: Show hero info panel
+
+func on_hover_start() -> void:
+	"""Called when mouse enters hero area"""
 	if not is_selected:
-		sprite.modulate = Color(1.2, 1.2, 1.5)  # Slight blue tint
-		print("Mouse over hero")
+		sprite.modulate = Color(1.2, 1.2, 1.5)  # Blue tint
+		# Could show tooltip here
 
-func _on_mouse_exited():
-	"""Remove hover feedback"""
+func on_hover_end() -> void:
+	"""Called when mouse leaves hero area"""
 	if not is_selected:
 		sprite.modulate = Color(1, 1, 1)
-
-# Alternative: Direct input handling (backup method)
-func _input(event):
-	"""Fallback input handling if Area2D doesn't work"""
-	if event is InputEventMouseButton:
-		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			# Check if click is within hero's bounds
-			var click_pos = get_global_mouse_position()
-			var distance = global_position.distance_to(click_pos)
-			
-			# Use slightly larger radius than collision shape
-			if distance < 40:  # Adjust based on your hero size
-				print("🎯 HERO CLICKED (fallback method)! Position: ", global_position)
-				hero_selected.emit(self)
-				get_viewport().set_input_as_handled()
 
 # ============================================
 # MAIN LOOP
@@ -220,7 +201,6 @@ func handle_returning_state(delta):
 	if global_position.distance_to(home_position) < 5:
 		velocity = Vector2.ZERO
 		current_state = State.IDLE
-		print("Hero returned to home position")
 	
 	if not enemies_in_melee_range.is_empty():
 		enter_melee_combat()
@@ -236,7 +216,6 @@ func handle_walking_state(delta):
 		velocity = Vector2.ZERO
 		home_position = global_position
 		current_state = State.IDLE
-		print("Hero arrived at new position")
 
 # ============================================
 # STATE TRANSITIONS
@@ -246,27 +225,23 @@ func enter_ranged_combat():
 	current_state = State.RANGED_COMBAT
 	velocity = Vector2.ZERO
 	ranged_timer.start()
-	print("Hero entering RANGED COMBAT")
 
 func enter_melee_combat():
 	current_state = State.MELEE_COMBAT
 	velocity = Vector2.ZERO
 	ranged_timer.stop()
 	melee_timer.start()
-	print("Hero entering MELEE COMBAT")
 
 func enter_returning_state():
 	current_state = State.RETURNING
 	ranged_timer.stop()
 	melee_timer.stop()
-	print("Hero RETURNING to home")
 
 func enter_walking_state(destination: Vector2):
 	current_state = State.WALKING
 	target_position = destination
 	ranged_timer.stop()
 	melee_timer.stop()
-	print("Hero WALKING to ", destination)
 
 # ============================================
 # ENEMY DETECTION
@@ -371,13 +346,11 @@ func melee_attack():
 func take_damage(amount: float):
 	current_health -= amount
 	update_health_bar()
-	print("Hero took ", amount, " damage! HP: ", current_health)
 	
 	if current_health <= 0:
 		die()
 
 func die():
-	print("HERO DIED!")
 	var respawn_time = 10.0 + (hero_level - 1) * 5.0
 	hero_died.emit(respawn_time)
 	queue_free()
@@ -393,14 +366,12 @@ func update_health_bar():
 func select():
 	is_selected = true
 	range_indicator.visible = true
-	sprite.modulate = Color(1.3, 1.3, 1.5)  # Brighter blue when selected
-	print("✓ Hero selected")
+	sprite.modulate = Color(1.3, 1.3, 1.5)
 
 func deselect():
 	is_selected = false
 	range_indicator.visible = false
 	sprite.modulate = Color(1, 1, 1)
-	print("✓ Hero deselected")
 
 func draw_range_circle():
 	var points = []
@@ -421,7 +392,15 @@ func draw_range_circle():
 func set_home_position(pos: Vector2):
 	home_position = pos
 	global_position = pos
-	print("Hero home position set to: ", home_position)
 
 func move_to_position(pos: Vector2):
 	enter_walking_state(pos)
+
+# ============================================
+# CLEANUP
+# ============================================
+
+func _exit_tree():
+	# IMPORTANT: Unregister from ClickManager when destroyed
+	ClickManager.unregister_clickable(self)
+	print("✓ Hero unregistered from ClickManager")

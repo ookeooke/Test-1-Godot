@@ -1,51 +1,49 @@
 extends Node2D
 
 signal spot_clicked(spot)
-signal tower_clicked(spot, tower)  # NEW: Signal for tower interactions
+signal tower_clicked(spot, tower)
 
 var has_tower = false
 var current_tower = null
 
 @onready var sprite = $Sprite2D
-@onready var click_area = $ClickArea
 
 func _ready():
 	print("TOWER SPOT READY: ", name, " at ", global_position)
 	
-	# Enable the ClickArea for input detection
-	click_area.input_pickable = true
-	click_area.input_event.connect(_on_click_area_input_event)
-	
-	# Set collision layer for clickable objects
-	click_area.collision_layer = 8  # Layer 4 for clickable UI elements
-	click_area.collision_mask = 0
-	
-	# Connect hover signals for optimized hover detection
-	click_area.mouse_entered.connect(_on_mouse_entered)
-	click_area.mouse_exited.connect(_on_mouse_exited)
+	# CHANGED: Register with ClickManager instead of using Area2D
+	ClickManager.register_clickable(self, ClickManager.ClickPriority.TOWER, 50.0)
+	print("✓ Tower spot registered with ClickManager")
 
-func _on_click_area_input_event(viewport, event, shape_idx):
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		print("!!! CLICK DETECTED ON ", name, " (via Area2D) !!!")
-		
-		if not has_tower:
-			# Empty spot - open build menu
-			spot_clicked.emit(self)
-			get_viewport().set_input_as_handled()
-		else:
-			# Tower exists - emit tower interaction signal
-			print("Clicked on existing tower at ", name)
-			tower_clicked.emit(self, current_tower)
-			get_viewport().set_input_as_handled()
+# ============================================
+# CLICK CALLBACKS - Called by ClickManager
+# ============================================
 
-# Optimized hover detection using Area2D signals instead of distance checks
-func _on_mouse_entered():
+func on_clicked(is_double_click: bool):
+	"""Called when this spot is clicked"""
+	print("!!! TOWER SPOT CLICKED: ", name, " !!!")
+	
+	if not has_tower:
+		# Empty spot - open build menu
+		spot_clicked.emit(self)
+	else:
+		# Tower exists - open tower info
+		print("Clicked on existing tower at ", name)
+		tower_clicked.emit(self, current_tower)
+
+func on_hover_start():
+	"""Called when mouse enters spot area"""
 	if not has_tower:
 		sprite.modulate = Color(1.2, 1.2, 1.2)
 
-func _on_mouse_exited():
+func on_hover_end():
+	"""Called when mouse leaves spot area"""
 	if not has_tower:
 		sprite.modulate = Color(1, 1, 1)
+
+# ============================================
+# TOWER MANAGEMENT
+# ============================================
 
 func place_tower(tower_scene: PackedScene):
 	print("PLACING TOWER at ", name)
@@ -57,7 +55,33 @@ func place_tower(tower_scene: PackedScene):
 	
 	sprite.visible = false
 	
+	# Disable clicking on this spot now that tower is here
+	ClickManager.set_clickable_enabled(self, false)
+	
+	# Register the tower itself as clickable
+	if tower.has_method("register_with_click_manager"):
+		tower.register_with_click_manager()
+	
 	print("Tower placed successfully!")
+
+func remove_tower():
+	"""Called when tower is sold"""
+	if current_tower and is_instance_valid(current_tower):
+		current_tower.queue_free()
+	
+	has_tower = false
+	current_tower = null
+	sprite.visible = true
+	
+	# Re-enable clicking on this spot
+	ClickManager.set_clickable_enabled(self, true)
 
 func get_position_for_menu() -> Vector2:
 	return global_position + Vector2(0, -100)
+
+# ============================================
+# CLEANUP
+# ============================================
+
+func _exit_tree():
+	ClickManager.unregister_clickable(self)
