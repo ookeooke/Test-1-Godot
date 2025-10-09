@@ -7,10 +7,10 @@
 radius = 20.09975
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_fxg0a"]
-radius = 155.29327
+radius = 493.21
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_ea74a"]
-radius = 53.009434
+radius = 165.65
 
 [node name="RangerHero" type="CharacterBody2D" groups=["hero"]]
 collision_layer = 2
