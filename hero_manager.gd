@@ -22,11 +22,10 @@ func _ready():
 	print("  HeroManager will handle hero selection")
 	print("========================================")
 	
-	# Wait for heroes to spawn automatically
+	# Wait for scene to be fully loaded
 	await get_tree().process_frame
 	await get_tree().process_frame
 	
-	# Find all heroes that were auto-spawned and connect their signals
 	connect_existing_heroes()
 
 func connect_existing_heroes():
@@ -43,7 +42,7 @@ func connect_existing_heroes():
 
 func _on_hero_selected(hero):
 	"""Called when a hero is clicked"""
-	print("Hero selected via signal: ", hero.name)
+	print("🎯 Hero selected via signal: ", hero.name)
 	
 	# Deselect all other heroes
 	for h in spawned_heroes:
@@ -54,13 +53,17 @@ func _on_hero_selected(hero):
 	hero.select()
 	current_hero = hero
 
-func _unhandled_input(event):
-	# Handle deselection with ESC or right-click
+# CHANGED: Use _input instead of _unhandled_input for higher priority
+func _input(event):
+	"""Handle hero commands with HIGH PRIORITY"""
+	
+	# ESC or Right-click to deselect
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if current_hero and is_instance_valid(current_hero):
 			current_hero.deselect()
 			current_hero = null
 			get_viewport().set_input_as_handled()
+			print("Hero deselected (ESC)")
 		return
 	
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
@@ -68,20 +71,26 @@ func _unhandled_input(event):
 			current_hero.deselect()
 			current_hero = null
 			get_viewport().set_input_as_handled()
+			print("Hero deselected (Right-click)")
 		return
 	
-	# Handle movement commands for selected hero
+	# Left-click to move selected hero
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# Check if UI has focus - if so, ignore this click
-		var gui_control = get_viewport().gui_get_focus_owner()
-		if gui_control != null:
-			return
-		
-		# CHANGED: Removed async delay and event.is_pressed() check
-		# Since we're using _unhandled_input, if we reach here, no other handler consumed the event
-		# This is cleaner and more reliable
+		# Only handle if we have a selected hero
 		if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
-			var mouse_pos = get_global_mouse_position()
-			current_hero.move_to_position(mouse_pos)
-			get_viewport().set_input_as_handled()
-			print("Hero moving to: ", mouse_pos)
+			# Check if UI has focus
+			var focused_control = get_viewport().gui_get_focus_owner()
+			if focused_control != null:
+				print("UI has focus, ignoring click")
+				return
+			
+			# IMPORTANT: Add small delay to let hero click events process first
+			await get_tree().process_frame
+			
+			# Check if event was already handled (by hero click)
+			if event.is_pressed():
+				# Event not handled yet, so this is a movement command
+				var mouse_pos = get_global_mouse_position()
+				current_hero.move_to_position(mouse_pos)
+				get_viewport().set_input_as_handled()
+				print("✓ Hero moving to: ", mouse_pos)

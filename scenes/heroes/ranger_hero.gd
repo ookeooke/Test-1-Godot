@@ -21,8 +21,8 @@ var ranged_damage = 25.0
 var melee_damage = 12.0
 var ranged_range = 300.0
 var melee_range = 100.0
-var ranged_attack_speed = 0.67  # Time between shots (1.5 per second)
-var melee_attack_speed = 0.5    # Time between hits (2 per second)
+var ranged_attack_speed = 0.67
+var melee_attack_speed = 0.5
 
 # MOVEMENT
 var movement_speed = 150.0
@@ -31,7 +31,7 @@ var home_position = Vector2.ZERO
 var target_position = Vector2.ZERO
 
 # ENEMY MANAGEMENT
-var max_melee_enemies = 3  # Can fight 3 enemies at once in melee
+var max_melee_enemies = 3
 var enemies_in_melee_range = []
 var enemies_in_ranged_range = []
 var current_ranged_target = null
@@ -50,7 +50,7 @@ var is_selected = false
 @onready var range_indicator = $RangeIndicator
 @onready var health_bar = $HealthBar
 @onready var sprite = $Sprite2D
-@onready var click_area = $ClickArea  # NEW: For click detection
+@onready var click_area = $ClickArea
 
 # PROJECTILE
 @export var arrow_scene: PackedScene
@@ -66,19 +66,24 @@ func _ready():
 	
 	# Setup detection areas
 	ranged_detection.collision_layer = 0
-	ranged_detection.collision_mask = 1  # Detect enemies
+	ranged_detection.collision_mask = 1
 	melee_detection.collision_layer = 0
 	melee_detection.collision_mask = 1
 	
-	# Setup click detection
+	# Setup click detection - FIXED: Use unique layer
 	if click_area:
 		click_area.input_pickable = true
 		click_area.input_event.connect(_on_click_area_input_event)
-		click_area.collision_layer = 8  # Clickable layer (layer 4)
+		click_area.collision_layer = 16  # Layer 5 (bit 5) - unique for heroes
 		click_area.collision_mask = 0
-		print("Hero click area configured")
+		
+		# Add mouse hover detection for better feedback
+		click_area.mouse_entered.connect(_on_mouse_entered)
+		click_area.mouse_exited.connect(_on_mouse_exited)
+		
+		print("✓ Hero click area configured on layer 16 (bit 5)")
 	else:
-		print("WARNING: No ClickArea found on hero! Add an Area2D child named 'ClickArea'")
+		print("⚠️ WARNING: No ClickArea found on hero!")
 	
 	# Connect signals
 	ranged_detection.body_entered.connect(_on_ranged_enemy_entered)
@@ -102,42 +107,64 @@ func _ready():
 	range_indicator.visible = false
 	update_health_bar()
 	
-	print("Ranger Hero ready at: ", global_position)
+	print("✓ Ranger Hero ready at: ", global_position)
 
 # ============================================
-# INPUT HANDLING
+# INPUT HANDLING - FIXED
 # ============================================
 
 func _on_click_area_input_event(viewport, event, shape_idx):
-	"""Handle clicks on the hero"""
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		print("Hero clicked directly!")
-		hero_selected.emit(self)
-		get_viewport().set_input_as_handled()
+	"""Handle clicks on the hero - PRIORITY INPUT"""
+	if event is InputEventMouseButton:
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			print("🎯 HERO CLICKED DIRECTLY! Position: ", global_position)
+			hero_selected.emit(self)
+			# CRITICAL: Mark the event as handled immediately
+			get_viewport().set_input_as_handled()
+
+func _on_mouse_entered():
+	"""Visual feedback when hovering over hero"""
+	if not is_selected:
+		sprite.modulate = Color(1.2, 1.2, 1.5)  # Slight blue tint
+		print("Mouse over hero")
+
+func _on_mouse_exited():
+	"""Remove hover feedback"""
+	if not is_selected:
+		sprite.modulate = Color(1, 1, 1)
+
+# Alternative: Direct input handling (backup method)
+func _input(event):
+	"""Fallback input handling if Area2D doesn't work"""
+	if event is InputEventMouseButton:
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			# Check if click is within hero's bounds
+			var click_pos = get_global_mouse_position()
+			var distance = global_position.distance_to(click_pos)
+			
+			# Use slightly larger radius than collision shape
+			if distance < 40:  # Adjust based on your hero size
+				print("🎯 HERO CLICKED (fallback method)! Position: ", global_position)
+				hero_selected.emit(self)
+				get_viewport().set_input_as_handled()
 
 # ============================================
 # MAIN LOOP
 # ============================================
 
 func _physics_process(delta):
-	# Update state machine
 	match current_state:
 		State.IDLE:
 			handle_idle_state()
-		
 		State.RANGED_COMBAT:
 			handle_ranged_combat_state()
-		
 		State.MELEE_COMBAT:
 			handle_melee_combat_state()
-		
 		State.RETURNING:
 			handle_returning_state(delta)
-		
 		State.WALKING:
 			handle_walking_state(delta)
 	
-	# Clean up dead enemies from lists
 	clean_enemy_lists()
 
 # ============================================
@@ -145,37 +172,30 @@ func _physics_process(delta):
 # ============================================
 
 func handle_idle_state():
-	# Look for enemies
 	if not enemies_in_melee_range.is_empty():
 		enter_melee_combat()
 	elif not enemies_in_ranged_range.is_empty():
 		enter_ranged_combat()
 	
-	# Check if we're at home position
 	if global_position.distance_to(home_position) > 5:
 		enter_returning_state()
 
 func handle_ranged_combat_state():
-	# Check if enemies got too close
 	if not enemies_in_melee_range.is_empty():
 		enter_melee_combat()
 		return
 	
-	# Check if we still have ranged targets
 	if enemies_in_ranged_range.is_empty():
 		enter_returning_state()
 		return
 	
-	# Aim at current target
 	current_ranged_target = get_closest_ranged_enemy()
 	if current_ranged_target and is_instance_valid(current_ranged_target):
 		look_at(current_ranged_target.global_position)
 
 func handle_melee_combat_state():
-	# Update melee targets (up to max limit)
 	current_melee_targets = get_melee_targets()
 	
-	# If no more melee enemies, switch to ranged or return
 	if current_melee_targets.is_empty():
 		if not enemies_in_ranged_range.is_empty():
 			enter_ranged_combat()
@@ -183,46 +203,38 @@ func handle_melee_combat_state():
 			enter_returning_state()
 		return
 	
-	# Face the closest melee enemy
 	var closest = current_melee_targets[0]
 	if is_instance_valid(closest):
 		look_at(closest.global_position)
 		
-		# Tell enemies to stop moving (block them) - ONLY ONCE
 		for enemy in current_melee_targets:
 			if enemy.has_method("set_blocked_by_hero"):
-				# Only block if not already blocked
 				if not enemy.is_blocked or enemy.blocking_hero != self:
 					enemy.set_blocked_by_hero(self)
 
 func handle_returning_state(delta):
-	# Walk back to home position
 	var direction = (home_position - global_position).normalized()
 	velocity = direction * movement_speed
 	move_and_slide()
 	
-	# Check if we arrived
 	if global_position.distance_to(home_position) < 5:
 		velocity = Vector2.ZERO
 		current_state = State.IDLE
 		print("Hero returned to home position")
 	
-	# Check if enemies appeared while returning
 	if not enemies_in_melee_range.is_empty():
 		enter_melee_combat()
 	elif not enemies_in_ranged_range.is_empty():
 		enter_ranged_combat()
 
 func handle_walking_state(delta):
-	# Walk to target position (for player-commanded movement)
 	var direction = (target_position - global_position).normalized()
 	velocity = direction * movement_speed
 	move_and_slide()
 	
-	# Check if we arrived
 	if global_position.distance_to(target_position) < 5:
 		velocity = Vector2.ZERO
-		home_position = global_position  # Update home position
+		home_position = global_position
 		current_state = State.IDLE
 		print("Hero arrived at new position")
 
@@ -263,7 +275,6 @@ func enter_walking_state(destination: Vector2):
 func _on_ranged_enemy_entered(body):
 	if body.is_in_group("enemy"):
 		enemies_in_ranged_range.append(body)
-		print("Enemy entered ranged range. Total: ", enemies_in_ranged_range.size())
 
 func _on_ranged_enemy_exited(body):
 	if body.is_in_group("enemy"):
@@ -272,7 +283,6 @@ func _on_ranged_enemy_exited(body):
 func _on_melee_enemy_entered(body):
 	if body.is_in_group("enemy"):
 		enemies_in_melee_range.append(body)
-		print("Enemy entered melee range! Total: ", enemies_in_melee_range.size())
 
 func _on_melee_enemy_exited(body):
 	if body.is_in_group("enemy"):
@@ -298,17 +308,14 @@ func get_closest_ranged_enemy():
 	return closest
 
 func get_melee_targets() -> Array:
-	# Return up to max_melee_enemies closest enemies
 	if enemies_in_melee_range.is_empty():
 		return []
 	
-	# Sort by distance
 	var sorted_enemies = enemies_in_melee_range.duplicate()
 	sorted_enemies.sort_custom(func(a, b): 
 		return global_position.distance_to(a.global_position) < global_position.distance_to(b.global_position)
 	)
 	
-	# Take only up to max limit
 	var targets = []
 	for i in range(min(max_melee_enemies, sorted_enemies.size())):
 		targets.append(sorted_enemies[i])
@@ -325,24 +332,19 @@ func _on_ranged_timer_timeout():
 
 func shoot_arrow():
 	if arrow_scene == null:
-		print("ERROR: No arrow scene assigned to hero!")
 		return
 	
 	current_ranged_target = get_closest_ranged_enemy()
 	if current_ranged_target == null or not is_instance_valid(current_ranged_target):
 		return
 	
-	# Check if target is NOT in melee range (don't shoot point-blank)
 	if enemies_in_melee_range.has(current_ranged_target):
 		return
 	
-	# Create arrow
 	var arrow = arrow_scene.instantiate()
 	get_tree().root.add_child(arrow)
 	arrow.global_position = global_position
 	arrow.setup(current_ranged_target, ranged_damage)
-	
-	print("Hero shot arrow! Damage: ", ranged_damage)
 
 # ============================================
 # COMBAT - MELEE
@@ -358,11 +360,9 @@ func melee_attack():
 	if current_melee_targets.is_empty():
 		return
 	
-	# Attack all targets in melee range (up to max)
 	for enemy in current_melee_targets:
 		if is_instance_valid(enemy) and enemy.has_method("take_damage"):
 			enemy.take_damage(melee_damage)
-			print("Hero melee attack! Damage: ", melee_damage, " to ", enemy.name)
 
 # ============================================
 # HEALTH & DEATH
@@ -378,14 +378,8 @@ func take_damage(amount: float):
 
 func die():
 	print("HERO DIED!")
-	
-	# Calculate respawn time based on level
-	var respawn_time = 10.0 + (hero_level - 1) * 5.0  # Level 1: 10s, Level 2: 15s, etc.
-	
-	# Emit signal
+	var respawn_time = 10.0 + (hero_level - 1) * 5.0
 	hero_died.emit(respawn_time)
-	
-	# Remove hero
 	queue_free()
 
 func update_health_bar():
@@ -399,12 +393,14 @@ func update_health_bar():
 func select():
 	is_selected = true
 	range_indicator.visible = true
-	print("Hero selected")
+	sprite.modulate = Color(1.3, 1.3, 1.5)  # Brighter blue when selected
+	print("✓ Hero selected")
 
 func deselect():
 	is_selected = false
 	range_indicator.visible = false
-	print("Hero deselected")
+	sprite.modulate = Color(1, 1, 1)
+	print("✓ Hero deselected")
 
 func draw_range_circle():
 	var points = []
@@ -428,5 +424,4 @@ func set_home_position(pos: Vector2):
 	print("Hero home position set to: ", home_position)
 
 func move_to_position(pos: Vector2):
-	# Player commanded movement
 	enter_walking_state(pos)
