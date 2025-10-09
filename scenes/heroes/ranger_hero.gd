@@ -166,11 +166,12 @@ func handle_melee_combat_state():
 	if is_instance_valid(closest):
 		look_at(closest.global_position)
 		
-		# Tell enemies to stop moving (block them)
+		# Tell enemies to stop moving (block them) - ONLY ONCE
 		for enemy in current_melee_targets:
 			if enemy.has_method("set_blocked_by_hero"):
-				enemy.set_blocked_by_hero(self)
-
+				# Only block if not already blocked
+				if not enemy.is_blocked or enemy.blocking_hero != self:
+					enemy.set_blocked_by_hero(self)
 func handle_returning_state(delta):
 	# Walk back to home position
 	var direction = (home_position - global_position).normalized()
