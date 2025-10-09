@@ -44,6 +44,9 @@ func _ready():
 	GameManager.gold_changed.connect(_on_gold_changed)
 	
 	print("Build menu ready!")
+	
+
+
 
 func _on_gold_changed(new_amount):
 	update_button_states()
@@ -58,7 +61,9 @@ func _on_archer_button_pressed():
 	if GameManager.spend_gold(archer_cost):
 		print("  ✓ Gold spent, emitting tower_selected signal")
 		tower_selected.emit(archer_tower_scene)
-		queue_free()
+		# CHANGED: Don't queue_free() here - let PlacementManager close the menu
+		# This prevents race condition where menu closes before tower is placed
+		# queue_free()  # REMOVED
 	else:
 		print("  ✗ Not enough gold for Archer Tower!")
 
@@ -69,7 +74,8 @@ func _on_mage_button_pressed():
 	
 	if GameManager.spend_gold(mage_cost):
 		tower_selected.emit(mage_tower_scene)
-		queue_free()
+		# CHANGED: Don't queue_free() here
+		# queue_free()  # REMOVED
 	else:
 		print("Not enough gold for Mage Tower!")
 

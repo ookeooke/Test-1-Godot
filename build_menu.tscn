@@ -37,6 +37,7 @@ theme_override_constants/separation = 10
 [node name="ArcherButton" type="Button" parent="Panel/MarginContainer/HBoxContainer"]
 custom_minimum_size = Vector2(130, 100)
 layout_mode = 2
+mouse_filter = 2
 text = "Archer Tower"
 
 [node name="CostLabel" type="Label" parent="Panel/MarginContainer/HBoxContainer/ArcherButton"]
