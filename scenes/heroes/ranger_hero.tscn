@@ -7,10 +7,10 @@
 radius = 20.09975
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_fxg0a"]
-radius = 493.21
+radius = 300.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_ea74a"]
-radius = 165.65
+radius = 100.0
 
 [node name="RangerHero" type="CharacterBody2D" groups=["hero"]]
 collision_layer = 2
@@ -33,7 +33,6 @@ text = "RANGER"
 horizontal_alignment = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(20, 19)
 shape = SubResource("CircleShape2D_df4ti")
 
 [node name="RangedDetection" type="Area2D" parent="."]
@@ -47,7 +46,6 @@ shape = SubResource("CircleShape2D_fxg0a")
 collision_layer = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeDetection"]
-position = Vector2(22, 19)
 shape = SubResource("CircleShape2D_ea74a")
 
 [node name="RangeIndicator" type="Line2D" parent="."]
