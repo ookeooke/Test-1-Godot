@@ -50,6 +50,7 @@ var is_selected = false
 @onready var range_indicator = $RangeIndicator
 @onready var health_bar = $HealthBar
 @onready var sprite = $Sprite2D
+@onready var click_area = $ClickArea
 
 # PROJECTILE
 @export var arrow_scene: PackedScene
@@ -68,6 +69,8 @@ func _ready():
 	ranged_detection.collision_mask = 1  # Detect enemies
 	melee_detection.collision_layer = 0
 	melee_detection.collision_mask = 1
+	
+	
 	
 	# Connect signals
 	ranged_detection.body_entered.connect(_on_ranged_enemy_entered)

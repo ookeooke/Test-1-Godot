@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://c52n66umx0j5h"]
+[gd_scene load_steps=7 format=3 uid="uid://c52n66umx0j5h"]
 
 [ext_resource type="Script" uid="uid://bs2etc1qjtji2" path="res://scenes/heroes/ranger_hero.gd" id="1_hsk3w"]
 [ext_resource type="PackedScene" uid="uid://coirid61w00ks" path="res://scenes/projectiles/arrow.tscn" id="2_oks3e"]
@@ -11,6 +11,9 @@ radius = 300.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_ea74a"]
 radius = 100.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hsk3w"]
+radius = 25.0
 
 [node name="RangerHero" type="CharacterBody2D" groups=["hero"]]
 collision_layer = 2
@@ -59,3 +62,10 @@ offset_left = -9.0
 offset_top = -27.0
 offset_right = 52.0
 show_percentage = false
+
+[node name="ClickArea" type="Area2D" parent="."]
+collision_layer = 128
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]
+shape = SubResource("CircleShape2D_hsk3w")

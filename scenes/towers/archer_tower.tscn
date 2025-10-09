@@ -5,7 +5,7 @@
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_cbvk8"]
 
-[node name="ArcherTower" type="StaticBody2D" groups=["tower_spot"]]
+[node name="ArcherTower" type="StaticBody2D" groups=["tower"]]
 script = ExtResource("1_6gcww")
 projectile_scene = ExtResource("2_10wjk")
 

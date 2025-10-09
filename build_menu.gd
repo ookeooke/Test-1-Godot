@@ -63,9 +63,9 @@ func _on_mage_button_pressed():
 		print("Not enough gold for Mage Tower!")
 
 func _input(event):
-	# Close menu if player clicks outside
 	if event is InputEventMouseButton:
 		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			if not get_global_rect().has_point(get_global_mouse_position()):
 				menu_closed.emit()
+				get_viewport().set_input_as_handled()  # Consume the event
 				queue_free()
