@@ -1,76 +1,98 @@
-[gd_scene load_steps=2 format=3 uid="uid://c8xk9plqw2m6b"]
+extends Control
 
-[ext_resource type="Script" path="res://tower_info_menu.gd" id="1_tower_info"]
+# ============================================
+# TOWER INFO MENU - Shows tower stats and upgrade options
+# ============================================
 
-[node name="TowerInfoMenu" type="Control"]
-custom_minimum_size = Vector2(300, 200)
-layout_mode = 3
-anchors_preset = 0
-offset_right = 300.0
-offset_bottom = 200.0
-script = ExtResource("1_tower_info")
+signal upgrade_selected(tower)
+signal sell_selected(tower)
+signal menu_closed()
 
-[node name="Panel" type="Panel" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+var tower = null
+var spot = null
 
-[node name="MarginContainer" type="MarginContainer" parent="Panel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 15
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 15
+# Upgrade costs
+var upgrade_cost = 150
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Panel/MarginContainer"]
-layout_mode = 2
-theme_override_constants/separation = 10
+# References
+@onready var panel = $Panel
+@onready var tower_name_label = $Panel/MarginContainer/VBoxContainer/TowerNameLabel
+@onready var stats_label = $Panel/MarginContainer/VBoxContainer/StatsLabel
+@onready var upgrade_button = $Panel/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton
+@onready var sell_button = $Panel/MarginContainer/VBoxContainer/HBoxContainer/SellButton
+@onready var upgrade_cost_label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton/CostLabel
 
-[node name="TowerNameLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "Archer Tower"
-horizontal_alignment = 1
+func _ready():
+	if upgrade_button:
+		upgrade_button.pressed.connect(_on_upgrade_button_pressed)
+	if sell_button:
+		sell_button.pressed.connect(_on_sell_button_pressed)
+	
+	update_display()
+	
+	# Connect to gold changes
+	GameManager.gold_changed.connect(_on_gold_changed)
 
-[node name="StatsLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-text = "Damage: 15
-Attack Speed: 1.2/s
-Range: 300"
+func setup(tower_ref, spot_ref):
+	"""Initialize the menu with tower data"""
+	tower = tower_ref
+	spot = spot_ref
+	
+	if is_inside_tree():
+		update_display()
 
-[node name="HSeparator" type="HSeparator" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
+func update_display():
+	"""Update the displayed information"""
+	if not tower:
+		return
+	
+	# Set tower name
+	if tower_name_label:
+		tower_name_label.text = "Archer Tower"  # TODO: Get from tower
+	
+	# Set stats
+	if stats_label and tower:
+		var damage = tower.damage if "damage" in tower else 0
+		var attack_speed = tower.attack_speed if "attack_speed" in tower else 0
+		var range_val = tower.range_radius if "range_radius" in tower else 0
+		
+		stats_label.text = "Damage: %d\nAttack Speed: %.1f/s\nRange: %d" % [damage, attack_speed, range_val]
+	
+	# Set upgrade cost
+	if upgrade_cost_label:
+		upgrade_cost_label.text = str(upgrade_cost) + "g"
+	
+	# Update button states
+	update_button_states()
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_constants/separation = 10
+func _on_gold_changed(new_amount):
+	update_button_states()
 
-[node name="UpgradeButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(120, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Upgrade"
+func update_button_states():
+	if upgrade_button:
+		upgrade_button.disabled = GameManager.gold < upgrade_cost
 
-[node name="CostLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton"]
-layout_mode = 0
-offset_left = 35.0
-offset_top = 30.0
-offset_right = 85.0
-offset_bottom = 53.0
-theme_override_colors/font_color = Color(1, 1, 0, 1)
-text = "150g"
-horizontal_alignment = 1
+func _on_upgrade_button_pressed():
+	if GameManager.spend_gold(upgrade_cost):
+		print("Tower upgraded!")
+		upgrade_selected.emit(tower)
+		queue_free()
+	else:
+		print("Not enough gold for upgrade!")
 
-[node name="SellButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(120, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Sell (70g)"
+func _on_sell_button_pressed():
+	# Sell for 70% of original cost
+	var sell_value = 70  # 70% of 100
+	GameManager.add_gold(sell_value)
+	print("Tower sold for ", sell_value, " gold")
+	sell_selected.emit(tower)
+	queue_free()
+
+func _input(event):
+	"""Close menu when clicking outside"""
+	if event is InputEventMouseButton:
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			if not get_global_rect().has_point(get_global_mouse_position()):
+				menu_closed.emit()
+				get_viewport().set_input_as_handled()
+				queue_free()
