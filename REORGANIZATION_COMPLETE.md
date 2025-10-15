@@ -26,14 +26,14 @@ res://
 │   └── ui/                (3 files)
 │
 └── scenes/
-    ├── levels/            (1 file)
-    ├── enemies/           (4 files)
-    ├── towers/            (already existed)
-    ├── heroes/            (already existed)
-    ├── projectiles/       (already existed)
-    ├── ui/                (2 files)
-    ├── spots/             (4 files)
-    └── managers/          (1 file)
+	├── levels/            (1 file)
+	├── enemies/           (4 files)
+	├── towers/            (already existed)
+	├── heroes/            (already existed)
+	├── projectiles/       (already existed)
+	├── ui/                (2 files)
+	├── spots/             (4 files)
+	└── managers/          (1 file)
 ```
 
 ---
@@ -254,10 +254,10 @@ res://
 │   ├── camera/
 │   └── ui/
 └── scenes/
-    ├── levels/
-    ├── enemies/
-    ├── towers/
-    └── ...
+	├── levels/
+	├── enemies/
+	├── towers/
+	└── ...
 ```
 😊 "Perfect! Everything organized!"
 

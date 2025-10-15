@@ -41,9 +41,18 @@ var attack_timer := 0.0
 func _ready():
 	# Validate stats
 	if stats == null:
-		push_error("BaseEnemy: No stats assigned! Please assign an EnemyStats resource in the Inspector.")
-		queue_free()
-		return
+		push_error("BaseEnemy: No stats assigned! Using default stats as fallback. Please assign an EnemyStats resource in the Inspector.")
+		# Create default stats as fallback (temporary)
+		stats = EnemyStats.new()
+		stats.speed = 100.0
+		stats.max_health = 50.0
+		stats.melee_damage = 5.0
+		stats.attack_cooldown = 1.0
+		stats.gold_reward = 5
+		stats.life_damage = 1
+		stats.can_be_blocked = true
+		stats.melee_detection_range = 100.0
+		stats.death_shake = "Small"
 
 	# Initialize health
 	current_health = stats.max_health

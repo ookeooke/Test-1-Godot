@@ -69,9 +69,9 @@ res://
 │       └── game_manager.tscn
 │
 └── docs/                       # Documentation (keep existing)
-    ├── SETUP_COMPLETE.md
-    ├── CAMERA_UPGRADE_GUIDE.md
-    └── CAMERA_RECOMMENDED_SETTINGS.md
+	├── SETUP_COMPLETE.md
+	├── CAMERA_UPGRADE_GUIDE.md
+	└── CAMERA_RECOMMENDED_SETTINGS.md
 ```
 
 ---
