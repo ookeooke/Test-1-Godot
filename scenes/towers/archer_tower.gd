@@ -13,6 +13,7 @@ var range_radius = 300  # Detection range
 var detection_range: Area2D
 var range_indicator: Line2D
 var shoot_timer: Timer
+var archer_weapon: Node2D  # The weapon that rotates toward enemies
 
 # TARGETING
 var enemies_in_range = []  # List of enemies we can shoot
@@ -32,25 +33,29 @@ func _ready():
 	# Get references to child nodes
 	detection_range = $DetectionRange
 	range_indicator = $RangeIndicator
-	
+
+	# Get archer weapon reference
+	if has_node("Archer/Weapon"):
+		archer_weapon = $Archer/Weapon
+
 	# IMPORTANT: Set collision mask to detect enemies (layer 1)
 	detection_range.collision_layer = 8  # Tower range is layer 4
 	detection_range.collision_mask = 1   # Detect enemies on layer 1
-	
+
 	# Connect detection signals
 	detection_range.body_entered.connect(_on_enemy_entered_range)
 	detection_range.body_exited.connect(_on_enemy_exited_range)
-	
+
 	# Create shoot timer
 	shoot_timer = Timer.new()
 	shoot_timer.wait_time = 1.0 / attack_speed  # Convert attacks/sec to seconds
 	shoot_timer.timeout.connect(_on_shoot_timer_timeout)
 	add_child(shoot_timer)
 	shoot_timer.start()
-	
+
 	# Draw range indicator
 	draw_range_circle()
-	
+
 	# CHANGED: Register with ClickManager
 	# Wait a frame for parent_spot to be set
 	await get_tree().process_frame
@@ -58,9 +63,11 @@ func _ready():
 	print("✓ Archer tower registered with ClickManager at: ", global_position)
 
 func _process(delta):
-	# Always aim at the current target
+	# Rotate archer's weapon toward the current target
 	if current_target and is_instance_valid(current_target):
-		look_at(current_target.global_position)
+		if archer_weapon:
+			# Make weapon point at enemy
+			archer_weapon.look_at(current_target.global_position)
 
 # ============================================
 # CLICK CALLBACKS - Called by ClickManager

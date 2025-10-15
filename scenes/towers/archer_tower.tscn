@@ -28,6 +28,30 @@ text = "Archer"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="Archer" type="Node2D" parent="."]
+position = Vector2(0, -20)
+
+[node name="Body" type="ColorRect" parent="Archer"]
+offset_left = -8.0
+offset_top = -12.0
+offset_right = 8.0
+offset_bottom = 12.0
+color = Color(0.8, 0.6, 0.4, 1)
+
+[node name="Head" type="ColorRect" parent="Archer"]
+offset_left = -6.0
+offset_top = -18.0
+offset_right = 6.0
+offset_bottom = -6.0
+color = Color(0.9, 0.7, 0.5, 1)
+
+[node name="Weapon" type="Node2D" parent="Archer"]
+
+[node name="Bow" type="ColorRect" parent="Archer/Weapon"]
+offset_right = 18.0
+offset_bottom = 3.0
+color = Color(0.4, 0.25, 0.1, 1)
+
 [node name="DetectionRange" type="Area2D" parent="."]
 collision_layer = 8
 

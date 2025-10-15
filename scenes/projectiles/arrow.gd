@@ -6,9 +6,8 @@ extends Area2D
 
 # INSPECTOR SETTINGS - Adjust these to tune arrow behavior!
 @export_group("Trajectory")
-@export var arc_height: float = 50.0  ## How high the arrow arcs (0 = straight line, 100 = high arc)
-@export var use_ballistic: bool = true  ## Use parabolic arc (true) or homing (false)
-@export var gravity_strength: float = 980.0  ## Simulated gravity for arc
+@export var arc_height: float = 50.0  ## How high the arrow arcs visually (0 = straight line, 100 = high arc)
+@export var use_ballistic: bool = true  ## Use arc trajectory (true) or homing (false)
 
 @export_group("Targeting")
 @export var use_prediction: bool = true  ## Predict enemy movement
@@ -22,14 +21,11 @@ var damage = 10  # Will be set by tower
 var target = null  # The enemy we're targeting
 var direction = Vector2.ZERO  # Direction we're flying
 
-# BALLISTIC TRAJECTORY VARIABLES
+# TRAJECTORY VARIABLES
 var start_position: Vector2
 var target_position: Vector2
-var velocity: Vector2
 var travel_time: float = 0.0
-var max_flight_time: float = 3.0  # Max time before arrow despawns
 var flight_time: float = 0.0  # Total calculated flight time
-var current_arc_offset: float = 0.0  # Current height in arc
 
 # ============================================
 # SETUP
@@ -79,19 +75,15 @@ func _calculate_target_position() -> Vector2:
 	return predicted_pos
 
 func _setup_ballistic_trajectory():
-	"""Setup parabolic arc physics (Kingdom Rush style)"""
-	var horizontal_distance = target_position.distance_to(start_position)
+	"""Setup simple visual arc (Kingdom Rush style - simplified)"""
+	var distance = target_position.distance_to(start_position)
+
+	# Calculate how long the arrow will take to reach target
+	flight_time = distance / flight_speed
+
+	# Point arrow toward target initially
 	var direction_to_target = (target_position - start_position).normalized()
-
-	# Calculate flight time based on horizontal distance and speed
-	flight_time = horizontal_distance / flight_speed
-	max_flight_time = flight_time * 1.5  # Add buffer for safety
-
-	# Horizontal velocity (constant throughout flight)
-	velocity = direction_to_target * flight_speed
-
-	# Point arrow in initial direction
-	rotation = velocity.angle()
+	rotation = direction_to_target.angle()
 
 # ============================================
 # BUILT-IN FUNCTIONS
@@ -101,18 +93,23 @@ func _ready():
 	# Connect collision signal
 	body_entered.connect(_on_body_entered)
 
+	# Get shadow reference if it exists
+	if has_node("Shadow"):
+		var shadow = get_node("Shadow")
+		# Shadow stays at relative position (0,0) = ground level
+
 func _physics_process(delta):
 	travel_time += delta
 
 	if use_ballistic:
-		# KINGDOM RUSH STYLE: Ballistic arc physics
+		# KINGDOM RUSH STYLE: Visual arc with straight-line movement
 		_update_ballistic_movement(delta)
 	else:
 		# OLD STYLE: Homing missile
 		_update_homing_movement(delta)
 
-	# Timeout check
-	if travel_time > max_flight_time:
+	# Timeout check (flight_time + buffer)
+	if travel_time > flight_time + 1.0:
 		queue_free()
 
 	# Off-screen check
@@ -120,38 +117,46 @@ func _physics_process(delta):
 		queue_free()
 
 func _update_ballistic_movement(delta):
-	"""Move arrow along parabolic arc"""
-	# Move forward along horizontal path
-	global_position += velocity * delta
+	"""Simple visual arc - arrow moves straight but sprite arcs (Kingdom Rush style)"""
 
-	# Calculate arc height at current travel time
-	# Parabolic formula: height = -4 * max_height * (t/flight_time) * (t/flight_time - 1)
-	# This creates a smooth arc that peaks at 50% of flight time
-	if flight_time > 0:
-		var progress = travel_time / flight_time  # 0.0 to 1.0
-		current_arc_offset = -4.0 * arc_height * progress * (progress - 1.0)
-	else:
-		current_arc_offset = 0
+	# Calculate progress from 0.0 (start) to 1.0 (target)
+	var progress = clamp(travel_time / flight_time, 0.0, 1.0)
 
-	# Apply visual arc effect by scaling the arrow (simulates height in 2D)
-	# Arrow appears larger when higher in arc
-	var scale_factor = 1.0 + (current_arc_offset / arc_height) * 0.3  # Up to 30% larger at peak
-	scale = Vector2(scale_factor, scale_factor)
+	# POSITION: Move in straight line from start to target (lerp)
+	global_position = start_position.lerp(target_position, progress)
 
-	# Rotate arrow to match velocity direction
-	rotation = velocity.angle()
+	# VISUAL ARC: Sine wave creates smooth up/down arc
+	# sin(progress * PI) creates perfect arc: 0 -> 1 -> 0
+	var visual_height = sin(progress * PI) * arc_height
 
-	# Check if we reached the target (close enough)
-	var distance_to_target = global_position.distance_to(target_position)
-	if distance_to_target < 20:  # Hit threshold
-		# Try to hit the actual enemy if it's still there
+	# Move arrow sprite UP (negative Y) when at height
+	if has_node("ColorRect"):
+		var arrow_sprite = get_node("ColorRect")
+		arrow_sprite.position.y = -visual_height  # Up on screen
+
+	# Scale arrow larger when higher (simulates perspective)
+	var scale_factor = 1.0 + (visual_height / max(arc_height, 1.0)) * 0.4
+	if has_node("ColorRect"):
+		get_node("ColorRect").scale = Vector2(scale_factor, scale_factor)
+
+	# Shadow gets smaller when arrow is higher
+	if has_node("Shadow"):
+		var shadow_scale = 1.0 - (visual_height / max(arc_height, 1.0)) * 0.5
+		get_node("Shadow").scale = Vector2(shadow_scale, shadow_scale)
+
+	# Rotate arrow to follow arc angle
+	# Calculate visual velocity direction based on sine derivative
+	var direction_to_target = (target_position - start_position).normalized()
+	var arc_angle = cos(progress * PI) * (arc_height / flight_time) * 0.01  # Derivative of sine
+	rotation = direction_to_target.angle() - arc_angle
+
+	# Check if arrow reached target (progress >= 1.0)
+	if progress >= 1.0:
+		# Arrow always hits - no missing!
 		if target and is_instance_valid(target):
-			var distance_to_enemy = global_position.distance_to(target.global_position)
-			if distance_to_enemy < 50:  # Enemy is close enough to predicted position
-				_hit_enemy(target)
-				return
-		# Missed the enemy (moved away from prediction)
-		queue_free()
+			_hit_enemy(target)
+		else:
+			queue_free()
 
 func _update_homing_movement(delta):
 	"""Classic homing missile behavior"""
