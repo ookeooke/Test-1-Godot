@@ -26,6 +26,7 @@ var start_position: Vector2
 var target_position: Vector2
 var travel_time: float = 0.0
 var flight_time: float = 0.0  # Total calculated flight time
+var previous_position: Vector2  # For continuous collision detection
 
 # VISUAL GRAVITY SIMULATION (for realistic arc feel)
 var visual_z_velocity: float = 0.0  # Initial upward velocity
@@ -40,6 +41,7 @@ func setup(enemy, projectile_damage):
 	target = enemy
 	damage = projectile_damage
 	start_position = global_position
+	previous_position = global_position  # Initialize for collision detection
 
 	if not target or not is_instance_valid(target):
 		queue_free()
@@ -59,7 +61,10 @@ func setup(enemy, projectile_damage):
 func _calculate_target_position() -> Vector2:
 	"""Calculate where to aim (current pos or predicted pos)"""
 	if not use_prediction or not target or not is_instance_valid(target):
-		return target.global_position
+		return _get_target_hit_point()
+
+	# Get the base hit point (visual center or HitPoint marker)
+	var base_position = _get_target_hit_point()
 
 	# Try to get enemy velocity for prediction
 	var enemy_velocity = Vector2.ZERO
@@ -70,13 +75,25 @@ func _calculate_target_position() -> Vector2:
 			# Estimate velocity based on enemy speed
 			if "speed" in target:
 				# Get the direction enemy is traveling
-				var current_pos = target.global_position
+				var current_pos = base_position
 				# Simple forward prediction
 				enemy_velocity = (current_pos - global_position).normalized() * target.speed
 
 	# Predict future position
-	var predicted_pos = target.global_position + (enemy_velocity * prediction_time)
+	var predicted_pos = base_position + (enemy_velocity * prediction_time)
 	return predicted_pos
+
+func _get_target_hit_point() -> Vector2:
+	"""Get the visual center / hit point of the target enemy"""
+	if not target or not is_instance_valid(target):
+		return global_position
+
+	# OPTION 1: Check for "HitPoint" marker node (preferred - allows artistic control)
+	if target.has_node("HitPoint"):
+		return target.get_node("HitPoint").global_position
+
+	# OPTION 2: Fallback to enemy origin (backward compatibility)
+	return target.global_position
 
 func _setup_ballistic_trajectory():
 	"""Setup visual arc with gravity simulation (Kingdom Rush style)"""
@@ -133,8 +150,13 @@ func _update_ballistic_movement(delta):
 	# Calculate progress from 0.0 (start) to 1.0 (target)
 	var progress = clamp(travel_time / flight_time, 0.0, 1.0)
 
+	# CONTINUOUS COLLISION DETECTION: Check path before moving
+	var new_position = start_position.lerp(target_position, progress)
+	_check_collision_along_path(previous_position, new_position)
+
 	# POSITION: Move in straight line from start to target (lerp)
-	global_position = start_position.lerp(target_position, progress)
+	previous_position = global_position  # Store old position
+	global_position = new_position
 
 	# VISUAL ARC: Use gravity physics for realistic arc
 	# Current vertical velocity (decreases due to gravity)
@@ -146,10 +168,10 @@ func _update_ballistic_movement(delta):
 	# Clamp to ground level (don't go below 0)
 	visual_height = max(0.0, visual_height)
 
-	# Move arrow sprite UP (negative Y) when at height
+	# Move arrow sprite UP (negative Y = up on screen)
 	if has_node("ColorRect"):
 		var arrow_sprite = get_node("ColorRect")
-		arrow_sprite.position.y = -visual_height  # Up on screen
+		arrow_sprite.position.y = -visual_height  # Negative = UP on screen
 
 	# Scale arrow larger when higher (simulates perspective)
 	# Use actual height vs expected peak height
@@ -188,8 +210,40 @@ func _update_homing_movement(delta):
 		direction = (target.global_position - global_position).normalized()
 		rotation = direction.angle()
 
+	# CONTINUOUS COLLISION DETECTION: Check path before moving
+	var new_position = global_position + direction * flight_speed * delta
+	_check_collision_along_path(previous_position, new_position)
+
 	# Move forward
-	global_position += direction * flight_speed * delta
+	previous_position = global_position  # Store old position
+	global_position = new_position
+
+func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
+	"""Check for enemy collisions along the movement path using raycast"""
+	# Skip if we haven't moved
+	if from_pos.distance_to(to_pos) < 0.1:
+		return
+
+	# Get the physics space
+	var space_state = get_world_2d().direct_space_state
+
+	# Create a raycast query from previous position to new position
+	var query = PhysicsRayQueryParameters2D.create(from_pos, to_pos)
+	query.collision_mask = 1  # Layer 1 = enemies (from base_enemy.gd line 70)
+	query.collide_with_areas = false  # Only check bodies, not areas
+	query.collide_with_bodies = true
+
+	# Perform the raycast
+	var result = space_state.intersect_ray(query)
+
+	# If we hit something
+	if result and result.has("collider"):
+		var hit_body = result.collider
+
+		# Check if it's an enemy
+		if hit_body.is_in_group("enemy"):
+			print("Arrow raycast hit enemy at distance: ", from_pos.distance_to(result.position))
+			_hit_enemy(hit_body)
 
 func _hit_enemy(enemy):
 	"""Deal damage to enemy"""

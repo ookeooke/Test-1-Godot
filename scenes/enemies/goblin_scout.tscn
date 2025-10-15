@@ -30,3 +30,6 @@ vertical_alignment = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_vmpv5")
+
+[node name="HitPoint" type="Marker2D" parent="."]
+position = Vector2(0, 0)

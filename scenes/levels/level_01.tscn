@@ -1,19 +1,20 @@
-[gd_scene load_steps=16 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=17 format=3 uid="uid://b1dcv31ty4qix"]
 
-[ext_resource type="Script" path="res://scripts/managers/wave_manager.gd" id="1_0e48y"]
-[ext_resource type="Script" path="res://scripts/level_controller.gd" id="1_level_controller"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/goblin_scout.tscn" id="1_wtcfe"]
-[ext_resource type="Script" path="res://scripts/camera/camera_controller_improved.gd" id="2_camera"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/orc_warrior.tscn" id="3_epypp"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/wolf_runner.tscn" id="3_wolf"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/troll_boss.tscn" id="4_troll"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/bat_flyer.tscn" id="5_bat"]
-[ext_resource type="Script" path="res://scripts/ui/ui.gd" id="4_q6r6c"]
-[ext_resource type="Script" path="res://scripts/managers/placement_manager.gd" id="5_kdubu"]
-[ext_resource type="PackedScene" path="res://scenes/spots/tower_spot.tscn" id="5_q6r6c"]
-[ext_resource type="Script" path="res://scripts/managers/hero_manager.gd" id="7_4d7sh"]
-[ext_resource type="PackedScene" path="res://scenes/heroes/ranger_hero.tscn" id="8_ir8iy"]
-[ext_resource type="PackedScene" path="res://scenes/spots/hero_spot.tscn" id="9_hqns4"]
+[ext_resource type="Script" uid="uid://mxt3ckx3n6mu" path="res://scripts/managers/wave_manager.gd" id="1_0e48y"]
+[ext_resource type="Script" uid="uid://idfvb3maml47" path="res://scripts/level_controller.gd" id="1_level_controller"]
+[ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://scenes/enemies/goblin_scout.tscn" id="1_wtcfe"]
+[ext_resource type="Script" uid="uid://b1r6b3vwpnkst" path="res://scripts/camera/camera_controller_improved.gd" id="2_camera"]
+[ext_resource type="PackedScene" uid="uid://crirequ6fnstj" path="res://scenes/enemies/orc_warrior.tscn" id="3_epypp"]
+[ext_resource type="PackedScene" uid="uid://dwolf7k3xp2n" path="res://scenes/enemies/wolf_runner.tscn" id="3_wolf"]
+[ext_resource type="Script" uid="uid://b36pauxpm4kdw" path="res://scripts/ui/ui.gd" id="4_q6r6c"]
+[ext_resource type="PackedScene" uid="uid://dtroll8k5xram" path="res://scenes/enemies/troll_boss.tscn" id="4_troll"]
+[ext_resource type="PackedScene" uid="uid://dbauak4xr3p" path="res://scenes/enemies/bat_flyer.tscn" id="5_bat"]
+[ext_resource type="Script" uid="uid://b5eg63ndhxpwm" path="res://scripts/managers/placement_manager.gd" id="5_kdubu"]
+[ext_resource type="PackedScene" uid="uid://bar3soqilns7x" path="res://scenes/spots/tower_spot.tscn" id="5_q6r6c"]
+[ext_resource type="Script" uid="uid://ddjf0njev6xv" path="res://scripts/managers/hero_manager.gd" id="7_4d7sh"]
+[ext_resource type="PackedScene" uid="uid://c52n66umx0j5h" path="res://scenes/heroes/ranger_hero.tscn" id="8_ir8iy"]
+[ext_resource type="PackedScene" uid="uid://ckvxoisxu0tq1" path="res://scenes/spots/hero_spot.tscn" id="9_hqns4"]
+[ext_resource type="PackedScene" uid="uid://bherobutton123" path="res://scenes/ui/hero_button.tscn" id="10_herobutton"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
@@ -72,16 +73,26 @@ offset_bottom = 80.0
 theme_override_font_sizes/font_size = 48
 text = "Lives: 20"
 
+[node name="HeroButton" parent="UI" instance=ExtResource("10_herobutton")]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -140.0
+offset_right = 110.0
+offset_bottom = -20.0
+grow_vertical = 0
+
 [node name="PlacementManager" type="Node2D" parent="."]
 script = ExtResource("5_kdubu")
 
 [node name="TowerSpots" type="Node2D" parent="."]
 
 [node name="TowerSpot1" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(300, 500)
+position = Vector2(356, 433)
 
 [node name="TowerSpot2" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(700, 400)
+position = Vector2(984, 271)
 
 [node name="TowerSpot3" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
 position = Vector2(1200, 600)

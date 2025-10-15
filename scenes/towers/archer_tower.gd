@@ -3,6 +3,13 @@ extends StaticBody2D
 # ============================================
 # ARCHER TOWER - Shoots arrows at enemies
 # ============================================
+#
+# TARGETING SYSTEM (Kingdom Rush Style):
+# - Targets the enemy FURTHEST along the path (closest to exit)
+# - Uses path progress_ratio, NOT distance to tower
+# - Once locked onto a target, keeps shooting until it dies or leaves range
+# - Only switches targets when necessary (target persistence)
+# ============================================
 
 # TOWER STATS
 var damage = 15
@@ -118,28 +125,45 @@ func _on_enemy_exited_range(body):
 	if body.is_in_group("enemy"):
 		enemies_in_range.erase(body)
 
-func get_closest_enemy():
-	# Find the closest enemy from our list
-	if enemies_in_range.is_empty():
-		return null
-	
-	# Clean up dead/invalid enemies
+func get_furthest_enemy():
+	"""Find the enemy furthest along the path (Kingdom Rush style)"""
+	# Clean up dead/invalid enemies first
 	enemies_in_range = enemies_in_range.filter(func(e): return is_instance_valid(e))
-	
+
 	if enemies_in_range.is_empty():
 		return null
-	
-	# Find closest
-	var closest = enemies_in_range[0]
-	var closest_distance = global_position.distance_to(closest.global_position)
-	
+
+	# TARGET PERSISTENCE: If we have a current target that's still valid and in range, keep it
+	if current_target and is_instance_valid(current_target):
+		if enemies_in_range.has(current_target):
+			# Current target is still valid and in range - stick with it!
+			return current_target
+
+	# Need a new target - find the enemy furthest along the path
+	var furthest = enemies_in_range[0]
+	var furthest_progress = _get_enemy_progress(furthest)
+
 	for enemy in enemies_in_range:
-		var distance = global_position.distance_to(enemy.global_position)
-		if distance < closest_distance:
-			closest = enemy
-			closest_distance = distance
-	
-	return closest
+		var progress = _get_enemy_progress(enemy)
+		if progress > furthest_progress:
+			furthest = enemy
+			furthest_progress = progress
+
+	return furthest
+
+func _get_enemy_progress(enemy) -> float:
+	"""Get how far along the path an enemy is (0.0 = start, 1.0 = end)"""
+	if not enemy or not is_instance_valid(enemy):
+		return 0.0
+
+	# Enemy is a child of PathFollow2D
+	var path_follower = enemy.get_parent()
+	if path_follower and path_follower is PathFollow2D:
+		return path_follower.progress_ratio
+
+	# Fallback: if no path follower found, use distance as approximation
+	# (should not happen in normal gameplay)
+	return 0.0
 
 # ============================================
 # SHOOTING FUNCTIONS
@@ -147,8 +171,17 @@ func get_closest_enemy():
 
 func _on_shoot_timer_timeout():
 	# Try to shoot every X seconds
-	current_target = get_closest_enemy()
-	
+	# Use Kingdom Rush-style targeting: furthest along path + target persistence
+	var old_target = current_target
+	current_target = get_furthest_enemy()
+
+	# Debug: Show when tower switches targets
+	if current_target != old_target and current_target != null:
+		if old_target == null:
+			print("Tower acquired target: ", current_target.get_enemy_name() if current_target.has_method("get_enemy_name") else "Enemy")
+		else:
+			print("Tower switched target to: ", current_target.get_enemy_name() if current_target.has_method("get_enemy_name") else "Enemy")
+
 	if current_target != null:
 		shoot_at(current_target)
 
