@@ -9,6 +9,7 @@ radius = 30.0
 [node name="TrollBoss" type="CharacterBody2D" groups=["enemy"]]
 collision_mask = 0
 script = ExtResource("1_troll")
+death_shake = "None"
 
 [node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
 custom_minimum_size = Vector2(60, 8)

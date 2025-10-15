@@ -2,6 +2,7 @@ extends Control
 
 # Kingdom Rush-style Health Bar (ColorRect approach)
 # Simple, reliable, and works exactly like Kingdom Rush
+# Always positioned above enemy/hero, never rotates
 
 @onready var background: ColorRect = $Background
 @onready var fill: ColorRect = $Fill
@@ -21,7 +22,7 @@ func _ready():
 	# Center the bar above parent
 	position = Vector2(-BAR_WIDTH / 2.0, -30)
 
-	# Set z-index to render on top
+	# Set z-index to render on top of enemies/heroes
 	z_index = 100
 
 func update_health(current: float, maximum: float):

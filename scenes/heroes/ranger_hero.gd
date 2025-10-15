@@ -145,8 +145,12 @@ func _physics_process(delta):
 			handle_returning_state(delta)
 		State.WALKING:
 			handle_walking_state(delta)
-	
+
 	clean_enemy_lists()
+
+	# Keep health bar horizontal (never rotate with hero)
+	if health_bar:
+		health_bar.rotation = -rotation  # Counter-rotate to keep horizontal
 
 # ============================================
 # STATE HANDLERS

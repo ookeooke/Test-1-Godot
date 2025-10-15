@@ -13,10 +13,21 @@ extends Control
 @onready var level_select_button: Button = $Panel/VBoxContainer/LevelSelectButton
 
 func _ready():
+	print("VictoryScreen: _ready() called")
+
+	# Verify nodes exist
+	if not next_level_button:
+		print("ERROR: next_level_button is null!")
+	if not retry_button:
+		print("ERROR: retry_button is null!")
+	if not level_select_button:
+		print("ERROR: level_select_button is null!")
+
 	# Connect signals
 	next_level_button.pressed.connect(_on_next_level_pressed)
 	retry_button.pressed.connect(_on_retry_pressed)
 	level_select_button.pressed.connect(_on_level_select_pressed)
+	print("VictoryScreen: Button signals connected")
 
 	# Update UI
 	_update_display()
@@ -52,11 +63,20 @@ func _on_next_level_pressed():
 
 func _on_retry_pressed():
 	print("VictoryScreen: Retry level")
-	# Reload current level
+	# Free the victory screen and its canvas layer parent, then reload
+	var canvas_layer = get_parent()
+	if canvas_layer:
+		canvas_layer.queue_free()
+	await get_tree().process_frame  # Wait for cleanup
 	get_tree().reload_current_scene()
 
 func _on_level_select_pressed():
 	print("VictoryScreen: Return to level select")
+	# Free the victory screen and its canvas layer parent, then change scene
+	var canvas_layer = get_parent()
+	if canvas_layer:
+		canvas_layer.queue_free()
+	await get_tree().process_frame  # Wait for cleanup
 	get_tree().change_scene_to_file("res://scenes/ui/level_select.tscn")
 
 # Called from WaveManager to set stars earned

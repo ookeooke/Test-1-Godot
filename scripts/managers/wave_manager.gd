@@ -152,6 +152,7 @@ func spawn_enemy():
 	# Create PathFollow2D
 	var path_follower = PathFollow2D.new()
 	path_follower.loop = false
+	path_follower.rotates = false  # Don't rotate enemy to follow path direction
 	enemy_path.add_child(path_follower)
 	
 	# Create the enemy
@@ -204,16 +205,23 @@ func _show_victory_screen():
 	# Calculate stars (simple 3-star system for now)
 	var stars = _calculate_stars()
 
-	# Get the current scene tree
+	# Get the current scene tree root
 	var root = get_tree().root
+
+	# Create a CanvasLayer to ensure victory screen is on top
+	var canvas_layer = CanvasLayer.new()
+	canvas_layer.layer = 100  # High layer to be on top of everything
 
 	# Instantiate victory screen
 	var victory_screen = victory_screen_scene.instantiate()
 	victory_screen.level_id = "level_01"
 	victory_screen.stars_earned = stars
-	root.add_child(victory_screen)
 
-	print("WaveManager: Victory screen shown with ", stars, " stars")
+	# Add canvas layer to root, then victory screen to canvas layer
+	root.add_child(canvas_layer)
+	canvas_layer.add_child(victory_screen)
+
+	print("WaveManager: Victory screen shown with ", stars, " stars on canvas layer ", canvas_layer.layer)
 
 func _calculate_stars() -> int:
 	# Star calculation based on lives remaining (10 waves is harder!)
