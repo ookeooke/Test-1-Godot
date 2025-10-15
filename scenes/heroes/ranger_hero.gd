@@ -31,7 +31,7 @@ var home_position = Vector2.ZERO
 var target_position = Vector2.ZERO
 
 # ENEMY MANAGEMENT
-var max_melee_enemies = 3
+var max_melee_enemies = 1  # Kingdom Rush style: Block only 1 enemy at a time
 var enemies_in_melee_range = []
 var enemies_in_ranged_range = []
 var current_ranged_target = null
@@ -176,18 +176,31 @@ func handle_ranged_combat_state():
 
 func handle_melee_combat_state():
 	current_melee_targets = get_melee_targets()
-	
+
 	if current_melee_targets.is_empty():
+		# Unblock ALL enemies when no targets
+		for enemy in enemies_in_melee_range:
+			if is_instance_valid(enemy) and enemy.has_method("unblock"):
+				if enemy.is_blocked and enemy.blocking_hero == self:
+					enemy.unblock()
+
 		if not enemies_in_ranged_range.is_empty():
 			enter_ranged_combat()
 		else:
 			enter_returning_state()
 		return
-	
+
+	# Unblock enemies NOT in the target list (when hero switches targets)
+	for enemy in enemies_in_melee_range:
+		if is_instance_valid(enemy) and not current_melee_targets.has(enemy):
+			if enemy.has_method("unblock") and enemy.is_blocked and enemy.blocking_hero == self:
+				enemy.unblock()
+
+	# Block only the target enemy
 	var closest = current_melee_targets[0]
 	if is_instance_valid(closest):
 		look_at(closest.global_position)
-		
+
 		for enemy in current_melee_targets:
 			if enemy.has_method("set_blocked_by_hero"):
 				if not enemy.is_blocked or enemy.blocking_hero != self:

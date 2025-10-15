@@ -11,14 +11,16 @@ config_version=5
 [application]
 
 config/name="Test 1"
-run/main_scene="uid://b1dcv31ty4qix"
+run/main_scene="res://scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
-GameManager="*res://game_manager.tscn"
-ClickManager="*res://click_manager.gd"
+GameManager="*res://scenes/managers/game_manager.tscn"
+ClickManager="*res://scripts/autoloads/click_manager.gd"
+CameraEffects="*res://scripts/autoloads/camera_effects.gd"
+SaveManager="*res://scripts/autoloads/save_manager.gd"
 
 [display]
 
