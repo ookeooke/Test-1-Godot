@@ -14,11 +14,11 @@
 [ext_resource type="Script" uid="uid://ddjf0njev6xv" path="res://scripts/managers/hero_manager.gd" id="7_4d7sh"]
 [ext_resource type="PackedScene" uid="uid://c52n66umx0j5h" path="res://scenes/heroes/ranger_hero.tscn" id="8_ir8iy"]
 [ext_resource type="PackedScene" uid="uid://ckvxoisxu0tq1" path="res://scenes/spots/hero_spot.tscn" id="9_hqns4"]
-[ext_resource type="PackedScene" uid="uid://bherobutton123" path="res://scenes/ui/hero_button.tscn" id="10_herobutton"]
+[ext_resource type="PackedScene" uid="uid://cqoyfbnb1nbig" path="res://scenes/ui/hero_button.tscn" id="10_herobutton"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
-"points": PackedVector2Array(0, 0, 0, 0, 60, 323, -231.07893, 54.23281, 231.07893, -54.23281, 474, 634, -61.306656, -367.83994, 61.306656, 367.83994, 1081, 212, 0, 0, 0, 0, 1769, 701)
+"points": PackedVector2Array(0, 0, 0, 0, -31, 256, -231.07893, 54.23281, 231.07893, -54.23281, 474, 634, -61.306656, -367.83994, 61.306656, 367.83994, 1081, 212, 0, 0, 0, 0, 1769, 701)
 }
 point_count = 4
 
@@ -74,6 +74,7 @@ theme_override_font_sizes/font_size = 48
 text = "Lives: 20"
 
 [node name="HeroButton" parent="UI" instance=ExtResource("10_herobutton")]
+layout_mode = 3
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
