@@ -149,14 +149,20 @@ func shoot_at(target):
 	if projectile_scene == null:
 		print("ERROR: No projectile scene assigned!")
 		return
-	
+
+	# Double-check: Only shoot if target is actually in range
+	var distance_to_target = global_position.distance_to(target.global_position)
+	if distance_to_target > range_radius:
+		print("⚠ Target out of range (", distance_to_target, " > ", range_radius, "), skipping shot")
+		return
+
 	# Create projectile
 	var arrow = projectile_scene.instantiate()
 	get_tree().root.add_child(arrow)  # Add to scene root (not as child of tower)
-	
+
 	# Position arrow at tower's position
 	arrow.global_position = global_position
-	
+
 	# Tell arrow where to go
 	arrow.setup(target, damage)
 

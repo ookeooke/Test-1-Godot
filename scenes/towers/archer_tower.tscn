@@ -32,7 +32,7 @@ vertical_alignment = 1
 collision_layer = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionRange"]
-scale = Vector2(150, 150)
+scale = Vector2(300, 300)
 shape = SubResource("CircleShape2D_cbvk8")
 
 [node name="RangeIndicator" type="Line2D" parent="."]

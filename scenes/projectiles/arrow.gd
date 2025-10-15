@@ -65,10 +65,10 @@ func _calculate_target_position() -> Vector2:
 	var enemy_velocity = Vector2.ZERO
 	if target is CharacterBody2D:
 		# Enemy is moving along path - estimate velocity
-		if target.has_node("../") and target.get_parent() is PathFollow2D:
-			var path_follower = target.get_parent() as PathFollow2D
+		var parent = target.get_parent()
+		if parent and parent is PathFollow2D:
 			# Estimate velocity based on enemy speed
-			if target.has("speed"):
+			if "speed" in target:
 				# Get the direction enemy is traveling
 				var current_pos = target.global_position
 				# Simple forward prediction
@@ -167,7 +167,7 @@ func _hit_enemy(enemy):
 	"""Deal damage to enemy"""
 	if enemy.has_method("take_damage"):
 		enemy.take_damage(damage)
-		print("Arrow hit ", enemy.get("name", "enemy"), " for ", damage, " damage!")
+		print("Arrow hit enemy for ", damage, " damage!")
 	queue_free()
 
 # ============================================
