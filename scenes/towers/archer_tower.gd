@@ -18,9 +18,12 @@ var range_radius = 300  # Detection range
 
 # REFERENCES
 var detection_range: Area2D
-var range_indicator: Line2D
+var range_indicator: Polygon2D  # Changed from Line2D to Polygon2D for filled circle
 var shoot_timer: Timer
 var archer_weapon: Node2D  # The weapon that rotates toward enemies
+
+# SELECTION STATE
+var is_selected = false
 
 # TARGETING
 var enemies_in_range = []  # List of enemies we can shoot
@@ -60,8 +63,11 @@ func _ready():
 	add_child(shoot_timer)
 	shoot_timer.start()
 
-	# Draw range indicator
+	# Draw range indicator (filled circle)
 	draw_range_circle()
+
+	# Hide range by default (show only when selected)
+	range_indicator.visible = false
 
 	# CHANGED: Register with ClickManager
 	# Wait a frame for parent_spot to be set
@@ -211,17 +217,33 @@ func shoot_at(target):
 # ============================================
 
 func draw_range_circle():
-	# Draw a circle to show range
+	"""Draw a filled circle to show range (Kingdom Rush style)"""
 	var points = []
 	var num_points = 64  # More points = smoother circle
-	
-	for i in range(num_points + 1):
+
+	for i in range(num_points):
 		var angle = (i / float(num_points)) * TAU  # TAU = 2*PI (full circle)
 		var x = cos(angle) * range_radius
 		var y = sin(angle) * range_radius
 		points.append(Vector2(x, y))
-	
-	range_indicator.points = PackedVector2Array(points)
+
+	# Set polygon points for filled circle
+	range_indicator.polygon = PackedVector2Array(points)
+
+	# Set Kingdom Rush blue color with transparency
+	range_indicator.color = Color(0.3, 0.5, 1.0, 0.3)  # Blue, 30% opacity
+
+func select_tower():
+	"""Show range indicator when tower is selected"""
+	is_selected = true
+	range_indicator.visible = true
+	print("Tower selected - range indicator shown")
+
+func deselect_tower():
+	"""Hide range indicator when tower is deselected"""
+	is_selected = false
+	range_indicator.visible = false
+	print("Tower deselected - range indicator hidden")
 
 # ============================================
 # CLEANUP

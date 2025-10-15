@@ -148,9 +148,8 @@ func _physics_process(delta):
 
 	clean_enemy_lists()
 
-	# Keep health bar horizontal (never rotate with hero)
-	if health_bar:
-		health_bar.rotation = -rotation  # Counter-rotate to keep horizontal
+	# Keep health bar horizontal (enemy-style health bar handles its own rotation)
+	# No need to counter-rotate - the health_bar.gd script handles positioning
 
 # ============================================
 # STATE HANDLERS
@@ -374,7 +373,12 @@ func die():
 
 func update_health_bar():
 	if health_bar:
-		health_bar.value = (current_health / max_health) * 100
+		# Use enemy-style health bar's update_health method
+		if health_bar.has_method("update_health"):
+			health_bar.update_health(current_health, max_health)
+		else:
+			# Fallback for ProgressBar (old style)
+			health_bar.value = (current_health / max_health) * 100
 
 # ============================================
 # SELECTION & VISUALS
@@ -391,16 +395,21 @@ func deselect():
 	sprite.modulate = Color(1, 1, 1)
 
 func draw_range_circle():
+	"""Draw a filled circle to show range (Kingdom Rush style)"""
 	var points = []
-	var num_points = 64
-	
-	for i in range(num_points + 1):
-		var angle = (i / float(num_points)) * TAU
+	var num_points = 64  # More points = smoother circle
+
+	for i in range(num_points):
+		var angle = (i / float(num_points)) * TAU  # TAU = 2*PI (full circle)
 		var x = cos(angle) * ranged_range
 		var y = sin(angle) * ranged_range
 		points.append(Vector2(x, y))
-	
-	range_indicator.points = PackedVector2Array(points)
+
+	# Set polygon points for filled circle
+	range_indicator.polygon = PackedVector2Array(points)
+
+	# Set Kingdom Rush blue color with transparency
+	range_indicator.color = Color(0.3, 0.5, 1.0, 0.3)  # Blue, 30% opacity
 
 # ============================================
 # HELPER FUNCTIONS

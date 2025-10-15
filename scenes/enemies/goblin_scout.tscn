@@ -9,6 +9,7 @@ radius = 25.079872
 [node name="GoblinScout" type="CharacterBody2D" groups=["enemy"]]
 collision_mask = 0
 script = ExtResource("1_gndxd")
+death_shake = "None"
 
 [node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
 
@@ -32,4 +33,3 @@ vertical_alignment = 1
 shape = SubResource("CircleShape2D_vmpv5")
 
 [node name="HitPoint" type="Marker2D" parent="."]
-position = Vector2(0, 0)

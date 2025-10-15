@@ -1,7 +1,8 @@
-[gd_scene load_steps=7 format=3 uid="uid://c52n66umx0j5h"]
+[gd_scene load_steps=8 format=3 uid="uid://c52n66umx0j5h"]
 
 [ext_resource type="Script" uid="uid://bs2etc1qjtji2" path="res://scenes/heroes/ranger_hero.gd" id="1_hsk3w"]
 [ext_resource type="PackedScene" uid="uid://coirid61w00ks" path="res://scenes/projectiles/arrow.tscn" id="2_oks3e"]
+[ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="3_healthbar"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]
 radius = 20.09975
@@ -51,14 +52,11 @@ collision_layer = 0
 [node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeDetection"]
 shape = SubResource("CircleShape2D_ea74a")
 
-[node name="RangeIndicator" type="Line2D" parent="."]
-position = Vector2(22, 19.5)
-scale = Vector2(3.2, 2.95)
-points = PackedVector2Array(0, 0)
-default_color = Color(0.13333334, 1, 0.050980393, 1)
+[node name="RangeIndicator" type="Polygon2D" parent="."]
+color = Color(0.3, 0.5, 1, 0.3)
 
-[node name="HealthBar" type="ProgressBar" parent="."]
-offset_left = -9.0
-offset_top = -27.0
-offset_right = 52.0
-show_percentage = false
+[node name="HealthBar" parent="." instance=ExtResource("3_healthbar")]
+offset_left = -25.0
+offset_top = -35.0
+offset_right = 25.0
+offset_bottom = -29.0
