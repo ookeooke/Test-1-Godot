@@ -8,6 +8,7 @@ var build_menu_scene = preload("res://scenes/ui/build_menu.tscn")
 var tower_info_menu_scene = preload("res://scenes/ui/tower_info_menu.tscn")
 var current_menu = null
 var current_spot = null
+var current_selected_tower = null  # Track selected tower for deselection
 
 func _ready():
 	print("========================================")
@@ -49,9 +50,21 @@ func _on_tower_clicked(spot, tower):
 	print("  Spot: ", spot.name)
 	print("  Tower: ", tower.name if tower else "null")
 	print("========================================")
-	
+
+	# Deselect previously selected tower
+	if current_selected_tower and is_instance_valid(current_selected_tower):
+		if current_selected_tower.has_method("deselect_tower"):
+			current_selected_tower.deselect_tower()
+
 	close_current_menu()
 	current_spot = spot
+	current_selected_tower = tower
+
+	# Show tower range indicator
+	if tower and tower.has_method("select_tower"):
+		tower.select_tower()
+		print("  ✓ Tower range indicator shown")
+
 	show_tower_info_menu(spot, tower)
 
 func close_current_menu():
@@ -141,17 +154,31 @@ func _on_tower_upgraded(tower):
 func _on_tower_sold(tower):
 	"""Handle tower sell"""
 	print("Tower sold: ", tower.name if tower else "null")
+
+	# Deselect tower before selling
+	if tower and is_instance_valid(tower) and tower.has_method("deselect_tower"):
+		tower.deselect_tower()
+
 	if current_spot:
 		current_spot.has_tower = false
 		current_spot.current_tower = null
 		current_spot.sprite.visible = true
-		
+
 		if tower and is_instance_valid(tower):
 			tower.queue_free()
-		
+
 		current_spot = null
+		current_selected_tower = null
 
 func _on_menu_closed():
 	"""Handle menu close (when clicking outside or pressing ESC)"""
 	print("Menu closed (cancelled)")
+
+	# Deselect tower when menu closes
+	if current_selected_tower and is_instance_valid(current_selected_tower):
+		if current_selected_tower.has_method("deselect_tower"):
+			current_selected_tower.deselect_tower()
+			print("  ✓ Tower range indicator hidden")
+
 	current_spot = null
+	current_selected_tower = null

@@ -33,8 +33,16 @@ var wave_data = [
 ]
 
 # TIMING
-var spawn_delay = 0.5  # Seconds between each enemy spawn
+var spawn_delay = 0.5  # Base seconds between each enemy spawn (will be randomized)
 var wave_break_time = 3.0  # Seconds between waves
+
+# SPAWN VARIATION SETTINGS (for more interesting movement)
+var spawn_delay_min = 0.3  # Minimum time between spawns
+var spawn_delay_max = 0.8  # Maximum time between spawns
+var position_offset_x = 20.0  # Random X offset range (-20 to +20)
+var position_offset_y = 15.0  # Random Y offset range (-15 to +15)
+var speed_variation_min = 0.85  # Minimum speed multiplier (85% of base speed)
+var speed_variation_max = 1.15  # Maximum speed multiplier (115% of base speed)
 
 # TIMERS
 var spawn_timer: Timer
@@ -89,7 +97,9 @@ func start_next_wave():
 	# Update UI
 	if wave_label:
 		wave_label.text = "Wave " + str(current_wave)
-	
+
+	# Start spawn timer with randomized first delay
+	spawn_timer.wait_time = randf_range(spawn_delay_min, spawn_delay_max)
 	spawn_timer.start()
 
 func wave_completed():
@@ -158,7 +168,18 @@ func spawn_enemy():
 	# Create the enemy
 	var enemy = enemy_scene_to_use.instantiate()
 	path_follower.add_child(enemy)
-	
+
+	# Apply random position offset (makes enemies spread out instead of following in a line)
+	var random_offset = Vector2(
+		randf_range(-position_offset_x, position_offset_x),
+		randf_range(-position_offset_y, position_offset_y)
+	)
+	enemy.position = random_offset
+
+	# Apply random speed variation (makes enemies naturally space out over time)
+	var speed_multiplier = randf_range(speed_variation_min, speed_variation_max)
+	enemy.speed *= speed_multiplier
+
 	# Connect to path
 	if enemy.has_method("set_path_follower"):
 		enemy.set_path_follower(path_follower)
@@ -179,6 +200,10 @@ func _on_spawn_timer_timeout():
 	# This gets called every 'spawn_delay' seconds
 	if enemies_to_spawn > 0:
 		spawn_enemy()
+
+		# Randomize the next spawn delay for more natural timing
+		if enemies_to_spawn > 0:  # Still more to spawn
+			spawn_timer.wait_time = randf_range(spawn_delay_min, spawn_delay_max)
 
 func _on_wave_break_timer_timeout():
 	# This gets called after the break between waves
