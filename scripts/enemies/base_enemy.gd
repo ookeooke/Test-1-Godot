@@ -2,7 +2,7 @@ extends CharacterBody2D
 class_name BaseEnemy
 
 ## Base Enemy Class
-## All enemy types extend this class and provide their own EnemyStats resource.
+## All enemy types extend this class and set their own stats via @export variables in Inspector.
 ## Contains all shared logic: movement, blocking, combat, health, death.
 
 # ============================================
@@ -12,11 +12,35 @@ class_name BaseEnemy
 signal enemy_died
 
 # ============================================
-# STATS (Assigned via Inspector)
+# STATS (Edit these in Inspector for each enemy type)
 # ============================================
 
-## Enemy stats resource - assign a .tres file for each enemy type
-@export var stats: EnemyStats
+## Movement speed (pixels per second)
+@export var speed: float = 100.0
+
+## Maximum health points
+@export var max_health: float = 50.0
+
+## Damage dealt to heroes in melee combat
+@export var melee_damage: float = 5.0
+
+## Time between attacks (seconds)
+@export var attack_cooldown: float = 1.0
+
+## Gold awarded to player when enemy dies
+@export var gold_reward: int = 5
+
+## How many lives the player loses if enemy reaches the end
+@export var life_damage: int = 1
+
+## Can this enemy be blocked by heroes? (Flying enemies = false)
+@export var can_be_blocked: bool = true
+
+## Detection range to check if blocking hero is still close
+@export var melee_detection_range: float = 100.0
+
+## Camera shake intensity when enemy dies
+@export_enum("None", "Small", "Medium", "Large") var death_shake: String = "Small"
 
 # ============================================
 # RUNTIME VARIABLES
@@ -39,23 +63,8 @@ var attack_timer := 0.0
 # ============================================
 
 func _ready():
-	# Validate stats
-	if stats == null:
-		push_error("BaseEnemy: No stats assigned! Using default stats as fallback. Please assign an EnemyStats resource in the Inspector.")
-		# Create default stats as fallback (temporary)
-		stats = EnemyStats.new()
-		stats.speed = 100.0
-		stats.max_health = 50.0
-		stats.melee_damage = 5.0
-		stats.attack_cooldown = 1.0
-		stats.gold_reward = 5
-		stats.life_damage = 1
-		stats.can_be_blocked = true
-		stats.melee_detection_range = 100.0
-		stats.death_shake = "Small"
-
 	# Initialize health
-	current_health = stats.max_health
+	current_health = max_health
 
 	# Set collision
 	collision_layer = 1
@@ -67,7 +76,7 @@ func _ready():
 	# Initialize health bar
 	_update_health_bar()
 
-	print(get_enemy_name(), " spawned at: ", global_position)
+	print(get_enemy_name(), " spawned at: ", global_position, " (HP: ", max_health, ", Speed: ", speed, ")")
 
 # ============================================
 # OPTIONAL: Click callbacks for debugging
@@ -75,7 +84,7 @@ func _ready():
 
 func on_clicked(is_double_click: bool):
 	"""Show enemy info when clicked"""
-	print("📍 Clicked ", get_enemy_name(), " - HP: ", current_health, "/", stats.max_health)
+	print("📍 Clicked ", get_enemy_name(), " - HP: ", current_health, "/", max_health)
 
 func on_hover_start():
 	"""Highlight enemy on hover"""
@@ -95,11 +104,11 @@ func _physics_process(delta):
 	if is_blocked and blocking_hero and is_instance_valid(blocking_hero):
 		# I am the blocked enemy - check if hero is still close
 		var distance = global_position.distance_to(blocking_hero.global_position)
-		if distance > stats.melee_detection_range:
+		if distance > melee_detection_range:
 			# Hero walked away - resume movement
 			unblock()
 			if path_follower:
-				path_follower.progress += stats.speed * delta
+				path_follower.progress += speed * delta
 				if path_follower.progress_ratio >= 1.0:
 					reached_end()
 		else:
@@ -108,7 +117,7 @@ func _physics_process(delta):
 	else:
 		# I am NOT blocked - just walk the path normally (ignore hero)
 		if path_follower:
-			path_follower.progress += stats.speed * delta
+			path_follower.progress += speed * delta
 			if path_follower.progress_ratio >= 1.0:
 				reached_end()
 
@@ -119,11 +128,11 @@ func _physics_process(delta):
 func handle_hero_combat(delta):
 	"""Attack the blocking hero periodically"""
 	attack_timer += delta
-	if attack_timer >= stats.attack_cooldown:
+	if attack_timer >= attack_cooldown:
 		attack_timer = 0.0
 		if blocking_hero.has_method("take_damage"):
-			blocking_hero.take_damage(stats.melee_damage)
-			print(get_enemy_name(), " attacked hero for ", stats.melee_damage, " damage!")
+			blocking_hero.take_damage(melee_damage)
+			print(get_enemy_name(), " attacked hero for ", melee_damage, " damage!")
 
 # ============================================
 # BLOCKING SYSTEM
@@ -131,7 +140,7 @@ func handle_hero_combat(delta):
 
 func set_blocked_by_hero(hero):
 	"""Called by hero when enemy enters melee range"""
-	if not stats.can_be_blocked:
+	if not can_be_blocked:
 		print(get_enemy_name(), " can't be blocked - it's flying!")
 		return
 
@@ -153,7 +162,7 @@ func unblock():
 func take_damage(amount: float):
 	"""Apply damage to this enemy"""
 	current_health -= amount
-	print(get_enemy_name(), " took ", amount, " damage! HP: ", current_health, "/", stats.max_health)
+	print(get_enemy_name(), " took ", amount, " damage! HP: ", current_health, "/", max_health)
 
 	# Update health bar
 	_update_health_bar()
@@ -164,19 +173,21 @@ func take_damage(amount: float):
 func _update_health_bar():
 	"""Update the health bar visual"""
 	if health_bar:
-		health_bar.update_health(current_health, stats.max_health)
+		health_bar.update_health(current_health, max_health)
 
 func die():
 	"""Handle enemy death"""
-	print(get_enemy_name(), " died! +", stats.gold_reward, " gold")
+	print(get_enemy_name(), " died! +", gold_reward, " gold")
 
 	# Award gold
-	GameManager.add_gold(stats.gold_reward)
+	GameManager.add_gold(gold_reward)
 
 	# Camera shake based on enemy type
 	var camera = get_viewport().get_camera_2d()
 	if camera:
-		match stats.death_shake:
+		match death_shake:
+			"None":
+				pass  # No shake
 			"Small":
 				CameraEffects.small_shake(camera)
 			"Medium":
@@ -199,8 +210,8 @@ func die():
 
 func reached_end():
 	"""Called when enemy reaches the end of the path"""
-	print(get_enemy_name(), " reached the end! -", stats.life_damage, " lives")
-	GameManager.lose_life(stats.life_damage)
+	print(get_enemy_name(), " reached the end! -", life_damage, " lives")
+	GameManager.lose_life(life_damage)
 	enemy_died.emit()
 	queue_free()
 

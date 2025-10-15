@@ -2,11 +2,18 @@ extends "res://scripts/enemies/base_enemy.gd"
 
 ## Bat Flyer Enemy
 ## Flying enemy that ignores hero blocking.
-## Stats are defined in bat_stats.tres resource file (can_be_blocked = false).
+
+func _init():
+	# Set bat-specific stats
+	speed = 100.0
+	max_health = 80.0
+	melee_damage = 0.0  # Bats don't attack heroes
+	attack_cooldown = 1.0
+	gold_reward = 12
+	life_damage = 1
+	can_be_blocked = false  # FLYING - can't be blocked!
+	melee_detection_range = 100.0
+	death_shake = "Small"
 
 func get_enemy_name() -> String:
 	return "Bat"
-
-# Note: Flying behavior is handled by stats.can_be_blocked = false
-# The base enemy class automatically prevents blocking when this is set.
-# No override needed!

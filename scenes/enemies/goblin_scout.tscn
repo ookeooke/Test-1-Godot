@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://detc10envwuf"]
 
-[ext_resource type="Script" path="res://scenes/enemies/goblin_scout.gd" id="1_gndxd"]
+[ext_resource type="Script" uid="uid://dhbpq6hpw151g" path="res://scenes/enemies/goblin_scout.gd" id="1_gndxd"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_vmpv5"]
