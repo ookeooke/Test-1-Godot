@@ -27,6 +27,10 @@ var target_position: Vector2
 var travel_time: float = 0.0
 var flight_time: float = 0.0  # Total calculated flight time
 
+# VISUAL GRAVITY SIMULATION (for realistic arc feel)
+var visual_z_velocity: float = 0.0  # Initial upward velocity
+var visual_gravity: float = 980.0   # Gravity strength (980 = Earth gravity)
+
 # ============================================
 # SETUP
 # ============================================
@@ -75,13 +79,20 @@ func _calculate_target_position() -> Vector2:
 	return predicted_pos
 
 func _setup_ballistic_trajectory():
-	"""Setup simple visual arc (Kingdom Rush style - simplified)"""
+	"""Setup visual arc with gravity simulation (Kingdom Rush style)"""
 	var distance = target_position.distance_to(start_position)
 
 	# Calculate how long the arrow will take to reach target
 	flight_time = distance / flight_speed
 
-	# Point arrow toward target initially
+	# Calculate initial upward velocity needed to reach arc_height
+	# Using physics: to reach height h, need velocity v = sqrt(2 * g * h)
+	# But we want the peak at halfway through flight, so adjust timing
+	var time_to_peak = flight_time / 2.0
+	# v = g * t (at peak, velocity = 0, so v0 = g * t)
+	visual_z_velocity = visual_gravity * time_to_peak
+
+	# Point arrow toward target initially (will update during flight)
 	var direction_to_target = (target_position - start_position).normalized()
 	rotation = direction_to_target.angle()
 
@@ -117,7 +128,7 @@ func _physics_process(delta):
 		queue_free()
 
 func _update_ballistic_movement(delta):
-	"""Simple visual arc - arrow moves straight but sprite arcs (Kingdom Rush style)"""
+	"""Ballistic arc with gravity simulation - looks like Kingdom Rush!"""
 
 	# Calculate progress from 0.0 (start) to 1.0 (target)
 	var progress = clamp(travel_time / flight_time, 0.0, 1.0)
@@ -125,9 +136,15 @@ func _update_ballistic_movement(delta):
 	# POSITION: Move in straight line from start to target (lerp)
 	global_position = start_position.lerp(target_position, progress)
 
-	# VISUAL ARC: Sine wave creates smooth up/down arc
-	# sin(progress * PI) creates perfect arc: 0 -> 1 -> 0
-	var visual_height = sin(progress * PI) * arc_height
+	# VISUAL ARC: Use gravity physics for realistic arc
+	# Current vertical velocity (decreases due to gravity)
+	var current_visual_velocity = visual_z_velocity - (visual_gravity * travel_time)
+
+	# Calculate height using ballistic formula: h = v0*t - 0.5*g*t^2
+	var visual_height = (visual_z_velocity * travel_time) - (0.5 * visual_gravity * travel_time * travel_time)
+
+	# Clamp to ground level (don't go below 0)
+	visual_height = max(0.0, visual_height)
 
 	# Move arrow sprite UP (negative Y) when at height
 	if has_node("ColorRect"):
@@ -135,20 +152,26 @@ func _update_ballistic_movement(delta):
 		arrow_sprite.position.y = -visual_height  # Up on screen
 
 	# Scale arrow larger when higher (simulates perspective)
-	var scale_factor = 1.0 + (visual_height / max(arc_height, 1.0)) * 0.4
+	# Use actual height vs expected peak height
+	var expected_peak = (visual_z_velocity * visual_z_velocity) / (2.0 * visual_gravity)
+	var height_ratio = visual_height / max(expected_peak, 1.0)
+	var scale_factor = 1.0 + height_ratio * 0.4
 	if has_node("ColorRect"):
 		get_node("ColorRect").scale = Vector2(scale_factor, scale_factor)
 
 	# Shadow gets smaller when arrow is higher
 	if has_node("Shadow"):
-		var shadow_scale = 1.0 - (visual_height / max(arc_height, 1.0)) * 0.5
+		var shadow_scale = 1.0 - height_ratio * 0.5
 		get_node("Shadow").scale = Vector2(shadow_scale, shadow_scale)
 
-	# Rotate arrow to follow arc angle
-	# Calculate visual velocity direction based on sine derivative
-	var direction_to_target = (target_position - start_position).normalized()
-	var arc_angle = cos(progress * PI) * (arc_height / flight_time) * 0.01  # Derivative of sine
-	rotation = direction_to_target.angle() - arc_angle
+	# ROTATION: Calculate true ballistic angle
+	# Arrow angle = atan2(vertical_velocity, horizontal_velocity)
+	var horizontal_dir = (target_position - start_position).normalized()
+	var horizontal_speed = flight_speed
+
+	# Calculate angle from velocities (negative because up is negative Y)
+	var arc_angle = atan2(-current_visual_velocity, horizontal_speed)
+	rotation = horizontal_dir.angle() + arc_angle
 
 	# Check if arrow reached target (progress >= 1.0)
 	if progress >= 1.0:
