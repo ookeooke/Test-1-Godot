@@ -32,3 +32,4 @@ vertical_alignment = 1
 shape = SubResource("CircleShape2D_vmpv5")
 
 [node name="HitPoint" type="Marker2D" parent="."]
+position = Vector2(31, 16)

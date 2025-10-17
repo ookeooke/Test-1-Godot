@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=29 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://mxt3ckx3n6mu" path="res://scripts/managers/wave_manager.gd" id="1_0e48y"]
 [ext_resource type="Script" uid="uid://idfvb3maml47" path="res://scripts/level_controller.gd" id="1_level_controller"]
@@ -18,6 +18,7 @@
 [ext_resource type="PackedScene" uid="uid://ckvxoisxu0tq1" path="res://scenes/spots/hero_spot.tscn" id="9_hqns4"]
 [ext_resource type="PackedScene" uid="uid://cqoyfbnb1nbig" path="res://scenes/ui/hero_button.tscn" id="10_herobutton"]
 [ext_resource type="Resource" uid="uid://efkt5o3e53ax" path="res://data/waves/wave_02.tres" id="10_iu1m7"]
+[ext_resource type="PackedScene" uid="uid://menu_layer_canvas" path="res://scenes/ui/menu_layer.tscn" id="10_menu_layer"]
 [ext_resource type="Resource" uid="uid://dysnkvjcmhmjc" path="res://data/waves/wave_03.tres" id="11_lswbx"]
 [ext_resource type="Resource" uid="uid://dqg3kbr3rndat" path="res://data/waves/wave_04.tres" id="12_uujh0"]
 [ext_resource type="Resource" uid="uid://d2745vi4fsyp7" path="res://data/waves/wave_05.tres" id="13_3t34l"]
@@ -115,6 +116,8 @@ offset_top = -140.0
 offset_right = 110.0
 offset_bottom = -20.0
 grow_vertical = 0
+
+[node name="MenuLayer" parent="." instance=ExtResource("10_menu_layer")]
 
 [node name="PlacementManager" type="Node2D" parent="."]
 script = ExtResource("5_kdubu")

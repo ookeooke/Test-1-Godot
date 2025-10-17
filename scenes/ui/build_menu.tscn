@@ -3,10 +3,9 @@
 [ext_resource type="Script" uid="uid://cq72tgteky57f" path="res://scripts/ui/build_menu.gd" id="1_rdxwr"]
 
 [node name="BuildMenu" type="Control"]
+custom_minimum_size = Vector2(300, 100)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
 script = ExtResource("1_rdxwr")
 
 [node name="PanelContainer" type="PanelContainer" parent="."]
@@ -19,17 +18,24 @@ grow_vertical = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="PanelContainer"]
 layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
 
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/MarginContainer"]
 layout_mode = 2
+theme_override_constants/separation = 10
 
 [node name="ArcherButton" type="Button" parent="PanelContainer/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(120, 60)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Archer Tower
 100g"
 
 [node name="MageButton" type="Button" parent="PanelContainer/MarginContainer/HBoxContainer"]
+custom_minimum_size = Vector2(120, 60)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Mage Tower

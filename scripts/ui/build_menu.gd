@@ -15,37 +15,43 @@ var mage_tower_scene = null  # Placeholder for second tower
 var archer_cost = 100
 var mage_cost = 150
 
-# IMPORTANT: Prevent race condition - wait for mouse release before accepting close clicks
-var mouse_was_released = false
-
 # References
 @onready var archer_button = $PanelContainer/MarginContainer/HBoxContainer/ArcherButton
 @onready var mage_button = $PanelContainer/MarginContainer/HBoxContainer/MageButton
 
 func _ready():
-	# IMPORTANT: Set mouse filter to stop clicks from going through
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	# IMPORTANT: Let clicks pass through to buttons - DON'T intercept at menu level
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	# CRITICAL FIX: Override the broken mouse_filter setting from .tscn
-	# The .tscn file has mouse_filter = 2 (IGNORE) which blocks all clicks!
+	# Make sure buttons can receive clicks
 	archer_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	mage_button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	# Panel should STOP clicks (creates click boundary)
+	$PanelContainer.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# Connect button signals
 	archer_button.pressed.connect(_on_archer_button_pressed)
 	mage_button.pressed.connect(_on_mage_button_pressed)
 
+	# DEBUG: Connect to gui_input to see if button receives ANY events
+	archer_button.gui_input.connect(_on_archer_button_gui_input)
+
 	# Update button text with costs
 	archer_button.text = "Archer Tower\n" + str(archer_cost) + "g"
 	mage_button.text = "Mage Tower\n" + str(mage_cost) + "g"
-	
+
 	# Update button states based on gold
 	update_button_states()
-	
+
 	# Connect to gold changes
 	GameManager.gold_changed.connect(_on_gold_changed)
-	
+
 	print("Build menu ready!")
+	print("  Archer button disabled: ", archer_button.disabled)
+	print("  Archer button mouse_filter: ", archer_button.mouse_filter)
+	print("  Menu position: ", global_position)
+	print("  Menu size: ", size)
 
 func _on_gold_changed(new_amount):
 	update_button_states()
@@ -54,6 +60,16 @@ func update_button_states():
 	# Enable/disable buttons based on gold
 	archer_button.disabled = GameManager.gold < archer_cost
 	mage_button.disabled = GameManager.gold < mage_cost or mage_tower_scene == null
+
+func _on_archer_button_gui_input(event):
+	print("⚠️ Archer button received gui_input event: ", event)
+	if event is InputEventMouseButton:
+		print("  📍 Mouse button event")
+		print("  Pressed: ", event.pressed)
+		print("  Button index: ", event.button_index)
+		print("  Position: ", event.position)
+		print("  Global position: ", event.global_position)
+		print("  Button global rect: ", archer_button.get_global_rect())
 
 func _on_archer_button_pressed():
 	print("🏹 Archer button pressed!")
@@ -67,30 +83,8 @@ func _on_mage_button_pressed():
 	if mage_tower_scene == null:
 		print("Mage Tower not implemented yet!")
 		return
-	
+
 	if GameManager.spend_gold(mage_cost):
 		tower_selected.emit(mage_tower_scene)
 	else:
 		print("Not enough gold for Mage Tower!")
-
-func _input(event):
-	if event is InputEventMouseButton:
-		# Track when mouse is released - this marks the end of the "opening click"
-		if not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			mouse_was_released = true
-			print("Mouse released - menu can now be closed by clicking outside")
-			return
-		
-		# Only process clicks AFTER the mouse has been released once
-		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT and mouse_was_released:
-			# Get the panel's global rect
-			var panel_rect = $PanelContainer.get_global_rect()
-			var mouse_pos = get_global_mouse_position()
-
-			# If clicked outside the panel, close menu
-			if not panel_rect.has_point(mouse_pos):
-				print("Clicked outside menu, closing")
-				menu_closed.emit()
-				get_viewport().set_input_as_handled()
-				queue_free()
-			# If clicked inside, the button will handle it

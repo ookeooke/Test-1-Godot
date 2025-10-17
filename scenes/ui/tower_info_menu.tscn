@@ -3,10 +3,9 @@
 [ext_resource type="Script" path="res://scripts/ui/tower_info_menu.gd" id="1_tower_info"]
 
 [node name="TowerInfoMenu" type="Control"]
+custom_minimum_size = Vector2(250, 200)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
 script = ExtResource("1_tower_info")
 
 [node name="PanelContainer" type="PanelContainer" parent="."]

@@ -230,11 +230,15 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 	# Get the physics space
 	var space_state = get_world_2d().direct_space_state
 
-	# IMPORTANT: Account for collision shape offset!
-	# CollisionShape2D is at position (10, 0) - arrow tip position
-	var collision_offset = Vector2(10, 0)
-	var from_with_offset = from_pos + collision_offset
-	var to_with_offset = to_pos + collision_offset
+	# CRITICAL: Rotate collision offset to match arrow's current orientation!
+	# CollisionShape2D is at (10, 0) in LOCAL space (arrow tip)
+	# But we need to transform it to WORLD space using arrow's rotation
+	var local_offset = Vector2(10, 0)  # Tip offset in arrow's local space
+	var rotated_offset = local_offset.rotated(rotation)  # Transform to world space
+
+	# Apply the rotated offset to both raycast positions
+	var from_with_offset = from_pos + rotated_offset
+	var to_with_offset = to_pos + rotated_offset
 
 	# Create a raycast query from previous position to new position
 	var query = PhysicsRayQueryParameters2D.create(from_with_offset, to_with_offset)
@@ -263,17 +267,26 @@ func _hit_enemy(enemy):
 		var arrow_sprite = get_node("ColorRect")
 		visual_offset.y = arrow_sprite.position.y  # This is -visual_height (negative = up)
 
-	# Account for collision shape offset (arrow tip is at x=10)
-	var collision_offset = Vector2(10, 0)
+	# CRITICAL: Rotate collision offset to match arrow's current orientation!
+	# CollisionShape2D is at (10, 0) in LOCAL space - must transform to world space
+	var local_offset = Vector2(10, 0)  # Tip offset in arrow's local space
+	var rotated_collision_offset = local_offset.rotated(rotation)  # Transform to world space
 
-	# Final hit position = base position + visual offset + collision offset
-	var hit_position = global_position + visual_offset + collision_offset
+	# Final hit position = base position + visual offset + rotated collision offset
+	var hit_position = global_position + visual_offset + rotated_collision_offset
 
 	# Spawn red X hit marker at VISUAL impact point (where arrow appears)
-	if hit_marker_scene:
+	# IMPORTANT: Attach to enemy as child so it follows the moving enemy!
+	if hit_marker_scene and enemy and is_instance_valid(enemy):
 		var hit_marker = hit_marker_scene.instantiate()
-		get_tree().root.add_child(hit_marker)
-		hit_marker.global_position = hit_position
+
+		# Calculate hit position in enemy's LOCAL coordinate space
+		# This way the marker moves with the enemy automatically
+		var local_hit_position = hit_position - enemy.global_position
+
+		# Attach marker as child of enemy (like health bar)
+		enemy.add_child(hit_marker)
+		hit_marker.position = local_hit_position  # Use local position, not global
 
 	# Deal damage to enemy
 	if enemy.has_method("take_damage"):
