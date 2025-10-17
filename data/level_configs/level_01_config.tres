@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=13 format=3 uid="uid://config_level_01"]
+
+[ext_resource type="Script" path="res://scripts/resources/level_config.gd" id="1_config"]
+[ext_resource type="PackedScene" uid="uid://d3pnndyqupwqw" path="res://scenes/levels/level_01.tscn" id="2_scene"]
+[ext_resource type="Resource" uid="uid://cew3vj76fgf52" path="res://data/levels/level_01/waves/wave_01.tres" id="3_w01"]
+[ext_resource type="Resource" uid="uid://efkt5o3e53ax" path="res://data/levels/level_01/waves/wave_02.tres" id="4_w02"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_03.tres" id="5_w03"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_04.tres" id="6_w04"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_05.tres" id="7_w05"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_06.tres" id="8_w06"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_07.tres" id="9_w07"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_08.tres" id="10_w08"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_09.tres" id="11_w09"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_10.tres" id="12_w10"]
+
+[resource]
+script = ExtResource("1_config")
+level_id = "level_01"
+level_name = "Forest Path"
+level_description = "A simple path through the forest. Perfect for beginners!"
+starting_gold = 100
+starting_lives = 20
+waves = Array[Resource("res://scripts/resources/wave_data.gd")]([ExtResource("3_w01"), ExtResource("4_w02"), ExtResource("5_w03"), ExtResource("6_w04"), ExtResource("7_w05"), ExtResource("8_w06"), ExtResource("9_w07"), ExtResource("10_w08"), ExtResource("11_w09"), ExtResource("12_w10")])
+difficulty = 1
+required_stars = 0
+campaign_id = "main"
+level_index = 1
+level_scene = ExtResource("2_scene")
+three_star_gold_bonus = 50
+two_star_gold_bonus = 30
+one_star_gold_bonus = 10

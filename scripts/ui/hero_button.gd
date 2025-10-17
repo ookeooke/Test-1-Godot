@@ -25,6 +25,10 @@ var is_selected = false
 
 func _ready():
 	print("HeroButton ready")
+
+	# Apply scale-aware sizing
+	_apply_ui_scale()
+
 	# Visual feedback setup
 	_update_selection_visual()
 
@@ -42,6 +46,33 @@ func _ready():
 		print("  ✓ Connected gui_input signal for debugging")
 	else:
 		print("  ⚠ Button node NOT found!")
+
+	# Listen for scale changes
+	if UIScaleManager:
+		UIScaleManager.scale_changed.connect(_on_ui_scale_changed)
+
+func _apply_ui_scale():
+	"""Apply UI scale factor to ensure proper touch target size"""
+	if not UIScaleManager:
+		return
+
+	# Base size at 1080p: 90x120 pixels
+	var base_size = Vector2(90, 120)
+	var scaled_size = UIScaleManager.get_scaled_size(base_size)
+
+	# Ensure minimum touch target size (44dp)
+	var min_size = Vector2(44, 44) * UIScaleManager.ui_scale
+	scaled_size.x = max(scaled_size.x, min_size.x)
+	scaled_size.y = max(scaled_size.y, min_size.y)
+
+	custom_minimum_size = scaled_size
+	size = scaled_size
+
+	print("HeroButton scaled to: ", scaled_size, " (scale factor: ", UIScaleManager.ui_scale, ")")
+
+func _on_ui_scale_changed(new_scale: float):
+	"""Handle UI scale changes (e.g., window resize)"""
+	_apply_ui_scale()
 
 ## ============================================
 ## HERO CONNECTION

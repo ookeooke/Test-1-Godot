@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" path="res://scripts/resources/enemy_spawn_data.gd" id="2_enemy"]
+
+[sub_resource type="Resource" id="EnemySpawnData_1"]
+script = ExtResource("2_enemy")
+enemy_type = "goblin"
+count = 8
+spawn_delay = 0.5
+spawn_point_index = 0
+
+[resource]
+script = ExtResource("1_wave")
+wave_number = 1
+break_time = 3.0
+enemies = Array[Resource("res://scripts/resources/enemy_spawn_data.gd")]([SubResource("EnemySpawnData_1")])
+wave_name = ""
+is_boss_wave = false

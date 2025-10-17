@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/wave_data.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/enemy_spawn_data.gd" id="2"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+enemy_type = "wolf"
+count = 10
+
+[resource]
+script = ExtResource("1")
+wave_number = 4
+enemies = Array[Resource("res://scripts/resources/enemy_spawn_data.gd")]([SubResource("1")])
+wave_name = "Speed Test"

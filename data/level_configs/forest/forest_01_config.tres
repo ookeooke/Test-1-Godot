@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=13 format=3 uid="uid://config_forest_01"]
+
+[ext_resource type="Script" path="res://scripts/resources/level_config.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://d3pnndyqupwqw" path="res://scenes/levels/level_01.tscn" id="2"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_01.tres" id="3"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_02.tres" id="4"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_03.tres" id="5"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_04.tres" id="6"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_05.tres" id="7"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_06.tres" id="8"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_07.tres" id="9"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_08.tres" id="10"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_09.tres" id="11"]
+[ext_resource type="Resource" path="res://data/levels/forest/forest_01/waves/wave_10.tres" id="12"]
+
+[resource]
+script = ExtResource("1")
+level_id = "forest_01"
+level_name = "Forest Entrance"
+level_description = "The invasion begins! Defend against goblin scouts."
+starting_gold = 100
+starting_lives = 20
+waves = Array[Resource("res://scripts/resources/wave_data.gd")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8"), ExtResource("9"), ExtResource("10"), ExtResource("11"), ExtResource("12")])
+difficulty = 1
+required_stars = 0
+campaign_id = "forest"
+level_index = 1
+level_scene = ExtResource("2")
+three_star_gold_bonus = 50
+two_star_gold_bonus = 30
+one_star_gold_bonus = 10

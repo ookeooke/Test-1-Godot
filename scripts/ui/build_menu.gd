@@ -19,31 +19,25 @@ var mage_cost = 150
 var mouse_was_released = false
 
 # References
-@onready var archer_button = $Panel/MarginContainer/HBoxContainer/ArcherButton
-@onready var mage_button = $Panel/MarginContainer/HBoxContainer/MageButton
-@onready var archer_cost_label = $Panel/MarginContainer/HBoxContainer/ArcherButton/CostLabel
-@onready var mage_cost_label = $Panel/MarginContainer/HBoxContainer/MageButton/CostLabel
+@onready var archer_button = $PanelContainer/MarginContainer/HBoxContainer/ArcherButton
+@onready var mage_button = $PanelContainer/MarginContainer/HBoxContainer/MageButton
 
 func _ready():
 	# IMPORTANT: Set mouse filter to stop clicks from going through
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	
+
 	# CRITICAL FIX: Override the broken mouse_filter setting from .tscn
 	# The .tscn file has mouse_filter = 2 (IGNORE) which blocks all clicks!
 	archer_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	mage_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	
-	# CRITICAL: Make sure labels don't block button clicks
-	archer_cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mage_cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	
+
 	# Connect button signals
 	archer_button.pressed.connect(_on_archer_button_pressed)
 	mage_button.pressed.connect(_on_mage_button_pressed)
-	
-	# Update cost labels
-	archer_cost_label.text = str(archer_cost) + "g"
-	mage_cost_label.text = str(mage_cost) + "g"
+
+	# Update button text with costs
+	archer_button.text = "Archer Tower\n" + str(archer_cost) + "g"
+	mage_button.text = "Mage Tower\n" + str(mage_cost) + "g"
 	
 	# Update button states based on gold
 	update_button_states()
@@ -90,9 +84,9 @@ func _input(event):
 		# Only process clicks AFTER the mouse has been released once
 		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT and mouse_was_released:
 			# Get the panel's global rect
-			var panel_rect = $Panel.get_global_rect()
+			var panel_rect = $PanelContainer.get_global_rect()
 			var mouse_pos = get_global_mouse_position()
-			
+
 			# If clicked outside the panel, close menu
 			if not panel_rect.has_point(mouse_pos):
 				print("Clicked outside menu, closing")

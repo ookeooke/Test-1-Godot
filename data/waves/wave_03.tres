@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=4 format=3 uid="uid://dysnkvjcmhmjc"]
+
+[ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" uid="uid://cmgol7ax0wy0t" path="res://scripts/resources/enemy_spawn_data.gd" id="2_enemy"]
+
+[sub_resource type="Resource" id="EnemySpawnData_1"]
+script = ExtResource("2_enemy")
+enemy_type = "wolf"
+count = 6
+
+[resource]
+script = ExtResource("1_wave")
+wave_number = 3
+enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
+wave_name = "Speed Rush"

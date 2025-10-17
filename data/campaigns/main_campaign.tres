@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CampaignData" load_steps=3 format=3 uid="uid://campaign_main"]
+
+[ext_resource type="Script" path="res://scripts/resources/campaign_data.gd" id="1_campaign"]
+[ext_resource type="Resource" uid="uid://config_level_01" path="res://data/level_configs/level_01_config.tres" id="2_level01"]
+
+[resource]
+script = ExtResource("1_campaign")
+campaign_id = "main"
+campaign_name = "Main Campaign"
+campaign_description = "Defend the kingdom from invading forces!"
+levels = Array[Resource("res://scripts/resources/level_config.gd")]([ExtResource("2_level01")])
+unlocked_by_default = true
+required_stars = 0

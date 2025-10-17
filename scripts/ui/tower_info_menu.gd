@@ -15,12 +15,11 @@ var spot = null
 var upgrade_cost = 150
 
 # References
-@onready var panel = $Panel
-@onready var tower_name_label = $Panel/MarginContainer/VBoxContainer/TowerNameLabel
-@onready var stats_label = $Panel/MarginContainer/VBoxContainer/StatsLabel
-@onready var upgrade_button = $Panel/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton
-@onready var sell_button = $Panel/MarginContainer/VBoxContainer/HBoxContainer/SellButton
-@onready var upgrade_cost_label = $Panel/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton/CostLabel
+@onready var panel = $PanelContainer
+@onready var tower_name_label = $PanelContainer/MarginContainer/VBoxContainer/TowerNameLabel
+@onready var stats_label = $PanelContainer/MarginContainer/VBoxContainer/StatsLabel
+@onready var upgrade_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton
+@onready var sell_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/SellButton
 
 func _ready():
 	if upgrade_button:
@@ -55,13 +54,16 @@ func update_display():
 		var damage = tower.damage if "damage" in tower else 0
 		var attack_speed = tower.attack_speed if "attack_speed" in tower else 0
 		var range_val = tower.range_radius if "range_radius" in tower else 0
-		
+
 		stats_label.text = "Damage: %d\nAttack Speed: %.1f/s\nRange: %d" % [damage, attack_speed, range_val]
-	
-	# Set upgrade cost
-	if upgrade_cost_label:
-		upgrade_cost_label.text = str(upgrade_cost) + "g"
-	
+
+	# Set button text with costs
+	if upgrade_button:
+		upgrade_button.text = "Upgrade\n" + str(upgrade_cost) + "g"
+	if sell_button:
+		var sell_value = 70  # 70% of original cost
+		sell_button.text = "Sell\n" + str(sell_value) + "g"
+
 	# Update button states
 	update_button_states()
 

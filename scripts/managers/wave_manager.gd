@@ -13,24 +13,17 @@ extends Node2D
 @export var bat_scene: PackedScene
 @export var wave_label: Label  # Reference to the UI label
 
+# WAVE CONFIGURATION (using Custom Resources)
+@export var waves: Array[WaveData] = []  # Drag wave .tres files here in Inspector
+
 # WAVE SETTINGS
 var current_wave = 0  # Which wave we're on (starts at 0)
-var enemies_to_spawn = 0  # How many enemies left to spawn this wave
 var enemies_alive = 0  # How many enemies are currently on screen
-var current_enemy_type = "goblin"  # Which enemy to spawn this wave
-# WAVE DATA (each array = [enemy_type, count])
-var wave_data = [
-	["goblin", 5],    # Wave 1: 5 goblins (easy start)
-	["goblin", 8],    # Wave 2: 8 goblins
-	["wolf", 6],      # Wave 3: 6 wolves (fast!)
-	["orc", 6],       # Wave 4: 6 orcs (tankier)
-	["troll", 1],     # Wave 5: 1 troll boss (first boss)
-	["bat", 8],       # Wave 6: 8 bats (flying, can't be blocked by heroes!)
-	["goblin", 12],   # Wave 7: 12 goblins (horde)
-	["wolf", 10],     # Wave 8: 10 wolves (fast horde)
-	["orc", 10],      # Wave 9: 10 orcs (tank horde)
-	["troll", 2],     # Wave 10: 2 troll bosses (final challenge!)
-]
+
+# Current wave spawn state
+var current_wave_data: WaveData = null
+var current_enemy_groups: Array = []  # Flattened list of enemies to spawn
+var current_spawn_index: int = 0  # Which enemy in the list we're spawning next
 
 # TIMING
 var spawn_delay = 0.5  # Base seconds between each enemy spawn (will be randomized)
@@ -58,21 +51,26 @@ var victory_screen_scene = preload("res://scenes/ui/victory_screen.tscn")
 func _ready():
 	# This runs once when the level starts
 	print("Wave Manager initialized!")
-	
+
+	# Load waves from LevelManager if available
+	if LevelManager.current_level:
+		print("WaveManager: Loading waves from LevelConfig: ", LevelManager.current_level.level_name)
+		waves = LevelManager.current_level.waves.duplicate()
+
 	# Create the spawn timer
 	spawn_timer = Timer.new()
 	spawn_timer.wait_time = spawn_delay
 	spawn_timer.one_shot = false  # Repeats automatically
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 	add_child(spawn_timer)
-	
+
 	# Create the wave break timer
 	wave_break_timer = Timer.new()
 	wave_break_timer.wait_time = wave_break_time
 	wave_break_timer.one_shot = true  # Only triggers once
 	wave_break_timer.timeout.connect(_on_wave_break_timer_timeout)
 	add_child(wave_break_timer)
-	
+
 	# Start the first wave after 2 seconds (gives player time to prepare)
 	await get_tree().create_timer(2.0).timeout
 	start_next_wave()
@@ -82,21 +80,48 @@ func _ready():
 # ============================================
 
 func start_next_wave():
-	if current_wave >= wave_data.size():
+	# Safety check: make sure waves are assigned
+	if waves.is_empty():
+		push_error("WaveManager: No waves assigned! Please assign wave .tres files in the Inspector.")
+		return
+
+	if current_wave >= waves.size():
 		print("All waves completed! You win!")
 		return
-	
+
+	# Get the wave data resource
+	current_wave_data = waves[current_wave]
+
+	# Safety check: make sure the wave data is valid
+	if current_wave_data == null:
+		push_error("WaveManager: Wave ", current_wave, " is null! Please assign a valid wave .tres file.")
+		return
+
 	current_wave += 1
+
 	print("=== WAVE ", current_wave, " STARTING ===")
-	
-	# Get wave info (now it's [type, count])
-	var wave_info = wave_data[current_wave - 1]
-	current_enemy_type = wave_info[0]  # "goblin" or "orc"
-	enemies_to_spawn = wave_info[1]     # count
-	
+	if current_wave_data.wave_name and current_wave_data.wave_name != "":
+		print("Wave Name: ", current_wave_data.wave_name)
+
+	# Build flattened list of enemies to spawn from all enemy groups
+	current_enemy_groups.clear()
+	current_spawn_index = 0
+
+	for enemy_group in current_wave_data.enemies:
+		for i in enemy_group.count:
+			current_enemy_groups.append({
+				"type": enemy_group.enemy_type,
+				"spawn_point": enemy_group.spawn_point_index
+			})
+
+	print("Total enemies to spawn: ", current_enemy_groups.size())
+
 	# Update UI
 	if wave_label:
-		wave_label.text = "Wave " + str(current_wave)
+		if current_wave_data.wave_name:
+			wave_label.text = "Wave " + str(current_wave) + ": " + current_wave_data.wave_name
+		else:
+			wave_label.text = "Wave " + str(current_wave)
 
 	# Start spawn timer with randomized first delay
 	spawn_timer.wait_time = randf_range(spawn_delay_min, spawn_delay_max)
@@ -109,8 +134,8 @@ func wave_completed():
 	CameraEffects.large_shake(get_viewport().get_camera_2d())
 
 	# Check if this was the last wave FIRST
-	if current_wave >= wave_data.size():
-		print("🎉 ALL WAVES CLEARED! VICTORY! 🎉")
+	if current_wave >= waves.size():
+		print("ALL WAVES CLEARED! VICTORY!")
 		if wave_label:
 			wave_label.text = "VICTORY!"
 
@@ -125,8 +150,10 @@ func wave_completed():
 	if wave_label:
 		wave_label.text = "Wave Complete!"
 
-	# Start the break timer before next wave
-	print("Next wave in ", wave_break_time, " seconds...")
+	# Use break_time from the current wave data
+	var break_time = current_wave_data.break_time if current_wave_data else wave_break_time
+	print("Next wave in ", break_time, " seconds...")
+	wave_break_timer.wait_time = break_time
 	wave_break_timer.start()
 
 # ============================================
@@ -134,25 +161,36 @@ func wave_completed():
 # ============================================
 
 func spawn_enemy():
+	# Check if we have more enemies to spawn
+	if current_spawn_index >= current_enemy_groups.size():
+		spawn_timer.stop()
+		return
+
+	# Get the next enemy to spawn
+	var enemy_info = current_enemy_groups[current_spawn_index]
+	current_spawn_index += 1
+
 	# Decide which enemy scene to use
 	var enemy_scene_to_use: PackedScene
-	if current_enemy_type == "goblin":
+	var enemy_type = enemy_info["type"]
+
+	if enemy_type == "goblin":
 		enemy_scene_to_use = goblin_scene
-	elif current_enemy_type == "orc":
+	elif enemy_type == "orc":
 		enemy_scene_to_use = orc_scene
-	elif current_enemy_type == "wolf":
+	elif enemy_type == "wolf":
 		enemy_scene_to_use = wolf_scene
-	elif current_enemy_type == "troll":
+	elif enemy_type == "troll":
 		enemy_scene_to_use = troll_scene
-	elif current_enemy_type == "bat":
+	elif enemy_type == "bat":
 		enemy_scene_to_use = bat_scene
 	else:
-		print("ERROR: Unknown enemy type: ", current_enemy_type)
+		print("ERROR: Unknown enemy type: ", enemy_type)
 		return
 	
 	# Safety check
 	if enemy_scene_to_use == null:
-		print("ERROR: Enemy scene not assigned for type: ", current_enemy_type)
+		print("ERROR: Enemy scene not assigned for type: ", enemy_type)
 		return
 	
 	if enemy_path == null:
@@ -189,20 +227,21 @@ func spawn_enemy():
 	# Connect death signal
 	if enemy.has_signal("enemy_died"):
 		enemy.enemy_died.connect(_on_enemy_died)
-	
+
 	enemies_alive += 1
-	enemies_to_spawn -= 1
-	
-	if enemies_to_spawn <= 0:
+
+	# Check if all enemies have been spawned
+	if current_spawn_index >= current_enemy_groups.size():
 		spawn_timer.stop()
+		print("All enemies spawned for wave ", current_wave)
 
 func _on_spawn_timer_timeout():
 	# This gets called every 'spawn_delay' seconds
-	if enemies_to_spawn > 0:
+	if current_spawn_index < current_enemy_groups.size():
 		spawn_enemy()
 
 		# Randomize the next spawn delay for more natural timing
-		if enemies_to_spawn > 0:  # Still more to spawn
+		if current_spawn_index < current_enemy_groups.size():  # Still more to spawn
 			spawn_timer.wait_time = randf_range(spawn_delay_min, spawn_delay_max)
 
 func _on_wave_break_timer_timeout():
@@ -218,8 +257,8 @@ func _on_enemy_died():
 	enemies_alive -= 1
 	print("Enemy removed. Alive: ", enemies_alive)
 
-	# Check if wave is complete
-	if enemies_alive <= 0 and enemies_to_spawn <= 0:
+	# Check if wave is complete (all spawned and all dead)
+	if enemies_alive <= 0 and current_spawn_index >= current_enemy_groups.size():
 		wave_completed()
 
 # ============================================
@@ -230,6 +269,15 @@ func _show_victory_screen():
 	# Calculate stars (simple 3-star system for now)
 	var stars = _calculate_stars()
 
+	# Get level ID from LevelManager or use default
+	var level_id = "level_01"  # Default
+	if LevelManager.current_level:
+		level_id = LevelManager.current_level.level_id
+
+	# Notify LevelManager of completion
+	if LevelManager.current_level:
+		LevelManager.complete_level(stars)
+
 	# Get the current scene tree root
 	var root = get_tree().root
 
@@ -239,7 +287,7 @@ func _show_victory_screen():
 
 	# Instantiate victory screen
 	var victory_screen = victory_screen_scene.instantiate()
-	victory_screen.level_id = "level_01"
+	victory_screen.level_id = level_id
 	victory_screen.stars_earned = stars
 
 	# Add canvas layer to root, then victory screen to canvas layer

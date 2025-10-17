@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3]
+[ext_resource type="Script" path="res://scripts/resources/wave_data.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/enemy_spawn_data.gd" id="2"]
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+enemy_type = "orc"
+count = 12
+[sub_resource type="Resource" id="2"]
+script = ExtResource("2")
+enemy_type = "goblin"
+count = 8
+[sub_resource type="Resource" id="3"]
+script = ExtResource("2")
+enemy_type = "wolf"
+count = 6
+[resource]
+script = ExtResource("1")
+wave_number = 9
+enemies = Array[Resource("res://scripts/resources/enemy_spawn_data.gd")]([SubResource("1"), SubResource("2"), SubResource("3")])
+wave_name = "Triple Threat"

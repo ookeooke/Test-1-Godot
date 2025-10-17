@@ -1,9 +1,9 @@
 extends CanvasLayer
 
 # REFERENCES
-@onready var gold_label = $GoldLabel
-@onready var wave_label = $WaveLabel
-@onready var lives_label = $LivesLabel
+@onready var gold_label = $TopBar/HBoxContainer/GoldLabel
+@onready var wave_label = $TopBar/HBoxContainer/WaveLabel
+@onready var lives_label = $TopBar/HBoxContainer/LivesLabel
 
 func _ready():
 	# Connect to GameManager signals
