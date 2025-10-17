@@ -212,8 +212,9 @@ func spawn_enemy():
 	enemy.position = random_offset
 
 	# Apply random speed variation (makes enemies naturally space out over time)
-	var speed_multiplier = randf_range(speed_variation_min, speed_variation_max)
-	enemy.speed *= speed_multiplier
+	# DISABLED: All enemies now move at their base speed
+	#var speed_multiplier = randf_range(speed_variation_min, speed_variation_max)
+	#enemy.speed *= speed_multiplier
 
 	# Connect to path
 	if enemy.has_method("set_path_follower"):

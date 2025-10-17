@@ -112,12 +112,12 @@ static func is_mobile_platform() -> bool:
 	"""Check if running on mobile"""
 	return OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]
 
-static func show_zoom_controls_hint(camera: Camera2D) -> bool:
+static func show_zoom_controls_hint(_camera: Camera2D) -> bool:
 	"""Should we show on-screen zoom buttons?"""
 	# Show on mobile if pinch-to-zoom might be difficult
 	return is_mobile_platform()
 
-static func suggest_tutorial_for_camera(camera: Camera2D) -> String:
+static func suggest_tutorial_for_camera(_camera: Camera2D) -> String:
 	"""Get platform-appropriate tutorial text"""
 	if is_mobile_platform():
 		return "Swipe to pan • Pinch to zoom • Double-tap to quick-zoom"

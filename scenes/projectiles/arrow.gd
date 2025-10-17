@@ -147,7 +147,7 @@ func _physics_process(delta):
 	if global_position.length() > 5000:
 		queue_free()
 
-func _update_ballistic_movement(delta):
+func _update_ballistic_movement(_delta):
 	"""Ballistic arc with gravity simulation - looks like Kingdom Rush!"""
 
 	# Calculate progress from 0.0 (start) to 1.0 (target)

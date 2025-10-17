@@ -54,7 +54,7 @@ func _ready():
 	print("  Menu position: ", global_position)
 	print("  Menu size: ", size)
 
-func _on_gold_changed(new_amount):
+func _on_gold_changed(_new_amount):
 	update_button_states()
 
 func update_button_states():

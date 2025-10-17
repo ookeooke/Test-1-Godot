@@ -72,7 +72,7 @@ func _on_hero_selected(hero):
 	if hero_button:
 		hero_button.set_selected(true)
 
-func _on_object_clicked(object, click_position):
+func _on_object_clicked(object, _click_position):
 	"""Called when any object is clicked via ClickManager"""
 	# If we have a selected hero and clicked something else (not a hero)
 	if current_hero and is_instance_valid(current_hero):

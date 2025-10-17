@@ -135,42 +135,70 @@ func position_menu_in_screen_space(spot):
 
 		screen_pos += get_viewport().get_visible_rect().size / 2
 		print("  Screen center: ", get_viewport().get_visible_rect().size / 2)
-		print("  Final screen position: ", screen_pos)
+		print("  Tower screen position: ", screen_pos)
 	else:
 		# Fallback if no camera (center of screen)
 		screen_pos = get_viewport().get_visible_rect().size / 2
 		print("  No camera - using screen center")
 
-	# STEP 3: Offset menu above the tower spot (100 pixels up in screen space)
-	screen_pos.y -= 100
-	print("  After offset up by 100px: ", screen_pos)
-
-	# STEP 4: Clamp to screen edges (ensure fully visible)
-	# Menu size should already be calculated (we waited in show_build_menu)
+	# STEP 3: Smart offset based on tower position (Option 3)
+	# Detect if tower is near screen edges and adjust menu placement accordingly
+	var viewport_size = get_viewport().get_visible_rect().size
 	var menu_size = current_menu.size
 	print("  Menu size at positioning: ", menu_size)
-	var viewport_size = get_viewport().get_visible_rect().size
 
-	# Define safe margins (20px from edges)
+	# Define "danger zones" - areas near screen edges (200px threshold)
+	var edge_threshold = 200.0
+	var near_top = screen_pos.y < edge_threshold
+	var near_bottom = screen_pos.y > viewport_size.y - edge_threshold
+	var near_left = screen_pos.x < edge_threshold
+	var near_right = screen_pos.x > viewport_size.x - edge_threshold
+
+	# Apply smart offset (Kingdom Rush style: above by default, below if near top)
+	if near_top:
+		screen_pos.y += 100  # Place BELOW tower (near top edge)
+		print("  Tower near top edge - placing menu BELOW")
+	else:
+		screen_pos.y -= 100  # Place ABOVE tower (default)
+		print("  Placing menu ABOVE tower")
+
+	# Adjust horizontal offset if near left/right edges
+	if near_left:
+		screen_pos.x += 50  # Push menu right
+		print("  Tower near left edge - pushing menu RIGHT")
+	elif near_right:
+		screen_pos.x -= 50  # Push menu left
+		print("  Tower near right edge - pushing menu LEFT")
+
+	print("  After smart offset: ", screen_pos)
+
+	# STEP 4: Clamp to screen edges (Option 1 - FIXED LOGIC)
+	# Calculate actual menu bounds (top-left and bottom-right corners)
 	var margin = 20.0
+	var menu_top_left = screen_pos - menu_size / 2
+	var menu_bottom_right = screen_pos + menu_size / 2
 
-	# Clamp horizontally
-	if screen_pos.x - menu_size.x / 2 < margin:
+	# Clamp horizontally (check actual menu bounds)
+	if menu_top_left.x < margin:
 		screen_pos.x = menu_size.x / 2 + margin
-	elif screen_pos.x + menu_size.x / 2 > viewport_size.x - margin:
+		print("  Clamped: Menu too far LEFT")
+	elif menu_bottom_right.x > viewport_size.x - margin:
 		screen_pos.x = viewport_size.x - menu_size.x / 2 - margin
+		print("  Clamped: Menu too far RIGHT")
 
-	# Clamp vertically
-	if screen_pos.y - menu_size.y < margin:
-		screen_pos.y = menu_size.y + margin
-	elif screen_pos.y > viewport_size.y - margin:
-		screen_pos.y = viewport_size.y - margin
+	# Clamp vertically (check actual menu bounds)
+	if menu_top_left.y < margin:
+		screen_pos.y = menu_size.y / 2 + margin
+		print("  Clamped: Menu too far UP (off top edge)")
+	elif menu_bottom_right.y > viewport_size.y - margin:
+		screen_pos.y = viewport_size.y - menu_size.y / 2 - margin
+		print("  Clamped: Menu too far DOWN (off bottom edge)")
 
 	# STEP 5: Center the menu at calculated position
 	current_menu.position = screen_pos - menu_size / 2
-	print("  Menu size: ", menu_size)
-	print("  Final menu position: ", current_menu.position)
-	print("  ✅ Menu positioned!")
+	print("  Final menu position (top-left): ", current_menu.position)
+	print("  Final menu bounds: ", Rect2(current_menu.position, menu_size))
+	print("  ✅ Menu positioned and guaranteed visible!")
 
 func _on_tower_selected(tower_scene):
 	"""Handle tower build selection"""

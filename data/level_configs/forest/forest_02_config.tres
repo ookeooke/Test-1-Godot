@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="LevelConfig" load_steps=13 format=3 uid="uid://config_forest_02"]
 
 [ext_resource type="Script" path="res://scripts/resources/level_config.gd" id="1"]
-[ext_resource type="PackedScene" uid="uid://d3pnndyqupwqw" path="res://scenes/levels/level_01.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://b1dcv31ty4qix" path="res://scenes/levels/level_01.tscn" id="2"]
 [ext_resource type="Resource" path="res://data/levels/forest/forest_02/waves/wave_01.tres" id="3"]
 [ext_resource type="Resource" path="res://data/levels/forest/forest_02/waves/wave_02.tres" id="4"]
 [ext_resource type="Resource" path="res://data/levels/forest/forest_02/waves/wave_03.tres" id="5"]

@@ -52,7 +52,7 @@ func auto_spawn_hero():
 	print("Auto-spawning hero at ", name)
 	spawn_hero(hero_scene)
 
-func _on_click_area_input_event(viewport, event, shape_idx):
+func _on_click_area_input_event(_viewport, event, _shape_idx):
 	"""Optional: Allow clicking to spawn hero manually"""
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if not has_hero and not is_respawning:

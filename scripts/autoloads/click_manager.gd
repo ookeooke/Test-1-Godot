@@ -370,12 +370,12 @@ func screen_to_world(screen_pos: Vector2) -> Vector2:
 	
 	return camera_pos + offset
 
-func get_objects_in_radius(center: Vector2, radius: float, priority: ClickPriority = -1) -> Array:
+func get_objects_in_radius(center: Vector2, radius: float, priority = null) -> Array:
 	"""Get all objects within a radius - useful for area selection"""
 	var results = []
-	
+
 	var lists_to_check = []
-	if priority == -1:
+	if priority == null:
 		# Check all priorities
 		for p in clickable_objects:
 			lists_to_check.append(clickable_objects[p])
@@ -394,11 +394,11 @@ func get_objects_in_radius(center: Vector2, radius: float, priority: ClickPriori
 	
 	return results
 
-func get_all_registered_objects(priority: ClickPriority = -1) -> Array:
+func get_all_registered_objects(priority = null) -> Array:
 	"""Get all registered objects, optionally filtered by priority"""
 	var results = []
-	
-	if priority == -1:
+
+	if priority == null:
 		for p in clickable_objects:
 			for data in clickable_objects[p]:
 				if is_instance_valid(data["object"]):
