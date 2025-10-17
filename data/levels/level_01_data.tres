@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="LevelNodeData" load_steps=2 format=3 uid="uid://level_01_node_data"]
+
+[ext_resource type="Script" path="res://scripts/resources/level_node_data.gd" id="1_1"]
+
+[resource]
+script = ExtResource("1_1")
+level_id = "level_01"
+level_name = "Forest Path"
+level_scene_path = "res://scenes/levels/level_01.tscn"
+position = Vector2(300, 400)
+campaign_type = "forest"
+required_level_id = ""
+required_stars = 0
+path_to_next_level = [Vector2(450, 420), Vector2(600, 450)]
+difficulty_levels = Array[String](["Normal", "Hard", "Heroic"])
+recommended_difficulty = "Normal"
+description = "Your first battle! Defend the forest path from goblin invaders."

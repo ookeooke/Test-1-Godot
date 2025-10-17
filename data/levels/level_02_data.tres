@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="LevelNodeData" load_steps=2 format=3 uid="uid://level_02_node_data"]
+
+[ext_resource type="Script" path="res://scripts/resources/level_node_data.gd" id="1_1"]
+
+[resource]
+script = ExtResource("1_1")
+level_id = "level_02"
+level_name = "Mountain Pass"
+level_scene_path = "res://scenes/levels/level_02.tscn"
+position = Vector2(750, 500)
+campaign_type = "forest"
+required_level_id = "level_01"
+required_stars = 0
+path_to_next_level = []
+difficulty_levels = Array[String](["Normal", "Hard", "Heroic"])
+recommended_difficulty = "Normal"
+description = "The enemy grows stronger! Hold the mountain pass against tougher foes."

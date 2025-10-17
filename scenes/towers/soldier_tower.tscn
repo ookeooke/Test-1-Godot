@@ -1,0 +1,58 @@
+[gd_scene load_steps=3 format=3 uid="uid://soldier_tower_001"]
+
+[ext_resource type="Script" path="res://scenes/towers/soldier_tower.gd" id="1_soldier_tower"]
+[ext_resource type="PackedScene" path="res://scenes/units/soldier_unit.tscn" id="2_soldier_unit"]
+
+[node name="SoldierTower" type="StaticBody2D" groups=["tower", "garrison"]]
+script = ExtResource("1_soldier_tower")
+soldier_scene = ExtResource("2_soldier_unit")
+squad_size = 4
+spawn_radius = 60.0
+respawn_delay = 5.0
+rally_flag_default_offset = Vector2(150, 0)
+soldier_health = 100.0
+soldier_damage = 10.0
+soldier_attack_speed = 1.0
+
+[node name="TowerVisual" type="ColorRect" parent="."]
+offset_left = -45.0
+offset_top = -45.0
+offset_right = 45.0
+offset_bottom = 45.0
+mouse_filter = 2
+color = Color(0.5, 0.35, 0.2, 1)
+
+[node name="Label" type="Label" parent="TowerVisual"]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 28.0
+offset_right = 85.0
+offset_bottom = 51.0
+mouse_filter = 2
+text = "GARRISON"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Fort" type="ColorRect" parent="TowerVisual"]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 10.0
+offset_right = 35.0
+offset_bottom = 35.0
+color = Color(0.4, 0.3, 0.15, 1)
+
+[node name="Fort2" type="ColorRect" parent="TowerVisual"]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 10.0
+offset_right = 75.0
+offset_bottom = 35.0
+color = Color(0.4, 0.3, 0.15, 1)
+
+[node name="Fort3" type="ColorRect" parent="TowerVisual"]
+layout_mode = 0
+offset_left = 35.0
+offset_top = -5.0
+offset_right = 55.0
+offset_bottom = 15.0
+color = Color(0.4, 0.3, 0.15, 1)

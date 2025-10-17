@@ -1,0 +1,147 @@
+[gd_scene load_steps=29 format=3 uid="uid://level02_scene_uid"]
+
+[ext_resource type="Script" uid="uid://mxt3ckx3n6mu" path="res://scripts/managers/wave_manager.gd" id="1_0e48y"]
+[ext_resource type="Script" uid="uid://idfvb3maml47" path="res://scripts/level_controller.gd" id="1_level_controller"]
+[ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://scenes/enemies/goblin_scout.tscn" id="1_wtcfe"]
+[ext_resource type="Script" uid="uid://b1r6b3vwpnkst" path="res://scripts/camera/camera_controller_improved.gd" id="2_camera"]
+[ext_resource type="PackedScene" uid="uid://crirequ6fnstj" path="res://scenes/enemies/orc_warrior.tscn" id="3_epypp"]
+[ext_resource type="PackedScene" uid="uid://dwolf7k3xp2n" path="res://scenes/enemies/wolf_runner.tscn" id="3_wolf"]
+[ext_resource type="Script" uid="uid://b36pauxpm4kdw" path="res://scripts/ui/ui.gd" id="4_q6r6c"]
+[ext_resource type="PackedScene" uid="uid://dtroll8k5xram" path="res://scenes/enemies/troll_boss.tscn" id="4_troll"]
+[ext_resource type="PackedScene" uid="uid://dbauak4xr3p" path="res://scenes/enemies/bat_flyer.tscn" id="5_bat"]
+[ext_resource type="Script" uid="uid://b5eg63ndhxpwm" path="res://scripts/managers/placement_manager.gd" id="5_kdubu"]
+[ext_resource type="PackedScene" uid="uid://bar3soqilns7x" path="res://scenes/spots/tower_spot.tscn" id="5_q6r6c"]
+[ext_resource type="Script" uid="uid://ddjf0njev6xv" path="res://scripts/managers/hero_manager.gd" id="7_4d7sh"]
+[ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="8_e6lid"]
+[ext_resource type="PackedScene" uid="uid://c52n66umx0j5h" path="res://scenes/heroes/ranger_hero.tscn" id="8_ir8iy"]
+[ext_resource type="Resource" uid="uid://cew3vj76fgf52" path="res://data/waves/wave_01.tres" id="9_3g50r"]
+[ext_resource type="PackedScene" uid="uid://ckvxoisxu0tq1" path="res://scenes/spots/hero_spot.tscn" id="9_hqns4"]
+[ext_resource type="PackedScene" uid="uid://cqoyfbnb1nbig" path="res://scenes/ui/hero_button.tscn" id="10_herobutton"]
+[ext_resource type="Resource" uid="uid://efkt5o3e53ax" path="res://data/waves/wave_02.tres" id="10_iu1m7"]
+[ext_resource type="PackedScene" uid="uid://menu_layer_canvas" path="res://scenes/ui/menu_layer.tscn" id="10_menu_layer"]
+[ext_resource type="Resource" uid="uid://dysnkvjcmhmjc" path="res://data/waves/wave_03.tres" id="11_lswbx"]
+[ext_resource type="Resource" uid="uid://dqg3kbr3rndat" path="res://data/waves/wave_04.tres" id="12_uujh0"]
+[ext_resource type="Resource" uid="uid://d2745vi4fsyp7" path="res://data/waves/wave_05.tres" id="13_3t34l"]
+[ext_resource type="Resource" uid="uid://dl5yjjxryjf6p" path="res://data/waves/wave_06.tres" id="14_qy4h0"]
+[ext_resource type="Resource" uid="uid://efh56h6pps2b" path="res://data/waves/wave_07.tres" id="15_e5bmj"]
+[ext_resource type="Resource" uid="uid://b1tc3w5nmcx8w" path="res://data/waves/wave_08.tres" id="16_iqf6e"]
+[ext_resource type="Resource" uid="uid://dqynsaug13apf" path="res://data/waves/wave_09.tres" id="17_stkom"]
+[ext_resource type="Resource" uid="uid://c56kt27sh5ush" path="res://data/waves/wave_10.tres" id="18_5t8rk"]
+
+[sub_resource type="Curve2D" id="Curve2D_y32ns"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, -179, 142, -231.07893, 54.23281, 231.07893, -54.23281, 474, 634, -61.306656, -367.83994, 61.306656, 367.83994, 1081, 212, 0, 0, 0, 0, 1769, 701)
+}
+point_count = 4
+
+[node name="TestLevel" type="Node2D"]
+script = ExtResource("1_level_controller")
+
+[node name="WaveManager" type="Node2D" parent="." node_paths=PackedStringArray("enemy_path", "wave_label")]
+script = ExtResource("1_0e48y")
+enemy_path = NodePath("../EnemyPath")
+goblin_scene = ExtResource("1_wtcfe")
+orc_scene = ExtResource("3_epypp")
+wolf_scene = ExtResource("3_wolf")
+troll_scene = ExtResource("4_troll")
+bat_scene = ExtResource("5_bat")
+wave_label = NodePath("../UI/TopBar/HBoxContainer/WaveLabel")
+waves = Array[ExtResource("8_e6lid")]([ExtResource("9_3g50r"), ExtResource("10_iu1m7"), ExtResource("11_lswbx"), ExtResource("12_uujh0"), ExtResource("13_3t34l"), ExtResource("14_qy4h0"), ExtResource("15_e5bmj"), ExtResource("16_iqf6e"), ExtResource("17_stkom"), ExtResource("18_5t8rk")])
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(900, 450)
+zoom = Vector2(0.5, 0.5)
+limit_left = -100
+limit_top = 262
+limit_right = 1067
+limit_bottom = 850
+editor_draw_limits = true
+script = ExtResource("2_camera")
+min_zoom = 0.4
+max_zoom = 1.2
+default_zoom = 0.6
+mobile_max_zoom = 1.0
+
+[node name="EnemyPath" type="Path2D" parent="."]
+position = Vector2(5, -2)
+curve = SubResource("Curve2D_y32ns")
+
+[node name="UI" type="CanvasLayer" parent="."]
+script = ExtResource("4_q6r6c")
+
+[node name="TopBar" type="MarginContainer" parent="UI"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 100.0
+grow_horizontal = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/TopBar"]
+layout_mode = 2
+
+[node name="LivesLabel" type="Label" parent="UI/TopBar/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Lives: 20"
+vertical_alignment = 1
+
+[node name="Spacer1" type="Control" parent="UI/TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="GoldLabel" type="Label" parent="UI/TopBar/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Gold: 500"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Spacer2" type="Control" parent="UI/TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="WaveLabel" type="Label" parent="UI/TopBar/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Wave 1"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="HeroButton" parent="UI" instance=ExtResource("10_herobutton")]
+layout_mode = 3
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -140.0
+offset_right = 110.0
+offset_bottom = -20.0
+grow_vertical = 0
+
+[node name="MenuLayer" parent="." instance=ExtResource("10_menu_layer")]
+
+[node name="PlacementManager" type="Node2D" parent="."]
+script = ExtResource("5_kdubu")
+
+[node name="TowerSpots" type="Node2D" parent="."]
+
+[node name="TowerSpot1" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
+position = Vector2(356, 433)
+
+[node name="TowerSpot2" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
+position = Vector2(984, 271)
+
+[node name="TowerSpot3" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
+position = Vector2(1200, 600)
+
+[node name="TowerSpot4" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
+position = Vector2(1500, 300)
+
+[node name="HeroManager" type="Node2D" parent="."]
+modulate = Color(0.9575384, 0.84961164, 0.8779932, 1)
+script = ExtResource("7_4d7sh")
+ranger_hero_scene = ExtResource("8_ir8iy")
+
+[node name="HeroSpots" type="Node2D" parent="."]
+
+[node name="HeroSpot" parent="HeroSpots" instance=ExtResource("9_hqns4")]
+position = Vector2(761, 675)

@@ -9,11 +9,11 @@ signal menu_closed()
 
 # Tower scenes
 var archer_tower_scene = preload("res://scenes/towers/archer_tower.tscn")
-var mage_tower_scene = null  # Placeholder for second tower
+var barracks_tower_scene = preload("res://scenes/towers/soldier_tower.tscn")
 
 # Tower costs
 var archer_cost = 100
-var mage_cost = 150
+var barracks_cost = 120
 
 # References
 @onready var archer_button = $PanelContainer/MarginContainer/HBoxContainer/ArcherButton
@@ -40,7 +40,7 @@ func _ready():
 
 	# Update button text with costs
 	archer_button.text = "Archer Tower\n" + str(archer_cost) + "g"
-	mage_button.text = "Mage Tower\n" + str(mage_cost) + "g"
+	mage_button.text = "Barracks\n" + str(barracks_cost) + "g"
 
 	# Update button states based on gold
 	update_button_states()
@@ -60,7 +60,7 @@ func _on_gold_changed(_new_amount):
 func update_button_states():
 	# Enable/disable buttons based on gold
 	archer_button.disabled = GameManager.gold < archer_cost
-	mage_button.disabled = GameManager.gold < mage_cost or mage_tower_scene == null
+	mage_button.disabled = GameManager.gold < barracks_cost
 
 func _on_archer_button_gui_input(event):
 	print("⚠️ Archer button received gui_input event: ", event)
@@ -81,11 +81,9 @@ func _on_archer_button_pressed():
 		print("  ✗ Not enough gold for Archer Tower!")
 
 func _on_mage_button_pressed():
-	if mage_tower_scene == null:
-		print("Mage Tower not implemented yet!")
-		return
-
-	if GameManager.spend_gold(mage_cost):
-		tower_selected.emit(mage_tower_scene)
+	print("🏰 Barracks button pressed!")
+	if GameManager.spend_gold(barracks_cost):
+		print("  ✓ Gold spent, placing barracks tower")
+		tower_selected.emit(barracks_tower_scene)
 	else:
-		print("Not enough gold for Mage Tower!")
+		print("  ✗ Not enough gold for Barracks!")

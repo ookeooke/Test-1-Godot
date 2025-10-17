@@ -27,6 +27,9 @@ var upgrade_cost = 150
 # Update timer for enemy list
 var update_timer: Timer
 
+# Rally button for garrison towers (created dynamically)
+var rally_button: Button = null
+
 func _ready():
 	if upgrade_button:
 		upgrade_button.pressed.connect(_on_upgrade_button_pressed)
@@ -53,26 +56,37 @@ func setup(tower_ref, spot_ref):
 	"""Initialize the menu with tower data"""
 	tower = tower_ref
 	spot = spot_ref
-	
+
 	if is_inside_tree():
 		update_display()
+		# Show/hide targeting buttons based on tower type
+		_update_tower_type_ui()
 
 func update_display():
 	"""Update the displayed information"""
 	if not tower:
 		return
 
+	# Detect tower type and show appropriate info
+	var is_garrison = _is_garrison_tower()
+
 	# Set tower name
 	if tower_name_label:
-		tower_name_label.text = "Archer Tower"  # TODO: Get from tower
+		if is_garrison:
+			tower_name_label.text = "Soldier Tower"
+		else:
+			tower_name_label.text = "Archer Tower"  # TODO: Get from tower
 
 	# Set stats
 	if stats_label and tower:
-		var damage = tower.damage if "damage" in tower else 0
-		var attack_speed = tower.attack_speed if "attack_speed" in tower else 0
-		var range_val = tower.range_radius if "range_radius" in tower else 0
+		if is_garrison:
+			_update_garrison_stats()
+		else:
+			var damage = tower.damage if "damage" in tower else 0
+			var attack_speed = tower.attack_speed if "attack_speed" in tower else 0
+			var range_val = tower.range_radius if "range_radius" in tower else 0
 
-		stats_label.text = "Damage: %d\nAttack Speed: %.1f/s\nRange: %d" % [damage, attack_speed, range_val]
+			stats_label.text = "Damage: %d\nAttack Speed: %.1f/s\nRange: %d" % [damage, attack_speed, range_val]
 
 	# Set button text with costs
 	if upgrade_button:
@@ -261,3 +275,84 @@ func _get_enemy_health(enemy) -> float:
 		return float(enemy.current_health)
 
 	return 0.0
+
+# ============================================
+# GARRISON TOWER SUPPORT
+# ============================================
+
+func _is_garrison_tower() -> bool:
+	"""Check if this is a garrison/soldier tower"""
+	if not tower:
+		return false
+	# Garrison towers have soldier_scene property
+	return "soldier_scene" in tower or tower.is_in_group("garrison")
+
+func _update_garrison_stats():
+	"""Update stats display for garrison towers"""
+	if not tower or not tower.has_method("get_garrison_info"):
+		stats_label.text = "Garrison Tower"
+		return
+
+	var info = tower.get_garrison_info()
+	var next_respawn_text = ""
+	if info["respawning"] > 0:
+		next_respawn_text = "\nNext respawn: %.1fs" % info["next_respawn"]
+
+	stats_label.text = "Squad: %d/%d alive%s\nDamage: %.0f\nAttack Speed: %.1f/s" % [
+		info["alive"],
+		info["squad_size"],
+		next_respawn_text,
+		tower.soldier_damage if "soldier_damage" in tower else 0,
+		tower.soldier_attack_speed if "soldier_attack_speed" in tower else 0
+	]
+
+func _update_tower_type_ui():
+	"""Show/hide UI elements based on tower type"""
+	var is_garrison = _is_garrison_tower()
+
+	# Hide targeting buttons for garrison towers
+	if first_button:
+		first_button.visible = not is_garrison
+	if strong_button:
+		strong_button.visible = not is_garrison
+
+	# Show rally button for garrison towers
+	if is_garrison:
+		_create_rally_button()
+	elif rally_button:
+		rally_button.queue_free()
+		rally_button = null
+
+func _create_rally_button():
+	"""Create the rally point button for garrison towers (Kingdom Rush style)"""
+	if rally_button:
+		return  # Already created
+
+	# Find the targeting buttons container
+	var targeting_container = first_button.get_parent() if first_button else null
+	if not targeting_container:
+		print("ERROR: Could not find targeting buttons container!")
+		return
+
+	# Create rally button
+	rally_button = Button.new()
+	rally_button.text = "🚩 Rally Point"
+	rally_button.custom_minimum_size = Vector2(120, 40)
+	targeting_container.add_child(rally_button)
+
+	# Connect signal
+	rally_button.pressed.connect(_on_rally_button_pressed)
+
+	# Visual styling
+	rally_button.modulate = Color(1.0, 0.9, 0.3)  # Gold tint
+
+func _on_rally_button_pressed():
+	"""Called when player clicks Rally Point button - enters placement mode"""
+	print("🚩 Rally Point button pressed!")
+
+	if tower and tower.has_method("enter_rally_placement_mode"):
+		tower.enter_rally_placement_mode()
+
+		# Close the menu so player can click the map
+		menu_closed.emit()
+		queue_free()

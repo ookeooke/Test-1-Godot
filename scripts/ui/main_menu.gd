@@ -44,8 +44,8 @@ func _on_continue_pressed():
 		return
 
 	if SaveManager.load_profile(last_profile):
-		# Go to level select
-		get_tree().change_scene_to_file("res://scenes/ui/level_select.tscn")
+		# Go to world map select (Kingdom Rush style - Node2D version)
+		get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
 	else:
 		push_error("MainMenu: Failed to load profile: ", last_profile)
 

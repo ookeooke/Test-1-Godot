@@ -103,7 +103,7 @@ func _on_slot_pressed(slot_index: int):
 	else:
 		# Existing profile - load and play
 		if SaveManager.load_profile(profile_name):
-			get_tree().change_scene_to_file("res://scenes/ui/level_select.tscn")
+			get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
 		else:
 			push_error("Failed to load profile: ", profile_name)
 

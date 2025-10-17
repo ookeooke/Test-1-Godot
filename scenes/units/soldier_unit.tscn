@@ -1,0 +1,46 @@
+[gd_scene load_steps=5 format=3 uid="uid://soldier_unit_001"]
+
+[ext_resource type="Script" path="res://scenes/units/soldier_unit.gd" id="1_soldier"]
+[ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 20.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_melee"]
+radius = 100.0
+
+[node name="SoldierUnit" type="CharacterBody2D" groups=["soldier"]]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_soldier")
+
+[node name="Sprite2D" type="ColorRect" parent="."]
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+color = Color(0.6, 0.4, 0.2, 1)
+
+[node name="Label" type="Label" parent="Sprite2D"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "SOLDIER"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="MeleeDetection" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeDetection"]
+shape = SubResource("CircleShape2D_melee")
+
+[node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
+offset_left = -25.0
+offset_top = -35.0
+offset_right = 25.0
+offset_bottom = -29.0

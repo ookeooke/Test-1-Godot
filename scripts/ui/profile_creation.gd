@@ -59,8 +59,8 @@ func _on_create_pressed():
 
 	if SaveManager.create_new_profile(profile_name):
 		print("ProfileCreation: Profile created successfully!")
-		# Go to level select
-		get_tree().change_scene_to_file("res://scenes/ui/level_select.tscn")
+		# Go to world map select (Node2D version)
+		get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
 	else:
 		_show_error("Failed to create profile")
 
