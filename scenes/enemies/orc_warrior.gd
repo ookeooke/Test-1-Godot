@@ -13,7 +13,7 @@ func _init():
 	life_damage = 2
 	can_be_blocked = true
 	melee_detection_range = 100.0
-	death_shake = "Medium"
+	death_shake = "None"
 
 func get_enemy_name() -> String:
 	return "Orc"

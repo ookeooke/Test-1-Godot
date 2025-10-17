@@ -1,3 +1,4 @@
+@tool
 extends Camera2D
 
 # ============================================
@@ -69,16 +70,22 @@ var current_platform: Platform
 # ============================================
 # BOUNDS
 # ============================================
-@export_group("Bounds")
-@export var use_bounds = true
-@export var level_rect = Rect2(0, 0, 2000, 1200)
-@export var bounds_padding = 50  # Extra space beyond level edges
+# NOTE: Camera limits are now set directly using Godot's built-in limit_* properties
+# These are automatically visualized as a pink/magenta rectangle in the editor
+# Simply adjust limit_left, limit_right, limit_top, limit_bottom in the Inspector
+#
+# The pink rectangle shows where the CAMERA CENTER can move
+# Set these values to match your level boundaries:
+#   limit_left = leftmost camera center position
+#   limit_right = rightmost camera center position
+#   limit_top = topmost camera center position
+#   limit_bottom = bottommost camera center position
 
 # ============================================
 # CAMERA SHAKE
 # ============================================
 @export_group("Camera Shake")
-@export var shake_enabled = true
+@export var shake_enabled = false
 var shake_intensity = 0.0
 var shake_decay = 5.0  # How fast shake fades
 var shake_offset = Vector2.ZERO
@@ -129,7 +136,7 @@ var base_position = Vector2.ZERO  # Position without shake
 var user_prefs = {
 	"edge_scroll_enabled": true,
 	"inertia_enabled": true,
-	"shake_enabled": true,
+	"shake_enabled": false,
 	"keyboard_pan_enabled": true,
 	"edge_scroll_speed_multiplier": 1.0,  # 0.5 to 2.0
 	"zoom_speed_multiplier": 1.0,  # 0.5 to 2.0
@@ -141,6 +148,11 @@ var user_prefs = {
 # ============================================
 
 func _ready():
+	# Skip runtime initialization in editor
+	if Engine.is_editor_hint():
+		return
+
+	# Runtime-only initialization
 	detect_platform()
 	apply_platform_defaults()
 	load_user_preferences()
@@ -150,14 +162,10 @@ func _ready():
 	zoom = target_zoom
 	base_position = position
 
-	# Calculate bounds
-	if use_bounds:
-		update_camera_limits()
-
 	print("✓ Enhanced Camera Controller initialized")
 	print("  Platform: ", Platform.keys()[current_platform])
 	print("  Zoom range: ", min_zoom, " to ", max_zoom)
-	print("  Level bounds: ", level_rect)
+	print("  Camera limits: (%d, %d) to (%d, %d)" % [limit_left, limit_top, limit_right, limit_bottom])
 
 func detect_platform() -> void:
 	"""Auto-detect platform for appropriate defaults"""
@@ -243,6 +251,10 @@ func set_drag_sensitivity(sensitivity: float) -> void:
 # ============================================
 
 func _unhandled_input(event):
+	# Skip input handling in editor
+	if Engine.is_editor_hint():
+		return
+
 	match current_platform:
 		Platform.MOBILE:
 			handle_mobile_input(event)
@@ -410,9 +422,6 @@ func update_drag(screen_pos: Vector2):
 
 	last_mouse_pos = screen_pos
 
-	# Apply bounds
-	apply_bounds()
-
 func end_drag():
 	"""End dragging and start inertia if enabled"""
 	if is_dragging and inertia_enabled and velocity.length() > min_inertia_velocity:
@@ -448,8 +457,6 @@ func zoom_at_point(screen_point: Vector2, zoom_delta: float):
 
 	# Move camera to compensate
 	base_position += world_pos_before - world_pos_after
-
-	apply_bounds()
 
 func set_zoom_instant(new_zoom: float) -> void:
 	"""Set zoom without smoothing"""
@@ -524,8 +531,6 @@ func update_snap(delta: float) -> void:
 		var t = ease_out_cubic(snap_progress)
 		base_position = snap_start_pos.lerp(snap_target_pos, t)
 
-	apply_bounds()
-
 func ease_out_cubic(t: float) -> float:
 	"""Smooth easing function"""
 	return 1.0 - pow(1.0 - t, 3.0)
@@ -535,6 +540,10 @@ func ease_out_cubic(t: float) -> float:
 # ============================================
 
 func _process(delta):
+	# Skip runtime logic in editor
+	if Engine.is_editor_hint():
+		return
+
 	# Handle snap animation
 	if is_snapping:
 		update_snap(delta)
@@ -558,7 +567,6 @@ func _process(delta):
 	# Smooth zoom
 	if zoom != target_zoom:
 		zoom = zoom.lerp(target_zoom, zoom_smoothing)
-		apply_bounds()
 
 	# Apply final position with shake
 	position = base_position + shake_offset
@@ -582,7 +590,6 @@ func handle_keyboard_pan(delta):
 	if direction != Vector2.ZERO:
 		direction = direction.normalized()
 		base_position += direction * keyboard_pan_speed * delta / zoom.x
-		apply_bounds()
 
 		# Cancel inertia if manually moving
 		is_inertia_moving = false
@@ -612,7 +619,6 @@ func handle_edge_scroll(delta):
 		direction = direction.normalized()
 		var speed = edge_scroll_speed * user_prefs["edge_scroll_speed_multiplier"]
 		base_position += direction * speed * delta / zoom.x
-		apply_bounds()
 
 func update_inertia(delta):
 	"""Update inertia-based movement (frame-independent)"""
@@ -628,65 +634,17 @@ func update_inertia(delta):
 	var friction = pow(inertia_friction, delta * 60.0)  # Normalized to 60fps
 	velocity *= friction
 
-	apply_bounds()
-
-# ============================================
-# BOUNDS
-# ============================================
-
-func update_camera_limits():
-	"""Set camera limits based on level size and viewport"""
-	var viewport_size = get_viewport_rect().size
-
-	# Calculate how far camera can move at minimum zoom
-	var half_view_at_min_zoom = (viewport_size / min_zoom) / 2.0
-
-	# Set limits with padding
-	limit_left = int(level_rect.position.x + half_view_at_min_zoom.x - bounds_padding)
-	limit_right = int(level_rect.end.x - half_view_at_min_zoom.x + bounds_padding)
-	limit_top = int(level_rect.position.y + half_view_at_min_zoom.y - bounds_padding)
-	limit_bottom = int(level_rect.end.y - half_view_at_min_zoom.y + bounds_padding)
-
-	# Ensure limits are valid
-	if limit_left >= limit_right:
-		limit_left = int(level_rect.position.x)
-		limit_right = int(level_rect.end.x)
-	if limit_top >= limit_bottom:
-		limit_top = int(level_rect.position.y)
-		limit_bottom = int(level_rect.end.y)
-
-func apply_bounds():
-	"""Clamp camera position to stay within level bounds"""
-	if not use_bounds:
-		return
-
-	var viewport_size = get_viewport_rect().size
-	var half_view = (viewport_size / zoom) / 2.0
-
-	# Calculate allowed range
-	var min_x = level_rect.position.x + half_view.x
-	var max_x = level_rect.end.x - half_view.x
-	var min_y = level_rect.position.y + half_view.y
-	var max_y = level_rect.end.y - half_view.y
-
-	# Clamp position
-	base_position.x = clamp(base_position.x, min_x, max_x)
-	base_position.y = clamp(base_position.y, min_y, max_y)
-
-	# Stop inertia if hitting bounds
-	if base_position.x <= min_x or base_position.x >= max_x:
-		velocity.x = 0
-	if base_position.y <= min_y or base_position.y >= max_y:
-		velocity.y = 0
-
 # ============================================
 # UTILITY FUNCTIONS
 # ============================================
 
 func reset_to_center():
-	"""Reset camera to level center"""
+	"""Reset camera to center of camera limits"""
 	cancel_snap()
-	base_position = level_rect.get_center()
+	# Calculate center from limit properties
+	var center_x = (limit_left + limit_right) / 2.0
+	var center_y = (limit_top + limit_bottom) / 2.0
+	base_position = Vector2(center_x, center_y)
 	position = base_position
 	target_zoom = Vector2(default_zoom, default_zoom)
 	zoom = target_zoom
@@ -694,12 +652,6 @@ func reset_to_center():
 	is_inertia_moving = false
 	shake_intensity = 0.0
 	shake_offset = Vector2.ZERO
-
-func set_level_bounds(rect: Rect2):
-	"""Update level bounds at runtime"""
-	level_rect = rect
-	update_camera_limits()
-	apply_bounds()
 
 func get_camera_state() -> Dictionary:
 	"""Get current camera state (for save/load)"""

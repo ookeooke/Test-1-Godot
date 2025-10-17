@@ -13,7 +13,7 @@ func _init():
 	life_damage = 1
 	can_be_blocked = false  # FLYING - can't be blocked!
 	melee_detection_range = 100.0
-	death_shake = "Small"
+	death_shake = "None"
 
 func get_enemy_name() -> String:
 	return "Bat"

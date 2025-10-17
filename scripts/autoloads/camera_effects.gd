@@ -73,8 +73,8 @@ static func victory_sequence(camera: Camera2D) -> void:
 	if camera.has_method("reset_to_center"):
 		camera.reset_to_center()
 
-	# Add shake for celebration
-	large_shake(camera)
+	# Add shake for celebration (disabled - adjust in inspector if needed)
+	# large_shake(camera)
 
 	# Smooth zoom to show entire level
 	await camera.get_tree().create_timer(0.5).timeout
@@ -86,9 +86,9 @@ static func defeat_sequence(camera: Camera2D, base_position: Vector2) -> void:
 	if camera.has_method("snap_to_position"):
 		camera.snap_to_position(base_position, 1.5, 0.3)
 
-	# Massive shake
+	# Massive shake (disabled - adjust in inspector if needed)
 	await camera.get_tree().create_timer(0.3).timeout
-	massive_shake(camera)
+	# massive_shake(camera)
 
 static func boss_intro_sequence(camera: Camera2D, boss: Node2D) -> void:
 	"""Dramatic boss introduction"""
@@ -96,9 +96,9 @@ static func boss_intro_sequence(camera: Camera2D, boss: Node2D) -> void:
 	if camera.has_method("snap_to_object"):
 		camera.snap_to_object(boss, 1.5)
 
-	# Shake
+	# Shake (disabled - adjust in inspector if needed)
 	await camera.get_tree().create_timer(0.5).timeout
-	large_shake(camera)
+	# large_shake(camera)
 
 	# Zoom back out
 	await camera.get_tree().create_timer(1.5).timeout

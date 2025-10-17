@@ -130,8 +130,8 @@ func start_next_wave():
 func wave_completed():
 	print("=== WAVE ", current_wave, " COMPLETED ===")
 
-	# Camera shake for wave complete
-	CameraEffects.large_shake(get_viewport().get_camera_2d())
+	# Camera shake for wave complete (disabled - adjust in inspector if needed)
+	# CameraEffects.large_shake(get_viewport().get_camera_2d())
 
 	# Check if this was the last wave FIRST
 	if current_wave >= waves.size():
@@ -139,8 +139,8 @@ func wave_completed():
 		if wave_label:
 			wave_label.text = "VICTORY!"
 
-		# Victory camera sequence
-		CameraEffects.victory_sequence(get_viewport().get_camera_2d())
+		# Victory camera sequence (shake disabled)
+		# CameraEffects.victory_sequence(get_viewport().get_camera_2d())
 
 		# Show victory screen
 		_show_victory_screen()

@@ -65,9 +65,9 @@ func place_tower(tower_scene: PackedScene):
 	# Disable clicking on this spot now that tower is here
 	ClickManager.set_clickable_enabled(self, false)
 
-	# Camera effects: shake + focus on new tower
+	# Camera effects: focus on new tower (shake disabled)
 	var camera = get_viewport().get_camera_2d()
-	CameraEffects.medium_shake(camera)
+	# CameraEffects.medium_shake(camera)  # Disabled - adjust in inspector if needed
 	CameraEffects.focus_on_tower(camera, tower)
 
 	print("Tower placed successfully!")

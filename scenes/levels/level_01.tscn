@@ -48,10 +48,18 @@ wave_label = NodePath("../UI/TopBar/HBoxContainer/WaveLabel")
 waves = Array[ExtResource("8_e6lid")]([ExtResource("9_3g50r"), ExtResource("10_iu1m7"), ExtResource("11_lswbx"), ExtResource("12_uujh0"), ExtResource("13_3t34l"), ExtResource("14_qy4h0"), ExtResource("15_e5bmj"), ExtResource("16_iqf6e"), ExtResource("17_stkom"), ExtResource("18_5t8rk")])
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(1000, 600)
+position = Vector2(900, 450)
 zoom = Vector2(0.5, 0.5)
+limit_left = 994
+limit_top = 276
+limit_right = 1476
+limit_bottom = 823
+editor_draw_limits = true
 script = ExtResource("2_camera")
+min_zoom = 0.4
+max_zoom = 1.2
 default_zoom = 0.6
+mobile_max_zoom = 1.0
 
 [node name="EnemyPath" type="Path2D" parent="."]
 position = Vector2(5, -2)

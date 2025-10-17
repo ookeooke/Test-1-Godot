@@ -1,11 +1,10 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3 uid="uid://be4yvh4rg7web"]
 
-[ext_resource type="Script" path="res://scripts/resources/wave_data.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/resources/enemy_spawn_data.gd" id="2"]
+[ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="1"]
+[ext_resource type="Script" uid="uid://cmgol7ax0wy0t" path="res://scripts/resources/enemy_spawn_data.gd" id="2"]
 
 [sub_resource type="Resource" id="1"]
 script = ExtResource("2")
-enemy_type = "goblin"
 count = 10
 
 [sub_resource type="Resource" id="2"]
@@ -16,5 +15,5 @@ count = 8
 [resource]
 script = ExtResource("1")
 wave_number = 6
-enemies = Array[Resource("res://scripts/resources/enemy_spawn_data.gd")]([SubResource("1"), SubResource("2")])
+enemies = Array[ExtResource("2")]([SubResource("1"), SubResource("2")])
 wave_name = "Big Mixed Wave"

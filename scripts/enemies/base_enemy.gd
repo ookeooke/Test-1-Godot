@@ -40,7 +40,7 @@ signal enemy_died
 @export var melee_detection_range: float = 100.0
 
 ## Camera shake intensity when enemy dies
-@export_enum("None", "Small", "Medium", "Large") var death_shake: String = "Small"
+@export_enum("None", "Small", "Medium", "Large") var death_shake: String = "None"
 
 # ============================================
 # RUNTIME VARIABLES
