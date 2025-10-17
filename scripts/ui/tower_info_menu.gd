@@ -18,6 +18,8 @@ var upgrade_cost = 150
 @onready var panel = $PanelContainer
 @onready var tower_name_label = $PanelContainer/MarginContainer/VBoxContainer/TowerNameLabel
 @onready var stats_label = $PanelContainer/MarginContainer/VBoxContainer/StatsLabel
+@onready var first_button = $PanelContainer/MarginContainer/VBoxContainer/TargetingButtons/FirstButton
+@onready var strong_button = $PanelContainer/MarginContainer/VBoxContainer/TargetingButtons/StrongButton
 @onready var upgrade_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton
 @onready var sell_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/SellButton
 
@@ -26,9 +28,13 @@ func _ready():
 		upgrade_button.pressed.connect(_on_upgrade_button_pressed)
 	if sell_button:
 		sell_button.pressed.connect(_on_sell_button_pressed)
-	
+	if first_button:
+		first_button.pressed.connect(_on_first_button_pressed)
+	if strong_button:
+		strong_button.pressed.connect(_on_strong_button_pressed)
+
 	update_display()
-	
+
 	# Connect to gold changes
 	GameManager.gold_changed.connect(_on_gold_changed)
 
@@ -44,11 +50,11 @@ func update_display():
 	"""Update the displayed information"""
 	if not tower:
 		return
-	
+
 	# Set tower name
 	if tower_name_label:
 		tower_name_label.text = "Archer Tower"  # TODO: Get from tower
-	
+
 	# Set stats
 	if stats_label and tower:
 		var damage = tower.damage if "damage" in tower else 0
@@ -66,6 +72,7 @@ func update_display():
 
 	# Update button states
 	update_button_states()
+	update_targeting_buttons()
 
 func _on_gold_changed(new_amount):
 	update_button_states()
@@ -89,6 +96,40 @@ func _on_sell_button_pressed():
 	print("Tower sold for ", sell_value, " gold")
 	sell_selected.emit(tower)
 	queue_free()
+
+func update_targeting_buttons():
+	"""Update targeting button states based on tower's current mode"""
+	if not tower or not "targeting_mode" in tower:
+		return
+
+	var mode = tower.targeting_mode
+
+	# Update button colors to show active mode
+	if first_button:
+		if mode == 0:  # FIRST mode
+			first_button.modulate = Color(0.5, 0.8, 1.0)  # Bright cyan
+		else:
+			first_button.modulate = Color(0.6, 0.6, 0.6)  # Gray
+
+	if strong_button:
+		if mode == 1:  # STRONG mode
+			strong_button.modulate = Color(1.0, 0.5, 0.5)  # Bright red
+		else:
+			strong_button.modulate = Color(0.6, 0.6, 0.6)  # Gray
+
+func _on_first_button_pressed():
+	"""Set tower to FIRST targeting mode"""
+	if tower and tower.has_method("set_targeting_mode"):
+		tower.set_targeting_mode(0)  # TargetingMode.FIRST
+		update_targeting_buttons()
+		DebugConfig.log_targeting("Player selected FIRST mode")
+
+func _on_strong_button_pressed():
+	"""Set tower to STRONG targeting mode"""
+	if tower and tower.has_method("set_targeting_mode"):
+		tower.set_targeting_mode(1)  # TargetingMode.STRONG
+		update_targeting_buttons()
+		DebugConfig.log_targeting("Player selected STRONG mode")
 
 func _input(event):
 	"""Close menu when clicking outside"""

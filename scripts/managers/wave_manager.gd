@@ -50,11 +50,8 @@ var victory_screen_scene = preload("res://scenes/ui/victory_screen.tscn")
 
 func _ready():
 	# This runs once when the level starts
-	print("Wave Manager initialized!")
-
 	# Load waves from LevelManager if available
 	if LevelManager.current_level:
-		print("WaveManager: Loading waves from LevelConfig: ", LevelManager.current_level.level_name)
 		waves = LevelManager.current_level.waves.duplicate()
 
 	# Create the spawn timer

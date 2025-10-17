@@ -15,5 +15,8 @@ func _init():
 	melee_detection_range = 100.0
 	death_shake = "None"
 
+	# Hit point for arrows (center/chest of goblin)
+	hit_point_offset = Vector2(0, 0)
+
 func get_enemy_name() -> String:
 	return "Goblin"

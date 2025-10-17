@@ -1,4 +1,3 @@
-@tool
 extends Camera2D
 
 # ============================================
@@ -161,11 +160,6 @@ func _ready():
 	target_zoom = Vector2(default_zoom, default_zoom)
 	zoom = target_zoom
 	base_position = position
-
-	print("✓ Enhanced Camera Controller initialized")
-	print("  Platform: ", Platform.keys()[current_platform])
-	print("  Zoom range: ", min_zoom, " to ", max_zoom)
-	print("  Camera limits: (%d, %d) to (%d, %d)" % [limit_left, limit_top, limit_right, limit_bottom])
 
 func detect_platform() -> void:
 	"""Auto-detect platform for appropriate defaults"""
@@ -371,7 +365,6 @@ func handle_touch_drag(event: InputEventScreenDrag):
 
 func handle_double_tap(tap_position: Vector2) -> void:
 	"""Zoom in/out on double-tap (mobile standard)"""
-	print("📱 Double-tap detected!")
 
 	if is_double_tap_zoomed:
 		# Zoom out

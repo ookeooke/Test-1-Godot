@@ -15,5 +15,8 @@ func _init():
 	melee_detection_range = 100.0
 	death_shake = "None"
 
+	# Hit point for arrows (upper chest of large troll)
+	hit_point_offset = Vector2(0, -15)
+
 func get_enemy_name() -> String:
 	return "Troll Boss"

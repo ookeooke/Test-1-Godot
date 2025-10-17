@@ -42,6 +42,10 @@ signal enemy_died
 ## Camera shake intensity when enemy dies
 @export_enum("None", "Small", "Medium", "Large") var death_shake: String = "None"
 
+## Target spot offset for projectiles (adjustable per enemy type)
+## This is where arrows/projectiles will aim (relative to enemy origin)
+@export var hit_point_offset: Vector2 = Vector2.ZERO
+
 # ============================================
 # RUNTIME VARIABLES
 # ============================================
@@ -50,6 +54,9 @@ var current_health: float
 var is_blocked := false
 var blocking_hero = null
 var attack_timer := 0.0
+var debug_highlight: Polygon2D  # Visual target indicator (F4 debug)
+var hit_point_marker: Marker2D  # Dynamic target spot for projectiles
+var hit_point_visual: Polygon2D  # Visual indicator for hit point in editor
 
 # ============================================
 # REFERENCES
@@ -76,7 +83,68 @@ func _ready():
 	# Initialize health bar
 	_update_health_bar()
 
-	print(get_enemy_name(), " spawned at: ", global_position, " (HP: ", max_health, ", Speed: ", speed, ")")
+	# Create debug highlight circle (F4)
+	debug_highlight = Polygon2D.new()
+	add_child(debug_highlight)
+	debug_highlight.z_index = -1
+
+	# Create circle points
+	var points = []
+	for i in range(32):
+		var angle = (i / 32.0) * TAU
+		points.append(Vector2(cos(angle), sin(angle)) * 30)
+	debug_highlight.polygon = PackedVector2Array(points)
+	debug_highlight.color = Color(1, 0, 0, 0.3)  # Red, transparent
+	debug_highlight.visible = false
+
+	# Setup HitPoint marker system for projectile targeting
+	_setup_hit_point_marker()
+
+# ============================================
+# HIT POINT MARKER SYSTEM
+# ============================================
+
+func _setup_hit_point_marker():
+	"""Create or update the HitPoint marker for projectile targeting"""
+	# Check if HitPoint already exists in scene (from .tscn file)
+	if has_node("HitPoint"):
+		hit_point_marker = get_node("HitPoint")
+	else:
+		# Create new HitPoint marker dynamically
+		hit_point_marker = Marker2D.new()
+		hit_point_marker.name = "HitPoint"
+		add_child(hit_point_marker)
+
+	# Apply the exported offset to the marker
+	hit_point_marker.position = hit_point_offset
+
+	# Create visual indicator (crosshair) for editor - always visible in editor
+	hit_point_visual = Polygon2D.new()
+	hit_point_marker.add_child(hit_point_visual)
+	hit_point_visual.z_index = 100
+
+	# Draw crosshair shape (horizontal and vertical lines)
+	var crosshair_size = 8.0
+	var crosshair_points = PackedVector2Array([
+		Vector2(-crosshair_size, 0), Vector2(crosshair_size, 0),
+		Vector2(0, 0),  # Center point to connect lines
+		Vector2(0, -crosshair_size), Vector2(0, crosshair_size)
+	])
+	hit_point_visual.polygon = crosshair_points
+	hit_point_visual.color = Color(1, 1, 0, 0.8)  # Bright yellow, mostly opaque
+
+	# Add small circle at center
+	var circle_points = []
+	for i in range(16):
+		var angle = (i / 16.0) * TAU
+		circle_points.append(Vector2(cos(angle), sin(angle)) * 3)
+
+	# Create separate circle polygon
+	var circle_visual = Polygon2D.new()
+	hit_point_marker.add_child(circle_visual)
+	circle_visual.polygon = PackedVector2Array(circle_points)
+	circle_visual.color = Color(1, 0.5, 0, 0.6)  # Orange, semi-transparent
+	circle_visual.z_index = 101
 
 # ============================================
 # OPTIONAL: Click callbacks for debugging
@@ -84,7 +152,7 @@ func _ready():
 
 func on_clicked(is_double_click: bool):
 	"""Show enemy info when clicked"""
-	print("📍 Clicked ", get_enemy_name(), " - HP: ", current_health, "/", max_health)
+	pass  # Removed debug message
 
 func on_hover_start():
 	"""Highlight enemy on hover"""
@@ -95,6 +163,11 @@ func on_hover_end():
 	"""Remove highlight"""
 	if has_node("ColorRect"):
 		$ColorRect.modulate = Color(1, 1, 1)
+
+func set_debug_targeted(is_targeted: bool):
+	"""Show/hide debug highlight when tower targets this enemy (F4)"""
+	if debug_highlight:
+		debug_highlight.visible = is_targeted and DebugConfig.visual_debug_enabled
 
 # ============================================
 # MAIN LOOP
@@ -132,7 +205,6 @@ func handle_hero_combat(delta):
 		attack_timer = 0.0
 		if blocking_hero.has_method("take_damage"):
 			blocking_hero.take_damage(melee_damage)
-			print(get_enemy_name(), " attacked hero for ", melee_damage, " damage!")
 
 # ============================================
 # BLOCKING SYSTEM
@@ -141,19 +213,16 @@ func handle_hero_combat(delta):
 func set_blocked_by_hero(hero):
 	"""Called by hero when enemy enters melee range"""
 	if not can_be_blocked:
-		print(get_enemy_name(), " can't be blocked - it's flying!")
 		return
 
 	is_blocked = true
 	blocking_hero = hero
 	attack_timer = 0.0
-	print(get_enemy_name(), " is now blocked by hero!")
 
 func unblock():
 	"""Called when hero dies or moves away"""
 	is_blocked = false
 	blocking_hero = null
-	print(get_enemy_name(), " is no longer blocked!")
 
 # ============================================
 # HEALTH & DEATH
@@ -162,7 +231,6 @@ func unblock():
 func take_damage(amount: float):
 	"""Apply damage to this enemy"""
 	current_health -= amount
-	print(get_enemy_name(), " took ", amount, " damage! HP: ", current_health, "/", max_health)
 
 	# Update health bar
 	_update_health_bar()
@@ -177,8 +245,6 @@ func _update_health_bar():
 
 func die():
 	"""Handle enemy death"""
-	print(get_enemy_name(), " died! +", gold_reward, " gold")
-
 	# Award gold
 	GameManager.add_gold(gold_reward)
 

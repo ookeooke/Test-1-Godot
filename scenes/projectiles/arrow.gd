@@ -32,6 +32,9 @@ var previous_position: Vector2  # For continuous collision detection
 var visual_z_velocity: float = 0.0  # Initial upward velocity
 var visual_gravity: float = 980.0   # Gravity strength (980 = Earth gravity)
 
+# HIT MARKER EFFECT
+var hit_marker_scene = preload("res://scenes/effects/hit_marker.tscn")
+
 # ============================================
 # SETUP
 # ============================================
@@ -227,8 +230,14 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 	# Get the physics space
 	var space_state = get_world_2d().direct_space_state
 
+	# IMPORTANT: Account for collision shape offset!
+	# CollisionShape2D is at position (10, 0) - arrow tip position
+	var collision_offset = Vector2(10, 0)
+	var from_with_offset = from_pos + collision_offset
+	var to_with_offset = to_pos + collision_offset
+
 	# Create a raycast query from previous position to new position
-	var query = PhysicsRayQueryParameters2D.create(from_pos, to_pos)
+	var query = PhysicsRayQueryParameters2D.create(from_with_offset, to_with_offset)
 	query.collision_mask = 1  # Layer 1 = enemies (from base_enemy.gd line 70)
 	query.collide_with_areas = false  # Only check bodies, not areas
 	query.collide_with_bodies = true
@@ -242,14 +251,35 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 
 		# Check if it's an enemy
 		if hit_body.is_in_group("enemy"):
-			print("Arrow raycast hit enemy at distance: ", from_pos.distance_to(result.position))
 			_hit_enemy(hit_body)
 
 func _hit_enemy(enemy):
 	"""Deal damage to enemy"""
+	# Calculate the ACTUAL VISUAL position where arrow appears on screen
+	var visual_offset = Vector2(0, 0)
+
+	# Account for visual arc height (sprite is offset upward during flight)
+	if has_node("ColorRect"):
+		var arrow_sprite = get_node("ColorRect")
+		visual_offset.y = arrow_sprite.position.y  # This is -visual_height (negative = up)
+
+	# Account for collision shape offset (arrow tip is at x=10)
+	var collision_offset = Vector2(10, 0)
+
+	# Final hit position = base position + visual offset + collision offset
+	var hit_position = global_position + visual_offset + collision_offset
+
+	# Spawn red X hit marker at VISUAL impact point (where arrow appears)
+	if hit_marker_scene:
+		var hit_marker = hit_marker_scene.instantiate()
+		get_tree().root.add_child(hit_marker)
+		hit_marker.global_position = hit_position
+
+	# Deal damage to enemy
 	if enemy.has_method("take_damage"):
 		enemy.take_damage(damage)
-		print("Arrow hit enemy for ", damage, " damage!")
+
+	# Destroy arrow
 	queue_free()
 
 # ============================================

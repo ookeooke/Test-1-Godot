@@ -11,10 +11,6 @@ var spawned_heroes = []
 var hero_button = null  # Reference to the UI hero button
 
 func _ready():
-	print("========================================")
-	print("🔥 HERO MANAGER READY")
-	print("========================================")
-
 	# Wait for scene to fully load
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -28,7 +24,6 @@ func _ready():
 
 func connect_existing_heroes():
 	"""Connect to any heroes that already exist in the scene"""
-	print("Connecting to existing heroes...")
 	var heroes = get_tree().get_nodes_in_group("hero")
 
 	for hero in heroes:
@@ -36,18 +31,15 @@ func connect_existing_heroes():
 			if not hero.hero_selected.is_connected(_on_hero_selected):
 				hero.hero_selected.connect(_on_hero_selected)
 				spawned_heroes.append(hero)
-				print("  ✓ Connected to hero: ", hero.name)
 
 	# If no heroes found yet, wait and try again
 	if heroes.is_empty():
-		print("  No heroes found yet, will retry...")
 		await get_tree().create_timer(0.5).timeout
 		connect_existing_heroes()
 	else:
 		# Connect first hero to button
 		if hero_button and not spawned_heroes.is_empty():
 			hero_button.set_hero(spawned_heroes[0])
-			print("  ✓ Connected hero to button")
 
 func connect_hero_button():
 	"""Find and connect to the HeroButton in the UI"""
@@ -58,17 +50,14 @@ func connect_hero_button():
 		var root = get_tree().current_scene
 		if root.has_node("UI/HeroButton"):
 			hero_button = root.get_node("UI/HeroButton")
-			print("  ✓ Found HeroButton by path")
 		else:
-			print("  ⚠ HeroButton not found")
+			print("WARNING: HeroButton not found")
 	else:
 		if ui_layer.has_node("HeroButton"):
 			hero_button = ui_layer.get_node("HeroButton")
-			print("  ✓ Found HeroButton in UI layer")
 
 func _on_hero_selected(hero):
 	"""Called when a hero is clicked and selects itself"""
-	print("🎯 Hero selected via signal: ", hero.name)
 
 	# Deselect all other heroes
 	for h in spawned_heroes:
@@ -100,7 +89,12 @@ func _on_empty_space_clicked(click_position):
 	if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
 		# Command hero to move to clicked position
 		current_hero.move_to_position(click_position)
-		print("✓ Hero moving to: ", click_position)
+
+		# Auto-deselect hero immediately after giving move command
+		current_hero.deselect()
+		current_hero = null
+		if hero_button:
+			hero_button.set_selected(false)
 
 func _input(event):
 	"""Handle deselection with ESC or Right-click"""
@@ -112,7 +106,6 @@ func _input(event):
 			if hero_button:
 				hero_button.set_selected(false)
 			get_viewport().set_input_as_handled()
-			print("Hero deselected (ESC)")
 		return
 
 	# Right-click to deselect
@@ -129,5 +122,4 @@ func _input(event):
 				if hero_button:
 					hero_button.set_selected(false)
 				get_viewport().set_input_as_handled()
-				print("Hero deselected (Right-click)")
 		return

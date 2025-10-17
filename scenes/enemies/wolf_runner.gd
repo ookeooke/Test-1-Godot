@@ -15,5 +15,8 @@ func _init():
 	melee_detection_range = 100.0
 	death_shake = "None"
 
+	# Hit point for arrows (slightly forward/center on wolf)
+	hit_point_offset = Vector2(0, -5)
+
 func get_enemy_name() -> String:
 	return "Wolf"

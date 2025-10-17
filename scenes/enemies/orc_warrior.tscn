@@ -7,10 +7,8 @@
 radius = 20.024984
 
 [node name="OrcWarrior" type="CharacterBody2D" groups=["enemy"]]
-collision_layer = 1
 collision_mask = 0
 script = ExtResource("1_aro76")
-death_shake = "None"
 
 [node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
 offset_left = -25.0
@@ -25,8 +23,8 @@ color = Color(1, 0.00999999, 0.00999999, 1)
 
 [node name="Label" type="Label" parent="ColorRect"]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
+offset_right = 74.0
+offset_bottom = 50.0
 text = "ORC"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

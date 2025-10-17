@@ -37,6 +37,28 @@ Range: 300"
 [node name="HSeparator" type="HSeparator" parent="PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
 
+[node name="TargetingLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Targeting Mode:"
+horizontal_alignment = 1
+
+[node name="TargetingButtons" type="HBoxContainer" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="FirstButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer/TargetingButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "First"
+
+[node name="StrongButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer/TargetingButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Strong"
+
+[node name="HSeparator2" type="HSeparator" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
 

@@ -29,7 +29,7 @@
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
-"points": PackedVector2Array(0, 0, 0, 0, -31, 256, -231.07893, 54.23281, 231.07893, -54.23281, 474, 634, -61.306656, -367.83994, 61.306656, 367.83994, 1081, 212, 0, 0, 0, 0, 1769, 701)
+"points": PackedVector2Array(0, 0, 0, 0, -179, 142, -231.07893, 54.23281, 231.07893, -54.23281, 474, 634, -61.306656, -367.83994, 61.306656, 367.83994, 1081, 212, 0, 0, 0, 0, 1769, 701)
 }
 point_count = 4
 
@@ -50,10 +50,10 @@ waves = Array[ExtResource("8_e6lid")]([ExtResource("9_3g50r"), ExtResource("10_i
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(900, 450)
 zoom = Vector2(0.5, 0.5)
-limit_left = 994
-limit_top = 276
-limit_right = 1476
-limit_bottom = 823
+limit_left = -100
+limit_top = 262
+limit_right = 1067
+limit_bottom = 850
 editor_draw_limits = true
 script = ExtResource("2_camera")
 min_zoom = 0.4

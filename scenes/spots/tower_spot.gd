@@ -9,11 +9,8 @@ var current_tower = null
 @onready var sprite = $Sprite2D
 
 func _ready():
-	print("TOWER SPOT READY: ", name, " at ", global_position)
-	
 	# CHANGED: Register with ClickManager instead of using Area2D
 	ClickManager.register_clickable(self, ClickManager.ClickPriority.TOWER, 50.0)
-	print("✓ Tower spot registered with ClickManager")
 
 # ============================================
 # CLICK CALLBACKS - Called by ClickManager
@@ -21,8 +18,6 @@ func _ready():
 
 func on_clicked(is_double_click: bool):
 	"""Called when this spot is clicked"""
-	print("!!! TOWER SPOT CLICKED: ", name, " !!!")
-	
 	if not has_tower:
 		# Empty spot - open build menu
 		spot_clicked.emit(self)
@@ -30,7 +25,6 @@ func on_clicked(is_double_click: bool):
 		# Tower exists - open tower info
 		# NOTE: This shouldn't be called when tower is here since we disable clicking
 		# The tower itself should handle clicks
-		print("Clicked on existing tower at ", name)
 		tower_clicked.emit(self, current_tower)
 
 func on_hover_start():
@@ -48,14 +42,17 @@ func on_hover_end():
 # ============================================
 
 func place_tower(tower_scene: PackedScene):
-	print("PLACING TOWER at ", name)
 	var tower = tower_scene.instantiate()
-	add_child(tower)
-	tower.global_position = global_position
 
-	# Set parent spot reference on tower
+	# Set parent_spot reference before adding to tree
 	if "parent_spot" in tower:
 		tower.parent_spot = self
+
+	# Add to tree first - this triggers _ready()
+	add_child(tower)
+
+	# Then set position (needs to be in tree for global_position to work)
+	tower.global_position = global_position
 
 	current_tower = tower
 	has_tower = true
@@ -66,11 +63,9 @@ func place_tower(tower_scene: PackedScene):
 	ClickManager.set_clickable_enabled(self, false)
 
 	# Camera effects: focus on new tower (shake disabled)
-	var camera = get_viewport().get_camera_2d()
+	# var camera = get_viewport().get_camera_2d()
 	# CameraEffects.medium_shake(camera)  # Disabled - adjust in inspector if needed
-	CameraEffects.focus_on_tower(camera, tower)
-
-	print("Tower placed successfully!")
+	# CameraEffects.focus_on_tower(camera, tower)  # Disabled - no auto-focus
 
 func remove_tower():
 	"""Called when tower is sold"""

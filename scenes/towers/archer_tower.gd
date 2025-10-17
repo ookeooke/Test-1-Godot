@@ -4,23 +4,32 @@ extends StaticBody2D
 # ARCHER TOWER - Shoots arrows at enemies
 # ============================================
 #
-# TARGETING SYSTEM (Kingdom Rush Style):
-# - Targets the enemy FURTHEST along the path (closest to exit)
-# - Uses path progress_ratio, NOT distance to tower
-# - Once locked onto a target, keeps shooting until it dies or leaves range
-# - Only switches targets when necessary (target persistence)
+# TARGETING SYSTEM:
+# - FIRST mode: Targets enemy furthest along the path (closest to exit)
+# - STRONG mode: Targets enemy with highest current health
+# - Instant target switching (no persistence threshold)
+# - Player can change mode via tower upgrade menu
 # ============================================
+
+# TARGETING MODES
+enum TargetingMode {
+	FIRST,   # Furthest on path (default)
+	STRONG   # Highest current health
+}
 
 # TOWER STATS
 var damage = 15
 var attack_speed = 1.2  # Attacks per second
 var range_radius = 300  # Detection range
+var targeting_mode = TargetingMode.FIRST  # Default targeting mode
 
 # REFERENCES
 var detection_range: Area2D
 var range_indicator: Polygon2D  # Changed from Line2D to Polygon2D for filled circle
 var shoot_timer: Timer
 var archer_weapon: Node2D  # The weapon that rotates toward enemies
+var mode_label: Label  # Visual indicator for targeting mode
+var debug_line: Line2D  # Visual targeting line (F4 debug)
 
 # SELECTION STATE
 var is_selected = false
@@ -69,11 +78,24 @@ func _ready():
 	# Hide range by default (show only when selected)
 	range_indicator.visible = false
 
-	# CHANGED: Register with ClickManager
-	# Wait a frame for parent_spot to be set
-	await get_tree().process_frame
+	# Create mode label for visual feedback
+	mode_label = Label.new()
+	add_child(mode_label)
+	mode_label.position = Vector2(-30, -80)  # Above tower
+	mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	update_mode_label()
+
+	# Create debug line for visual targeting (F4)
+	debug_line = Line2D.new()
+	add_child(debug_line)
+	debug_line.width = 3.0
+	debug_line.default_color = Color.RED
+	debug_line.z_index = 100
+	debug_line.visible = false
+
+	# CHANGED: Register with ClickManager immediately (no await needed)
+	# parent_spot is set by tower_spot.place_tower() before _ready() completes
 	ClickManager.register_clickable(self, ClickManager.ClickPriority.TOWER, 50.0)
-	print("✓ Archer tower registered with ClickManager at: ", global_position)
 
 func _process(delta):
 	# Rotate archer's weapon toward the current target
@@ -82,28 +104,30 @@ func _process(delta):
 			# Make weapon point at enemy
 			archer_weapon.look_at(current_target.global_position)
 
+		# Visual debug: Draw line to current target (F4)
+		if DebugConfig.visual_debug_enabled and debug_line:
+			debug_line.visible = true
+			debug_line.points = [Vector2.ZERO, to_local(current_target.global_position)]
+	else:
+		if debug_line:
+			debug_line.visible = false
+
 # ============================================
 # CLICK CALLBACKS - Called by ClickManager
 # ============================================
 
 func on_clicked(is_double_click: bool):
 	"""Called when tower is clicked"""
-	print("🎯 Tower clicked!")
-	
 	# Find the parent tower spot and emit its signal
 	if parent_spot:
-		print("  Parent spot found: ", parent_spot.name)
-		print("  Emitting tower_clicked signal")
 		parent_spot.tower_clicked.emit(parent_spot, self)
 	else:
 		# Fallback: try to find parent spot by going up the tree
-		print("  WARNING: parent_spot not set, trying to find via parent")
 		var spot = get_parent()
 		if spot and spot.has_signal("tower_clicked"):
-			print("  Found parent spot via get_parent(): ", spot.name)
 			spot.tower_clicked.emit(spot, self)
 		else:
-			print("  ERROR: Could not find parent tower spot!")
+			print("ERROR: Could not find parent tower spot!")
 
 func on_hover_start():
 	"""Called when mouse enters tower area"""
@@ -132,15 +156,10 @@ func _on_enemy_entered_range(body):
 		if body.has_signal("enemy_died") and not body.enemy_died.is_connected(_on_enemy_died):
 			body.enemy_died.connect(_on_enemy_died.bind(body))
 
-		# Debug output
-		var distance = global_position.distance_to(body.global_position)
-		print("  ✓ Enemy entered range: ", body.get_enemy_name() if body.has_method("get_enemy_name") else "Enemy", " (distance: %.1f px)" % distance)
-
 func _on_enemy_exited_range(body):
 	# An enemy left our range
 	if body.is_in_group("enemy"):
 		enemies_in_range.erase(body)
-		print("  ← Enemy left range: ", body.get_enemy_name() if body.has_method("get_enemy_name") else "Unknown")
 
 
 func _on_enemy_died(enemy):
@@ -150,64 +169,56 @@ func _on_enemy_died(enemy):
 
 	# If this was our current target, immediately find new target
 	if current_target == enemy:
-		print("⚠ Current target died! Retargeting immediately...")
-		current_target = get_furthest_enemy()
+		DebugConfig.log_targeting("Target died, retargeting...")
+		current_target = get_target_by_mode()
 
 		# If we found a new target and we're ready to shoot, shoot immediately
 		# This prevents DPS downtime during intense waves
 		if current_target != null and shoot_timer.time_left < 0.1:
 			shoot_at(current_target)
 
-func get_furthest_enemy():
-	"""Find the enemy furthest along the path (Kingdom Rush style)"""
+func get_target_by_mode():
+	"""Get target based on current targeting mode"""
 	# Clean up dead/invalid enemies first
 	enemies_in_range = enemies_in_range.filter(func(e): return is_instance_valid(e))
 
 	if enemies_in_range.is_empty():
 		return null
 
-	# TARGET PERSISTENCE: If we have a current target that's still valid and in range, keep it
-	# BUT check if there's a significantly better target (5%+ further on path)
-	if current_target and is_instance_valid(current_target):
-		if enemies_in_range.has(current_target):
-			# Get current target's progress
-			var current_progress = _get_enemy_progress(current_target)
-			var should_switch = false
+	# Select target based on mode
+	match targeting_mode:
+		TargetingMode.FIRST:
+			return get_first_enemy()
+		TargetingMode.STRONG:
+			return get_strongest_enemy()
 
-			# Check if any enemy is significantly further along the path (5%+ threshold)
-			for enemy in enemies_in_range:
-				var enemy_progress = _get_enemy_progress(enemy)
-				# If new enemy is 5% or more further, we should switch to it
-				if enemy_progress > current_progress + 0.05:
-					should_switch = true
-					print("  ⚡ Better target found! Current: %.1f%%, New: %.1f%%" % [current_progress * 100, enemy_progress * 100])
-					break
+	return null
 
-			if not should_switch:
-				# No significantly better target - stick with current for smooth aiming
-				return current_target
-			# Otherwise fall through and find the furthest enemy
-
-	# Need a new target - find the enemy furthest along the path
+func get_first_enemy():
+	"""Target enemy furthest along the path (instant switching, no threshold)"""
 	var furthest = enemies_in_range[0]
 	var furthest_progress = _get_enemy_progress(furthest)
-	var furthest_distance = global_position.distance_to(furthest.global_position)
 
 	for enemy in enemies_in_range:
 		var progress = _get_enemy_progress(enemy)
-		var distance = global_position.distance_to(enemy.global_position)
-
-		# Primary sort: furthest along path
 		if progress > furthest_progress:
 			furthest = enemy
 			furthest_progress = progress
-			furthest_distance = distance
-		# Secondary sort: if tied on progress, pick closer enemy (tiebreaker)
-		elif progress == furthest_progress and distance < furthest_distance:
-			furthest = enemy
-			furthest_distance = distance
 
 	return furthest
+
+func get_strongest_enemy():
+	"""Target enemy with highest current health"""
+	var strongest = enemies_in_range[0]
+	var highest_health = strongest.current_health if "current_health" in strongest else 0.0
+
+	for enemy in enemies_in_range:
+		var enemy_health = enemy.current_health if "current_health" in enemy else 0.0
+		if enemy_health > highest_health:
+			strongest = enemy
+			highest_health = enemy_health
+
+	return strongest
 
 func _get_enemy_progress(enemy) -> float:
 	"""Get how far along the path an enemy is (0.0 = start, 1.0 = end)"""
@@ -223,22 +234,53 @@ func _get_enemy_progress(enemy) -> float:
 	# (should not happen in normal gameplay)
 	return 0.0
 
+func set_targeting_mode(mode: TargetingMode):
+	"""Change the targeting mode and update visual feedback"""
+	targeting_mode = mode
+	update_mode_label()
+	var mode_name = "FIRST" if mode == TargetingMode.FIRST else "STRONG"
+	DebugConfig.log_targeting("Mode changed to: %s" % mode_name)
+
+func update_mode_label():
+	"""Update the visual label showing current targeting mode"""
+	if not mode_label:
+		return
+
+	match targeting_mode:
+		TargetingMode.FIRST:
+			mode_label.text = "[FIRST]"
+			mode_label.modulate = Color.CYAN
+		TargetingMode.STRONG:
+			mode_label.text = "[STRONG]"
+			mode_label.modulate = Color.RED
+
 # ============================================
 # SHOOTING FUNCTIONS
 # ============================================
 
 func _on_shoot_timer_timeout():
 	# Try to shoot every X seconds
-	# Use Kingdom Rush-style targeting: furthest along path + target persistence
+	# Get target based on current targeting mode
 	var old_target = current_target
-	current_target = get_furthest_enemy()
+	current_target = get_target_by_mode()
 
-	# Debug: Show when tower switches targets
+	# Debug: Show when tower switches targets (F3)
 	if current_target != old_target and current_target != null:
+		var target_name = current_target.get_enemy_name() if current_target.has_method("get_enemy_name") else "Enemy"
+		var mode_name = "FIRST" if targeting_mode == TargetingMode.FIRST else "STRONG"
+
 		if old_target == null:
-			print("Tower acquired target: ", current_target.get_enemy_name() if current_target.has_method("get_enemy_name") else "Enemy")
+			DebugConfig.log_targeting("Tower → %s (%s mode)" % [target_name, mode_name])
 		else:
-			print("Tower switched target to: ", current_target.get_enemy_name() if current_target.has_method("get_enemy_name") else "Enemy")
+			var old_name = old_target.get_enemy_name() if old_target.has_method("get_enemy_name") else "Enemy"
+			DebugConfig.log_targeting("Tower switched → %s (from %s)" % [target_name, old_name])
+
+		# Update enemy highlight (F4)
+		if old_target and is_instance_valid(old_target) and old_target.has_method("set_debug_targeted"):
+			old_target.set_debug_targeted(false)
+
+		if current_target.has_method("set_debug_targeted"):
+			current_target.set_debug_targeted(true)
 
 	if current_target != null:
 		shoot_at(current_target)
@@ -255,8 +297,9 @@ func shoot_at(target):
 		return
 
 	# Double-check: Only shoot if target is actually in range
+	# Add small buffer (10px) to account for physics timing
 	var distance_to_target = global_position.distance_to(target.global_position)
-	if distance_to_target > range_radius:
+	if distance_to_target > range_radius + 10:
 		print("⚠ Target out of range (", distance_to_target, " > ", range_radius, "), skipping shot")
 		# Remove from enemies_in_range since it's unreachable
 		enemies_in_range.erase(target)
@@ -298,13 +341,11 @@ func select_tower():
 	"""Show range indicator when tower is selected"""
 	is_selected = true
 	range_indicator.visible = true
-	print("Tower selected - range indicator shown")
 
 func deselect_tower():
 	"""Hide range indicator when tower is deselected"""
 	is_selected = false
 	range_indicator.visible = false
-	print("Tower deselected - range indicator hidden")
 
 # ============================================
 # CLEANUP
@@ -313,4 +354,3 @@ func deselect_tower():
 func _exit_tree():
 	# Unregister from ClickManager
 	ClickManager.unregister_clickable(self)
-	print("✓ Tower unregistered from ClickManager")
