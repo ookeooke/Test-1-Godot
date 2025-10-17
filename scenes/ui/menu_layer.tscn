@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://menu_layer_canvas"]
 
-[node name="UILayer" type="CanvasLayer"]
+[node name="MenuLayer" type="CanvasLayer"]
 layer = 10
 
 [node name="MenuContainer" type="Control" parent="."]

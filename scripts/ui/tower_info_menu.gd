@@ -22,6 +22,10 @@ var upgrade_cost = 150
 @onready var strong_button = $PanelContainer/MarginContainer/VBoxContainer/TargetingButtons/StrongButton
 @onready var upgrade_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton
 @onready var sell_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/SellButton
+@onready var enemy_list_container = $PanelContainer/MarginContainer/VBoxContainer/EnemyListScroll/EnemyListContainer
+
+# Update timer for enemy list
+var update_timer: Timer
 
 func _ready():
 	if upgrade_button:
@@ -37,6 +41,13 @@ func _ready():
 
 	# Connect to gold changes
 	GameManager.gold_changed.connect(_on_gold_changed)
+
+	# Create update timer for enemy list
+	update_timer = Timer.new()
+	update_timer.wait_time = 0.1  # Update 10 times per second
+	update_timer.timeout.connect(_on_update_timer_timeout)
+	add_child(update_timer)
+	update_timer.start()
 
 func setup(tower_ref, spot_ref):
 	"""Initialize the menu with tower data"""
@@ -73,6 +84,7 @@ func update_display():
 	# Update button states
 	update_button_states()
 	update_targeting_buttons()
+	update_enemy_list()
 
 func _on_gold_changed(new_amount):
 	update_button_states()
@@ -139,3 +151,113 @@ func _input(event):
 				menu_closed.emit()
 				get_viewport().set_input_as_handled()
 				queue_free()
+
+func _on_update_timer_timeout():
+	"""Update enemy list periodically"""
+	update_enemy_list()
+
+func update_enemy_list():
+	"""Update the list of enemies in range"""
+	if not tower or not enemy_list_container:
+		return
+
+	# Clear existing labels
+	for child in enemy_list_container.get_children():
+		child.queue_free()
+
+	# Get enemies in range from tower
+	if not "enemies_in_range" in tower:
+		return
+
+	var enemies = tower.enemies_in_range.duplicate()
+
+	# Filter out invalid/dead enemies
+	enemies = enemies.filter(func(e):
+		return (is_instance_valid(e)
+			and (not e.has_method("is_dead") or not e.is_dead())
+			and ("current_health" not in e or e.current_health > 0.0))
+	)
+
+	if enemies.is_empty():
+		var no_enemies_label = Label.new()
+		no_enemies_label.text = "No enemies in range"
+		no_enemies_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		no_enemies_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		enemy_list_container.add_child(no_enemies_label)
+		return
+
+	# Sort enemies based on targeting mode
+	var targeting_mode = tower.targeting_mode if "targeting_mode" in tower else 0
+
+	if targeting_mode == 0:  # FIRST mode - sort by progress (descending)
+		enemies.sort_custom(func(a, b):
+			return _get_enemy_progress(a) > _get_enemy_progress(b)
+		)
+	else:  # STRONG mode - sort by health (descending)
+		enemies.sort_custom(func(a, b):
+			return _get_enemy_health(a) > _get_enemy_health(b)
+		)
+
+	# Create labels for each enemy
+	var position = 1
+	for enemy in enemies:
+		var enemy_label = Label.new()
+
+		# Get enemy info
+		var enemy_name = enemy.get_enemy_name() if enemy.has_method("get_enemy_name") else "Enemy"
+		var health = _get_enemy_health(enemy)
+		var max_health = enemy.max_health if "max_health" in enemy else health
+		var progress = _get_enemy_progress(enemy)
+		var progress_percent = int(progress * 100)
+
+		# Format: [1st] Goblin (HP: 45/100, 78%)
+		var position_suffix = _get_position_suffix(position)
+		enemy_label.text = "[%d%s] %s (HP: %d/%d, %d%%)" % [
+			position, position_suffix, enemy_name, health, max_health, progress_percent
+		]
+
+		# Set smaller font size
+		enemy_label.add_theme_font_size_override("font_size", 12)
+
+		# Color code by priority (1st is red, others fade)
+		if position == 1:
+			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))  # Red for current target
+		elif position == 2:
+			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))  # Orange
+		else:
+			enemy_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))  # Gray
+
+		enemy_list_container.add_child(enemy_label)
+		position += 1
+
+func _get_position_suffix(pos: int) -> String:
+	"""Get suffix for position (1st, 2nd, 3rd, etc.)"""
+	if pos == 1:
+		return "st"
+	elif pos == 2:
+		return "nd"
+	elif pos == 3:
+		return "rd"
+	else:
+		return "th"
+
+func _get_enemy_progress(enemy) -> float:
+	"""Get enemy's progress along path"""
+	if not enemy or not is_instance_valid(enemy):
+		return 0.0
+
+	var path_follower = enemy.get_parent()
+	if path_follower and path_follower is PathFollow2D:
+		return path_follower.progress_ratio
+
+	return 0.0
+
+func _get_enemy_health(enemy) -> float:
+	"""Get enemy's current health"""
+	if not enemy or not is_instance_valid(enemy):
+		return 0.0
+
+	if "current_health" in enemy:
+		return float(enemy.current_health)
+
+	return 0.0
