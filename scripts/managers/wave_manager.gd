@@ -32,10 +32,14 @@ var wave_break_time = 3.0  # Seconds between waves
 # SPAWN VARIATION SETTINGS (for more interesting movement)
 var spawn_delay_min = 0.3  # Minimum time between spawns
 var spawn_delay_max = 0.8  # Maximum time between spawns
-var position_offset_x = 20.0  # Random X offset range (-20 to +20)
-var position_offset_y = 15.0  # Random Y offset range (-15 to +15)
-var speed_variation_min = 0.85  # Minimum speed multiplier (85% of base speed)
-var speed_variation_max = 1.15  # Maximum speed multiplier (115% of base speed)
+var position_offset_x = 60.0  # Random X offset range (-60 to +60) - increased for more spread
+var position_offset_y = 50.0  # Random Y offset range (-50 to +50) - increased for more spread
+var speed_variation_min = 0.7  # Minimum speed multiplier (70% of base speed) - increased range
+var speed_variation_max = 1.3  # Maximum speed multiplier (130% of base speed) - increased range
+
+# LANE SYSTEM SETTINGS (creates parallel "traffic lanes")
+var lane_offsets = [-40.0, 0.0, 40.0]  # Perpendicular offsets for 3 lanes
+var use_lane_system = true  # Enable/disable lane-based spawning
 
 # TIMERS
 var spawn_timer: Timer
@@ -203,6 +207,12 @@ func spawn_enemy():
 	# Create the enemy
 	var enemy = enemy_scene_to_use.instantiate()
 	path_follower.add_child(enemy)
+
+	# LANE SYSTEM: Assign enemy to a lane (perpendicular offset from path)
+	if use_lane_system:
+		# Pick a random lane and apply h_offset for perpendicular positioning
+		var chosen_lane = lane_offsets[randi() % lane_offsets.size()]
+		path_follower.h_offset = chosen_lane
 
 	# Apply random position offset (makes enemies spread out instead of following in a line)
 	var random_offset = Vector2(
