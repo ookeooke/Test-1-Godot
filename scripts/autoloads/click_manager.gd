@@ -148,8 +148,13 @@ func _input(event):
 	var camera = get_viewport().get_camera_2d()
 	if camera and "is_dragging" in camera and camera.is_dragging:
 		return
-	# skip world clicks if a menu is open
-	if get_tree().root.has_node("BuildMenu") or get_tree().root.has_node("TowerInfoMenu"):
+
+	# Skip world clicks if a menu is open. The menus live under MenuLayer,
+	# not directly under the scene root, so search recursively.
+	# When a menu is open, we want to let the GUI system handle ALL input.
+	var root = get_tree().root
+	if root.find_child("BuildMenu", true, false) or root.find_child("TowerInfoMenu", true, false):
+		# DON'T consume the event - let GUI buttons receive it!
 		return
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

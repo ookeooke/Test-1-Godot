@@ -20,15 +20,16 @@ var mage_cost = 150
 @onready var mage_button = $PanelContainer/MarginContainer/HBoxContainer/MageButton
 
 func _ready():
-	# IMPORTANT: Let clicks pass through to buttons - DON'T intercept at menu level
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# IMPORTANT: Use PASS to participate in GUI system but not consume events
+	# This allows buttons to receive clicks properly
+	mouse_filter = Control.MOUSE_FILTER_PASS
 
 	# Make sure buttons can receive clicks
 	archer_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	mage_button.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	# Panel should STOP clicks (creates click boundary)
-	$PanelContainer.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Panel should also PASS to allow buttons inside to work
+	$PanelContainer.mouse_filter = Control.MOUSE_FILTER_PASS
 
 	# Connect button signals
 	archer_button.pressed.connect(_on_archer_button_pressed)

@@ -7,7 +7,8 @@ extends StaticBody2D
 # TARGETING SYSTEM:
 # - FIRST mode: Targets enemy furthest along the path (closest to exit)
 # - STRONG mode: Targets enemy with highest current health
-# - Instant target switching (no persistence threshold)
+# - Focus stickiness prevents rapid target swapping
+# - Deterministic tie-breaking for consistent behavior
 # - Player can change mode via tower upgrade menu
 # ============================================
 
@@ -22,6 +23,15 @@ var damage = 15
 var attack_speed = 1.2  # Attacks per second
 var range_radius = 300  # Detection range
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
+
+# TARGET SELECTION TUNING
+const PROGRESS_EPSILON := 0.01
+const PROGRESS_SWITCH_THRESHOLD := 0.05
+const HEALTH_EPSILON := 1.0
+const HEALTH_SWITCH_THRESHOLD := 25.0
+const MIN_TARGET_LOCK_TIME := 0.25
+
+var last_target_change_time_msec := 0
 
 # REFERENCES
 var detection_range: Area2D
@@ -97,6 +107,8 @@ func _ready():
 	# parent_spot is set by tower_spot.place_tower() before _ready() completes
 	ClickManager.register_clickable(self, ClickManager.ClickPriority.TOWER, 50.0)
 
+	last_target_change_time_msec = Time.get_ticks_msec()
+
 func _process(delta):
 	# Rotate archer's weapon toward the current target
 	if current_target and is_instance_valid(current_target):
@@ -161,6 +173,12 @@ func _on_enemy_exited_range(body):
 	if body.is_in_group("enemy"):
 		enemies_in_range.erase(body)
 
+		if current_target == body:
+			if body.has_method("set_debug_targeted"):
+				body.set_debug_targeted(false)
+			current_target = null
+			_record_target_change_time()
+
 
 func _on_enemy_died(enemy):
 	"""Called when an enemy dies - remove immediately and retarget"""
@@ -170,7 +188,10 @@ func _on_enemy_died(enemy):
 	# If this was our current target, immediately find new target
 	if current_target == enemy:
 		DebugConfig.log_targeting("Target died, retargeting...")
+		if enemy.has_method("set_debug_targeted"):
+			enemy.set_debug_targeted(false)
 		current_target = get_target_by_mode()
+		_record_target_change_time()
 
 		# If we found a new target and we're ready to shoot, shoot immediately
 		# This prevents DPS downtime during intense waves
@@ -180,7 +201,11 @@ func _on_enemy_died(enemy):
 func get_target_by_mode():
 	"""Get target based on current targeting mode"""
 	# Clean up dead/invalid enemies first
-	enemies_in_range = enemies_in_range.filter(func(e): return is_instance_valid(e))
+	enemies_in_range = enemies_in_range.filter(func(e):
+		return (is_instance_valid(e)
+			and (not e.has_method("is_dead") or not e.is_dead())
+			and ("current_health" not in e or e.current_health > 0.0))
+	)
 
 	if enemies_in_range.is_empty():
 		return null
@@ -195,28 +220,44 @@ func get_target_by_mode():
 	return null
 
 func get_first_enemy():
-	"""Target enemy furthest along the path (instant switching, no threshold)"""
+	"""Target enemy furthest along the path with deterministic tie-breaking"""
 	var furthest = enemies_in_range[0]
 	var furthest_progress = _get_enemy_progress(furthest)
+	var furthest_offset = _get_enemy_path_offset(furthest)
 
 	for enemy in enemies_in_range:
 		var progress = _get_enemy_progress(enemy)
-		if progress > furthest_progress:
+		if progress > furthest_progress + PROGRESS_EPSILON:
 			furthest = enemy
 			furthest_progress = progress
+			furthest_offset = _get_enemy_path_offset(enemy)
+		elif abs(progress - furthest_progress) <= PROGRESS_EPSILON:
+			var offset = _get_enemy_path_offset(enemy)
+			if offset > furthest_offset:
+				furthest = enemy
+				furthest_progress = progress
+				furthest_offset = offset
 
 	return furthest
 
 func get_strongest_enemy():
 	"""Target enemy with highest current health"""
 	var strongest = enemies_in_range[0]
-	var highest_health = strongest.current_health if "current_health" in strongest else 0.0
+	var highest_health = _get_enemy_health(strongest)
+	var furthest_progress = _get_enemy_progress(strongest)
 
 	for enemy in enemies_in_range:
-		var enemy_health = enemy.current_health if "current_health" in enemy else 0.0
-		if enemy_health > highest_health:
+		var enemy_health = _get_enemy_health(enemy)
+		if enemy_health > highest_health + HEALTH_EPSILON:
 			strongest = enemy
 			highest_health = enemy_health
+			furthest_progress = _get_enemy_progress(enemy)
+		elif abs(enemy_health - highest_health) <= HEALTH_EPSILON:
+			var progress = _get_enemy_progress(enemy)
+			if progress > furthest_progress + PROGRESS_EPSILON:
+				strongest = enemy
+				highest_health = enemy_health
+				furthest_progress = progress
 
 	return strongest
 
@@ -233,6 +274,63 @@ func _get_enemy_progress(enemy) -> float:
 	# Fallback: if no path follower found, use distance as approximation
 	# (should not happen in normal gameplay)
 	return 0.0
+
+func _get_enemy_path_offset(enemy) -> float:
+	if not enemy or not is_instance_valid(enemy):
+		return 0.0
+
+	var path_follower = enemy.get_parent()
+	if path_follower and path_follower is PathFollow2D:
+		return path_follower.progress
+
+	return 0.0
+
+func _get_enemy_health(enemy) -> float:
+	if not enemy or not is_instance_valid(enemy):
+		return 0.0
+
+	if "current_health" in enemy:
+		return float(enemy.current_health)
+
+	return 0.0
+
+func _pick_target_with_stickiness(old_target, candidate_target):
+	if candidate_target == null:
+		if old_target != null:
+			_record_target_change_time()
+		return null
+
+	if old_target == candidate_target:
+		return candidate_target
+
+	var now_msec = Time.get_ticks_msec()
+	var elapsed = (now_msec - last_target_change_time_msec) / 1000.0
+
+	var old_valid = old_target != null and is_instance_valid(old_target) and enemies_in_range.has(old_target)
+
+	if old_valid:
+		if elapsed < MIN_TARGET_LOCK_TIME:
+			return old_target
+
+		match targeting_mode:
+			TargetingMode.FIRST:
+				var old_progress = _get_enemy_progress(old_target)
+				var new_progress = _get_enemy_progress(candidate_target)
+				if new_progress < old_progress + PROGRESS_SWITCH_THRESHOLD:
+					return old_target
+			TargetingMode.STRONG:
+				var old_health = _get_enemy_health(old_target)
+				var new_health = _get_enemy_health(candidate_target)
+				if new_health <= old_health + HEALTH_SWITCH_THRESHOLD:
+					return old_target
+
+	if old_target != candidate_target:
+		_record_target_change_time(now_msec)
+
+	return candidate_target
+
+func _record_target_change_time(now_msec := -1):
+	last_target_change_time_msec = now_msec if now_msec >= 0 else Time.get_ticks_msec()
 
 func set_targeting_mode(mode: TargetingMode):
 	"""Change the targeting mode and update visual feedback"""
@@ -262,7 +360,8 @@ func _on_shoot_timer_timeout():
 	# Try to shoot every X seconds
 	# Get target based on current targeting mode
 	var old_target = current_target
-	current_target = get_target_by_mode()
+	var candidate_target = get_target_by_mode()
+	current_target = _pick_target_with_stickiness(old_target, candidate_target)
 
 	# Debug: Show when tower switches targets (F3)
 	if current_target != old_target and current_target != null:
@@ -281,6 +380,8 @@ func _on_shoot_timer_timeout():
 
 		if current_target.has_method("set_debug_targeted"):
 			current_target.set_debug_targeted(true)
+	elif current_target == null and old_target != null and old_target.has_method("set_debug_targeted"):
+		old_target.set_debug_targeted(false)
 
 	if current_target != null:
 		shoot_at(current_target)
@@ -303,7 +404,10 @@ func shoot_at(target):
 		print("⚠ Target out of range (", distance_to_target, " > ", range_radius, "), skipping shot")
 		# Remove from enemies_in_range since it's unreachable
 		enemies_in_range.erase(target)
+		if target.has_method("set_debug_targeted"):
+			target.set_debug_targeted(false)
 		current_target = null
+		_record_target_change_time()
 		return
 
 	# Create projectile
