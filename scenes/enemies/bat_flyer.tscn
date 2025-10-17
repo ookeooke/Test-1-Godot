@@ -19,8 +19,10 @@ offset_right = 22.0
 offset_bottom = -22.0
 
 [node name="ColorRect" type="ColorRect" parent="."]
-offset_right = 36.0
-offset_bottom = 36.0
+offset_left = -18.0
+offset_top = -18.0
+offset_right = 18.0
+offset_bottom = 18.0
 color = Color(0.2, 0.1, 0.3, 1)
 
 [node name="Label" type="Label" parent="ColorRect"]
@@ -33,8 +35,6 @@ FLY"
 horizontal_alignment = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(18, 18)
 shape = SubResource("CircleShape2D_bat")
 
 [node name="HitPoint" type="Marker2D" parent="."]
-position = Vector2(18, 18)

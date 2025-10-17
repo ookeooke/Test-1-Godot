@@ -7,6 +7,7 @@
 radius = 20.024984
 
 [node name="OrcWarrior" type="CharacterBody2D" groups=["enemy"]]
+collision_layer = 1
 collision_mask = 0
 script = ExtResource("1_aro76")
 
@@ -17,8 +18,10 @@ offset_right = 25.0
 offset_bottom = -24.0
 
 [node name="ColorRect" type="ColorRect" parent="."]
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
 color = Color(1, 0.00999999, 0.00999999, 1)
 
 [node name="Label" type="Label" parent="ColorRect"]
@@ -28,8 +31,6 @@ offset_bottom = 50.0
 text = "ORC"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(20, 20)
 shape = SubResource("CircleShape2D_uvyif")
 
 [node name="HitPoint" type="Marker2D" parent="."]
-position = Vector2(20, 20)
