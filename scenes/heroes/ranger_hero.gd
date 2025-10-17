@@ -286,16 +286,24 @@ func clean_enemy_lists():
 func get_closest_ranged_enemy():
 	if enemies_in_ranged_range.is_empty():
 		return null
-	
+
+	# TARGET PERSISTENCE: If current target still valid and in range, keep it
+	if current_ranged_target and is_instance_valid(current_ranged_target):
+		if enemies_in_ranged_range.has(current_ranged_target):
+			# Don't keep melee-range enemies as ranged targets
+			if not enemies_in_melee_range.has(current_ranged_target):
+				return current_ranged_target
+
+	# Need new target - find closest
 	var closest = enemies_in_ranged_range[0]
 	var closest_dist = global_position.distance_to(closest.global_position)
-	
+
 	for enemy in enemies_in_ranged_range:
 		var dist = global_position.distance_to(enemy.global_position)
 		if dist < closest_dist:
 			closest = enemy
 			closest_dist = dist
-	
+
 	return closest
 
 func get_melee_targets() -> Array:
@@ -322,16 +330,21 @@ func _on_ranged_timer_timeout():
 		shoot_arrow()
 
 func shoot_arrow():
+	# Debug: Check if arrow scene is assigned
 	if arrow_scene == null:
+		print("⚠️ Hero CANNOT SHOOT: arrow_scene is null! Check Inspector settings.")
 		return
-	
+
 	current_ranged_target = get_closest_ranged_enemy()
 	if current_ranged_target == null or not is_instance_valid(current_ranged_target):
+		print("⚠️ Hero: No valid ranged target found")
 		return
-	
+
+	# Don't shoot melee targets (they should be blocked)
 	if enemies_in_melee_range.has(current_ranged_target):
 		return
-	
+
+	print("🏹 Hero shooting arrow at: ", current_ranged_target.get_enemy_name() if current_ranged_target.has_method("get_enemy_name") else "Enemy")
 	var arrow = arrow_scene.instantiate()
 	get_tree().root.add_child(arrow)
 	arrow.global_position = global_position

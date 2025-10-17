@@ -7,6 +7,7 @@
 radius = 25.079872
 
 [node name="GoblinScout" type="CharacterBody2D" groups=["enemy"]]
+collision_layer = 1
 collision_mask = 0
 script = ExtResource("1_gndxd")
 death_shake = "None"

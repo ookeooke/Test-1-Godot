@@ -124,12 +124,39 @@ func on_hover_end():
 func _on_enemy_entered_range(body):
 	# An enemy entered our range
 	if body.is_in_group("enemy"):
+		# Add enemy to tracking list
+		# Note: We trust Godot's physics - if collision shapes overlapped, enemy is in range
 		enemies_in_range.append(body)
+
+		# Connect to enemy death signal for immediate cleanup
+		if body.has_signal("enemy_died") and not body.enemy_died.is_connected(_on_enemy_died):
+			body.enemy_died.connect(_on_enemy_died.bind(body))
+
+		# Debug output
+		var distance = global_position.distance_to(body.global_position)
+		print("  ✓ Enemy entered range: ", body.get_enemy_name() if body.has_method("get_enemy_name") else "Enemy", " (distance: %.1f px)" % distance)
 
 func _on_enemy_exited_range(body):
 	# An enemy left our range
 	if body.is_in_group("enemy"):
 		enemies_in_range.erase(body)
+		print("  ← Enemy left range: ", body.get_enemy_name() if body.has_method("get_enemy_name") else "Unknown")
+
+
+func _on_enemy_died(enemy):
+	"""Called when an enemy dies - remove immediately and retarget"""
+	# Remove from tracking list
+	enemies_in_range.erase(enemy)
+
+	# If this was our current target, immediately find new target
+	if current_target == enemy:
+		print("⚠ Current target died! Retargeting immediately...")
+		current_target = get_furthest_enemy()
+
+		# If we found a new target and we're ready to shoot, shoot immediately
+		# This prevents DPS downtime during intense waves
+		if current_target != null and shoot_timer.time_left < 0.1:
+			shoot_at(current_target)
 
 func get_furthest_enemy():
 	"""Find the enemy furthest along the path (Kingdom Rush style)"""
@@ -140,20 +167,45 @@ func get_furthest_enemy():
 		return null
 
 	# TARGET PERSISTENCE: If we have a current target that's still valid and in range, keep it
+	# BUT check if there's a significantly better target (5%+ further on path)
 	if current_target and is_instance_valid(current_target):
 		if enemies_in_range.has(current_target):
-			# Current target is still valid and in range - stick with it!
-			return current_target
+			# Get current target's progress
+			var current_progress = _get_enemy_progress(current_target)
+			var should_switch = false
+
+			# Check if any enemy is significantly further along the path (5%+ threshold)
+			for enemy in enemies_in_range:
+				var enemy_progress = _get_enemy_progress(enemy)
+				# If new enemy is 5% or more further, we should switch to it
+				if enemy_progress > current_progress + 0.05:
+					should_switch = true
+					print("  ⚡ Better target found! Current: %.1f%%, New: %.1f%%" % [current_progress * 100, enemy_progress * 100])
+					break
+
+			if not should_switch:
+				# No significantly better target - stick with current for smooth aiming
+				return current_target
+			# Otherwise fall through and find the furthest enemy
 
 	# Need a new target - find the enemy furthest along the path
 	var furthest = enemies_in_range[0]
 	var furthest_progress = _get_enemy_progress(furthest)
+	var furthest_distance = global_position.distance_to(furthest.global_position)
 
 	for enemy in enemies_in_range:
 		var progress = _get_enemy_progress(enemy)
+		var distance = global_position.distance_to(enemy.global_position)
+
+		# Primary sort: furthest along path
 		if progress > furthest_progress:
 			furthest = enemy
 			furthest_progress = progress
+			furthest_distance = distance
+		# Secondary sort: if tied on progress, pick closer enemy (tiebreaker)
+		elif progress == furthest_progress and distance < furthest_distance:
+			furthest = enemy
+			furthest_distance = distance
 
 	return furthest
 
@@ -196,10 +248,19 @@ func shoot_at(target):
 		print("ERROR: No projectile scene assigned!")
 		return
 
+	# Validate target is alive
+	if not is_instance_valid(target):
+		print("⚠ Target is dead/invalid, aborting shot")
+		current_target = null
+		return
+
 	# Double-check: Only shoot if target is actually in range
 	var distance_to_target = global_position.distance_to(target.global_position)
 	if distance_to_target > range_radius:
 		print("⚠ Target out of range (", distance_to_target, " > ", range_radius, "), skipping shot")
+		# Remove from enemies_in_range since it's unreachable
+		enemies_in_range.erase(target)
+		current_target = null
 		return
 
 	# Create projectile

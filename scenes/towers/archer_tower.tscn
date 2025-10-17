@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://coirid61w00ks" path="res://scenes/projectiles/arrow.tscn" id="2_10wjk"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_cbvk8"]
+radius = 300.0
 
 [node name="ArcherTower" type="StaticBody2D" groups=["tower"]]
 script = ExtResource("1_6gcww")
@@ -54,9 +55,9 @@ color = Color(0.4, 0.25, 0.1, 1)
 
 [node name="DetectionRange" type="Area2D" parent="."]
 collision_layer = 8
+collision_mask = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionRange"]
-scale = Vector2(300, 300)
 shape = SubResource("CircleShape2D_cbvk8")
 
 [node name="RangeIndicator" type="Polygon2D" parent="."]
