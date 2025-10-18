@@ -20,8 +20,7 @@ signal level_chosen(level_data: LevelNodeData, difficulty: String)
 @onready var back_button: Button = $UILayer/TopBar/BackButton
 @onready var progress_label: Label = $UILayer/TopBar/ProgressLabel
 
-var level_node_scene: PackedScene = preload("res://scenes/ui/level_node_2d.tscn")
-var level_nodes: Array[LevelNode2D] = []
+var level_buttons: Array[Button] = []
 
 # Difficulty selection
 var selected_level_data: LevelNodeData = null
@@ -39,24 +38,31 @@ func _ready():
 	_draw_paths()
 
 func _setup_level_nodes():
-	# Clear existing nodes
-	for node in level_nodes:
-		node.queue_free()
-	level_nodes.clear()
+	# Clear existing buttons
+	for button in level_buttons:
+		button.queue_free()
+	level_buttons.clear()
 
-	# Create level nodes from data
+	# Create simple buttons for each level
 	for level_data in level_nodes_data:
-		var level_node = level_node_scene.instantiate() as LevelNode2D
-		level_node.level_data = level_data
-		level_node.position = level_data.position
-		level_node.level_selected.connect(_on_level_node_selected)
+		# Create a simple Button control
+		var button = Button.new()
+		button.text = level_data.level_name
+		button.custom_minimum_size = Vector2(150, 50)
+		button.position = level_data.position
 
-		level_nodes_container.add_child(level_node)
-		level_nodes.append(level_node)
+		# Check if level is unlocked
+		var is_unlocked = _check_unlock_status(level_data)
+		button.disabled = not is_unlocked
 
-	# Update all node displays
-	for node in level_nodes:
-		node.update_display()
+		# Connect the pressed signal
+		button.pressed.connect(_on_level_button_pressed.bind(level_data))
+
+		# Add to scene
+		level_nodes_container.add_child(button)
+		level_buttons.append(button)
+
+		print("Created button for ", level_data.level_name, " at ", level_data.position, " | Unlocked: ", is_unlocked)
 
 func _draw_paths():
 	if not paths_layer:
@@ -108,13 +114,9 @@ func _draw_path_between_levels(from_level: LevelNodeData, to_level: LevelNodeDat
 	path_line.points = points
 	paths_layer.add_child(path_line)
 
-func _on_level_node_selected(level_data: LevelNodeData):
-	print("WorldMapSelect: Level selected: ", level_data.level_name)
-
+func _on_level_button_pressed(level_data: LevelNodeData):
+	print("WorldMapSelect: Button pressed for level: ", level_data.level_name)
 	selected_level_data = level_data
-
-	# For now, skip difficulty selector and start level directly
-	# TODO: Re-enable difficulty selector later
 	_start_level(level_data, level_data.recommended_difficulty)
 
 	# Show difficulty selector if multiple difficulties available
@@ -202,6 +204,24 @@ func _on_back_pressed():
 # Public method to refresh display (call after completing a level)
 func refresh_display():
 	_update_progress_display()
-	for node in level_nodes:
-		node.update_display()
+	_setup_level_nodes()
 	_draw_paths()
+
+func _check_unlock_status(level_data: LevelNodeData) -> bool:
+	if not level_data:
+		return false
+
+	# First level is always unlocked
+	if level_data.required_level_id.is_empty():
+		return true
+
+	# Check if required level is completed
+	if not SaveManager.is_level_completed(level_data.required_level_id):
+		return false
+
+	# Check star requirements
+	if level_data.required_stars > 0:
+		var total_stars = SaveManager.get_level_stars(level_data.required_level_id)
+		return total_stars >= level_data.required_stars
+
+	return true

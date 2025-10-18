@@ -25,7 +25,6 @@ color = Color(0.4, 0.3, 0.2, 1)
 
 [node name="ButtonArea" type="Area2D" parent="."]
 input_pickable = true
-collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ButtonArea"]
 shape = SubResource("CircleShape2D_1")

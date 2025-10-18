@@ -33,8 +33,11 @@ func _ready():
 		button_area.input_event.connect(_on_area_input_event)
 		button_area.mouse_entered.connect(_on_mouse_entered)
 		button_area.mouse_exited.connect(_on_mouse_exited)
-		print("✅ LevelNode2D: Signals connected for button_area | input_pickable: ", button_area.input_pickable)
-		print("   🎯 POSITION DEBUG: global_position will be set later in update_display()")
+		print("✅ LevelNode2D: Signals connected | input_pickable: ", button_area.input_pickable, " | collision_layer: ", button_area.collision_layer, " | collision_mask: ", button_area.collision_mask)
+		if collision_shape:
+			print("   CollisionShape2D exists | disabled: ", collision_shape.disabled, " | shape: ", collision_shape.shape)
+		else:
+			print("   ❌ CollisionShape2D is NULL!")
 	else:
 		print("❌ LevelNode2D: button_area is NULL!")
 
@@ -211,6 +214,7 @@ func _on_clicked():
 		print("LevelNode2D: Cannot emit signal - unlocked: ", is_unlocked, " level_data: ", level_data != null)
 
 func _on_mouse_entered():
+	print("🖱️ MOUSE ENTERED: ", level_data.level_name if level_data else "NO DATA")
 	is_hovered = true
 	if is_unlocked and button_sprite:
 		# Scale up on hover
@@ -218,6 +222,7 @@ func _on_mouse_entered():
 		tween.tween_property(button_sprite, "scale", Vector2(1.1, 1.1), 0.2)
 
 func _on_mouse_exited():
+	print("🖱️ MOUSE EXITED: ", level_data.level_name if level_data else "NO DATA")
 	is_hovered = false
 	is_pressed = false
 	if button_sprite:
