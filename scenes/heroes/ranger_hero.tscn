@@ -27,12 +27,14 @@ offset_left = -25.0
 offset_top = -25.0
 offset_right = 25.0
 offset_bottom = 25.0
+mouse_filter = 2
 color = Color(0.039215688, 0.07058824, 1, 1)
 
 [node name="Label" type="Label" parent="Sprite2D"]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
+mouse_filter = 2
 text = "RANGER"
 horizontal_alignment = 1
 
