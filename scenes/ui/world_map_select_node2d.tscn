@@ -20,14 +20,9 @@ position = Vector2(960, 540)
 zoom = Vector2(0.8, 0.8)
 limit_smoothed = true
 position_smoothing_enabled = true
-drag_horizontal_enabled = true
-drag_vertical_enabled = true
-drag_left_margin = 0.2
-drag_top_margin = 0.2
-drag_right_margin = 0.2
-drag_bottom_margin = 0.2
 
 [node name="UILayer" type="CanvasLayer" parent="."]
+follow_viewport_enabled = false
 
 [node name="TopBar" type="HBoxContainer" parent="UILayer"]
 anchors_preset = 10

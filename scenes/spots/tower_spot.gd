@@ -7,16 +7,27 @@ var has_tower = false
 var current_tower = null
 
 @onready var sprite = $Sprite2D
+@onready var click_area: Area2D = $ClickArea
 
 func _ready():
-	# CHANGED: Register with ClickManager instead of using Area2D
-	ClickManager.register_clickable(self, ClickManager.ClickPriority.TOWER, 50.0)
+	# Setup click detection with Area2D
+	if click_area:
+		click_area.input_pickable = true
+		click_area.input_event.connect(_on_area_input_event)
+		click_area.mouse_entered.connect(_on_mouse_entered)
+		click_area.mouse_exited.connect(_on_mouse_exited)
 
 # ============================================
-# CLICK CALLBACKS - Called by ClickManager
+# CLICK HANDLING - Using Area2D
 # ============================================
 
-func on_clicked(is_double_click: bool):
+func _on_area_input_event(_viewport, event, _shape_idx):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_on_clicked()
+			get_viewport().set_input_as_handled()
+
+func _on_clicked():
 	"""Called when this spot is clicked"""
 	if not has_tower:
 		# Empty spot - open build menu
@@ -27,12 +38,12 @@ func on_clicked(is_double_click: bool):
 		# The tower itself should handle clicks
 		tower_clicked.emit(self, current_tower)
 
-func on_hover_start():
+func _on_mouse_entered():
 	"""Called when mouse enters spot area"""
 	if not has_tower:
 		sprite.modulate = Color(1.2, 1.2, 1.2)
 
-func on_hover_end():
+func _on_mouse_exited():
 	"""Called when mouse leaves spot area"""
 	if not has_tower:
 		sprite.modulate = Color(1, 1, 1)
@@ -60,7 +71,8 @@ func place_tower(tower_scene: PackedScene):
 	sprite.visible = false
 
 	# Disable clicking on this spot now that tower is here
-	ClickManager.set_clickable_enabled(self, false)
+	if click_area:
+		click_area.input_pickable = false
 
 	# Camera effects: focus on new tower (shake disabled)
 	# var camera = get_viewport().get_camera_2d()
@@ -75,16 +87,10 @@ func remove_tower():
 	has_tower = false
 	current_tower = null
 	sprite.visible = true
-	
+
 	# Re-enable clicking on this spot
-	ClickManager.set_clickable_enabled(self, true)
+	if click_area:
+		click_area.input_pickable = true
 
 func get_position_for_menu() -> Vector2:
 	return global_position + Vector2(0, -100)
-
-# ============================================
-# CLEANUP
-# ============================================
-
-func _exit_tree():
-	ClickManager.unregister_clickable(self)

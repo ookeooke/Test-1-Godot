@@ -22,6 +22,7 @@ extends StaticBody2D
 @export var soldier_attack_speed: float = 1.0
 
 # REFERENCES
+var click_area: Area2D  # For clicking the tower
 var rally_flag: Node2D  # Visual marker for rally point
 var flag_sprite: Polygon2D  # Flag visual
 
@@ -44,8 +45,13 @@ var is_placing_rally = false  # True when player clicked "Rally" button in UI
 # ============================================
 
 func _ready():
-	# Register with ClickManager
-	ClickManager.register_clickable(self, ClickManager.ClickPriority.TOWER, 50.0)
+	# Setup click detection (if ClickArea node exists in scene)
+	if has_node("ClickArea"):
+		click_area = $ClickArea
+		click_area.input_pickable = true
+		click_area.input_event.connect(_on_area_input_event)
+		click_area.mouse_entered.connect(_on_mouse_entered)
+		click_area.mouse_exited.connect(_on_mouse_exited)
 
 	# Initialize rally position
 	rally_position = global_position + rally_flag_default_offset
@@ -62,10 +68,16 @@ func _process(delta):
 	_update_respawn_queue(delta)
 
 # ============================================
-# CLICK CALLBACKS - Called by ClickManager
+# CLICK HANDLING - Using Area2D
 # ============================================
 
-func on_clicked(is_double_click: bool):
+func _on_area_input_event(_viewport, event, _shape_idx):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_on_clicked()
+			get_viewport().set_input_as_handled()
+
+func _on_clicked():
 	"""Called when tower is clicked"""
 	if parent_spot:
 		parent_spot.tower_clicked.emit(parent_spot, self)
@@ -75,12 +87,12 @@ func on_clicked(is_double_click: bool):
 		if spot and spot.has_signal("tower_clicked"):
 			spot.tower_clicked.emit(spot, self)
 
-func on_hover_start():
+func _on_mouse_entered():
 	"""Called when mouse enters tower area"""
 	if has_node("TowerVisual"):
 		$TowerVisual.modulate = Color(1.3, 1.3, 1.3)
 
-func on_hover_end():
+func _on_mouse_exited():
 	"""Called when mouse leaves tower area"""
 	if has_node("TowerVisual"):
 		$TowerVisual.modulate = Color(1, 1, 1)
@@ -259,9 +271,6 @@ func _input(event):
 # ============================================
 
 func _exit_tree():
-	# Unregister from ClickManager
-	ClickManager.unregister_clickable(self)
-
 	# Clean up soldiers
 	for soldier in active_soldiers:
 		if is_instance_valid(soldier):

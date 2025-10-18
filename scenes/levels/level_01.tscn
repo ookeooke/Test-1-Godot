@@ -106,6 +106,16 @@ text = "Wave 1"
 horizontal_alignment = 2
 vertical_alignment = 1
 
+[node name="Spacer3" type="Control" parent="UI/TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="SpeedButton" type="Button" parent="UI/TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(80, 40)
+layout_mode = 2
+text = "1x"
+flat = false
+
 [node name="HeroButton" parent="UI" instance=ExtResource("10_herobutton")]
 layout_mode = 3
 anchors_preset = 2

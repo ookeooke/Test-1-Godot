@@ -222,7 +222,8 @@ func _update_homing_movement(delta):
 	global_position = new_position
 
 func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
-	"""Check for enemy collisions along the movement path using raycast"""
+	"""Check for enemy collisions along the movement path using raycast
+	IMPORTANT: Raycast follows the visual arc, not just ground-level movement"""
 	# Skip if we haven't moved
 	if from_pos.distance_to(to_pos) < 0.1:
 		return
@@ -236,9 +237,16 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 	var local_offset = Vector2(10, 0)  # Tip offset in arrow's local space
 	var rotated_offset = local_offset.rotated(rotation)  # Transform to world space
 
-	# Apply the rotated offset to both raycast positions
-	var from_with_offset = from_pos + rotated_offset
-	var to_with_offset = to_pos + rotated_offset
+	# NEW: Calculate visual height offset at previous and current frame
+	# This makes the raycast follow the visual arc instead of ground level!
+	var delta = get_physics_process_delta_time()
+	var visual_offset_from = _get_visual_offset_at_time(travel_time - delta)
+	var visual_offset_to = _get_visual_offset_at_time(travel_time)
+
+	# Apply BOTH the rotated tip offset AND the visual height offset
+	# This ensures collision detection matches where the arrow sprite actually appears
+	var from_with_offset = from_pos + rotated_offset + visual_offset_from
+	var to_with_offset = to_pos + rotated_offset + visual_offset_to
 
 	# Create a raycast query from previous position to new position
 	var query = PhysicsRayQueryParameters2D.create(from_with_offset, to_with_offset)
@@ -303,3 +311,23 @@ func _on_body_entered(body):
 	# We hit something!
 	if body.is_in_group("enemy"):
 		_hit_enemy(body)
+
+# ============================================
+# HELPER FUNCTIONS
+# ============================================
+
+func _get_visual_offset_at_time(time: float) -> Vector2:
+	"""Calculate the visual Y-offset at a specific time in the flight
+	This is used to make collision detection follow the visual arc"""
+	if not use_ballistic:
+		return Vector2.ZERO
+
+	# Use same physics formula as _update_ballistic_movement (line 169)
+	# Calculate height using ballistic formula: h = v0*t - 0.5*g*t^2
+	var height = (visual_z_velocity * time) - (0.5 * visual_gravity * time * time)
+
+	# Clamp to ground level (don't go below 0)
+	height = max(0.0, height)
+
+	# Return as Vector2 offset (negative Y = up on screen, matching line 177)
+	return Vector2(0, -height)

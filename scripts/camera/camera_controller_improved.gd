@@ -260,6 +260,11 @@ func _unhandled_input(event):
 func handle_pc_input(event) -> void:
 	"""PC-specific input (mouse + keyboard)"""
 	if event is InputEventMouseButton:
+		# Don't interact with camera when mouse is over GUI
+		var gui_element = get_viewport().gui_get_hovered_control()
+		if gui_element:
+			return  # Let GUI handle the input
+
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			var adjusted_speed = zoom_speed * user_prefs["zoom_speed_multiplier"]
 			zoom_at_point(event.position, adjusted_speed)

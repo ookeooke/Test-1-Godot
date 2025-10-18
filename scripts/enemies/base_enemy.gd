@@ -77,9 +77,6 @@ func _ready():
 	collision_layer = 1
 	collision_mask = 0
 
-	# Register with ClickManager for debugging
-	ClickManager.register_clickable(self, ClickManager.ClickPriority.ENEMY, 30.0)
-
 	# Initialize health bar
 	_update_health_bar()
 
@@ -147,22 +144,8 @@ func _setup_hit_point_marker():
 	circle_visual.z_index = 101
 
 # ============================================
-# OPTIONAL: Click callbacks for debugging
+# DEBUG VISUALS
 # ============================================
-
-func on_clicked(is_double_click: bool):
-	"""Show enemy info when clicked"""
-	pass  # Removed debug message
-
-func on_hover_start():
-	"""Highlight enemy on hover"""
-	if has_node("ColorRect"):
-		$ColorRect.modulate = Color(1.3, 1.3, 1.3)
-
-func on_hover_end():
-	"""Remove highlight"""
-	if has_node("ColorRect"):
-		$ColorRect.modulate = Color(1, 1, 1)
 
 func set_debug_targeted(is_targeted: bool):
 	"""Show/hide debug highlight when tower targets this enemy (F4)"""
@@ -298,5 +281,5 @@ func get_enemy_name() -> String:
 # ============================================
 
 func _exit_tree():
-	# Unregister from ClickManager
-	ClickManager.unregister_clickable(self)
+	# Cleanup (auto-handled by Godot)
+	pass

@@ -45,6 +45,7 @@ var melee_timer: Timer
 var is_selected = false
 
 # REFERENCES
+var click_area: Area2D  # For clicking the hero
 @onready var ranged_detection = $RangedDetection
 @onready var melee_detection = $MeleeDetection
 @onready var range_indicator = $RangeIndicator
@@ -62,16 +63,20 @@ func _ready():
 	# Set collision layers
 	collision_layer = 2
 	collision_mask = 0
-	
+
 	# Setup detection areas
 	ranged_detection.collision_layer = 0
 	ranged_detection.collision_mask = 1
 	melee_detection.collision_layer = 0
 	melee_detection.collision_mask = 1
-	
-	# CHANGED: Register with ClickManager instead of using Area2D
-	ClickManager.register_clickable(self, ClickManager.ClickPriority.HERO, 40.0)
-	print("✓ Hero registered with ClickManager")
+
+	# Setup click detection (if ClickArea node exists in scene)
+	if has_node("ClickArea"):
+		click_area = $ClickArea
+		click_area.input_pickable = true
+		click_area.input_event.connect(_on_area_input_event)
+		click_area.mouse_entered.connect(_on_mouse_entered)
+		click_area.mouse_exited.connect(_on_mouse_exited)
 	
 	# Connect signals
 	ranged_detection.body_entered.connect(_on_ranged_enemy_entered)
@@ -98,33 +103,36 @@ func _ready():
 	print("✓ Ranger Hero ready at: ", global_position)
 
 # ============================================
-# CLICK CALLBACKS - Called by ClickManager
+# CLICK HANDLING - Using Area2D
 # ============================================
 
-func on_clicked(is_double_click: bool) -> void:
-	"""Called when this hero is clicked"""
-	print("🎯 Hero clicked! Double: ", is_double_click)
-	
-	if is_double_click:
-		# Double-click: Center camera on hero (future feature)
-		print("  ⚡ Double-clicked hero!")
-		# TODO: Center camera
-	else:
-		# Single click: Select hero
-		hero_selected.emit(self)
+func _on_area_input_event(_viewport, event, _shape_idx):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_on_clicked()
+			get_viewport().set_input_as_handled()
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			_on_right_clicked()
+			get_viewport().set_input_as_handled()
 
-func on_right_clicked() -> void:
+func _on_clicked() -> void:
+	"""Called when this hero is clicked"""
+	print("🎯 Hero clicked!")
+	# Single click: Select hero
+	hero_selected.emit(self)
+
+func _on_right_clicked() -> void:
 	"""Called when hero is right-clicked"""
 	print("Right-clicked hero - could open hero menu here")
 	# TODO: Show hero info panel
 
-func on_hover_start() -> void:
+func _on_mouse_entered() -> void:
 	"""Called when mouse enters hero area"""
 	if not is_selected:
 		sprite.modulate = Color(1.2, 1.2, 1.5)  # Blue tint
 		# Could show tooltip here
 
-func on_hover_end() -> void:
+func _on_mouse_exited() -> void:
 	"""Called when mouse leaves hero area"""
 	if not is_selected:
 		sprite.modulate = Color(1, 1, 1)
@@ -440,6 +448,5 @@ func move_to_position(pos: Vector2):
 # ============================================
 
 func _exit_tree():
-	# IMPORTANT: Unregister from ClickManager when destroyed
-	ClickManager.unregister_clickable(self)
-	print("✓ Hero unregistered from ClickManager")
+	# Cleanup (Area2D will auto-cleanup its signals)
+	pass

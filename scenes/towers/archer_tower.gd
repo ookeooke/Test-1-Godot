@@ -35,6 +35,7 @@ var last_target_change_time_msec := 0
 
 # REFERENCES
 var detection_range: Area2D
+var click_area: Area2D  # For clicking the tower
 var range_indicator: Polygon2D  # Changed from Line2D to Polygon2D for filled circle
 var shoot_timer: Timer
 var archer_weapon: Node2D  # The weapon that rotates toward enemies
@@ -63,6 +64,14 @@ func _ready():
 	detection_range = $DetectionRange
 	range_indicator = $RangeIndicator
 
+	# Setup click detection (if ClickArea node exists in scene)
+	if has_node("ClickArea"):
+		click_area = $ClickArea
+		click_area.input_pickable = true
+		click_area.input_event.connect(_on_area_input_event)
+		click_area.mouse_entered.connect(_on_mouse_entered)
+		click_area.mouse_exited.connect(_on_mouse_exited)
+
 	# Get archer weapon reference
 	if has_node("Archer/Weapon"):
 		archer_weapon = $Archer/Weapon
@@ -70,10 +79,15 @@ func _ready():
 	# IMPORTANT: Set collision mask to detect enemies (layer 1)
 	detection_range.collision_layer = 8  # Tower range is layer 4
 	detection_range.collision_mask = 1   # Detect enemies on layer 1
+	detection_range.monitoring = true
 
 	# Connect detection signals
 	detection_range.body_entered.connect(_on_enemy_entered_range)
 	detection_range.body_exited.connect(_on_enemy_exited_range)
+
+	# Godot won't emit body_entered for enemies already inside the Area2D
+	# when the tower is placed. Detect them manually right after setup.
+	call_deferred("_register_existing_enemies")
 
 	# Create shoot timer
 	shoot_timer = Timer.new()
@@ -103,10 +117,6 @@ func _ready():
 	debug_line.z_index = 100
 	debug_line.visible = false
 
-	# CHANGED: Register with ClickManager immediately (no await needed)
-	# parent_spot is set by tower_spot.place_tower() before _ready() completes
-	ClickManager.register_clickable(self, ClickManager.ClickPriority.TOWER, 50.0)
-
 	last_target_change_time_msec = Time.get_ticks_msec()
 
 func _process(delta):
@@ -125,10 +135,16 @@ func _process(delta):
 			debug_line.visible = false
 
 # ============================================
-# CLICK CALLBACKS - Called by ClickManager
+# CLICK HANDLING - Using Area2D
 # ============================================
 
-func on_clicked(is_double_click: bool):
+func _on_area_input_event(_viewport, event, _shape_idx):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_on_clicked()
+			get_viewport().set_input_as_handled()
+
+func _on_clicked():
 	"""Called when tower is clicked"""
 	# Find the parent tower spot and emit its signal
 	if parent_spot:
@@ -141,16 +157,16 @@ func on_clicked(is_double_click: bool):
 		else:
 			print("ERROR: Could not find parent tower spot!")
 
-func on_hover_start():
+func _on_mouse_entered():
 	"""Called when mouse enters tower area"""
 	# Brighten the tower visual
-	if $TowerVisual:
+	if has_node("TowerVisual"):
 		$TowerVisual.modulate = Color(1.3, 1.3, 1.3)
 
-func on_hover_end():
+func _on_mouse_exited():
 	"""Called when mouse leaves tower area"""
 	# Reset tower visual
-	if $TowerVisual:
+	if has_node("TowerVisual"):
 		$TowerVisual.modulate = Color(1, 1, 1)
 
 # ============================================
@@ -162,6 +178,10 @@ func _on_enemy_entered_range(body):
 	if body.is_in_group("enemy"):
 		# Add enemy to tracking list
 		# Note: We trust Godot's physics - if collision shapes overlapped, enemy is in range
+		# Prevent duplicates (can happen when manually registering existing enemies)
+		if enemies_in_range.has(body):
+			return
+
 		enemies_in_range.append(body)
 
 		# Connect to enemy death signal for immediate cleanup
@@ -178,6 +198,15 @@ func _on_enemy_exited_range(body):
 				body.set_debug_targeted(false)
 			current_target = null
 			_record_target_change_time()
+
+
+func _register_existing_enemies():
+	"""Detect enemies that were already in range when tower was placed"""
+	if not detection_range:
+		return
+
+	for body in detection_range.get_overlapping_bodies():
+		_on_enemy_entered_range(body)
 
 
 func _on_enemy_died(enemy):
@@ -456,5 +485,5 @@ func deselect_tower():
 # ============================================
 
 func _exit_tree():
-	# Unregister from ClickManager
-	ClickManager.unregister_clickable(self)
+	# Cleanup (Area2D will auto-cleanup its signals)
+	pass

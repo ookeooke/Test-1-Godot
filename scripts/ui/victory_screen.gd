@@ -46,6 +46,9 @@ func _update_display():
 
 	stars_label.text = star_text
 
+	# Make stars green (victory color)
+	stars_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.3))
+
 	# Disable next level button (no level 2 yet)
 	next_level_button.disabled = true
 	next_level_button.text = "Next Level (Not Available)"
@@ -63,6 +66,8 @@ func _on_next_level_pressed():
 
 func _on_retry_pressed():
 	print("VictoryScreen: Retry level")
+	# Unpause the game
+	get_tree().paused = false
 	# Free the victory screen and its canvas layer parent, then reload
 	var canvas_layer = get_parent()
 	if canvas_layer:
@@ -72,6 +77,8 @@ func _on_retry_pressed():
 
 func _on_level_select_pressed():
 	print("VictoryScreen: Return to level select")
+	# Unpause the game
+	get_tree().paused = false
 	# Free the victory screen and its canvas layer parent, then change scene
 	var canvas_layer = get_parent()
 	if canvas_layer:

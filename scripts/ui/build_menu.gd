@@ -35,9 +35,6 @@ func _ready():
 	archer_button.pressed.connect(_on_archer_button_pressed)
 	mage_button.pressed.connect(_on_mage_button_pressed)
 
-	# DEBUG: Connect to gui_input to see if button receives ANY events
-	archer_button.gui_input.connect(_on_archer_button_gui_input)
-
 	# Update button text with costs
 	archer_button.text = "Archer Tower\n" + str(archer_cost) + "g"
 	mage_button.text = "Barracks\n" + str(barracks_cost) + "g"
@@ -48,12 +45,6 @@ func _ready():
 	# Connect to gold changes
 	GameManager.gold_changed.connect(_on_gold_changed)
 
-	print("Build menu ready!")
-	print("  Archer button disabled: ", archer_button.disabled)
-	print("  Archer button mouse_filter: ", archer_button.mouse_filter)
-	print("  Menu position: ", global_position)
-	print("  Menu size: ", size)
-
 func _on_gold_changed(_new_amount):
 	update_button_states()
 
@@ -61,16 +52,6 @@ func update_button_states():
 	# Enable/disable buttons based on gold
 	archer_button.disabled = GameManager.gold < archer_cost
 	mage_button.disabled = GameManager.gold < barracks_cost
-
-func _on_archer_button_gui_input(event):
-	print("⚠️ Archer button received gui_input event: ", event)
-	if event is InputEventMouseButton:
-		print("  📍 Mouse button event")
-		print("  Pressed: ", event.pressed)
-		print("  Button index: ", event.button_index)
-		print("  Position: ", event.position)
-		print("  Global position: ", event.global_position)
-		print("  Button global rect: ", archer_button.get_global_rect())
 
 func _on_archer_button_pressed():
 	print("🏹 Archer button pressed!")

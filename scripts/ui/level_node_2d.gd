@@ -33,6 +33,10 @@ func _ready():
 		button_area.input_event.connect(_on_area_input_event)
 		button_area.mouse_entered.connect(_on_mouse_entered)
 		button_area.mouse_exited.connect(_on_mouse_exited)
+		print("✅ LevelNode2D: Signals connected for button_area | input_pickable: ", button_area.input_pickable)
+		print("   🎯 POSITION DEBUG: global_position will be set later in update_display()")
+	else:
+		print("❌ LevelNode2D: button_area is NULL!")
 
 	# Setup animations
 	_setup_animations()
@@ -113,6 +117,10 @@ func update_display():
 	# Update stars
 	_update_stars()
 
+	# DEBUG: Print actual position
+	print("   🎯 ", level_data.level_name, " at global_position: ", global_position)
+	print("      Clickable area: X(", global_position.x - 50, " to ", global_position.x + 50, ") Y(", global_position.y - 50, " to ", global_position.y + 50, ")")
+
 	# Start animations if unlocked
 	if is_unlocked and animation_player:
 		# Gentle bounce for unlocked levels
@@ -179,18 +187,21 @@ func _update_stars():
 	stars_container.visible = is_unlocked
 
 func _on_area_input_event(_viewport: Node, event: InputEvent, _shape_idx: int):
-	print("LevelNode2D: Input event detected on ", level_data.level_name if level_data else "unknown", " | is_unlocked: ", is_unlocked, " | event type: ", event.get_class())
+	print("🔵 Area2D received event: ", event.get_class(), " | Level: ", level_data.level_name if level_data else "NO DATA", " | Unlocked: ", is_unlocked)
 
 	if not is_unlocked:
-		print("LevelNode2D: Level is locked, ignoring click")
+		print("  ❌ Level locked, ignoring")
 		return
 
 	if event is InputEventMouseButton:
 		var mouse_event = event as InputEventMouseButton
-		# Only respond to button release (because Click Manager consumes press events)
-		if mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed:
-			print("LevelNode2D: Click detected on ", level_data.level_name)
+		print("  🖱️ Mouse button event - Button: ", mouse_event.button_index, " Pressed: ", mouse_event.pressed)
+		# Respond to PRESS - Area2D.input_event fires before _unhandled_input
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			print("  ✅ LEFT CLICK DETECTED on ", level_data.level_name)
 			_on_clicked()
+			# Mark as handled so ClickManager doesn't also process it
+			_viewport.set_input_as_handled()
 
 func _on_clicked():
 	if is_unlocked and level_data:

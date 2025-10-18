@@ -1,7 +1,7 @@
 extends Node2D
 
 # ============================================
-# HERO MANAGER - Much simpler with ClickManager!
+# HERO MANAGER - Manages hero selection and movement
 # ============================================
 
 @export var ranger_hero_scene: PackedScene
@@ -17,10 +17,6 @@ func _ready():
 
 	connect_existing_heroes()
 	connect_hero_button()
-
-	# Connect to ClickManager signals
-	ClickManager.object_clicked.connect(_on_object_clicked)
-	ClickManager.empty_space_clicked.connect(_on_empty_space_clicked)
 
 func connect_existing_heroes():
 	"""Connect to any heroes that already exist in the scene"""
@@ -72,32 +68,14 @@ func _on_hero_selected(hero):
 	if hero_button:
 		hero_button.set_selected(true)
 
-func _on_object_clicked(object, _click_position):
-	"""Called when any object is clicked via ClickManager"""
-	# If we have a selected hero and clicked something else (not a hero)
-	if current_hero and is_instance_valid(current_hero):
-		if object and object.is_in_group("hero"):
-			# Clicked another hero - handled by hero_selected signal
-			return
-		elif object == null:
-			# Clicked empty space - handle as movement command
-			# (This is now handled by empty_space_clicked signal)
-			pass
-
-func _on_empty_space_clicked(click_position):
-	"""Called when empty space is clicked"""
-	if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
-		# Command hero to move to clicked position
-		current_hero.move_to_position(click_position)
-
-		# Auto-deselect hero immediately after giving move command
-		current_hero.deselect()
-		current_hero = null
-		if hero_button:
-			hero_button.set_selected(false)
 
 func _input(event):
-	"""Handle deselection with ESC or Right-click"""
+	"""Handle hero movement commands and deselection"""
+	# Don't process input if GUI is focused
+	var gui_element = get_viewport().gui_get_hovered_control()
+	if gui_element:
+		return
+
 	# ESC to deselect
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if current_hero and is_instance_valid(current_hero):
@@ -108,18 +86,31 @@ func _input(event):
 			get_viewport().set_input_as_handled()
 		return
 
-	# Right-click to deselect
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-		if current_hero and is_instance_valid(current_hero):
-			# Check if we right-clicked on something
-			# If not, deselect
-			var click_pos = get_global_mouse_position()
-			var clicked_obj = ClickManager.find_clicked_object(click_pos)
+	# Left-click on empty space to move hero
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
+			# Get world position
+			var camera = get_viewport().get_camera_2d()
+			if camera:
+				var click_world_pos = camera.get_screen_center_position() + (event.position - get_viewport().get_visible_rect().size / 2) / camera.zoom
 
-			if not clicked_obj:
+				# Command hero to move to clicked position
+				current_hero.move_to_position(click_world_pos)
+
+				# Auto-deselect hero after giving move command
 				current_hero.deselect()
 				current_hero = null
 				if hero_button:
 					hero_button.set_selected(false)
 				get_viewport().set_input_as_handled()
+		return
+
+	# Right-click to deselect
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		if current_hero and is_instance_valid(current_hero):
+			current_hero.deselect()
+			current_hero = null
+			if hero_button:
+				hero_button.set_selected(false)
+			get_viewport().set_input_as_handled()
 		return

@@ -286,12 +286,16 @@ func _show_victory_screen():
 	if LevelManager.current_level:
 		LevelManager.complete_level(stars)
 
+	# Pause the game tree so gameplay stops
+	get_tree().paused = true
+
 	# Get the current scene tree root
 	var root = get_tree().root
 
 	# Create a CanvasLayer to ensure victory screen is on top
 	var canvas_layer = CanvasLayer.new()
 	canvas_layer.layer = 100  # High layer to be on top of everything
+	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS  # Process even when paused
 
 	# Instantiate victory screen
 	var victory_screen = victory_screen_scene.instantiate()
