@@ -235,13 +235,71 @@ func _load_ranger_skills() -> Array[HeroSkillData]:
 	"""Load all available skills for the ranger hero"""
 	var skills: Array[HeroSkillData] = []
 
-	# Try to load skill resources
-	# For now, we'll create them programmatically
-	# In full implementation, these would be .tres files
+	# Create example skills programmatically
+	# In full implementation, these would be loaded from .tres resource files
 
-	# TODO: Load from resources folder
-	# For now, return empty array until we create the skill resources
-	print("⚠️ Loading ranger skills (TODO: create skill resources)")
+	# ACTIVE SKILL 1: Rapid Fire
+	var rapid_fire = HeroSkillData.new()
+	rapid_fire.skill_id = "rapid_fire"
+	rapid_fire.skill_name = "Rapid Fire"
+	rapid_fire.description = "Fire 5 arrows in quick succession at random enemies"
+	rapid_fire.skill_type = HeroSkillData.SkillType.ACTIVE
+	rapid_fire.unlock_cost = 100
+	rapid_fire.max_upgrade_level = 3
+	rapid_fire.upgrade_costs.assign([50, 100])  # Level 2, Level 3
+	rapid_fire.cooldown = 30.0
+	skills.append(rapid_fire)
+
+	# ACTIVE SKILL 2: Power Shot
+	var power_shot = HeroSkillData.new()
+	power_shot.skill_id = "power_shot"
+	power_shot.skill_name = "Power Shot"
+	power_shot.description = "Charge up a powerful shot that deals 300% damage and pierces enemies"
+	power_shot.skill_type = HeroSkillData.SkillType.ACTIVE
+	power_shot.unlock_cost = 150
+	power_shot.max_upgrade_level = 3
+	power_shot.upgrade_costs.assign([75, 150])  # Level 2, Level 3
+	power_shot.cooldown = 45.0
+	power_shot.damage_multiplier = 3.0
+	skills.append(power_shot)
+
+	# PASSIVE SKILL 1: Eagle Eye
+	var eagle_eye = HeroSkillData.new()
+	eagle_eye.skill_id = "eagle_eye"
+	eagle_eye.skill_name = "Eagle Eye"
+	eagle_eye.description = "+20% attack range per level"
+	eagle_eye.skill_type = HeroSkillData.SkillType.PASSIVE
+	eagle_eye.unlock_cost = 80
+	eagle_eye.max_upgrade_level = 5
+	eagle_eye.upgrade_costs.assign([40, 80, 120, 160])  # Costs for levels 2-5
+	eagle_eye.range_bonus = 60.0
+	skills.append(eagle_eye)
+
+	# PASSIVE SKILL 2: Critical Strike
+	var crit_strike = HeroSkillData.new()
+	crit_strike.skill_id = "critical_strike"
+	crit_strike.skill_name = "Critical Strike"
+	crit_strike.description = "+5% critical hit chance per level (double damage)"
+	crit_strike.skill_type = HeroSkillData.SkillType.PASSIVE
+	crit_strike.unlock_cost = 120
+	crit_strike.max_upgrade_level = 5
+	crit_strike.upgrade_costs.assign([60, 120, 180, 240])  # Costs for levels 2-5
+	crit_strike.crit_chance = 0.05  # 5% per level
+	skills.append(crit_strike)
+
+	# PASSIVE SKILL 3: Attack Speed
+	var attack_speed = HeroSkillData.new()
+	attack_speed.skill_id = "attack_speed"
+	attack_speed.skill_name = "Quick Draw"
+	attack_speed.description = "+10% attack speed per level"
+	attack_speed.skill_type = HeroSkillData.SkillType.PASSIVE
+	attack_speed.unlock_cost = 100
+	attack_speed.max_upgrade_level = 4
+	attack_speed.upgrade_costs.assign([50, 100, 150])  # Costs for levels 2-4
+	attack_speed.attack_speed_multiplier = 1.1  # 10% per level
+	skills.append(attack_speed)
+
+	print("✅ Loaded %d skills for Ranger" % skills.size())
 
 	return skills
 
