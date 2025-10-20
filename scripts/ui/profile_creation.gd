@@ -8,11 +8,14 @@ extends Control
 @onready var back_button: Button = $VBoxContainer/BackButton
 @onready var error_label: Label = $VBoxContainer/ErrorLabel
 
+var validation_timer: Timer
+
 func _ready():
 	# Connect signals
 	create_button.pressed.connect(_on_create_pressed)
 	back_button.pressed.connect(_on_back_pressed)
 	name_input.text_changed.connect(_on_name_changed)
+	name_input.focus_exited.connect(_on_name_focus_exited)
 
 	# Setup
 	error_label.visible = false
@@ -21,12 +24,34 @@ func _ready():
 	# Allow Enter key to create profile
 	name_input.text_submitted.connect(_on_name_submitted)
 
+	# Create polling timer for Android compatibility
+	validation_timer = Timer.new()
+	validation_timer.wait_time = 0.3
+	validation_timer.timeout.connect(_validate_button_state)
+	add_child(validation_timer)
+	validation_timer.start()
+
+	# Initial validation check with delay for any pre-filled text
+	await get_tree().create_timer(0.1).timeout
+	_validate_button_state()
+
+func _validate_button_state():
+	# Reusable function to check and update button state
+	# Called from multiple places to ensure reliability on Android
+	var current_text = name_input.text.strip_edges()
+	create_button.disabled = current_text.is_empty()
+
 func _on_name_changed(new_text: String):
 	# Clear error when user types
 	error_label.visible = false
 
-	# Enable/disable create button based on input
-	create_button.disabled = new_text.strip_edges().is_empty()
+	# Validate button state
+	_validate_button_state()
+
+func _on_name_focus_exited():
+	# Android virtual keyboard compatibility
+	# Validate when user closes keyboard or taps away
+	_validate_button_state()
 
 func _on_name_submitted(_text: String):
 	# Enter key pressed in name field
