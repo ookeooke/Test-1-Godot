@@ -27,6 +27,7 @@ const BACKUP_DIR = "user://balance_debug/backups/"
 func _ready():
 	_ensure_directories()
 	print("✅ BalanceExporter initialized")
+	print("📁 Export directory: %s" % get_export_directory_path())
 
 func _ensure_directories():
 	"""Create export directories if they don't exist"""
@@ -102,7 +103,9 @@ func _write_json_file(filepath: String, data: Dictionary) -> String:
 	file.store_string(json_string)
 	file.close()
 
-	print("[BalanceExporter] Exported to: %s" % filepath)
+	var absolute_path = ProjectSettings.globalize_path(filepath)
+	print("[BalanceExporter] ✅ Exported to: %s" % absolute_path)
+	print("[BalanceExporter]    (Open this file to view balance data)")
 	return filepath
 
 # ============================================

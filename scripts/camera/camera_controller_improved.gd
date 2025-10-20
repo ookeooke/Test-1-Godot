@@ -19,24 +19,24 @@ enum Platform { MOBILE, PC, CONSOLE }
 var current_platform: Platform
 
 # ============================================
-# ZOOM SETTINGS
+# ZOOM SETTINGS - LOCKED (Zoom disabled for now)
 # ============================================
 @export_group("Zoom Settings")
-@export var min_zoom = 0.3  # Max zoom out
-@export var max_zoom = 1.5  # Max zoom in
-@export var default_zoom = 0.8  # Starting zoom
-@export var zoom_speed = 0.1  # Scroll/pinch speed
-@export var zoom_smoothing = 0.15  # Lerp factor
+@export var min_zoom = 1.0  # LOCKED - Zoom disabled
+@export var max_zoom = 1.0  # LOCKED - Zoom disabled
+@export var default_zoom = 1.0  # LOCKED - Start closer (was 0.6 - too far!)
+@export var zoom_speed = 0.0  # DISABLED
+@export var zoom_smoothing = 0.0  # DISABLED
 
-# Mobile-specific zoom
-@export var mobile_min_zoom = 0.4  # More restrictive on mobile
-@export var mobile_max_zoom = 1.2
-@export var mobile_zoom_speed = 0.08  # Slower for precision
+# Mobile-specific zoom - LOCKED
+@export var mobile_min_zoom = 1.0  # LOCKED
+@export var mobile_max_zoom = 1.0  # LOCKED
+@export var mobile_zoom_speed = 0.0  # DISABLED
 
-# Double-tap zoom (mobile)
-@export var double_tap_zoom_in = 1.2
-@export var double_tap_zoom_out = 0.6
-@export var double_tap_time_threshold = 0.3  # Max time between taps
+# Double-tap zoom (mobile) - DISABLED
+@export var double_tap_zoom_in = 1.0  # DISABLED
+@export var double_tap_zoom_out = 1.0  # DISABLED
+@export var double_tap_time_threshold = 0.3  # DISABLED
 
 # ============================================
 # PAN SETTINGS
@@ -67,18 +67,15 @@ var current_platform: Platform
 @export var max_inertia_velocity = 2000.0  # Cap for fast swipes
 
 # ============================================
-# BOUNDS
+# BOUNDS - AUTOMATED SYSTEM
 # ============================================
-# NOTE: Camera limits are now set directly using Godot's built-in limit_* properties
-# These are automatically visualized as a pink/magenta rectangle in the editor
-# Simply adjust limit_left, limit_right, limit_top, limit_bottom in the Inspector
+# Camera limits are automatically calculated from level_rect
+# The pink/magenta rectangle in editor shows where camera CENTER can move
 #
-# The pink rectangle shows where the CAMERA CENTER can move
-# Set these values to match your level boundaries:
-#   limit_left = leftmost camera center position
-#   limit_right = rightmost camera center position
-#   limit_top = topmost camera center position
-#   limit_bottom = bottommost camera center position
+# Simply set level_rect below and limits auto-calculate at runtime
+# Accounts for viewport size and zoom level
+@export_group("Level Bounds")
+@export var level_rect = Rect2(-200, 200, 2000, 800)  # Define your playable area here
 
 # ============================================
 # CAMERA SHAKE
@@ -156,10 +153,15 @@ func _ready():
 	apply_platform_defaults()
 	load_user_preferences()
 
-	# Set initial zoom
+	# Set initial zoom (LOCKED at 1.0)
 	target_zoom = Vector2(default_zoom, default_zoom)
 	zoom = target_zoom
 	base_position = position
+
+	# Auto-calculate camera bounds from level_rect
+	update_camera_limits()
+
+	print("[Camera] Initialized - Zoom:", zoom, " Bounds:", Vector4i(limit_left, limit_top, limit_right, limit_bottom))
 
 func detect_platform() -> void:
 	"""Auto-detect platform for appropriate defaults"""
@@ -265,18 +267,19 @@ func handle_pc_input(event) -> void:
 		if gui_element:
 			return  # Let GUI handle the input
 
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			var adjusted_speed = zoom_speed * user_prefs["zoom_speed_multiplier"]
-			zoom_at_point(event.position, adjusted_speed)
-			get_viewport().set_input_as_handled()
+		# ZOOM DISABLED - Mouse wheel does nothing
+		# if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+		# 	var adjusted_speed = zoom_speed * user_prefs["zoom_speed_multiplier"]
+		# 	zoom_at_point(event.position, adjusted_speed)
+		# 	get_viewport().set_input_as_handled()
+		#
+		# elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+		# 	var adjusted_speed = zoom_speed * user_prefs["zoom_speed_multiplier"]
+		# 	zoom_at_point(event.position, -adjusted_speed)
+		# 	get_viewport().set_input_as_handled()
 
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			var adjusted_speed = zoom_speed * user_prefs["zoom_speed_multiplier"]
-			zoom_at_point(event.position, -adjusted_speed)
-			get_viewport().set_input_as_handled()
-
-		# Middle/Right mouse drag
-		elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
+		# Middle/Right mouse drag - KEEP WORKING
+		if event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
 			if event.pressed:
 				start_drag(event.position)
 			else:
@@ -305,37 +308,22 @@ func handle_console_input(event) -> void:
 # ============================================
 
 func handle_touch(event: InputEventScreenTouch):
-	"""Enhanced touch handling with double-tap"""
+	"""Touch handling - ZOOM DISABLED, only drag works"""
 	if event.pressed:
-		# Check for double-tap
-		var current_time = Time.get_ticks_msec() / 1000.0
-		var time_since_last_tap = current_time - last_tap_time
-		var distance_from_last_tap = event.position.distance_to(last_tap_position)
-
-		if (time_since_last_tap < double_tap_time_threshold and
-			distance_from_last_tap < 50.0 and
-			touch_points.is_empty()):
-			# DOUBLE TAP detected!
-			handle_double_tap(event.position)
-			get_viewport().set_input_as_handled()
-			return
-
-		last_tap_time = current_time
-		last_tap_position = event.position
+		# DOUBLE-TAP ZOOM DISABLED
+		# (Code removed - zoom locked at 1.0)
 
 		# Register touch point
 		touch_points[event.index] = event.position
 
-		# Single finger - start drag
+		# Single finger - start drag (KEEP WORKING)
 		if touch_points.size() == 1:
 			start_drag(event.position)
 
-		# Two fingers - start pinch zoom
+		# Two fingers - PINCH ZOOM DISABLED, just end drag
 		elif touch_points.size() == 2:
 			is_dragging = false
-			var points = touch_points.values()
-			last_pinch_distance = points[0].distance_to(points[1])
-			pinch_center = (points[0] + points[1]) / 2.0
+			# Pinch zoom disabled - two finger touch does nothing
 
 	else:
 		touch_points.erase(event.index)
@@ -346,40 +334,15 @@ func handle_touch(event: InputEventScreenTouch):
 			start_drag(touch_points.values()[0])
 
 func handle_touch_drag(event: InputEventScreenDrag):
-	"""Handle touch drag motion"""
+	"""Handle touch drag motion - PINCH ZOOM DISABLED"""
 	touch_points[event.index] = event.position
 
-	# Two finger pinch zoom
-	if touch_points.size() == 2:
-		var points = touch_points.values()
-		var current_distance = points[0].distance_to(points[1])
-		var distance_delta = current_distance - last_pinch_distance
+	# PINCH ZOOM DISABLED
+	# Two finger pinch does nothing (zoom locked at 1.0)
 
-		# Calculate zoom change (adjusted for mobile)
-		var zoom_delta = distance_delta * 0.01 * user_prefs["zoom_speed_multiplier"]
-		var new_pinch_center = (points[0] + points[1]) / 2.0
-
-		zoom_at_point(new_pinch_center, zoom_delta)
-
-		last_pinch_distance = current_distance
-		pinch_center = new_pinch_center
-
-	# Single finger drag
-	elif touch_points.size() == 1 and is_dragging:
+	# Single finger drag (KEEP WORKING)
+	if touch_points.size() == 1 and is_dragging:
 		update_drag(event.position)
-
-func handle_double_tap(tap_position: Vector2) -> void:
-	"""Zoom in/out on double-tap (mobile standard)"""
-
-	if is_double_tap_zoomed:
-		# Zoom out
-		target_zoom = Vector2(double_tap_zoom_out, double_tap_zoom_out)
-		is_double_tap_zoomed = false
-	else:
-		# Zoom in to tap position
-		zoom_at_point(tap_position, 0.0)  # Don't change zoom yet
-		target_zoom = Vector2(double_tap_zoom_in, double_tap_zoom_in)
-		is_double_tap_zoomed = true
 
 # ============================================
 # DRAG FUNCTIONS
@@ -562,9 +525,8 @@ func _process(delta):
 	if shake_enabled:
 		update_shake(delta)
 
-	# Smooth zoom
-	if zoom != target_zoom:
-		zoom = zoom.lerp(target_zoom, zoom_smoothing)
+	# Zoom smoothing DISABLED (zoom locked at 1.0)
+	# zoom = target_zoom (always 1.0, no smoothing needed)
 
 	# Apply final position with shake
 	position = base_position + shake_offset
@@ -631,6 +593,37 @@ func update_inertia(delta):
 	# Apply friction (frame-independent)
 	var friction = pow(inertia_friction, delta * 60.0)  # Normalized to 60fps
 	velocity *= friction
+
+# ============================================
+# BORDER AUTOMATION FUNCTIONS
+# ============================================
+
+func update_camera_limits() -> void:
+	"""Automatically calculate camera limits from level_rect"""
+	var viewport_size = get_viewport_rect().size
+
+	# Calculate visible area at current zoom
+	var half_view = (viewport_size / zoom) / 2.0
+
+	# Set Godot's built-in limit properties (renders as magenta rectangle in editor)
+	limit_left = int(level_rect.position.x + half_view.x)
+	limit_right = int(level_rect.end.x - half_view.x)
+	limit_top = int(level_rect.position.y + half_view.y)
+	limit_bottom = int(level_rect.end.y - half_view.y)
+
+	# Ensure limits are valid
+	if limit_left >= limit_right:
+		limit_left = int(level_rect.position.x)
+		limit_right = int(level_rect.end.x)
+	if limit_top >= limit_bottom:
+		limit_top = int(level_rect.position.y)
+		limit_bottom = int(level_rect.end.y)
+
+func set_level_bounds(rect: Rect2) -> void:
+	"""Update level bounds at runtime (can be called from level_controller)"""
+	level_rect = rect
+	update_camera_limits()
+	print("[Camera] Bounds updated to:", rect)
 
 # ============================================
 # UTILITY FUNCTIONS

@@ -1,0 +1,105 @@
+[gd_scene load_steps=3 format=3 uid="uid://b6yn3cxqs75wl"]
+
+[ext_resource type="Script" path="res://scripts/debug/balance_hud.gd" id="1_balance_hud"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.1, 0.1, 0.1, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.4, 0.6, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="BalanceDebugHUD" type="CanvasLayer"]
+layer = 100
+script = ExtResource("1_balance_hud")
+
+[node name="Panel" type="Panel" parent="."]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 410.0
+offset_bottom = 450.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ContentContainer" type="VBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+
+[node name="HeaderLabel" type="Label" parent="Panel/MarginContainer/ContentContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "BALANCE DEBUG HUD"
+horizontal_alignment = 1
+
+[node name="Separator1" type="HSeparator" parent="Panel/MarginContainer/ContentContainer"]
+layout_mode = 2
+
+[node name="TowersLabel" type="RichTextLabel" parent="Panel/MarginContainer/ContentContainer"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+bbcode_enabled = true
+text = "[b]TOWERS (Live DPS)[/b]
+[color=gray]No towers placed[/color]"
+fit_content = true
+scroll_active = false
+
+[node name="HeroesLabel" type="RichTextLabel" parent="Panel/MarginContainer/ContentContainer"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+bbcode_enabled = true
+text = "[b]HEROES[/b]"
+fit_content = true
+scroll_active = false
+
+[node name="Separator2" type="HSeparator" parent="Panel/MarginContainer/ContentContainer"]
+layout_mode = 2
+
+[node name="WaveLabel" type="RichTextLabel" parent="Panel/MarginContainer/ContentContainer"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+bbcode_enabled = true
+text = "[b]CURRENT WAVE[/b]"
+fit_content = true
+scroll_active = false
+
+[node name="EconomyLabel" type="RichTextLabel" parent="Panel/MarginContainer/ContentContainer"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+bbcode_enabled = true
+text = "[b]ECONOMY[/b]"
+fit_content = true
+scroll_active = false
+
+[node name="PerformanceLabel" type="RichTextLabel" parent="Panel/MarginContainer/ContentContainer"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+bbcode_enabled = true
+text = "[b]PERFORMANCE[/b]"
+fit_content = true
+scroll_active = false
+
+[node name="Separator3" type="HSeparator" parent="Panel/MarginContainer/ContentContainer"]
+layout_mode = 2
+
+[node name="ControlsLabel" type="Label" parent="Panel/MarginContainer/ContentContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 10
+text = "[F3] Toggle | [1-4] Speed | [F4] Export"
+horizontal_alignment = 1

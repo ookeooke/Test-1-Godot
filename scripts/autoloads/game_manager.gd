@@ -4,11 +4,17 @@ extends Node
 # GAME MANAGER - Global game state
 # ============================================
 
-# RESOURCES
-var gold = 500  # Starting gold
-var lives = 20  # Starting lives
+# NOTE: Gold and lives are now managed by GameStateManager
+# These properties delegate to GameStateManager for backward compatibility
+var gold: int:
+	get: return GameStateManager.gold if GameStateManager else 0
+	set(value): if GameStateManager: GameStateManager.gold = value
 
-# SIGNALS
+var lives: int:
+	get: return GameStateManager.lives if GameStateManager else 0
+	set(value): if GameStateManager: GameStateManager.lives = value
+
+# SIGNALS (forwarded from GameStateManager)
 signal gold_changed(new_amount)
 signal lives_changed(new_amount)
 signal game_defeated()
@@ -18,35 +24,50 @@ var pause_menu_scene = preload("res://scenes/ui/pause_menu.tscn")
 var defeat_screen_scene = preload("res://scenes/ui/defeat_screen.tscn")
 
 # ============================================
-# RESOURCE MANAGEMENT
+# INITIALIZATION
+# ============================================
+
+func _ready():
+	# Forward GameStateManager signals to maintain backward compatibility
+	if GameStateManager:
+		GameStateManager.gold_changed.connect(_on_gold_changed)
+		GameStateManager.lives_changed.connect(_on_lives_changed)
+
+	print("GameManager initialized (delegating to GameStateManager)")
+
+func _on_gold_changed(new_amount: int):
+	gold_changed.emit(new_amount)
+
+func _on_lives_changed(new_amount: int):
+	lives_changed.emit(new_amount)
+
+# ============================================
+# RESOURCE MANAGEMENT (delegates to GameStateManager)
 # ============================================
 
 func add_gold(amount: int):
-	gold += amount
-	gold_changed.emit(gold)
-	print("Gold: ", gold)
+	if GameStateManager:
+		GameStateManager.add_gold(amount)
 
 func spend_gold(amount: int) -> bool:
-	if gold >= amount:
-		gold -= amount
-		gold_changed.emit(gold)
-		print("Gold: ", gold)
-		return true
-	else:
-		print("Not enough gold!")
-		return false
+	if GameStateManager:
+		return GameStateManager.spend_gold(amount)
+	return false
 
 func lose_life(amount: int = 1):
-	lives -= amount
-	lives_changed.emit(lives)
-	print("Lives: ", lives)
-	
-	if lives <= 0:
-		game_over()
+	if GameStateManager:
+		GameStateManager.lose_life(amount)
 
 func game_over():
 	print("GAME OVER!")
 	game_defeated.emit()
+
+	# End balance tracking with defeat
+	if BalanceTracker:
+		BalanceTracker.end_run("defeat", 0)
+		# Auto-save data on defeat
+		if BalanceExporter:
+			BalanceExporter.export_current_run()
 
 	# Show defeat screen
 	_show_defeat_screen()

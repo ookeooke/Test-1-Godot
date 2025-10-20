@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Read(//c/Users/ollil/AppData/Roaming/Godot/app_userdata/Test 1/balance_debug/exports/**)"
     ],
     "deny": [],
     "ask": []

@@ -58,6 +58,11 @@ var debug_highlight: Polygon2D  # Visual target indicator (F4 debug)
 var hit_point_marker: Marker2D  # Dynamic target spot for projectiles
 var hit_point_visual: Polygon2D  # Visual indicator for hit point in editor
 
+# Balance tracking
+var spawn_time: float = 0.0
+var last_damage_source = null
+var last_damage_source_type = "unknown"
+
 # ============================================
 # REFERENCES
 # ============================================
@@ -98,6 +103,12 @@ func _ready():
 
 	# Setup HitPoint marker system for projectile targeting
 	_setup_hit_point_marker()
+
+	# Track enemy spawn
+	spawn_time = Time.get_ticks_msec() / 1000.0
+	if BalanceTracker:
+		var enemy_type = get_enemy_name().to_lower().replace(" ", "_")
+		BalanceTracker.record_enemy_spawned(enemy_type)
 
 # ============================================
 # HIT POINT MARKER SYSTEM
@@ -215,9 +226,14 @@ func unblock():
 # HEALTH & DEATH
 # ============================================
 
-func take_damage(amount: float):
+func take_damage(amount: float, damage_source = null, damage_source_type = "unknown"):
 	"""Apply damage to this enemy"""
 	current_health -= amount
+
+	# Track last damage source for kill attribution
+	if damage_source:
+		last_damage_source = damage_source
+		last_damage_source_type = damage_source_type
 
 	# Update health bar
 	_update_health_bar()
@@ -237,6 +253,16 @@ func _update_health_bar():
 
 func die():
 	"""Handle enemy death"""
+	# Track enemy killed
+	if BalanceTracker:
+		var enemy_type = get_enemy_name().to_lower().replace(" ", "_")
+		var time_alive = (Time.get_ticks_msec() / 1000.0) - spawn_time
+		BalanceTracker.record_enemy_killed(enemy_type, time_alive, gold_reward)
+
+		# Record kill attribution
+		if last_damage_source and is_instance_valid(last_damage_source):
+			BalanceTracker.record_kill(last_damage_source, enemy_type, gold_reward, last_damage_source_type)
+
 	# Award gold
 	GameManager.add_gold(gold_reward)
 
@@ -269,6 +295,12 @@ func die():
 func reached_end():
 	"""Called when enemy reaches the end of the path"""
 	print(get_enemy_name(), " reached the end! -", life_damage, " lives")
+
+	# Track enemy leaked
+	if BalanceTracker:
+		var enemy_type = get_enemy_name().to_lower().replace(" ", "_")
+		BalanceTracker.record_enemy_leaked(enemy_type, life_damage)
+
 	GameManager.lose_life(life_damage)
 	enemy_died.emit()
 	queue_free()

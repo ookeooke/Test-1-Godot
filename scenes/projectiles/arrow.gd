@@ -20,6 +20,7 @@ extends Area2D
 var damage = 10  # Will be set by tower
 var target = null  # The enemy we're targeting
 var direction = Vector2.ZERO  # Direction we're flying
+var source = null  # The tower/hero that fired this arrow (for balance tracking)
 
 # TRAJECTORY VARIABLES
 var start_position: Vector2
@@ -39,10 +40,11 @@ var hit_marker_scene = preload("res://scenes/effects/hit_marker.tscn")
 # SETUP
 # ============================================
 
-func setup(enemy, projectile_damage):
+func setup(enemy, projectile_damage, projectile_source = null):
 	# Called by the tower when spawned
 	target = enemy
 	damage = projectile_damage
+	source = projectile_source
 	start_position = global_position
 	previous_position = global_position  # Initialize for collision detection
 
@@ -296,9 +298,17 @@ func _hit_enemy(enemy):
 		enemy.add_child(hit_marker)
 		hit_marker.position = local_hit_position  # Use local position, not global
 
-	# Deal damage to enemy
+	# Track damage dealt (before applying, to capture who shot it)
+	var source_type = "tower"
+	if source and source.has_method("get_hero_id"):
+		source_type = "hero_ranged"
+
+	if BalanceTracker and source:
+		BalanceTracker.record_damage(source, enemy, damage, source_type)
+
+	# Deal damage to enemy (pass source for kill tracking)
 	if enemy.has_method("take_damage"):
-		enemy.take_damage(damage)
+		enemy.take_damage(damage, source, source_type)
 
 	# Destroy arrow
 	queue_free()

@@ -6,10 +6,10 @@ extends "res://scripts/enemies/base_enemy.gd"
 func _init():
 	# Set wolf-specific stats
 	speed = 180.0
-	max_health = 50.0
+	max_health = 80.0
 	melee_damage = 5.0
 	attack_cooldown = 0.7
-	gold_reward = 8
+	gold_reward = 7
 	life_damage = 1
 	can_be_blocked = true
 	melee_detection_range = 100.0

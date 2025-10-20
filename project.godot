@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 DebugConfig="*res://scripts/autoloads/debug_config.gd"
 UIScaleManager="*res://scripts/autoloads/ui_scale_manager.gd"
+GameStateManager="*res://scripts/autoloads/game_state_manager.gd"
 GameManager="*res://scenes/managers/game_manager.tscn"
 CameraEffects="*res://scripts/autoloads/camera_effects.gd"
 SaveManager="*res://scripts/autoloads/save_manager.gd"
@@ -28,6 +29,10 @@ ItemDatabase="*res://scripts/autoloads/item_database.gd"
 InventoryManager="*res://scripts/autoloads/inventory_manager.gd"
 LootManager="*res://scripts/autoloads/loot_manager.gd"
 TestItemsLoader="*res://scripts/autoloads/test_items_loader.gd"
+BalanceTracker="*res://scripts/debug/balance_tracker.gd"
+BalanceExporter="*res://scripts/debug/balance_exporter.gd"
+BalanceAnalyzer="*res://scripts/debug/balance_analyzer.gd"
+GameSpeedController="*res://scripts/autoloads/game_speed_controller.gd"
 
 [debug]
 

@@ -213,8 +213,43 @@ func _on_tower_selected(tower_scene):
 
 func _on_tower_upgraded(tower):
 	"""Handle tower upgrade"""
-	if tower and "damage" in tower:
-		tower.damage += 5
+	if not tower or not is_instance_valid(tower):
+		return
+
+	# Check if tower needs to choose a path (level 3)
+	if tower.has_method("needs_path_choice") and tower.needs_path_choice():
+		# Show path choice UI instead of normal upgrade
+		_show_path_choice_menu(tower)
+		return
+
+	# Standard upgrade (level 1→2→3)
+	if tower.has_method("upgrade_tower"):
+		if tower.upgrade_tower():
+			print("[PlacementManager] Tower upgraded successfully to level %d" % tower.tower_level)
+		else:
+			push_error("[PlacementManager] Tower upgrade failed!")
+	else:
+		# Fallback for towers without upgrade system
+		if "damage" in tower:
+			tower.damage += 5
+			print("[PlacementManager] Legacy tower upgraded (damage +5)")
+
+func _show_path_choice_menu(tower):
+	"""Show UI for choosing damage or range path"""
+	print("[PlacementManager] Showing path choice menu for level 3 tower")
+
+	# For now, just show a simple dialog with buttons
+	# TODO: Create a proper UI scene for this
+	# Temporarily log that player needs to choose
+	print("🔱 TOWER LEVEL 3 REACHED - Player must choose:")
+	print("  1. DAMAGE PATH: +50% damage, +25% attack speed")
+	print("  2. RANGE PATH: +100% range")
+
+	# For testing: auto-choose damage path
+	# Later this will be a proper UI choice
+	if tower.has_method("choose_damage_path"):
+		tower.choose_damage_path()
+		print("[PlacementManager] Auto-selected DAMAGE path for testing")
 
 func _on_tower_sold(tower):
 	"""Handle tower sell"""

@@ -25,6 +25,11 @@ var range_radius = 300  # Detection range
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
 var build_cost = 100  # Cost to build this tower (for sell calculation)
 
+# UPGRADE SYSTEM
+var tower_level = 1  # Current upgrade level (1-3, then can choose path at level 4)
+var upgrade_path = "" # "" = not chosen, "damage" = damage path, "range" = range path
+const MAX_LEVEL_BEFORE_CHOICE = 3  # At level 3, player must choose a path
+
 # TARGET SELECTION TUNING
 const PROGRESS_EPSILON := 0.01
 const PROGRESS_SWITCH_THRESHOLD := 0.05
@@ -119,6 +124,10 @@ func _ready():
 	debug_line.visible = false
 
 	last_target_change_time_msec = Time.get_ticks_msec()
+
+	# Register with BalanceTracker
+	if BalanceTracker:
+		BalanceTracker.register_tower(self, "archer_tower", build_cost)
 
 func _process(delta):
 	# Rotate archer's weapon toward the current target
@@ -440,6 +449,10 @@ func shoot_at(target):
 		_record_target_change_time()
 		return
 
+	# Track shot fired
+	if BalanceTracker:
+		BalanceTracker.record_tower_shot(self)
+
 	# FIX: Use call_deferred to avoid "flushing queries" error
 	# Create projectile deferred to avoid physics state change during query
 	call_deferred("_spawn_projectile", target)
@@ -457,8 +470,8 @@ func _spawn_projectile(target):
 	# Position arrow at tower's position
 	arrow.global_position = global_position
 
-	# Tell arrow where to go
-	arrow.setup(target, damage)
+	# Tell arrow where to go and who shot it
+	arrow.setup(target, damage, self)
 
 	# Debug log
 	print("🏹 Hero shooting arrow at: ", target.get_enemy_name() if target.has_method("get_enemy_name") else "Enemy")
@@ -493,6 +506,133 @@ func deselect_tower():
 	"""Hide range indicator when tower is deselected"""
 	is_selected = false
 	range_indicator.visible = false
+
+# ============================================
+# UPGRADE SYSTEM
+# ============================================
+
+func upgrade_tower():
+	"""Apply standard upgrade (levels 1→2→3)"""
+	if tower_level >= MAX_LEVEL_BEFORE_CHOICE:
+		push_warning("[ArcherTower] Cannot upgrade past level 3 - must choose path!")
+		return false
+
+	tower_level += 1
+
+	# Apply stat increases per level
+	match tower_level:
+		2:
+			damage += 5  # 15 → 20
+			attack_speed += 0.2  # 1.2 → 1.4
+			range_radius += 50  # 300 → 350
+			print("[ArcherTower] Upgraded to Level 2: DMG=20, AS=1.4, Range=350")
+		3:
+			damage += 5  # 20 → 25
+			attack_speed += 0.2  # 1.4 → 1.6
+			range_radius += 50  # 350 → 400
+			print("[ArcherTower] Upgraded to Level 3: DMG=25, AS=1.6, Range=400")
+
+	# Update detection range collision shape
+	_update_detection_range()
+
+	# Redraw range indicator with new radius
+	draw_range_circle()
+
+	# Update shoot timer with new attack speed
+	if shoot_timer:
+		shoot_timer.wait_time = 1.0 / attack_speed
+
+	return true
+
+func choose_damage_path():
+	"""Choose damage specialization path (Level 3 → 4 Damage)"""
+	if tower_level != MAX_LEVEL_BEFORE_CHOICE:
+		push_warning("[ArcherTower] Can only choose path at level 3!")
+		return false
+
+	if upgrade_path != "":
+		push_warning("[ArcherTower] Path already chosen: %s" % upgrade_path)
+		return false
+
+	tower_level += 1
+	upgrade_path = "damage"
+
+	# DAMAGE PATH: +50% damage, +25% attack speed
+	damage = int(damage * 1.5)  # 25 → 37
+	attack_speed *= 1.25  # 1.6 → 2.0
+
+	print("[ArcherTower] DAMAGE PATH chosen: DMG=37, AS=2.0 - High DPS specialist!")
+
+	# Update shoot timer
+	if shoot_timer:
+		shoot_timer.wait_time = 1.0 / attack_speed
+
+	return true
+
+func choose_range_path():
+	"""Choose range specialization path (Level 3 → 4 Range)"""
+	if tower_level != MAX_LEVEL_BEFORE_CHOICE:
+		push_warning("[ArcherTower] Can only choose path at level 3!")
+		return false
+
+	if upgrade_path != "":
+		push_warning("[ArcherTower] Path already chosen: %s" % upgrade_path)
+		return false
+
+	tower_level += 1
+	upgrade_path = "range"
+
+	# RANGE PATH: +100% range
+	range_radius = int(range_radius * 2.0)  # 400 → 800
+
+	print("[ArcherTower] RANGE PATH chosen: Range=800 - Long-range sniper!")
+
+	# Update detection range collision shape
+	_update_detection_range()
+
+	# Redraw range indicator
+	draw_range_circle()
+
+	return true
+
+func _update_detection_range():
+	"""Update the collision shape radius to match new range"""
+	if not detection_range:
+		return
+
+	# Get the CollisionShape2D child
+	for child in detection_range.get_children():
+		if child is CollisionShape2D:
+			var shape = child.shape
+			if shape is CircleShape2D:
+				shape.radius = range_radius
+				print("[ArcherTower] Detection range updated to: %d" % range_radius)
+			break
+
+func get_upgrade_cost() -> int:
+	"""Get cost for next upgrade"""
+	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
+		# Standard upgrades
+		match tower_level:
+			1: return 60  # Level 1→2
+			2: return 80  # Level 2→3
+	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
+		# Path choice upgrade
+		return 100  # Level 3→4 (path choice)
+
+	return 0  # Max level reached
+
+func can_upgrade() -> bool:
+	"""Check if tower can be upgraded"""
+	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
+		return true  # Can do standard upgrade
+	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
+		return true  # Can choose path
+	return false  # Already maxed
+
+func needs_path_choice() -> bool:
+	"""Check if tower is at level 3 and needs to choose a path"""
+	return tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == ""
 
 # ============================================
 # CLEANUP

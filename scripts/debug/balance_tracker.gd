@@ -109,7 +109,7 @@ func start_run(level_id: String = "unknown"):
 		"enemies": {},
 		"waves": {},
 		"economy": {
-			"starting_gold": GameManager.gold if GameManager else 0,
+			"starting_gold": GameStateManager.gold if GameStateManager else 0,
 			"total_earned": 0,
 			"total_spent": 0,
 			"ending_gold": 0,
@@ -126,8 +126,8 @@ func start_run(level_id: String = "unknown"):
 	wave_data.clear()
 
 	# Record starting gold
-	if GameManager:
-		current_run.economy.starting_gold = GameManager.gold
+	if GameStateManager:
+		current_run.economy.starting_gold = GameStateManager.gold
 
 	print("[BalanceTracker] Run started: ", level_id)
 
@@ -147,9 +147,9 @@ func end_run(result: String, stars: int = 0):
 	current_run.stars = stars
 
 	# Record ending gold and lives
-	if GameManager:
-		current_run.economy.ending_gold = GameManager.gold
-		current_run.lives_remaining = GameManager.lives
+	if GameStateManager:
+		current_run.economy.ending_gold = GameStateManager.gold
+		current_run.lives_remaining = GameStateManager.lives
 
 	# Copy tracked data into run
 	current_run.towers = _serialize_tower_data()
@@ -436,9 +436,9 @@ func start_wave(wave_number: int, enemy_composition: Dictionary = {}):
 		"lives_lost": 0,
 		"gold_earned": 0,
 		"gold_spent": 0,
-		"gold_at_start": GameManager.gold if GameManager else 0,
+		"gold_at_start": GameStateManager.gold if GameStateManager else 0,
 		"gold_at_end": 0,
-		"lives_at_start": GameManager.lives if GameManager else 0,
+		"lives_at_start": GameStateManager.lives if GameStateManager else 0,
 		"lives_at_end": 0,
 		"composition": enemy_composition
 	}
@@ -457,8 +457,8 @@ func end_wave(wave_number: int):
 	var wave = wave_data[wave_number]
 	wave.end_time = Time.get_ticks_msec() / 1000.0 - run_start_time
 	wave.duration = wave.end_time - wave.start_time
-	wave.gold_at_end = GameManager.gold if GameManager else 0
-	wave.lives_at_end = GameManager.lives if GameManager else 0
+	wave.gold_at_end = GameStateManager.gold if GameStateManager else 0
+	wave.lives_at_end = GameStateManager.lives if GameStateManager else 0
 
 	# Calculate wave totals from enemy stats
 	for enemy_type in enemy_stats:

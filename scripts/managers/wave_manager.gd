@@ -64,6 +64,16 @@ func _ready():
 	# Load waves from LevelManager if available
 	if LevelManager.current_level:
 		waves = LevelManager.current_level.waves.duplicate()
+	else:
+		# EDITOR TESTING MODE: If testing directly from F5, initialize GameStateManager manually
+		push_warning("[WaveManager] No current_level found - you're testing from editor!")
+		push_warning("[WaveManager] Loading default level config for testing...")
+
+		# Try to load level_01_config for testing
+		var test_config = load("res://data/level_configs/level_01_config.tres") as LevelConfig
+		if test_config:
+			GameStateManager.initialize_level(test_config)
+			print("[WaveManager] GameStateManager initialized with test config (starting gold: %d)" % GameStateManager.gold)
 
 	# Create the spawn timer
 	spawn_timer = Timer.new()
@@ -78,6 +88,11 @@ func _ready():
 	wave_break_timer.one_shot = true  # Only triggers once
 	wave_break_timer.timeout.connect(_on_wave_break_timer_timeout)
 	add_child(wave_break_timer)
+
+	# Start balance tracking
+	if BalanceTracker:
+		var level_id = LevelManager.current_level.level_id if LevelManager.current_level else "unknown"
+		BalanceTracker.start_run(level_id)
 
 	# Start the first wave after 2 seconds (gives player time to prepare)
 	await get_tree().create_timer(2.0).timeout
@@ -136,6 +151,10 @@ func start_next_wave():
 	combat_started.emit()
 	print("[WaveManager] Combat started - Wave ", current_wave)
 
+	# Track wave start
+	if BalanceTracker:
+		BalanceTracker.start_wave(current_wave)
+
 	# Start spawn timer with randomized first delay
 	spawn_timer.wait_time = randf_range(spawn_delay_min, spawn_delay_max)
 	spawn_timer.start()
@@ -147,6 +166,10 @@ func wave_completed():
 		return
 
 	print("=== WAVE ", current_wave, " COMPLETED ===")
+
+	# Track wave end
+	if BalanceTracker:
+		BalanceTracker.end_wave(current_wave)
 
 	# Set combat state to inactive
 	is_combat_active = false
@@ -178,6 +201,13 @@ func wave_completed():
 
 		if wave_label:
 			wave_label.text = "VICTORY!"
+
+		# End balance tracking with victory
+		if BalanceTracker:
+			BalanceTracker.end_run("victory", _calculate_stars())
+			# Auto-save data on victory
+			if BalanceExporter:
+				BalanceExporter.export_current_run()
 
 		# Victory camera sequence (shake disabled)
 		# CameraEffects.victory_sequence(get_viewport().get_camera_2d())
@@ -279,6 +309,10 @@ func spawn_enemy():
 	# Connect death signal with enemy reference binding
 	if enemy.has_signal("enemy_died"):
 		enemy.enemy_died.connect(_on_enemy_died.bind(enemy))
+
+	# Apply per-wave stat modifiers from WaveData
+	if current_wave_data:
+		_apply_wave_modifiers(enemy, enemy_type)
 
 	# Add enemy to tracking dictionary
 	tracked_enemies[enemy] = true
@@ -415,6 +449,49 @@ func _calculate_stars() -> int:
 		return 2
 	else:
 		return 1
+
+# ============================================
+# PER-WAVE STAT MODIFIERS
+# ============================================
+
+func _apply_wave_modifiers(enemy, enemy_type: String):
+	"""Apply per-wave HP and gold multipliers to spawned enemy"""
+	if not current_wave_data:
+		return
+
+	# Get HP multiplier (check custom first, then global)
+	var hp_mult = 1.0
+	if current_wave_data.custom_hp_multipliers.has(enemy_type):
+		hp_mult = current_wave_data.custom_hp_multipliers[enemy_type]
+	else:
+		hp_mult = current_wave_data.hp_multiplier
+
+	# Get gold multiplier (check custom first, then global)
+	var gold_mult = 1.0
+	if current_wave_data.custom_gold_multipliers.has(enemy_type):
+		gold_mult = current_wave_data.custom_gold_multipliers[enemy_type]
+	else:
+		gold_mult = current_wave_data.gold_multiplier
+
+	# Apply HP multiplier
+	if hp_mult != 1.0 and enemy.has_method("set_max_health"):
+		var original_hp = enemy.max_health
+		var new_hp = int(original_hp * hp_mult)
+		enemy.set_max_health(new_hp)
+		print("[WaveManager] Wave %d: %s HP scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_hp, new_hp, hp_mult])
+	elif hp_mult != 1.0 and "max_health" in enemy:
+		var original_hp = enemy.max_health
+		var new_hp = int(original_hp * hp_mult)
+		enemy.max_health = new_hp
+		enemy.current_health = new_hp  # Also update current health
+		print("[WaveManager] Wave %d: %s HP scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_hp, new_hp, hp_mult])
+
+	# Apply gold multiplier
+	if gold_mult != 1.0 and "gold_reward" in enemy:
+		var original_gold = enemy.gold_reward
+		var new_gold = int(original_gold * gold_mult)
+		enemy.gold_reward = new_gold
+		print("[WaveManager] Wave %d: %s gold scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_gold, new_gold, gold_mult])
 
 # ============================================
 # LOOT SYSTEM INTEGRATION

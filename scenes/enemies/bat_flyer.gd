@@ -6,7 +6,7 @@ extends "res://scripts/enemies/base_enemy.gd"
 func _init():
 	# Set bat-specific stats
 	speed = 100.0
-	max_health = 80.0
+	max_health = 120.0
 	melee_damage = 0.0  # Bats don't attack heroes
 	attack_cooldown = 1.0
 	gold_reward = 12

@@ -19,3 +19,20 @@ class_name WaveData
 
 ## Optional: Is this a boss wave? (for special UI treatment)
 @export var is_boss_wave: bool = false
+
+## ============================================
+## PER-WAVE ENEMY STAT MODIFIERS
+## ============================================
+
+## HP multiplier for ALL enemies in this wave (1.0 = normal, 1.5 = +50% HP)
+@export_range(0.5, 3.0, 0.1) var hp_multiplier: float = 1.0
+
+## Gold multiplier for ALL enemies in this wave (1.0 = normal, 1.5 = +50% gold)
+@export_range(0.5, 3.0, 0.1) var gold_multiplier: float = 1.0
+
+## Optional: Custom HP multiplier per enemy type (overrides hp_multiplier)
+## Example: {"goblin": 1.5, "orc": 2.0} makes goblins 50% stronger, orcs 100% stronger
+@export var custom_hp_multipliers: Dictionary = {}
+
+## Optional: Custom gold multiplier per enemy type (overrides gold_multiplier)
+@export var custom_gold_multipliers: Dictionary = {}

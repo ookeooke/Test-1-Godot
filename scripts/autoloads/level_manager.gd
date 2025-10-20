@@ -104,9 +104,8 @@ func load_level_config(level_config: LevelConfig, campaign: CampaignData = null)
 
 	print("LevelManager: Loading level '", level_config.level_id, "' (", level_config.level_name, ")")
 
-	# Set initial game state
-	GameManager.gold = level_config.starting_gold
-	GameManager.lives = level_config.starting_lives
+	# Initialize game state with level config (calculates starting values with modifiers)
+	GameStateManager.initialize_level(level_config)
 
 	# Emit signal before loading
 	level_loaded.emit(level_config)

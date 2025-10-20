@@ -6,10 +6,10 @@ extends "res://scripts/enemies/base_enemy.gd"
 func _init():
 	# Set orc-specific stats
 	speed = 70.0
-	max_health = 150.0
+	max_health = 200.0
 	melee_damage = 10.0
 	attack_cooldown = 1.0
-	gold_reward = 10
+	gold_reward = 20
 	life_damage = 2
 	can_be_blocked = true
 	melee_detection_range = 100.0

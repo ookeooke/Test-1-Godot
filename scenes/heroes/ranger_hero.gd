@@ -17,7 +17,7 @@ var current_health = 200.0
 var hero_level = 1
 
 # COMBAT STATS
-var ranged_damage = 25.0
+var ranged_damage = 15.0
 var melee_damage = 12.0
 var ranged_range = 300.0
 var melee_range = 100.0
@@ -115,7 +115,11 @@ func _ready():
 	draw_range_circle()
 	range_indicator.visible = false
 	update_health_bar()
-	
+
+	# Register with BalanceTracker
+	if BalanceTracker:
+		BalanceTracker.register_hero(self, get_hero_id())
+
 	print("✓ Ranger Hero ready at: ", global_position)
 
 # ============================================
@@ -150,7 +154,7 @@ func _apply_equipment_bonuses():
 
 	# Reset to base stats first (to avoid stacking)
 	var base_max_health = 200.0
-	var base_ranged_damage = 25.0
+	var base_ranged_damage = 15.0
 	var base_ranged_attack_speed = 0.67
 
 	# Apply equipment bonuses
@@ -556,7 +560,7 @@ func shoot_arrow():
 	var arrow = arrow_scene.instantiate()
 	get_tree().root.add_child(arrow)
 	arrow.global_position = global_position
-	arrow.setup(current_ranged_target, ranged_damage)
+	arrow.setup(current_ranged_target, ranged_damage, self)
 
 # ============================================
 # COMBAT - MELEE
@@ -568,13 +572,18 @@ func _on_melee_timer_timeout():
 
 func melee_attack():
 	current_melee_targets = get_melee_targets()
-	
+
 	if current_melee_targets.is_empty():
 		return
-	
+
 	for enemy in current_melee_targets:
 		if is_instance_valid(enemy) and enemy.has_method("take_damage"):
-			enemy.take_damage(melee_damage)
+			# Track melee damage
+			if BalanceTracker:
+				BalanceTracker.record_damage(self, enemy, melee_damage, "hero_melee")
+
+			# Deal damage (pass source for kill tracking)
+			enemy.take_damage(melee_damage, self, "hero_melee")
 
 # ============================================
 # HEALTH & DEATH
@@ -588,6 +597,10 @@ func take_damage(amount: float):
 		die()
 
 func die():
+	# Track hero death
+	if BalanceTracker:
+		BalanceTracker.record_hero_death(self)
+
 	var respawn_time = 10.0 + (hero_level - 1) * 5.0
 	hero_died.emit(respawn_time)
 	queue_free()

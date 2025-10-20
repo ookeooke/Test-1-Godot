@@ -11,8 +11,8 @@ signal menu_closed()
 var tower = null
 var spot = null
 
-# Upgrade costs
-var upgrade_cost = 150
+# Upgrade costs (dynamic based on tower level)
+var upgrade_cost = 60  # Default, will be updated from tower
 
 # References
 @onready var panel = $PanelContainer
@@ -70,12 +70,16 @@ func update_display():
 	# Detect tower type and show appropriate info
 	var is_garrison = _is_garrison_tower()
 
-	# Set tower name
+	# Set tower name with level
 	if tower_name_label:
 		if is_garrison:
 			tower_name_label.text = "Soldier Tower"
 		else:
-			tower_name_label.text = "Archer Tower"  # TODO: Get from tower
+			var level = tower.tower_level if "tower_level" in tower else 1
+			var path_text = ""
+			if "upgrade_path" in tower and tower.upgrade_path != "":
+				path_text = " [%s]" % tower.upgrade_path.to_upper()
+			tower_name_label.text = "Archer Tower Lv%d%s" % [level, path_text]
 
 	# Set stats
 	if stats_label and tower:
@@ -88,9 +92,23 @@ func update_display():
 
 			stats_label.text = "Damage: %d\nAttack Speed: %.1f/s\nRange: %d" % [damage, attack_speed, range_val]
 
-	# Set button text with costs
+	# Set button text with costs (get from tower if available)
 	if upgrade_button:
-		upgrade_button.text = "Upgrade\n" + str(upgrade_cost) + "g"
+		# Get upgrade cost from tower
+		if tower and tower.has_method("get_upgrade_cost"):
+			upgrade_cost = tower.get_upgrade_cost()
+
+			# Check if this is a path choice upgrade
+			if tower.has_method("needs_path_choice") and tower.needs_path_choice():
+				upgrade_button.text = "Choose Path\n" + str(upgrade_cost) + "g"
+			elif upgrade_cost > 0:
+				var level = tower.tower_level if "tower_level" in tower else 1
+				upgrade_button.text = "Upgrade (Lv%d)\n%dg" % [level + 1, upgrade_cost]
+			else:
+				upgrade_button.text = "MAX LEVEL"
+				upgrade_button.disabled = true
+		else:
+			upgrade_button.text = "Upgrade\n" + str(upgrade_cost) + "g"
 	if sell_button:
 		# Calculate 70% of build cost dynamically
 		var sell_value = _calculate_sell_value()
