@@ -35,6 +35,14 @@ func _ready():
 	await get_tree().create_timer(0.1).timeout
 	_validate_button_state()
 
+func _input(event):
+	# WORKAROUND: For Godot web export on mobile browsers
+	# text_changed signal doesn't fire reliably on Android Chrome/mobile browsers
+	# This is a known issue: https://github.com/godotengine/godot/issues/64590
+	# Using _input() as workaround to monitor LineEdit text changes
+	if name_input:
+		_validate_button_state()
+
 func _validate_button_state():
 	# Reusable function to check and update button state
 	# Called from multiple places to ensure reliability on Android
