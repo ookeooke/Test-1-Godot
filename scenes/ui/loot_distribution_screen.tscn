@@ -29,10 +29,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -500.0
-offset_top = -350.0
-offset_right = 500.0
-offset_bottom = 350.0
+offset_left = -640.0
+offset_top = -400.0
+offset_right = 640.0
+offset_bottom = 400.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -55,14 +55,20 @@ theme_override_constants/separation = 15
 [node name="TitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
-text = "LOOT ACQUIRED"
+text = "VICTORY"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="StarsLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "★★★ (3 Stars Earned)"
+horizontal_alignment = 1
 
 [node name="SubtitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Distribute items to your heroes or store in inventory"
+text = "Drag items from Found Loot to your Hero's inventory"
 horizontal_alignment = 1
 
 [node name="HSeparator" type="HSeparator" parent="MainPanel/MarginContainer/VBoxContainer"]
@@ -71,23 +77,116 @@ layout_mode = 2
 [node name="ContentHBox" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 20
+theme_override_constants/separation = 15
+
+[node name="StashPanel" type="PanelContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBox" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HeroSelector" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HeroPortrait" type="ColorRect" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/HeroSelector"]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+color = Color(0.5, 0.5, 0.5, 1)
+
+[node name="HeroInfo" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/HeroSelector"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeroNameLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/HeroSelector/HeroInfo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Ranger"
+
+[node name="HeroDropdown" type="OptionButton" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/HeroSelector/HeroInfo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Select Hero"
+alignment = 1
+
+[node name="Header" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "HERO INVENTORY"
+horizontal_alignment = 1
+
+[node name="CapacityLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/Header"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "0/20"
+horizontal_alignment = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox"]
+custom_minimum_size = Vector2(0, 480)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StashGrid" type="GridContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+columns = 5
+
+[node name="MiddleButtons" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="TakeAllButton" type="Button" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/MiddleButtons"]
+custom_minimum_size = Vector2(100, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Take All
+→"
+
+[node name="TakeRareButton" type="Button" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/MiddleButtons"]
+custom_minimum_size = Vector2(100, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Take
+Rare+
+→"
 
 [node name="LootPanel" type="PanelContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
+custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="VBox" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel"]
 layout_mode = 2
 
-[node name="Header" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox"]
+[node name="Header" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox"]
 layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 20
-text = "Items Found"
+text = "FOUND LOOT"
 horizontal_alignment = 1
 
+[node name="CountLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox/Header"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "0 items"
+horizontal_alignment = 2
+
 [node name="ScrollContainer" type="ScrollContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox"]
-custom_minimum_size = Vector2(0, 400)
+custom_minimum_size = Vector2(0, 580)
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -95,84 +194,20 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
-columns = 4
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+columns = 5
 
-[node name="SummaryPanel" type="PanelContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
-custom_minimum_size = Vector2(300, 0)
+[node name="HSeparator2" type="HSeparator" parent="MainPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
-
-[node name="VBox" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel"]
-layout_mode = 2
-
-[node name="Header" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "Summary"
-horizontal_alignment = 1
-
-[node name="StatsContainer" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="ItemCountLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox/StatsContainer"]
-layout_mode = 2
-text = "Items: 0"
-
-[node name="GoldLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox/StatsContainer"]
-layout_mode = 2
-text = "Gold Earned: 0"
-
-[node name="HSeparator" type="HSeparator" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox"]
-layout_mode = 2
-
-[node name="RarityBreakdown" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="Title" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox/RarityBreakdown"]
-layout_mode = 2
-text = "Rarity Breakdown:"
-horizontal_alignment = 1
-
-[node name="CommonLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox/RarityBreakdown"]
-layout_mode = 2
-text = "Common: 0"
-
-[node name="UncommonLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox/RarityBreakdown"]
-layout_mode = 2
-text = "Uncommon: 0"
-
-[node name="RareLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox/RarityBreakdown"]
-layout_mode = 2
-text = "Rare: 0"
-
-[node name="EpicLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox/RarityBreakdown"]
-layout_mode = 2
-text = "Epic: 0"
-
-[node name="LegendaryLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox/RarityBreakdown"]
-layout_mode = 2
-text = "Legendary: 0"
-
-[node name="Spacer" type="Control" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/SummaryPanel/VBox"]
-layout_mode = 2
-size_flags_vertical = 3
 
 [node name="ButtonsHBox" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 15
 alignment = 1
 
-[node name="TakeAllButton" type="Button" parent="MainPanel/MarginContainer/VBoxContainer/ButtonsHBox"]
-custom_minimum_size = Vector2(180, 50)
+[node name="LeaveButton" type="Button" parent="MainPanel/MarginContainer/VBoxContainer/ButtonsHBox"]
+custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "Take All to Inventory"
-
-[node name="ContinueButton" type="Button" parent="MainPanel/MarginContainer/VBoxContainer/ButtonsHBox"]
-custom_minimum_size = Vector2(180, 50)
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "Continue"
+text = "Leave"

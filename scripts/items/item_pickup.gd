@@ -200,10 +200,9 @@ func collect_item(was_auto: bool = false):
 	var collection_type = "manually" if not was_auto else "automatically"
 	print("[ItemPickup] Collected ", collection_type, ": ", item_data.item_name)
 
-	# Show floating text (if ClickFeedback exists)
+	# Show click feedback effect
 	if has_node("/root/ClickFeedback"):
-		var feedback_text = "+ " + item_data.item_name
-		ClickFeedback.spawn_popup(feedback_text, global_position, item_data.get_rarity_color())
+		ClickFeedback.play_click_feedback(global_position)
 
 	# Play collection animation
 	_play_collect_animation()

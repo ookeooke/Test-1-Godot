@@ -151,10 +151,11 @@ func _spawn_item_pickup(item_id: String, position: Vector2):
 	pickup.item_id = item_id
 	pickup.global_position = position
 
-	# Add to current scene
+	# Add to current scene (deferred to avoid "flushing queries" error)
 	var current_scene = get_tree().current_scene
 	if current_scene:
-		current_scene.add_child(pickup)
+		# Use call_deferred to avoid physics/tree state issues
+		current_scene.call_deferred("add_child", pickup)
 		loot_spawned.emit(item_id, position)
 		print("[LootManager] Spawned item: ", item_data.item_name, " (", item_data.get_rarity_name(), ")")
 	else:

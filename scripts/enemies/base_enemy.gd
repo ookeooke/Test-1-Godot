@@ -64,6 +64,8 @@ var hit_point_visual: Polygon2D  # Visual indicator for hit point in editor
 
 @onready var path_follower: PathFollow2D = get_parent() as PathFollow2D
 @onready var health_bar = $HealthBar
+@onready var anim_player: AnimationPlayer = $AnimationPlayer if has_node("AnimationPlayer") else null
+@onready var hit_particles: CPUParticles2D = $HitParticles if has_node("HitParticles") else null
 
 # ============================================
 # INITIALIZATION
@@ -188,6 +190,8 @@ func handle_hero_combat(delta):
 		attack_timer = 0.0
 		if blocking_hero.has_method("take_damage"):
 			blocking_hero.take_damage(melee_damage)
+			# Play attack animation
+			_play_animation("attack")
 
 # ============================================
 # BLOCKING SYSTEM
@@ -217,6 +221,11 @@ func take_damage(amount: float):
 
 	# Update health bar
 	_update_health_bar()
+
+	# Play hit animation and particles
+	_play_animation("hit")
+	if hit_particles:
+		hit_particles.restart()
 
 	if current_health <= 0:
 		die()
@@ -275,6 +284,11 @@ func set_path_follower(follower: PathFollow2D):
 func get_enemy_name() -> String:
 	"""Override this in child classes to return enemy name"""
 	return "Enemy"
+
+func _play_animation(anim_name: String):
+	"""Play animation if AnimationPlayer exists"""
+	if anim_player and anim_player.has_animation(anim_name):
+		anim_player.play(anim_name)
 
 # ============================================
 # CLEANUP

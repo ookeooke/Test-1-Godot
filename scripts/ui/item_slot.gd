@@ -260,10 +260,11 @@ func _find_equipment_manager() -> EquipmentManager:
 		node = node.get_parent()
 
 	# Fallback: search for hero in scene
-	var heroes = get_tree().get_nodes_in_group("hero")
-	for hero in heroes:
-		if hero.has_node("EquipmentManager"):
-			return hero.get_node("EquipmentManager")
+	if get_tree():
+		var heroes = get_tree().get_nodes_in_group("hero")
+		for hero in heroes:
+			if hero.has_node("EquipmentManager"):
+				return hero.get_node("EquipmentManager")
 
 	return null
 

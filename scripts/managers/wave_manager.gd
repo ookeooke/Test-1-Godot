@@ -20,6 +20,7 @@ extends Node2D
 var current_wave = 0  # Which wave we're on (starts at 0)
 var tracked_enemies: Dictionary = {}  # Dictionary of all living enemies (enemy_instance: true)
 var is_combat_active: bool = false  # Whether a wave is currently active
+var victory_screen_shown: bool = false  # Guard to prevent showing victory twice
 
 # COMBAT STATE SIGNALS
 signal combat_started()
@@ -140,6 +141,11 @@ func start_next_wave():
 	spawn_timer.start()
 
 func wave_completed():
+	# Guard against duplicate calls (can happen when multiple enemies die simultaneously)
+	if current_wave >= waves.size() and victory_screen_shown:
+		print("[WaveManager] Victory already processed, ignoring duplicate wave_completed() call")
+		return
+
 	print("=== WAVE ", current_wave, " COMPLETED ===")
 
 	# Set combat state to inactive
@@ -155,6 +161,9 @@ func wave_completed():
 
 	# Check if this was the last wave FIRST
 	if current_wave >= waves.size():
+		# Set guard flag IMMEDIATELY to prevent duplicate execution
+		victory_screen_shown = true
+
 		print("ALL WAVES CLEARED! Verifying all enemies are dead...")
 
 		# Wait 1 frame for queue_free() to process, then verify
@@ -164,6 +173,7 @@ func wave_completed():
 		if not _verify_all_enemies_dead():
 			print("ERROR: Victory check failed - enemies still on screen!")
 			print("Waiting for remaining enemies to be eliminated...")
+			victory_screen_shown = false  # Reset flag if verification failed
 			return  # Don't show victory yet
 
 		if wave_label:
@@ -348,38 +358,29 @@ func _show_victory_screen():
 	# Pause the game tree so gameplay stops
 	get_tree().paused = true
 
-	# Get the current scene tree root
-	var root = get_tree().root
-
-	# NEW: Show loot distribution screen FIRST (Option D)
+	# Show loot distribution screen FIRST
 	# Check if there's any loot to distribute
 	var loot_count = LootManager.get_pending_loot_count()
 
 	if loot_count > 0:
 		print("[WaveManager] Showing loot distribution screen (%d items pending)" % loot_count)
-		await _show_loot_distribution_screen()
+		await _show_loot_distribution_screen(stars)
 	else:
-		print("[WaveManager] No loot to distribute, skipping to victory screen")
+		print("[WaveManager] No loot to distribute, skipping loot screen")
 
-	# Then show victory screen with stars
-	# Create a CanvasLayer to ensure victory screen is on top
-	var canvas_layer = CanvasLayer.new()
-	canvas_layer.layer = 100  # High layer to be on top of everything
-	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS  # Process even when paused
+	# NEW: Skip victory screen, go directly to world map (user's requested flow)
+	print("[WaveManager] Loot complete, returning to world map...")
 
-	# Instantiate victory screen
-	var victory_screen = victory_screen_scene.instantiate()
-	victory_screen.level_id = level_id
-	victory_screen.stars_earned = stars
+	# Unpause the game before changing scenes
+	get_tree().paused = false
 
-	# Add canvas layer to root, then victory screen to canvas layer
-	root.add_child(canvas_layer)
-	canvas_layer.add_child(victory_screen)
+	# Change to world map scene
+	get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
 
-	print("WaveManager: Victory screen shown with ", stars, " stars on canvas layer ", canvas_layer.layer)
+	print("[WaveManager] Scene change to world map initiated")
 
 
-func _show_loot_distribution_screen():
+func _show_loot_distribution_screen(stars: int):
 	"""Show loot distribution screen and wait for user to continue"""
 	# Create canvas layer for loot screen
 	var canvas_layer = CanvasLayer.new()
@@ -389,6 +390,9 @@ func _show_loot_distribution_screen():
 	# Instantiate loot distribution screen
 	var loot_screen = loot_distribution_scene.instantiate()
 
+	# Set stars earned (must set BEFORE adding to tree)
+	loot_screen.stars_earned = stars
+
 	# Add to scene tree
 	get_tree().root.add_child(canvas_layer)
 	canvas_layer.add_child(loot_screen)
@@ -396,7 +400,7 @@ func _show_loot_distribution_screen():
 	# Wait for user to finish distributing loot
 	await loot_screen.continue_to_victory
 
-	print("[WaveManager] Loot distribution complete, continuing to victory screen")
+	print("[WaveManager] Loot distribution complete, continuing to results screen")
 
 func _calculate_stars() -> int:
 	# Star calculation based on lives remaining (10 waves is harder!)
