@@ -18,7 +18,12 @@ extends Node2D
 
 # WAVE SETTINGS
 var current_wave = 0  # Which wave we're on (starts at 0)
-var enemies_alive = 0  # How many enemies are currently on screen
+var tracked_enemies: Dictionary = {}  # Dictionary of all living enemies (enemy_instance: true)
+var is_combat_active: bool = false  # Whether a wave is currently active
+
+# COMBAT STATE SIGNALS
+signal combat_started()
+signal combat_ended()
 
 # Current wave spawn state
 var current_wave_data: WaveData = null
@@ -45,7 +50,8 @@ var use_lane_system = true  # Enable/disable lane-based spawning
 var spawn_timer: Timer
 var wave_break_timer: Timer
 
-# VICTORY SCREEN
+# VICTORY SCREENS
+var loot_distribution_scene = preload("res://scenes/ui/loot_distribution_screen.tscn")
 var victory_screen_scene = preload("res://scenes/ui/victory_screen.tscn")
 
 # ============================================
@@ -124,6 +130,11 @@ func start_next_wave():
 		else:
 			wave_label.text = "Wave " + str(current_wave)
 
+	# Set combat state and emit signal
+	is_combat_active = true
+	combat_started.emit()
+	print("[WaveManager] Combat started - Wave ", current_wave)
+
 	# Start spawn timer with randomized first delay
 	spawn_timer.wait_time = randf_range(spawn_delay_min, spawn_delay_max)
 	spawn_timer.start()
@@ -131,12 +142,30 @@ func start_next_wave():
 func wave_completed():
 	print("=== WAVE ", current_wave, " COMPLETED ===")
 
+	# Set combat state to inactive
+	is_combat_active = false
+	combat_ended.emit()
+	print("[WaveManager] Combat ended - Wave ", current_wave, " complete")
+
+	# NEW: Auto-collect all pending loot from the wave (Dungeon Defenders pattern)
+	LootManager.collect_wave_loot()
+
 	# Camera shake for wave complete (disabled - adjust in inspector if needed)
 	# CameraEffects.large_shake(get_viewport().get_camera_2d())
 
 	# Check if this was the last wave FIRST
 	if current_wave >= waves.size():
-		print("ALL WAVES CLEARED! VICTORY!")
+		print("ALL WAVES CLEARED! Verifying all enemies are dead...")
+
+		# Wait 1 frame for queue_free() to process, then verify
+		await get_tree().process_frame
+
+		# Double-check that all enemies are truly gone (Kingdom Rush style)
+		if not _verify_all_enemies_dead():
+			print("ERROR: Victory check failed - enemies still on screen!")
+			print("Waiting for remaining enemies to be eliminated...")
+			return  # Don't show victory yet
+
 		if wave_label:
 			wave_label.text = "VICTORY!"
 
@@ -156,6 +185,11 @@ func wave_completed():
 	print("Next wave in ", break_time, " seconds...")
 	wave_break_timer.wait_time = break_time
 	wave_break_timer.start()
+
+
+## Helper function to check if combat is active
+func is_wave_active() -> bool:
+	return is_combat_active
 
 # ============================================
 # SPAWNING FUNCTIONS
@@ -232,11 +266,13 @@ func spawn_enemy():
 	else:
 		enemy.path_follower = path_follower
 	
-	# Connect death signal
+	# Connect death signal with enemy reference binding
 	if enemy.has_signal("enemy_died"):
-		enemy.enemy_died.connect(_on_enemy_died)
+		enemy.enemy_died.connect(_on_enemy_died.bind(enemy))
 
-	enemies_alive += 1
+	# Add enemy to tracking dictionary
+	tracked_enemies[enemy] = true
+	print("Enemy spawned. Tracked count: ", tracked_enemies.size())
 
 	# Check if all enemies have been spawned
 	if current_spawn_index >= current_enemy_groups.size():
@@ -260,18 +296,41 @@ func _on_wave_break_timer_timeout():
 # ENEMY CALLBACKS
 # ============================================
 
-func _on_enemy_died():
+func _on_enemy_died(enemy):
 	# Called when an enemy dies or reaches the end
-	enemies_alive -= 1
-	print("Enemy removed. Alive: ", enemies_alive)
+	# NEW: Roll loot for the enemy
+	if is_instance_valid(enemy):
+		_roll_loot_for_enemy(enemy)
+
+	# Remove enemy from tracking dictionary
+	if tracked_enemies.has(enemy):
+		tracked_enemies.erase(enemy)
+		print("Enemy removed. Tracked count: ", tracked_enemies.size())
+	else:
+		print("WARNING: Enemy died but was not being tracked!")
 
 	# Check if wave is complete (all spawned and all dead)
-	if enemies_alive <= 0 and current_spawn_index >= current_enemy_groups.size():
+	if tracked_enemies.is_empty() and current_spawn_index >= current_enemy_groups.size():
 		wave_completed()
 
 # ============================================
 # VICTORY HANDLING
 # ============================================
+
+func _verify_all_enemies_dead() -> bool:
+	"""Double-check that all enemies are truly gone from the scene tree"""
+	var actual_enemies = get_tree().get_nodes_in_group("enemy")
+
+	# Log discrepancy if any
+	if actual_enemies.size() > 0:
+		print("WARNING: Tracked enemies empty but ", actual_enemies.size(), " enemies still in scene!")
+		for enemy in actual_enemies:
+			if is_instance_valid(enemy):
+				print("  - Remaining enemy: ", enemy.name, " at ", enemy.global_position)
+		return false
+
+	print("Verification passed: All enemies confirmed dead")
+	return true
 
 func _show_victory_screen():
 	# Calculate stars (simple 3-star system for now)
@@ -292,6 +351,17 @@ func _show_victory_screen():
 	# Get the current scene tree root
 	var root = get_tree().root
 
+	# NEW: Show loot distribution screen FIRST (Option D)
+	# Check if there's any loot to distribute
+	var loot_count = LootManager.get_pending_loot_count()
+
+	if loot_count > 0:
+		print("[WaveManager] Showing loot distribution screen (%d items pending)" % loot_count)
+		await _show_loot_distribution_screen()
+	else:
+		print("[WaveManager] No loot to distribute, skipping to victory screen")
+
+	# Then show victory screen with stars
 	# Create a CanvasLayer to ensure victory screen is on top
 	var canvas_layer = CanvasLayer.new()
 	canvas_layer.layer = 100  # High layer to be on top of everything
@@ -308,6 +378,26 @@ func _show_victory_screen():
 
 	print("WaveManager: Victory screen shown with ", stars, " stars on canvas layer ", canvas_layer.layer)
 
+
+func _show_loot_distribution_screen():
+	"""Show loot distribution screen and wait for user to continue"""
+	# Create canvas layer for loot screen
+	var canvas_layer = CanvasLayer.new()
+	canvas_layer.layer = 99  # Below victory screen but above gameplay
+	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+
+	# Instantiate loot distribution screen
+	var loot_screen = loot_distribution_scene.instantiate()
+
+	# Add to scene tree
+	get_tree().root.add_child(canvas_layer)
+	canvas_layer.add_child(loot_screen)
+
+	# Wait for user to finish distributing loot
+	await loot_screen.continue_to_victory
+
+	print("[WaveManager] Loot distribution complete, continuing to victory screen")
+
 func _calculate_stars() -> int:
 	# Star calculation based on lives remaining (10 waves is harder!)
 	# 3 stars: 16+ lives (80%+ health)
@@ -321,3 +411,54 @@ func _calculate_stars() -> int:
 		return 2
 	else:
 		return 1
+
+# ============================================
+# LOOT SYSTEM INTEGRATION
+# ============================================
+
+func _roll_loot_for_enemy(enemy):
+	"""Roll loot drops for a defeated enemy"""
+	# Determine enemy tier based on type
+	var enemy_tier = _get_enemy_tier(enemy)
+
+	# Get enemy position for loot drop location
+	var loot_position = enemy.global_position
+
+	# Check if this is a boss enemy (for guaranteed drops)
+	var is_boss = _is_boss_enemy(enemy)
+	var guaranteed_item = ""
+
+	if is_boss:
+		enemy_tier = "boss"
+		# Bosses could have guaranteed unique drops
+		# guaranteed_item = "legendary_bow"  # Example
+
+	# Roll loot through LootManager
+	LootManager.roll_loot_for_enemy(enemy_tier, loot_position, guaranteed_item)
+
+
+func _get_enemy_tier(enemy) -> String:
+	"""Determine enemy tier based on enemy type or properties"""
+	# Get enemy name/type
+	var enemy_name = enemy.name.to_lower()
+
+	# Tier 1: Weak enemies (goblins, bats)
+	if "goblin" in enemy_name or "bat" in enemy_name:
+		return "tier1"
+
+	# Tier 2: Medium enemies (wolves, orcs)
+	elif "wolf" in enemy_name or "orc" in enemy_name:
+		return "tier2"
+
+	# Tier 3: Strong enemies (trolls, elites)
+	elif "troll" in enemy_name or "elite" in enemy_name:
+		return "tier3"
+
+	# Default to tier 1
+	return "tier1"
+
+
+func _is_boss_enemy(enemy) -> bool:
+	"""Check if an enemy is a boss"""
+	var enemy_name = enemy.name.to_lower()
+	return "boss" in enemy_name or (enemy.has_method("is_boss") and enemy.is_boss())

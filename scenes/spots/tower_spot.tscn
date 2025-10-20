@@ -15,6 +15,8 @@ script = ExtResource("1_8i0vn")
 texture = SubResource("PlaceholderTexture2D_kdubu")
 
 [node name="ClickArea" type="Area2D" parent="."]
+collision_layer = 32
+collision_mask = 0
 input_pickable = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]

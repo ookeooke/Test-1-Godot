@@ -15,6 +15,10 @@ extends Control
 @onready var button = $Button
 @onready var panel = $Panel
 
+# Ability buttons container
+var abilities_container: HBoxContainer = null
+var ability_buttons: Array[AbilityButton] = []
+
 # STATE
 var hero_reference = null  # Reference to the actual hero in the game world
 var is_selected = false
@@ -25,6 +29,9 @@ var is_selected = false
 
 func _ready():
 	print("HeroButton ready")
+
+	# Create abilities container
+	_setup_abilities_container()
 
 	# Apply scale-aware sizing
 	_apply_ui_scale()
@@ -39,6 +46,19 @@ func _ready():
 	# Listen for scale changes
 	if UIScaleManager:
 		UIScaleManager.scale_changed.connect(_on_ui_scale_changed)
+
+func _setup_abilities_container():
+	"""Create container for ability buttons"""
+	# Create container below the panel
+	abilities_container = HBoxContainer.new()
+	abilities_container.name = "AbilitiesContainer"
+	abilities_container.add_theme_constant_override("separation", 4)
+	add_child(abilities_container)
+
+	# Position below the hero button panel
+	abilities_container.position = Vector2(0, 125)  # Just below the hero panel
+
+	print("✅ Abilities container created")
 
 func _apply_ui_scale():
 	"""Apply UI scale factor to ensure proper touch target size"""
@@ -80,6 +100,9 @@ func set_hero(hero):
 	if hero_reference and is_instance_valid(hero_reference):
 		# Update display
 		_update_hero_info()
+
+		# Setup ability buttons
+		_setup_ability_buttons()
 
 		# Connect to health changes (if signal exists, otherwise poll)
 		# Note: We'll update health every frame in _process for now
@@ -172,3 +195,56 @@ func _on_hero_health_changed(current_health, max_health):
 	"""Called when hero health changes (if signal exists)"""
 	var health_percent = (current_health / max_health) * 100.0
 	health_bar.value = health_percent
+
+## ============================================
+## ABILITY BUTTONS
+## ============================================
+
+func _setup_ability_buttons():
+	"""Create ability buttons for hero's active skills"""
+	if not hero_reference or not is_instance_valid(hero_reference):
+		return
+
+	# Clear existing buttons
+	for btn in ability_buttons:
+		btn.queue_free()
+	ability_buttons.clear()
+
+	# Get skill manager from hero
+	if not hero_reference.has_node("SkillManager"):
+		print("⚠️ HeroButton: Hero has no SkillManager")
+		return
+
+	var skill_manager = hero_reference.get_node("SkillManager")
+
+	# Get all owned skills
+	var owned_skills = skill_manager.owned_skills
+	if owned_skills.is_empty():
+		print("📝 HeroButton: No skills owned yet")
+		return
+
+	# Create button for each active skill
+	var hotkey_index = 1
+	for skill_id in owned_skills.keys():
+		var skill_data = skill_manager.get_skill_data(skill_id)
+
+		if not skill_data:
+			continue
+
+		# Only create buttons for active skills
+		if skill_data.skill_type != HeroSkillData.SkillType.ACTIVE:
+			continue
+
+		# Create ability button
+		var ability_btn = AbilityButton.new()
+		abilities_container.add_child(ability_btn)
+
+		# Setup button
+		ability_btn.setup(skill_id, skill_manager, skill_data, str(hotkey_index))
+
+		# Add to tracking array
+		ability_buttons.append(ability_btn)
+
+		hotkey_index += 1
+
+	print("🎮 HeroButton: Created ", ability_buttons.size(), " ability buttons")

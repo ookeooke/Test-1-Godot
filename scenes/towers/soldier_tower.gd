@@ -9,6 +9,8 @@ extends StaticBody2D
 # - Plugs into existing tower placement system
 
 # TOWER STATS
+var build_cost = 120  # Cost to build this tower (for sell calculation)
+
 @export_group("Garrison Settings")
 @export var squad_size: int = 4  ## Number of soldiers in the squad
 @export var spawn_radius: float = 60.0  ## How far from tower center soldiers spawn

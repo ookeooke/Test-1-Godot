@@ -1,0 +1,154 @@
+[gd_scene load_steps=4 format=3 uid="uid://c8jh3xm5y2pqr"]
+
+[ext_resource type="Script" path="res://scripts/ui/inventory_panel.gd" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_main"]
+bg_color = Color(0.1, 0.1, 0.1, 0.95)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.6, 0.6, 0.6, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tooltip"]
+bg_color = Color(0.05, 0.05, 0.05, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.8, 0.8, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="InventoryPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -300.0
+offset_right = 400.0
+offset_bottom = 300.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_main")
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HeaderContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="CategoryLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/HeaderContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "Equipment Inventory"
+
+[node name="CloseButton" type="Button" parent="Panel/MarginContainer/VBoxContainer/HeaderContainer"]
+layout_mode = 2
+text = "X"
+
+[node name="TabContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="EquipmentTab" type="Button" parent="Panel/MarginContainer/VBoxContainer/TabContainer"]
+layout_mode = 2
+text = "Equipment"
+
+[node name="ConsumablesTab" type="Button" parent="Panel/MarginContainer/VBoxContainer/TabContainer"]
+layout_mode = 2
+text = "Consumables"
+
+[node name="MaterialsTab" type="Button" parent="Panel/MarginContainer/VBoxContainer/TabContainer"]
+layout_mode = 2
+text = "Materials"
+
+[node name="ContentContainer" type="PanelContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EquipmentGrid" type="GridContainer" parent="Panel/MarginContainer/VBoxContainer/ContentContainer"]
+layout_mode = 2
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+columns = 5
+
+[node name="ConsumablesGrid" type="GridContainer" parent="Panel/MarginContainer/VBoxContainer/ContentContainer"]
+visible = false
+layout_mode = 2
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+columns = 5
+
+[node name="MaterialsGrid" type="GridContainer" parent="Panel/MarginContainer/VBoxContainer/ContentContainer"]
+visible = false
+layout_mode = 2
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+columns = 6
+
+[node name="FooterContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="SlotsLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/FooterContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Slots: 0 / 20"
+
+[node name="GoldLabel" type="Label" parent="Panel/MarginContainer/VBoxContainer/FooterContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Gold: 1000"
+horizontal_alignment = 2
+
+[node name="TooltipPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 0
+offset_right = 300.0
+offset_bottom = 200.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_tooltip")
+
+[node name="MarginContainer" type="MarginContainer" parent="TooltipPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="TooltipLabel" type="RichTextLabel" parent="TooltipPanel/MarginContainer"]
+layout_mode = 2
+bbcode_enabled = true
+text = "[b]Item Name[/b]
+Rarity
+
+Description
+
+Stats here"
+fit_content = true

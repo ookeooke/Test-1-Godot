@@ -41,6 +41,18 @@ func create_new_profile(profile_name: String) -> bool:
 		"last_played": Time.get_datetime_string_from_system(),
 		"completed_levels": [],
 		"level_stars": {}, # level_id: stars_earned (1-3)
+		"currency": 1000,  # Starting gold for skill purchases
+		"hero_skills": {},  # hero_id: { skill_id: level }
+		"inventory": {  # New: Inventory system data
+			"global_inventory": {},
+			"max_slots": {
+				"equipment": 20,
+				"consumables": 15,
+				"materials": 30
+			}
+		},
+		"hero_equipment": {},  # New: Per-hero equipment slots
+		"user_preferences": {},  # UI preferences (panel tabs, etc.)
 		"settings": {
 			"master_volume": 1.0,
 			"music_volume": 1.0,
@@ -74,6 +86,10 @@ func save_profile(profile_data: Dictionary) -> bool:
 
 	# Update last played time
 	profile_data["last_played"] = Time.get_datetime_string_from_system()
+
+	# Save inventory data from InventoryManager
+	if InventoryManager:
+		profile_data["inventory"] = InventoryManager.save_to_dict()
 
 	# Convert to JSON
 	var json_string = JSON.stringify(profile_data, "\t")
@@ -110,6 +126,11 @@ func load_profile(profile_name: String) -> bool:
 			var profile_data = json.data
 			current_profile = profile_data
 			current_profile_name = profile_name
+
+			# Load inventory data into InventoryManager
+			if InventoryManager and profile_data.has("inventory"):
+				InventoryManager.load_from_dict(profile_data["inventory"])
+
 			print("SaveManager: Profile loaded: ", profile_name)
 			profile_loaded.emit(profile_data)
 			return true
@@ -247,3 +268,188 @@ func save_current_profile() -> bool:
 		push_error("SaveManager: No profile loaded to save")
 		return false
 	return save_profile(current_profile)
+
+# ============================================
+# CURRENCY MANAGEMENT
+# ============================================
+
+func get_currency() -> int:
+	"""Get player's current currency (gold)"""
+	if not has_current_profile():
+		return 0
+
+	# Ensure currency field exists (for backwards compatibility)
+	if not current_profile.has("currency"):
+		current_profile["currency"] = 0
+
+	return current_profile["currency"]
+
+func add_currency(amount: int) -> void:
+	"""Add or remove currency (use negative for spending)"""
+	if not has_current_profile():
+		push_error("SaveManager: No profile loaded")
+		return
+
+	if not current_profile.has("currency"):
+		current_profile["currency"] = 0
+
+	current_profile["currency"] += amount
+	current_profile["currency"] = maxi(current_profile["currency"], 0)  # Don't go negative
+
+	print("💰 Currency: ", current_profile["currency"], " (", "+%d" % amount if amount > 0 else str(amount), ")")
+
+	save_current_profile()
+
+func set_currency(amount: int) -> void:
+	"""Set currency to a specific amount"""
+	if not has_current_profile():
+		return
+
+	current_profile["currency"] = maxi(amount, 0)
+	save_current_profile()
+
+# ============================================
+# HERO SKILLS MANAGEMENT
+# ============================================
+
+func unlock_hero_skill(hero_id: String, skill_id: String) -> void:
+	"""Unlock a skill for a hero (set to level 1)"""
+	if not has_current_profile():
+		push_error("SaveManager: No profile loaded")
+		return
+
+	# Ensure hero_skills exists
+	if not current_profile.has("hero_skills"):
+		current_profile["hero_skills"] = {}
+
+	# Ensure hero entry exists
+	if not current_profile["hero_skills"].has(hero_id):
+		current_profile["hero_skills"][hero_id] = {}
+
+	# Set skill to level 1
+	current_profile["hero_skills"][hero_id][skill_id] = 1
+
+	print("✅ Unlocked skill: ", skill_id, " for hero: ", hero_id)
+
+	save_current_profile()
+
+func upgrade_hero_skill(hero_id: String, skill_id: String) -> void:
+	"""Upgrade a hero's skill to the next level"""
+	if not has_current_profile():
+		push_error("SaveManager: No profile loaded")
+		return
+
+	if not current_profile.has("hero_skills"):
+		current_profile["hero_skills"] = {}
+
+	if not current_profile["hero_skills"].has(hero_id):
+		push_error("SaveManager: Hero not found: ", hero_id)
+		return
+
+	if not current_profile["hero_skills"][hero_id].has(skill_id):
+		push_error("SaveManager: Skill not unlocked: ", skill_id)
+		return
+
+	# Increment skill level
+	current_profile["hero_skills"][hero_id][skill_id] += 1
+
+	print("⬆️ Upgraded skill: ", skill_id, " to level ", current_profile["hero_skills"][hero_id][skill_id])
+
+	save_current_profile()
+
+func get_hero_skill_level(hero_id: String, skill_id: String) -> int:
+	"""Get the current level of a hero's skill (0 = not owned)"""
+	if not has_current_profile():
+		return 0
+
+	if not current_profile.has("hero_skills"):
+		return 0
+
+	if not current_profile["hero_skills"].has(hero_id):
+		return 0
+
+	if not current_profile["hero_skills"][hero_id].has(skill_id):
+		return 0
+
+	return current_profile["hero_skills"][hero_id][skill_id]
+
+func get_hero_skills(hero_id: String) -> Dictionary:
+	"""Get all skills for a hero (returns format for SkillManager.load_save_data)"""
+	if not has_current_profile():
+		return {"owned_skills": {}}
+
+	if not current_profile.has("hero_skills"):
+		return {"owned_skills": {}}
+
+	if not current_profile["hero_skills"].has(hero_id):
+		return {"owned_skills": {}}
+
+	# Return in SkillManager format
+	return {
+		"owned_skills": current_profile["hero_skills"][hero_id].duplicate()
+	}
+
+func has_hero_skill(hero_id: String, skill_id: String) -> bool:
+	"""Check if a hero has unlocked a specific skill"""
+	return get_hero_skill_level(hero_id, skill_id) > 0
+
+# ============================================
+# INVENTORY & EQUIPMENT MANAGEMENT
+# ============================================
+
+func save_hero_equipment(hero_id: String, equipment_data: Dictionary) -> void:
+	"""Save a hero's equipped items"""
+	if not has_current_profile():
+		push_error("SaveManager: No profile loaded")
+		return
+
+	if not current_profile.has("hero_equipment"):
+		current_profile["hero_equipment"] = {}
+
+	current_profile["hero_equipment"][hero_id] = equipment_data.duplicate()
+	save_current_profile()
+	print("SaveManager: Saved equipment for hero: ", hero_id)
+
+
+func get_hero_equipment(hero_id: String) -> Dictionary:
+	"""Get a hero's equipped items"""
+	if not has_current_profile():
+		return {}
+
+	if not current_profile.has("hero_equipment"):
+		return {}
+
+	if not current_profile["hero_equipment"].has(hero_id):
+		return {}
+
+	return current_profile["hero_equipment"][hero_id].duplicate()
+
+
+# ============================================
+# USER PREFERENCES (UI STATE)
+# ============================================
+
+func set_user_preference(key: String, value: Variant) -> void:
+	"""Save a user preference (UI state, panel selections, etc.)"""
+	if not has_current_profile():
+		return
+
+	if not current_profile.has("user_preferences"):
+		current_profile["user_preferences"] = {}
+
+	current_profile["user_preferences"][key] = value
+	# Don't auto-save for preferences (only save when profile saves)
+
+
+func get_user_preference(key: String, default_value: Variant = null) -> Variant:
+	"""Get a user preference with optional default"""
+	if not has_current_profile():
+		return default_value
+
+	if not current_profile.has("user_preferences"):
+		return default_value
+
+	if not current_profile["user_preferences"].has(key):
+		return default_value
+
+	return current_profile["user_preferences"][key]

@@ -64,6 +64,8 @@ offset_right = 25.0
 offset_bottom = -29.0
 
 [node name="ClickArea" type="Area2D" parent="."]
+collision_layer = 128
+collision_mask = 0
 input_pickable = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]

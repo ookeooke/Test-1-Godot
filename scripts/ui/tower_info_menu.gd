@@ -92,7 +92,8 @@ func update_display():
 	if upgrade_button:
 		upgrade_button.text = "Upgrade\n" + str(upgrade_cost) + "g"
 	if sell_button:
-		var sell_value = 70  # 70% of original cost
+		# Calculate 70% of build cost dynamically
+		var sell_value = _calculate_sell_value()
 		sell_button.text = "Sell\n" + str(sell_value) + "g"
 
 	# Update button states
@@ -116,12 +117,20 @@ func _on_upgrade_button_pressed():
 		print("Not enough gold for upgrade!")
 
 func _on_sell_button_pressed():
-	# Sell for 70% of original cost
-	var sell_value = 70  # 70% of 100
+	# Calculate 70% of build cost dynamically
+	var sell_value = _calculate_sell_value()
 	GameManager.add_gold(sell_value)
 	print("Tower sold for ", sell_value, " gold")
 	sell_selected.emit(tower)
 	queue_free()
+
+func _calculate_sell_value() -> int:
+	"""Calculate sell value as 70% of tower's build cost"""
+	if tower and "build_cost" in tower:
+		return int(tower.build_cost * 0.7)
+	else:
+		# Fallback for towers without build_cost property
+		return 70
 
 func update_targeting_buttons():
 	"""Update targeting button states based on tower's current mode"""

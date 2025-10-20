@@ -1,0 +1,93 @@
+[gd_scene load_steps=2 format=3 uid="uid://comparison_view_scene"]
+
+[ext_resource type="Script" path="res://scripts/ui/views/comparison_view.gd" id="1_comparison"]
+
+[node name="ComparisonView" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_comparison")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="InstructionsLabel" type="Label" parent="MarginContainer/VBoxContainer/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Select items to compare"
+horizontal_alignment = 1
+
+[node name="ComparisonContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+
+[node name="LeftPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer/ComparisonContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ComparisonContainer/LeftPanel"]
+layout_mode = 2
+
+[node name="ItemName" type="Label" parent="MarginContainer/VBoxContainer/ComparisonContainer/LeftPanel/VBox"]
+layout_mode = 2
+text = "[EQUIPPED]"
+horizontal_alignment = 1
+
+[node name="StatsLabel" type="RichTextLabel" parent="MarginContainer/VBoxContainer/ComparisonContainer/LeftPanel/VBox"]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+bbcode_enabled = true
+text = "[color=gray]No item equipped[/color]"
+fit_content = true
+
+[node name="RightPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer/ComparisonContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ComparisonContainer/RightPanel"]
+layout_mode = 2
+
+[node name="ItemName" type="Label" parent="MarginContainer/VBoxContainer/ComparisonContainer/RightPanel/VBox"]
+layout_mode = 2
+text = "[SELECT ITEM]"
+horizontal_alignment = 1
+
+[node name="StatsLabel" type="RichTextLabel" parent="MarginContainer/VBoxContainer/ComparisonContainer/RightPanel/VBox"]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+bbcode_enabled = true
+text = "[color=gray]Select an item from inventory to compare[/color]"
+fit_content = true
+
+[node name="Footer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Spacer" type="Control" parent="MarginContainer/VBoxContainer/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EquipButton" type="Button" parent="MarginContainer/VBoxContainer/Footer"]
+custom_minimum_size = Vector2(150, 40)
+layout_mode = 2
+disabled = true
+text = "Equip Item"

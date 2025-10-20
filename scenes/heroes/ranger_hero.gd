@@ -55,11 +55,27 @@ var click_area: Area2D  # For clicking the hero
 # PROJECTILE
 @export var arrow_scene: PackedScene
 
+# SKILL SYSTEM
+@export var available_skills: Array[HeroSkillData] = []  # All skills this hero can learn
+var skill_manager: SkillManager = null
+
+# EQUIPMENT SYSTEM
+var equipment_manager: EquipmentManager = null
+
 # ============================================
 # INITIALIZATION
 # ============================================
 
 func _ready():
+	# Initialize equipment system
+	_setup_equipment_system()
+
+	# Initialize skill system
+	_setup_skill_system()
+
+	# Apply equipment bonuses to stats
+	_apply_equipment_bonuses()
+
 	# Set collision layers
 	collision_layer = 2
 	collision_mask = 0
@@ -101,6 +117,190 @@ func _ready():
 	update_health_bar()
 	
 	print("✓ Ranger Hero ready at: ", global_position)
+
+# ============================================
+# EQUIPMENT SYSTEM SETUP
+# ============================================
+
+func _setup_equipment_system():
+	"""Initialize the equipment manager and load equipped items"""
+	# Create equipment manager
+	equipment_manager = EquipmentManager.new()
+	equipment_manager.name = "EquipmentManager"
+	equipment_manager.hero_id = "ranger"
+	add_child(equipment_manager)
+
+	# Connect to equipment change signal
+	equipment_manager.equipment_changed.connect(_on_equipment_changed)
+
+	print("✅ Equipment system initialized for ranger")
+
+
+func _on_equipment_changed():
+	"""Called when equipment changes - recalculate stats"""
+	_apply_equipment_bonuses()
+	update_health_bar()
+	print("⚡ Equipment changed - stats updated")
+
+
+func _apply_equipment_bonuses():
+	"""Apply stat bonuses from equipped items"""
+	if not equipment_manager:
+		return
+
+	# Reset to base stats first (to avoid stacking)
+	var base_max_health = 200.0
+	var base_ranged_damage = 25.0
+	var base_ranged_attack_speed = 0.67
+
+	# Apply equipment bonuses
+	max_health = base_max_health + equipment_manager.get_health_bonus()
+	ranged_damage = base_ranged_damage + equipment_manager.get_damage_bonus()
+	ranged_range = 300.0 + equipment_manager.get_range_bonus()
+
+	# Attack speed is multiplicative
+	ranged_attack_speed = base_ranged_attack_speed / equipment_manager.get_attack_speed_multiplier()
+
+	# Update timer if it exists
+	if ranged_timer:
+		ranged_timer.wait_time = ranged_attack_speed
+
+	# Ensure current health doesn't exceed new max
+	if current_health > max_health:
+		current_health = max_health
+
+	print("📊 Stats applied: HP=%d, Damage=%.1f, Range=%.0f, AttackSpeed=%.2f" % [max_health, ranged_damage, ranged_range, ranged_attack_speed])
+
+
+# ============================================
+# SKILL SYSTEM SETUP
+# ============================================
+
+func _setup_skill_system():
+	"""Initialize the skill manager and load saved skills"""
+	# Create skill manager
+	skill_manager = SkillManager.new()
+	skill_manager.name = "SkillManager"
+	add_child(skill_manager)
+
+	# Load skill definitions
+	skill_manager.load_skill_definitions(available_skills)
+
+	# Load saved skill data from SaveManager
+	if SaveManager:
+		var hero_id = "ranger"  # TODO: Make this dynamic for multiple heroes
+		var saved_skills = SaveManager.get_hero_skills(hero_id)
+
+		if saved_skills:
+			skill_manager.load_save_data(saved_skills)
+			skill_manager.recalculate_all_passives()
+			print("📚 Loaded ", saved_skills.owned_skills.size(), " skills for ranger")
+
+	# Connect to skill activation signal
+	skill_manager.skill_activated.connect(_on_skill_activated)
+
+	print("✅ Skill system initialized for ranger")
+
+func _on_skill_activated(skill_id: String):
+	"""Handle skill activation"""
+	print("🔥 Skill activated: ", skill_id)
+
+	# Execute skill-specific logic
+	match skill_id:
+		"ranger_multishot":
+			_execute_multishot()
+		"ranger_smoke_bomb":
+			_execute_smoke_bomb()
+		"ranger_rally_call":
+			_execute_rally_call()
+		_:
+			push_warning("Unknown skill activated: ", skill_id)
+
+# ============================================
+# SKILL IMPLEMENTATIONS
+# ============================================
+
+func _execute_multishot():
+	"""Multishot ability - Fire multiple arrows in a cone"""
+	if arrow_scene == null:
+		push_error("Cannot execute multishot: arrow_scene is null")
+		return
+
+	# Get current targets
+	if enemies_in_ranged_range.is_empty():
+		print("⚠️ Multishot: No targets in range")
+		return
+
+	# Determine number of arrows based on skill level
+	var skill_level = skill_manager.get_skill_level("ranger_multishot")
+	var arrow_count = 5 + (skill_level - 1) * 2  # 5 at level 1, 7 at level 2, etc.
+
+	# Get damage multiplier from skill data
+	var skill_data = skill_manager.get_skill_data("ranger_multishot")
+	var damage_multiplier = 1.0
+	if skill_data:
+		damage_multiplier = skill_data.get_current_damage_multiplier(skill_level)
+
+	# Find up to arrow_count targets
+	var targets = enemies_in_ranged_range.duplicate()
+	targets.shuffle()  # Randomize target selection
+	targets = targets.slice(0, min(arrow_count, targets.size()))
+
+	# Fire arrows at each target
+	for target in targets:
+		if not is_instance_valid(target):
+			continue
+
+		var arrow = arrow_scene.instantiate()
+		get_tree().root.add_child(arrow)
+		arrow.global_position = global_position
+
+		# Apply skill damage multiplier
+		var damage = ranged_damage * damage_multiplier
+		arrow.setup(target, damage)
+
+	print("🏹🏹🏹 MULTISHOT: Fired ", targets.size(), " arrows!")
+
+	# Visual feedback (could add particle effect here)
+	_flash_hero(Color(1.5, 1.3, 1.0))
+
+func _execute_smoke_bomb():
+	"""Smoke Bomb ability - Become invisible, enemies lose aggro"""
+	print("💨 SMOKE BOMB activated!")
+
+	# TODO: Implement invisibility mechanic
+	# For now, just clear enemy aggro
+	for enemy in enemies_in_melee_range:
+		if is_instance_valid(enemy) and enemy.has_method("unblock"):
+			if enemy.is_blocked and enemy.blocking_hero == self:
+				enemy.unblock()
+
+	current_melee_targets.clear()
+
+	# Visual feedback
+	_flash_hero(Color(0.7, 0.7, 0.7, 0.5))
+
+func _execute_rally_call():
+	"""Rally Call ability - Boost nearby towers' attack speed"""
+	print("📣 RALLY CALL activated!")
+
+	# TODO: Find nearby towers and boost their attack speed
+	# This requires tower manager or getting towers from the scene
+
+	# Visual feedback
+	_flash_hero(Color(1.3, 1.5, 1.0))
+
+func _flash_hero(color: Color):
+	"""Visual feedback for skill activation"""
+	var original_color = sprite.modulate
+	sprite.modulate = color
+
+	await get_tree().create_timer(0.2).timeout
+	sprite.modulate = original_color
+
+func get_hero_id() -> String:
+	"""Get unique ID for this hero (used for save/load)"""
+	return "ranger"
 
 # ============================================
 # CLICK HANDLING - Using Area2D

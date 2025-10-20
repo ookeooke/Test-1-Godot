@@ -23,6 +23,7 @@ var damage = 15
 var attack_speed = 1.2  # Attacks per second
 var range_radius = 300  # Detection range
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
+var build_cost = 100  # Cost to build this tower (for sell calculation)
 
 # TARGET SELECTION TUNING
 const PROGRESS_EPSILON := 0.01
@@ -439,6 +440,16 @@ func shoot_at(target):
 		_record_target_change_time()
 		return
 
+	# FIX: Use call_deferred to avoid "flushing queries" error
+	# Create projectile deferred to avoid physics state change during query
+	call_deferred("_spawn_projectile", target)
+
+func _spawn_projectile(target):
+	"""Spawn arrow projectile (called deferred to avoid physics errors)"""
+	# Double-check target is still valid
+	if not is_instance_valid(target):
+		return
+
 	# Create projectile
 	var arrow = projectile_scene.instantiate()
 	get_tree().root.add_child(arrow)  # Add to scene root (not as child of tower)
@@ -448,6 +459,9 @@ func shoot_at(target):
 
 	# Tell arrow where to go
 	arrow.setup(target, damage)
+
+	# Debug log
+	print("🏹 Hero shooting arrow at: ", target.get_enemy_name() if target.has_method("get_enemy_name") else "Enemy")
 
 # ============================================
 # VISUAL FUNCTIONS

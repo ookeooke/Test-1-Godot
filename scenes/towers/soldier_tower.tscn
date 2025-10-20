@@ -61,6 +61,8 @@ offset_bottom = 15.0
 color = Color(0.4, 0.3, 0.15, 1)
 
 [node name="ClickArea" type="Area2D" parent="."]
+collision_layer = 64
+collision_mask = 0
 input_pickable = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]

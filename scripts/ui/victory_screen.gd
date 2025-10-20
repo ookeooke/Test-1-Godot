@@ -76,7 +76,7 @@ func _on_retry_pressed():
 	get_tree().reload_current_scene()
 
 func _on_level_select_pressed():
-	print("VictoryScreen: Return to level select")
+	print("VictoryScreen: Return to world map")
 	# Unpause the game
 	get_tree().paused = false
 	# Free the victory screen and its canvas layer parent, then change scene
@@ -84,7 +84,7 @@ func _on_level_select_pressed():
 	if canvas_layer:
 		canvas_layer.queue_free()
 	await get_tree().process_frame  # Wait for cleanup
-	get_tree().change_scene_to_file("res://scenes/ui/level_select.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
 
 # Called from WaveManager to set stars earned
 func set_stars(stars: int):

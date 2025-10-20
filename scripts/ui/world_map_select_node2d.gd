@@ -20,22 +20,243 @@ signal level_chosen(level_data: LevelNodeData, difficulty: String)
 @onready var back_button: Button = $UILayer/TopBar/BackButton
 @onready var progress_label: Label = $UILayer/TopBar/ProgressLabel
 
+# Buttons created programmatically
+var heroes_button: Button = null
+var gear_button: Button = null
+
 var level_buttons: Array[Button] = []
 
 # Difficulty selection
 var selected_level_data: LevelNodeData = null
 var difficulty_dialog: AcceptDialog = null
 
+# Hero management panel
+var hero_management_panel: HeroManagementPanel = null
+
+# Dual panel screen (gear management)
+var dual_panel_screen: DualPanelScreen = null
+
 func _ready():
 	# Connect signals
 	if back_button:
 		back_button.pressed.connect(_on_back_pressed)
+
+	# Create gear button (top-middle) if it doesn't exist
+	if not gear_button:
+		_create_gear_button()
+	else:
+		gear_button.pressed.connect(_on_gear_button_pressed)
+
+	# Create heroes button if it doesn't exist
+	if not heroes_button:
+		_create_heroes_button()
+	else:
+		heroes_button.pressed.connect(_on_heroes_button_pressed)
+
+	# Create hero management panel
+	_setup_hero_management_panel()
+
+	# Create dual panel screen
+	_setup_dual_panel_screen()
 
 	# Setup
 	_setup_level_nodes()
 	_update_profile_display()
 	_update_progress_display()
 	_draw_paths()
+
+func _create_gear_button():
+	"""Create the Gear button programmatically - prominently placed in top-middle"""
+	gear_button = Button.new()
+	gear_button.name = "GearButton"
+	gear_button.text = "⚙ GEAR"
+	gear_button.custom_minimum_size = Vector2(160, 50)
+
+	# IMPORTANT: Ensure button can receive clicks
+	gear_button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	gear_button.pressed.connect(_on_gear_button_pressed)
+
+	# Add tooltip
+	gear_button.tooltip_text = "Manage equipment and inventory"
+
+	# Add hover effects
+	gear_button.mouse_entered.connect(_on_gear_button_hover_enter)
+	gear_button.mouse_exited.connect(_on_gear_button_hover_exit)
+
+	# Style the button with theme overrides
+	gear_button.add_theme_font_size_override("font_size", 18)
+
+	# Add to top bar - place it prominently
+	if top_bar:
+		# Create a spacer to push it to center
+		var spacer = Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+		# Insert spacer after profile label
+		top_bar.add_child(spacer)
+		top_bar.move_child(spacer, 1)
+
+		# Add gear button after spacer
+		top_bar.add_child(gear_button)
+		top_bar.move_child(gear_button, 2)
+
+		# Add another spacer to keep it centered
+		var spacer2 = Control.new()
+		spacer2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top_bar.add_child(spacer2)
+		top_bar.move_child(spacer2, 3)
+
+	print("✅ Created Gear button")
+
+
+func _on_gear_button_hover_enter():
+	"""Animate gear button on hover"""
+	if gear_button:
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_BACK)
+		tween.tween_property(gear_button, "scale", Vector2(1.1, 1.1), 0.2)
+
+
+func _on_gear_button_hover_exit():
+	"""Animate gear button on hover exit"""
+	if gear_button:
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_CUBIC)
+		tween.tween_property(gear_button, "scale", Vector2.ONE, 0.2)
+
+
+func _create_heroes_button():
+	"""Create the Heroes button programmatically if it doesn't exist in scene"""
+	heroes_button = Button.new()
+	heroes_button.name = "HeroesButton"
+	heroes_button.text = "🦸 HEROES"
+	heroes_button.custom_minimum_size = Vector2(120, 40)
+
+	# IMPORTANT: Ensure button can receive clicks
+	heroes_button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	heroes_button.pressed.connect(_on_heroes_button_pressed)
+
+	# Add to top bar
+	if top_bar:
+		# Insert before back button (at the end)
+		top_bar.add_child(heroes_button)
+		top_bar.move_child(heroes_button, top_bar.get_child_count() - 2)
+
+	print("✅ Created Heroes button")
+
+func _setup_dual_panel_screen():
+	"""Create the dual panel screen for gear management"""
+	# Load the dual panel screen scene
+	var panel_scene = load("res://scenes/ui/dual_panel_screen.tscn")
+	if panel_scene:
+		dual_panel_screen = panel_scene.instantiate()
+		ui_layer.add_child(dual_panel_screen)
+
+		# IMPORTANT: Ensure it's hidden on start
+		dual_panel_screen.visible = false
+		dual_panel_screen.hide()
+
+		# Set hero ID
+		dual_panel_screen.set_hero_id("ranger")
+
+		# Connect signals
+		dual_panel_screen.screen_closed.connect(_on_gear_screen_closed)
+
+		print("✅ Dual panel screen created (hidden)")
+	else:
+		push_error("Failed to load dual panel screen scene")
+
+
+func _setup_hero_management_panel():
+	"""Create the hero management panel"""
+	# Load the hero management panel scene
+	var panel_scene = load("res://scenes/ui/hero_management_panel.tscn")
+	if panel_scene:
+		hero_management_panel = panel_scene.instantiate()
+		ui_layer.add_child(hero_management_panel)
+		hero_management_panel.hide()
+
+		# Connect signals
+		hero_management_panel.closed.connect(_on_hero_panel_closed)
+		hero_management_panel.skill_purchased.connect(_on_skill_purchased)
+		hero_management_panel.skill_upgraded.connect(_on_skill_upgraded)
+
+		print("✅ Hero management panel created")
+	else:
+		push_error("Failed to load hero management panel scene")
+
+func _on_gear_button_pressed():
+	"""Open the gear management screen (dual panel)"""
+	print("🎮 GEAR BUTTON CLICKED!")
+
+	if not dual_panel_screen:
+		push_error("❌ Dual panel screen not initialized")
+		return
+
+	print("✅ Opening dual panel screen...")
+
+	# Button press animation
+	if gear_button:
+		var press_tween = create_tween()
+		press_tween.tween_property(gear_button, "scale", Vector2(0.95, 0.95), 0.05)
+		press_tween.tween_property(gear_button, "scale", Vector2.ONE, 0.1)
+
+	# Open the screen
+	dual_panel_screen.show_screen()
+
+
+func _on_gear_screen_closed():
+	"""Called when gear screen is closed"""
+	# Refresh display in case items were equipped
+	_update_progress_display()
+
+
+func _on_heroes_button_pressed():
+	"""Open the hero management panel"""
+	print("🎮 HEROES BUTTON CLICKED!")
+
+	if not hero_management_panel:
+		push_error("❌ Hero management panel not initialized")
+		return
+
+	print("✅ Opening hero management panel...")
+
+	# Load ranger hero skills
+	var ranger_skills = _load_ranger_skills()
+
+	# Open panel
+	hero_management_panel.open_panel("ranger", ranger_skills)
+
+func _load_ranger_skills() -> Array[HeroSkillData]:
+	"""Load all available skills for the ranger hero"""
+	var skills: Array[HeroSkillData] = []
+
+	# Try to load skill resources
+	# For now, we'll create them programmatically
+	# In full implementation, these would be .tres files
+
+	# TODO: Load from resources folder
+	# For now, return empty array until we create the skill resources
+	print("⚠️ Loading ranger skills (TODO: create skill resources)")
+
+	return skills
+
+func _on_hero_panel_closed():
+	"""Called when hero management panel is closed"""
+	# Refresh display in case skills were purchased
+	_update_progress_display()
+
+func _on_skill_purchased(hero_id: String, skill_id: String):
+	"""Called when a skill is purchased"""
+	print("💫 Skill purchased: ", skill_id, " for ", hero_id)
+
+func _on_skill_upgraded(hero_id: String, skill_id: String):
+	"""Called when a skill is upgraded"""
+	print("⬆️ Skill upgraded: ", skill_id, " for ", hero_id)
 
 func _setup_level_nodes():
 	# Clear existing buttons
@@ -50,6 +271,9 @@ func _setup_level_nodes():
 		button.text = level_data.level_name
 		button.custom_minimum_size = Vector2(150, 50)
 		button.position = level_data.position
+
+		# IMPORTANT: Ensure button can receive clicks
+		button.mouse_filter = Control.MOUSE_FILTER_STOP
 
 		# Check if level is unlocked
 		var is_unlocked = _check_unlock_status(level_data)
@@ -115,8 +339,9 @@ func _draw_path_between_levels(from_level: LevelNodeData, to_level: LevelNodeDat
 	paths_layer.add_child(path_line)
 
 func _on_level_button_pressed(level_data: LevelNodeData):
-	print("WorldMapSelect: Button pressed for level: ", level_data.level_name)
+	print("🎮 LEVEL BUTTON CLICKED: ", level_data.level_name)
 	selected_level_data = level_data
+	print("✅ Starting level: ", level_data.level_name)
 	_start_level(level_data, level_data.recommended_difficulty)
 
 	# Show difficulty selector if multiple difficulties available
@@ -198,7 +423,8 @@ func _update_progress_display():
 	progress_label.text = "Progress: %d/%d levels | Stars: %d/%d" % [completed_levels, level_nodes_data.size(), total_stars, max_stars]
 
 func _on_back_pressed():
-	print("WorldMapSelect: Back to main menu")
+	print("🎮 BACK BUTTON CLICKED!")
+	print("✅ Returning to main menu...")
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
 # Public method to refresh display (call after completing a level)
