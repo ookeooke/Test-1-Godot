@@ -22,10 +22,17 @@ func _ready():
 # ============================================
 
 func _on_area_input_event(_viewport, event, _shape_idx):
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			_on_clicked()
-			get_viewport().set_input_as_handled()
+	# Support both mouse and touch input
+	var is_interact = false
+
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		is_interact = true
+	elif event is InputEventScreenTouch and event.pressed:
+		is_interact = true
+
+	if is_interact:
+		_on_clicked()
+		get_viewport().set_input_as_handled()
 
 func _on_clicked():
 	"""Called when this spot is clicked"""

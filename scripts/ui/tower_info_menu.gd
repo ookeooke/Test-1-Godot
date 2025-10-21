@@ -22,10 +22,16 @@ var upgrade_cost = 60  # Default, will be updated from tower
 @onready var strong_button = $PanelContainer/MarginContainer/VBoxContainer/TargetingButtons/StrongButton
 @onready var upgrade_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton
 @onready var sell_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/SellButton
+@onready var enemy_list_toggle = $PanelContainer/MarginContainer/VBoxContainer/EnemyListToggle
+@onready var enemies_label = $PanelContainer/MarginContainer/VBoxContainer/EnemiesLabel
+@onready var enemy_list_scroll = $PanelContainer/MarginContainer/VBoxContainer/EnemyListScroll
 @onready var enemy_list_container = $PanelContainer/MarginContainer/VBoxContainer/EnemyListScroll/EnemyListContainer
 
 # Update timer for enemy list
 var update_timer: Timer
+
+# Enemy list visibility (hidden by default)
+var enemy_list_visible = false
 
 # Rally button for garrison towers (created dynamically)
 var rally_button: Button = null
@@ -39,6 +45,15 @@ func _ready():
 		first_button.pressed.connect(_on_first_button_pressed)
 	if strong_button:
 		strong_button.pressed.connect(_on_strong_button_pressed)
+	if enemy_list_toggle:
+		enemy_list_toggle.pressed.connect(_on_enemy_list_toggle_pressed)
+
+	# Load enemy list visibility preference
+	if GameManager.has_method("get_enemy_list_preference"):
+		enemy_list_visible = GameManager.get_enemy_list_preference()
+
+	# Apply initial visibility state
+	_update_enemy_list_visibility()
 
 	update_display()
 
@@ -262,14 +277,39 @@ func _on_strong_button_pressed():
 		update_targeting_buttons()
 		DebugConfig.log_targeting("Player selected STRONG mode")
 
-func _input(event):
-	"""Close menu when clicking outside"""
-	if event is InputEventMouseButton:
-		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			if not get_global_rect().has_point(get_global_mouse_position()):
-				menu_closed.emit()
-				get_viewport().set_input_as_handled()
-				queue_free()
+func _gui_input(event):
+	"""Handle input on this control - consume events inside menu"""
+	# This function runs during the UI/Control stage
+	# Any event handled here should call accept_event() to prevent propagation
+
+	if event is InputEventMouseButton or event is InputEventScreenTouch:
+		var is_press = false
+		if event is InputEventMouseButton:
+			is_press = event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+		elif event is InputEventScreenTouch:
+			is_press = event.pressed
+
+		if is_press:
+			# Click is inside the panel (this _gui_input only fires for events on this Control)
+			# Consume the event so it doesn't reach the world
+			print("⏸️ [TowerInfoMenu] Click inside menu - consuming event")
+			accept_event()
+
+func _unhandled_input(event):
+	"""Close menu when clicking outside (during unhandled input stage)"""
+	# This runs AFTER UI controls, so if we get here, the click was outside the menu
+	if event is InputEventMouseButton or event is InputEventScreenTouch:
+		var is_click = false
+		if event is InputEventMouseButton:
+			is_click = event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+		elif event is InputEventScreenTouch:
+			is_click = event.pressed
+
+		if is_click:
+			print("✅ [TowerInfoMenu] Closing menu - clicked outside")
+			menu_closed.emit()
+			get_viewport().set_input_as_handled()
+			queue_free()
 
 func _on_update_timer_timeout():
 	"""Update enemy list periodically"""
@@ -380,6 +420,35 @@ func _get_enemy_health(enemy) -> float:
 		return float(enemy.current_health)
 
 	return 0.0
+
+# ============================================
+# ENEMY LIST TOGGLE
+# ============================================
+
+func _on_enemy_list_toggle_pressed():
+	"""Toggle enemy list visibility"""
+	enemy_list_visible = not enemy_list_visible
+	_update_enemy_list_visibility()
+
+	# Save preference
+	if GameManager.has_method("set_enemy_list_preference"):
+		GameManager.set_enemy_list_preference(enemy_list_visible)
+
+	print("[TowerInfoMenu] Enemy list toggled: %s" % ("visible" if enemy_list_visible else "hidden"))
+
+func _update_enemy_list_visibility():
+	"""Update visibility of enemy list elements"""
+	if enemies_label:
+		enemies_label.visible = enemy_list_visible
+	if enemy_list_scroll:
+		enemy_list_scroll.visible = enemy_list_visible
+
+	# Update toggle button text
+	if enemy_list_toggle:
+		if enemy_list_visible:
+			enemy_list_toggle.text = "Hide Enemy List"
+		else:
+			enemy_list_toggle.text = "Show Enemy List"
 
 # ============================================
 # GARRISON TOWER SUPPORT

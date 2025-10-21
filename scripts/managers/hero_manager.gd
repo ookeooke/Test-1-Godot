@@ -69,15 +69,19 @@ func _on_hero_selected(hero):
 		hero_button.set_selected(true)
 
 
-func _input(event):
+func _unhandled_input(event):
 	"""Handle hero movement commands and deselection"""
+	# IMPORTANT: This runs in the _unhandled_input stage (stage 3)
+	# This allows UI controls and Area2D physics clicks to process first
+	# This prevents blocking tower/hero clicks when no hero is selected
+
 	# Don't process input if GUI is focused
 	var gui_element = get_viewport().gui_get_hovered_control()
 	if gui_element:
 		return
 
-	# ESC to deselect
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	# ESC to deselect (also check InputMap action)
+	if Input.is_action_just_pressed("deselect"):
 		if current_hero and is_instance_valid(current_hero):
 			current_hero.deselect()
 			current_hero = null
@@ -86,13 +90,14 @@ func _input(event):
 			get_viewport().set_input_as_handled()
 		return
 
-	# Left-click on empty space to move hero
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+	# Left-click/tap on empty space to move hero (using InputMap action)
+	if Input.is_action_just_pressed("interact"):
 		if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
 			# Get world position
 			var camera = get_viewport().get_camera_2d()
 			if camera:
-				var click_world_pos = camera.get_screen_center_position() + (event.position - get_viewport().get_visible_rect().size / 2) / camera.zoom
+				var click_pos = get_viewport().get_mouse_position()
+				var click_world_pos = camera.get_screen_center_position() + (click_pos - get_viewport().get_visible_rect().size / 2) / camera.zoom
 
 				# Command hero to move to clicked position
 				current_hero.move_to_position(click_world_pos)
@@ -105,7 +110,7 @@ func _input(event):
 				get_viewport().set_input_as_handled()
 		return
 
-	# Right-click to deselect
+	# Right-click/two-finger to deselect
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		if current_hero and is_instance_valid(current_hero):
 			current_hero.deselect()

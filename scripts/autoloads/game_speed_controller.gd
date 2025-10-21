@@ -5,11 +5,16 @@ extends Node
 ## ============================================
 ##
 ## Allows speeding up the game for faster testing
+## Uses InputMap actions to avoid conflicts with ability hotkeys
 ## Press keys to change speed:
 ##   1 - Normal speed (1x)
 ##   2 - 2x speed
 ##   3 - 4x speed
 ##   4 - 8x speed
+##
+## NOTE: These keys are shared with ability hotkeys!
+## Speed control runs in _input() stage (priority) and consumes events
+## to prevent triggering abilities when changing speed.
 ## ============================================
 
 # Available speed multipliers
@@ -33,16 +38,20 @@ func _ready():
 # ============================================
 
 func _input(event):
-	if event is InputEventKey and event.pressed and not event.echo:
-		match event.keycode:
-			KEY_1:
-				set_speed(0)  # 1x
-			KEY_2:
-				set_speed(1)  # 2x
-			KEY_3:
-				set_speed(2)  # 4x
-			KEY_4:
-				set_speed(3)  # 8x
+	# Use InputMap actions for better organization and to avoid conflicts
+	# These run BEFORE ability hotkeys, so we consume the event to prevent double-activation
+	if Input.is_action_just_pressed("speed_pause"):
+		set_speed(0)  # 1x
+		get_viewport().set_input_as_handled()
+	elif Input.is_action_just_pressed("speed_normal"):
+		set_speed(1)  # 2x
+		get_viewport().set_input_as_handled()
+	elif Input.is_action_just_pressed("speed_fast"):
+		set_speed(2)  # 4x
+		get_viewport().set_input_as_handled()
+	elif Input.is_action_just_pressed("speed_ultra"):
+		set_speed(3)  # 8x
+		get_viewport().set_input_as_handled()
 
 # ============================================
 # SPEED CONTROL

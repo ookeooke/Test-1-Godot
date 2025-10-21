@@ -108,6 +108,15 @@ custom_minimum_size = Vector2(80, 40)
 layout_mode = 2
 text = "1x"
 
+[node name="Spacer4" type="Control" parent="UI/TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="DebugHudButton" type="Button" parent="UI/TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(100, 40)
+layout_mode = 2
+text = "Debug: OFF"
+
 [node name="HeroButton" parent="UI" instance=ExtResource("10_herobutton")]
 layout_mode = 3
 anchors_preset = 2

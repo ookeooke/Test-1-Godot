@@ -294,9 +294,16 @@ func _on_gui_input(event: InputEvent):
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if not is_empty:
 				item_clicked.emit(item_id, self)
+				accept_event()  # Prevent click from reaching world
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			if not is_empty:
 				item_right_clicked.emit(item_id, self)
+				accept_event()  # Prevent click from reaching world
+	elif event is InputEventScreenTouch and event.pressed:
+		# Mobile touch support
+		if not is_empty:
+			item_clicked.emit(item_id, self)
+			accept_event()  # Prevent tap from reaching world
 
 
 ## Generate tooltip with item comparison

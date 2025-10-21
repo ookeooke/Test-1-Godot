@@ -38,8 +38,8 @@ extends CanvasLayer
 ## Update frequency (seconds)
 const UPDATE_INTERVAL = 0.5
 
-## HUD visibility (start visible in debug builds)
-var is_visible = true
+## HUD visibility (start hidden by default, toggle with button)
+var is_visible = false
 
 ## Update timer
 var update_timer = 0.0
@@ -54,14 +54,14 @@ func _ready():
 		queue_free()
 		return
 
-	# Start visible by default
-	visible = true
-	is_visible = true
+	# Start hidden by default
+	visible = false
+	is_visible = false
 
 	# Set process mode to always (works during pause)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
-	print("✅ BalanceHUD initialized (Press F3 to toggle)")
+	print("✅ BalanceHUD initialized (Hidden by default - toggle with button or F3)")
 	print("📊 Auto-export enabled - data will save automatically on level complete/defeat")
 	print("⏩ Speed controls: Press 1/2/3/4 for 1x/2x/4x/8x speed")
 

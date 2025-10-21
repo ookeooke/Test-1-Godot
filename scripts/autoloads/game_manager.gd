@@ -96,3 +96,20 @@ func show_pause_menu():
 	root.add_child(pause_menu)
 
 	print("GameManager: Pause menu shown")
+
+# ============================================
+# UI PREFERENCES
+# ============================================
+
+# User preferences for UI
+var show_enemy_list_default = false  # Hidden by default
+
+func set_enemy_list_preference(visible: bool):
+	"""Save enemy list visibility preference"""
+	show_enemy_list_default = visible
+	print("[GameManager] Enemy list preference saved: %s" % ("visible" if visible else "hidden"))
+	# TODO: Save to config file if needed
+
+func get_enemy_list_preference() -> bool:
+	"""Get enemy list visibility preference"""
+	return show_enemy_list_default

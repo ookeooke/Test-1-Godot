@@ -141,12 +141,20 @@ func _on_fallback_timeout():
 
 
 func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int):
-	"""Handle click events"""
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			if not is_collected:
-				print("[ItemPickup] Clicked! Collecting: ", item_data.item_name)
-				collect_item(false)  # false = manually clicked
+	"""Handle click/tap events - supports both mouse and touch"""
+	# Support both mouse and touch input
+	var is_interact = false
+
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		is_interact = true
+	elif event is InputEventScreenTouch and event.pressed:
+		is_interact = true
+
+	if is_interact:
+		if not is_collected:
+			print("[ItemPickup] Clicked/Tapped! Collecting: ", item_data.item_name)
+			collect_item(false)  # false = manually clicked/tapped
+			get_viewport().set_input_as_handled()
 
 
 func _on_mouse_entered():

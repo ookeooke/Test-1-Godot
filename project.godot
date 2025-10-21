@@ -17,6 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+InputActionsSetup="*res://scripts/autoloads/input_actions_setup.gd"
 DebugConfig="*res://scripts/autoloads/debug_config.gd"
 UIScaleManager="*res://scripts/autoloads/ui_scale_manager.gd"
 GameStateManager="*res://scripts/autoloads/game_state_manager.gd"

@@ -72,6 +72,9 @@ func _ready():
 
 
 func _input(event: InputEvent):
+	# ESC KEY PRIORITY: This runs after level_controller and pause_menu
+	# Only processes ESC if this panel is visible and game is not paused
+
 	# Prevent rapid toggling
 	if is_transitioning:
 		return
@@ -80,7 +83,7 @@ func _input(event: InputEvent):
 	# Opening should only be via button click
 	if event.is_action_pressed("ui_cancel") and visible:
 		hide_screen()
-		get_viewport().set_input_as_handled()
+		get_viewport().set_input_as_handled()  # Consume to prevent further propagation
 
 
 func show_screen():

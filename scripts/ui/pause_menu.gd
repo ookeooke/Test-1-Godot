@@ -2,6 +2,11 @@ extends Control
 
 # Pause Menu - In-game pause overlay
 # Triggered by ESC key during gameplay
+#
+# ESC KEY PRIORITY:
+# This menu runs in _input() stage when pause tree is active (paused=true).
+# The pause tree process_mode allows this to run while other nodes are paused.
+# When this menu closes, other ESC handlers (dual_panel, inventory) can run again.
 
 @onready var resume_button: Button = $Panel/VBoxContainer/ResumeButton
 @onready var restart_button: Button = $Panel/VBoxContainer/RestartButton
@@ -18,8 +23,10 @@ func _ready():
 
 func _input(event):
 	# Allow ESC to close pause menu
+	# Consume event to prevent other handlers from also processing it
 	if event.is_action_pressed("ui_cancel"):
 		_on_resume_pressed()
+		get_viewport().set_input_as_handled()
 
 func _on_resume_pressed():
 	print("PauseMenu: Resume game")

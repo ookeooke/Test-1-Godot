@@ -110,6 +110,9 @@ var snap_progress = 0.0
 # ============================================
 # STATE
 # ============================================
+# Input lock (for menus)
+var input_locked = false
+
 # Input state
 var is_dragging = false
 var drag_start_pos = Vector2.ZERO
@@ -286,12 +289,34 @@ func set_drag_sensitivity(sensitivity: float) -> void:
 	save_user_preferences()
 
 # ============================================
+# INPUT LOCK API (for menus - Kingdom Rush style)
+# ============================================
+
+func lock_input() -> void:
+	"""Lock camera input while menus are open"""
+	input_locked = true
+	# Cancel any ongoing movement
+	is_dragging = false
+	is_inertia_moving = false
+	velocity = Vector2.ZERO
+	print("[Camera] Input LOCKED (menu open)")
+
+func unlock_input() -> void:
+	"""Unlock camera input when menus close"""
+	input_locked = false
+	print("[Camera] Input UNLOCKED (menu closed)")
+
+# ============================================
 # INPUT HANDLING
 # ============================================
 
 func _unhandled_input(event):
 	# Skip input handling in editor
 	if Engine.is_editor_hint():
+		return
+
+	# Skip if input is locked (menu open)
+	if input_locked:
 		return
 
 	match current_platform:
@@ -553,19 +578,20 @@ func _physics_process(delta):
 	position = base_position + shake_offset
 
 func handle_keyboard_pan(delta):
-	"""Pan camera with arrow keys or WASD"""
-	if is_snapping:
+	"""Pan camera with arrow keys or WASD (using InputMap actions)"""
+	if is_snapping or input_locked:
 		return
 
 	var direction = Vector2.ZERO
 
-	if Input.is_action_pressed("ui_right") or Input.is_key_pressed(KEY_D):
+	# Use InputMap actions for unified input handling
+	if Input.is_action_pressed("camera_right"):
 		direction.x += 1
-	if Input.is_action_pressed("ui_left") or Input.is_key_pressed(KEY_A):
+	if Input.is_action_pressed("camera_left"):
 		direction.x -= 1
-	if Input.is_action_pressed("ui_down") or Input.is_key_pressed(KEY_S):
+	if Input.is_action_pressed("camera_down"):
 		direction.y += 1
-	if Input.is_action_pressed("ui_up") or Input.is_key_pressed(KEY_W):
+	if Input.is_action_pressed("camera_up"):
 		direction.y -= 1
 
 	if direction != Vector2.ZERO:
@@ -578,7 +604,7 @@ func handle_keyboard_pan(delta):
 
 func handle_edge_scroll(delta):
 	"""Scroll camera when mouse near screen edge"""
-	if is_dragging or is_snapping:
+	if is_dragging or is_snapping or input_locked:
 		return
 
 	var mouse_pos = get_viewport().get_mouse_position()

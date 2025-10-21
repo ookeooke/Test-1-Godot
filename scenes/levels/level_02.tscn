@@ -1,6 +1,7 @@
-[gd_scene load_steps=30 format=3 uid="uid://level02_scene_uid"]
+[gd_scene load_steps=31 format=3 uid="uid://level02_scene_uid"]
 
 [ext_resource type="Script" uid="uid://mxt3ckx3n6mu" path="res://scripts/managers/wave_manager.gd" id="1_0e48y"]
+[ext_resource type="PackedScene" uid="uid://b6yn3cxqs75wl" path="res://scenes/debug/balance_debug_hud.tscn" id="1_balance_hud"]
 [ext_resource type="Script" uid="uid://idfvb3maml47" path="res://scripts/level_controller.gd" id="1_level_controller"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://scenes/enemies/goblin_scout.tscn" id="1_wtcfe"]
 [ext_resource type="Script" uid="uid://b1r6b3vwpnkst" path="res://scripts/camera/camera_controller_improved.gd" id="2_camera"]
@@ -109,6 +110,15 @@ layout_mode = 2
 text = "1x"
 flat = false
 
+[node name="Spacer4" type="Control" parent="UI/TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="DebugHudButton" type="Button" parent="UI/TopBar/HBoxContainer"]
+custom_minimum_size = Vector2(100, 40)
+layout_mode = 2
+text = "Debug: OFF"
+
 [node name="HeroButton" parent="UI" instance=ExtResource("10_herobutton")]
 layout_mode = 3
 anchors_preset = 2
@@ -123,6 +133,8 @@ grow_vertical = 0
 [node name="MenuLayer" parent="." instance=ExtResource("10_menu_layer")]
 
 [node name="DualPanelScreen" parent="." instance=ExtResource("10_dual_panel")]
+
+[node name="BalanceDebugHUD" parent="." instance=ExtResource("1_balance_hud")]
 
 [node name="PlacementManager" type="Node2D" parent="."]
 script = ExtResource("5_kdubu")

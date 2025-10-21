@@ -13,6 +13,9 @@ var current_selected_tower = null  # Track selected tower for deselection
 # MENU LAYER - CanvasLayer for zoom-independent UI
 var menu_layer: Control  # Reference to MenuContainer in CanvasLayer
 
+# CAMERA - for input locking (Kingdom Rush style)
+var camera: Camera2D
+
 func _ready():
 	await get_tree().process_frame
 
@@ -28,6 +31,13 @@ func _ready():
 		print("Looking for: MenuLayer/MenuContainer")
 		print("Parent node: ", parent_node.name)
 		print("Available children: ", parent_node.get_children())
+
+	# Get reference to camera for input locking
+	camera = get_viewport().get_camera_2d()
+	if camera:
+		print("✓ Camera found successfully!")
+	else:
+		push_error("Camera2D not found! Camera locking will not work.")
 
 	connect_tower_spots()
 
@@ -69,6 +79,10 @@ func close_current_menu():
 		current_menu.queue_free()
 		current_menu = null
 
+	# Unlock camera input
+	if camera and camera.has_method("unlock_input"):
+		camera.unlock_input()
+
 func show_build_menu(spot):
 	"""Show the tower build menu"""
 	current_menu = build_menu_scene.instantiate()
@@ -83,6 +97,10 @@ func show_build_menu(spot):
 
 	# Position in screen coordinates (zoom-independent)
 	await position_menu_in_screen_space(spot)
+
+	# Lock camera input (Kingdom Rush style)
+	if camera and camera.has_method("lock_input"):
+		camera.lock_input()
 
 	current_menu.tower_selected.connect(_on_tower_selected)
 	current_menu.menu_closed.connect(_on_menu_closed)
@@ -104,6 +122,10 @@ func show_tower_info_menu(spot, tower):
 
 	# Position in screen coordinates (zoom-independent)
 	await position_menu_in_screen_space(spot)
+
+	# Lock camera input (Kingdom Rush style)
+	if camera and camera.has_method("lock_input"):
+		camera.lock_input()
 
 	current_menu.upgrade_selected.connect(_on_tower_upgraded)
 	current_menu.sell_selected.connect(_on_tower_sold)
@@ -300,6 +322,10 @@ func _on_menu_closed():
 	if current_selected_tower and is_instance_valid(current_selected_tower):
 		if current_selected_tower.has_method("deselect_tower"):
 			current_selected_tower.deselect_tower()
+
+	# Unlock camera input
+	if camera and camera.has_method("unlock_input"):
+		camera.unlock_input()
 
 	current_spot = null
 	current_selected_tower = null
