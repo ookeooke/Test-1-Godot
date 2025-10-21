@@ -13,6 +13,16 @@ extends Camera2D
 # - Performance optimizations
 
 # ============================================
+# DESIGN RESOLUTION & BASELINE
+# ============================================
+# Reference resolution for consistent framing across devices
+const DESIGN_WIDTH = 1920.0
+const DESIGN_HEIGHT = 1080.0
+
+# Computed at runtime based on actual viewport
+var baseline_zoom = 1.0
+
+# ============================================
 # PLATFORM DETECTION
 # ============================================
 enum Platform { MOBILE, PC, CONSOLE }
@@ -149,19 +159,36 @@ func _ready():
 		return
 
 	# Runtime-only initialization
+	calculate_baseline_zoom()
 	detect_platform()
 	apply_platform_defaults()
 	load_user_preferences()
 
-	# Set initial zoom (LOCKED at 1.0)
-	target_zoom = Vector2(default_zoom, default_zoom)
+	# Set initial zoom based on baseline (LOCKED at baseline for now)
+	target_zoom = Vector2(baseline_zoom, baseline_zoom)
 	zoom = target_zoom
 	base_position = position
 
 	# Auto-calculate camera bounds from level_rect
 	update_camera_limits()
 
-	print("[Camera] Initialized - Zoom:", zoom, " Bounds:", Vector4i(limit_left, limit_top, limit_right, limit_bottom))
+	# Connect to viewport resize for dynamic adjustment
+	get_viewport().size_changed.connect(_on_viewport_resized)
+
+	print("[Camera] Initialized - Baseline zoom:", baseline_zoom, " Zoom:", zoom, " Bounds:", Vector4i(limit_left, limit_top, limit_right, limit_bottom))
+
+func calculate_baseline_zoom() -> void:
+	"""Calculate baseline zoom from viewport to maintain consistent framing across devices"""
+	var viewport_size = get_viewport_rect().size
+
+	# Use height as the primary dimension for zoom calculation
+	# This keeps vertical framing consistent (same amount of world space visible vertically)
+	baseline_zoom = viewport_size.y / DESIGN_HEIGHT
+
+	# Clamp to reasonable values to prevent extreme zoom on unusual displays
+	baseline_zoom = clamp(baseline_zoom, 0.5, 2.0)
+
+	print("[Camera] Viewport:", viewport_size, " -> Baseline zoom:", baseline_zoom)
 
 func detect_platform() -> void:
 	"""Auto-detect platform for appropriate defaults"""
@@ -173,20 +200,28 @@ func detect_platform() -> void:
 		current_platform = Platform.CONSOLE
 
 func apply_platform_defaults() -> void:
-	"""Set platform-appropriate defaults"""
+	"""Set platform-appropriate defaults as ratios of baseline"""
 	match current_platform:
 		Platform.MOBILE:
-			# Mobile: More restrictive zoom, no edge scroll, higher thresholds
-			min_zoom = mobile_min_zoom
-			max_zoom = mobile_max_zoom
-			zoom_speed = mobile_zoom_speed
+			# Mobile: Platform tuning as multipliers, not absolute values
+			# Allow 10% tighter zoom and 20% wider zoom than baseline
+			min_zoom = baseline_zoom * 0.9  # 10% closer
+			max_zoom = baseline_zoom * 1.2  # 20% further
+			default_zoom = baseline_zoom  # Start at baseline
+
+			# Mobile-specific behavior
 			drag_speed = mobile_drag_speed
 			drag_threshold = mobile_drag_threshold
 			inertia_friction = mobile_inertia_friction
 			edge_scroll_enabled = false
 
 		Platform.PC:
-			# PC: Full features
+			# PC: Slightly wider zoom range for mouse wheel control
+			min_zoom = baseline_zoom * 0.8  # 20% closer
+			max_zoom = baseline_zoom * 1.5  # 50% further
+			default_zoom = baseline_zoom  # Start at baseline
+
+			# PC-specific behavior
 			drag_speed = pc_drag_speed
 			drag_threshold = pc_drag_threshold
 			inertia_friction = pc_inertia_friction
@@ -194,9 +229,15 @@ func apply_platform_defaults() -> void:
 
 		Platform.CONSOLE:
 			# Console: Similar to PC but no keyboard pan
+			min_zoom = baseline_zoom * 0.8
+			max_zoom = baseline_zoom * 1.5
+			default_zoom = baseline_zoom
+
 			drag_speed = pc_drag_speed
 			drag_threshold = pc_drag_threshold
 			edge_scroll_enabled = false
+
+	print("[Camera] Platform:", ["MOBILE", "PC", "CONSOLE"][current_platform], " - Zoom range:", min_zoom, "to", max_zoom)
 
 func load_user_preferences() -> void:
 	"""Load saved user preferences"""
@@ -624,6 +665,25 @@ func set_level_bounds(rect: Rect2) -> void:
 	level_rect = rect
 	update_camera_limits()
 	print("[Camera] Bounds updated to:", rect)
+
+func _on_viewport_resized() -> void:
+	"""Handle viewport resize (window resize, device rotation, etc.)"""
+	print("[Camera] Viewport resized - recalculating baseline and limits")
+
+	# Recalculate baseline zoom for new viewport size
+	calculate_baseline_zoom()
+
+	# Reapply platform defaults with new baseline
+	apply_platform_defaults()
+
+	# Update zoom to new baseline (keeping zoom disabled for now)
+	target_zoom = Vector2(baseline_zoom, baseline_zoom)
+	zoom = target_zoom
+
+	# Recalculate camera limits for new viewport
+	update_camera_limits()
+
+	print("[Camera] Resize complete - New baseline:", baseline_zoom, " Zoom:", zoom)
 
 # ============================================
 # UTILITY FUNCTIONS

@@ -52,17 +52,8 @@ waves = Array[ExtResource("8_e6lid")]([ExtResource("9_3g50r"), ExtResource("10_i
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(900, 450)
-zoom = Vector2(1.0, 1.0)
-limit_left = 700
-limit_top = 450
-limit_right = 1100
-limit_bottom = 650
 editor_draw_limits = true
 script = ExtResource("2_camera")
-min_zoom = 1.0
-max_zoom = 1.0
-default_zoom = 1.0
-mobile_max_zoom = 1.0
 level_rect = Rect2(-200, 200, 2000, 800)
 
 [node name="EnemyPath" type="Path2D" parent="."]
