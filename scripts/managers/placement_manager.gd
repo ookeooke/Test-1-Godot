@@ -213,26 +213,51 @@ func _on_tower_selected(tower_scene):
 
 func _on_tower_upgraded(tower):
 	"""Handle tower upgrade"""
+	print("\n=== 🔧 PLACEMENT MANAGER UPGRADE HANDLER ===")
+	print("🔧 [PlacementManager] _on_tower_upgraded() called")
+	print("🔧 [PlacementManager] Tower valid: %s" % str(is_instance_valid(tower)))
+
 	if not tower or not is_instance_valid(tower):
+		print("❌ [PlacementManager] ERROR: Tower is null or invalid!")
+		print("=== ❌ UPGRADE ABORTED ===\n")
 		return
+
+	print("🔧 [PlacementManager] Tower is valid - proceeding")
+	print("🔧 [PlacementManager] Checking for path choice requirement...")
 
 	# Check if tower needs to choose a path (level 3)
 	if tower.has_method("needs_path_choice") and tower.needs_path_choice():
+		print("🔧 [PlacementManager] Tower needs path choice - showing path menu")
 		# Show path choice UI instead of normal upgrade
 		_show_path_choice_menu(tower)
+		print("=== ✅ PATH CHOICE MENU SHOWN ===\n")
 		return
+
+	print("🔧 [PlacementManager] No path choice needed - proceeding with standard upgrade")
 
 	# Standard upgrade (level 1→2→3)
 	if tower.has_method("upgrade_tower"):
-		if tower.upgrade_tower():
-			print("[PlacementManager] Tower upgraded successfully to level %d" % tower.tower_level)
+		print("🔧 [PlacementManager] Tower has upgrade_tower() method - calling it now...")
+		var upgrade_result = tower.upgrade_tower()
+		print("🔧 [PlacementManager] upgrade_tower() returned: %s" % str(upgrade_result))
+
+		if upgrade_result:
+			print("✅ [PlacementManager] Tower upgraded successfully to level %d" % tower.tower_level)
+			print("=== ✅ UPGRADE SUCCESS ===\n")
 		else:
 			push_error("[PlacementManager] Tower upgrade failed!")
+			print("❌ [PlacementManager] upgrade_tower() returned false!")
+			print("=== ❌ UPGRADE FAILED ===\n")
 	else:
+		print("⚠️ [PlacementManager] Tower does NOT have upgrade_tower() method!")
 		# Fallback for towers without upgrade system
 		if "damage" in tower:
 			tower.damage += 5
 			print("[PlacementManager] Legacy tower upgraded (damage +5)")
+			print("=== ✅ LEGACY UPGRADE COMPLETE ===\n")
+		else:
+			print("❌ [PlacementManager] Cannot upgrade - no upgrade_tower() method and no damage property!")
+			print("=== ❌ UPGRADE IMPOSSIBLE ===\n")
 
 func _show_path_choice_menu(tower):
 	"""Show UI for choosing damage or range path"""

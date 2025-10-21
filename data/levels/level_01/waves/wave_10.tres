@@ -14,3 +14,8 @@ wave_number = 10
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
 wave_name = "Final Boss Battle"
 is_boss_wave = true
+hp_multiplier = 3.5
+gold_multiplier = 1.0
+custom_hp_multipliers = {
+"troll": 6.0
+}

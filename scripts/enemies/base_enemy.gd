@@ -266,18 +266,18 @@ func die():
 	# Award gold
 	GameManager.add_gold(gold_reward)
 
-	# Camera shake based on enemy type
+	# Camera shake based on enemy type (direct call - no wrapper)
 	var camera = get_viewport().get_camera_2d()
-	if camera:
+	if camera and camera.has_method("add_shake"):
 		match death_shake:
 			"None":
 				pass  # No shake
 			"Small":
-				CameraEffects.small_shake(camera)
+				camera.add_shake(5.0)
 			"Medium":
-				CameraEffects.medium_shake(camera)
+				camera.add_shake(15.0)
 			"Large":
-				CameraEffects.large_shake(camera)
+				camera.add_shake(30.0)
 
 	# Unblock from hero if blocked
 	if is_blocked and blocking_hero and is_instance_valid(blocking_hero):

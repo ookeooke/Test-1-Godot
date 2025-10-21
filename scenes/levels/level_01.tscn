@@ -1,9 +1,9 @@
 [gd_scene load_steps=31 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://mxt3ckx3n6mu" path="res://scripts/managers/wave_manager.gd" id="1_0e48y"]
+[ext_resource type="PackedScene" uid="uid://b6yn3cxqs75wl" path="res://scenes/debug/balance_debug_hud.tscn" id="1_balance_hud"]
 [ext_resource type="Script" uid="uid://idfvb3maml47" path="res://scripts/level_controller.gd" id="1_level_controller"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://scenes/enemies/goblin_scout.tscn" id="1_wtcfe"]
-[ext_resource type="PackedScene" uid="uid://b6yn3cxqs75wl" path="res://scenes/debug/balance_debug_hud.tscn" id="1_balance_hud"]
 [ext_resource type="Script" uid="uid://b1r6b3vwpnkst" path="res://scripts/camera/camera_controller_improved.gd" id="2_camera"]
 [ext_resource type="PackedScene" uid="uid://crirequ6fnstj" path="res://scenes/enemies/orc_warrior.tscn" id="3_epypp"]
 [ext_resource type="PackedScene" uid="uid://dwolf7k3xp2n" path="res://scenes/enemies/wolf_runner.tscn" id="3_wolf"]
@@ -17,10 +17,10 @@
 [ext_resource type="PackedScene" uid="uid://c52n66umx0j5h" path="res://scenes/heroes/ranger_hero.tscn" id="8_ir8iy"]
 [ext_resource type="Resource" uid="uid://cew3vj76fgf52" path="res://data/waves/wave_01.tres" id="9_3g50r"]
 [ext_resource type="PackedScene" uid="uid://ckvxoisxu0tq1" path="res://scenes/spots/hero_spot.tscn" id="9_hqns4"]
+[ext_resource type="PackedScene" path="res://scenes/ui/dual_panel_screen.tscn" id="10_dual_panel"]
 [ext_resource type="PackedScene" uid="uid://cqoyfbnb1nbig" path="res://scenes/ui/hero_button.tscn" id="10_herobutton"]
 [ext_resource type="Resource" uid="uid://efkt5o3e53ax" path="res://data/waves/wave_02.tres" id="10_iu1m7"]
-[ext_resource type="PackedScene" uid="uid://menu_layer_canvas" path="res://scenes/ui/menu_layer.tscn" id="10_menu_layer"]
-[ext_resource type="PackedScene" uid="uid://dual_panel_screen_scene" path="res://scenes/ui/dual_panel_screen.tscn" id="10_dual_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/menu_layer.tscn" id="10_menu_layer"]
 [ext_resource type="Resource" uid="uid://dysnkvjcmhmjc" path="res://data/waves/wave_03.tres" id="11_lswbx"]
 [ext_resource type="Resource" uid="uid://dqg3kbr3rndat" path="res://data/waves/wave_04.tres" id="12_uujh0"]
 [ext_resource type="Resource" uid="uid://d2745vi4fsyp7" path="res://data/waves/wave_05.tres" id="13_3t34l"]
@@ -54,7 +54,6 @@ waves = Array[ExtResource("8_e6lid")]([ExtResource("9_3g50r"), ExtResource("10_i
 position = Vector2(900, 450)
 editor_draw_limits = true
 script = ExtResource("2_camera")
-level_rect = Rect2(-200, 200, 2000, 800)
 
 [node name="EnemyPath" type="Path2D" parent="."]
 position = Vector2(5, -2)
@@ -108,7 +107,6 @@ layout_mode = 2
 custom_minimum_size = Vector2(80, 40)
 layout_mode = 2
 text = "1x"
-flat = false
 
 [node name="HeroButton" parent="UI" instance=ExtResource("10_herobutton")]
 layout_mode = 3
@@ -124,6 +122,7 @@ grow_vertical = 0
 [node name="MenuLayer" parent="." instance=ExtResource("10_menu_layer")]
 
 [node name="DualPanelScreen" parent="." instance=ExtResource("10_dual_panel")]
+visible = true
 
 [node name="BalanceDebugHUD" parent="." instance=ExtResource("1_balance_hud")]
 

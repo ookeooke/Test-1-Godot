@@ -64,11 +64,17 @@ func setup(tower_ref, spot_ref):
 
 func update_display():
 	"""Update the displayed information"""
+	print("\n📋 [TowerInfoMenu] update_display() called")
+
 	if not tower:
+		print("⚠️ [TowerInfoMenu] WARNING: No tower reference!")
 		return
+
+	print("🔧 [TowerInfoMenu] Tower is valid - updating display")
 
 	# Detect tower type and show appropriate info
 	var is_garrison = _is_garrison_tower()
+	print("🔧 [TowerInfoMenu] Is garrison tower: %s" % str(is_garrison))
 
 	# Set tower name with level
 	if tower_name_label:
@@ -80,6 +86,9 @@ func update_display():
 			if "upgrade_path" in tower and tower.upgrade_path != "":
 				path_text = " [%s]" % tower.upgrade_path.to_upper()
 			tower_name_label.text = "Archer Tower Lv%d%s" % [level, path_text]
+		print("✅ [TowerInfoMenu] Tower name set: '%s'" % tower_name_label.text)
+	else:
+		print("❌ [TowerInfoMenu] ERROR: tower_name_label is NULL!")
 
 	# Set stats
 	if stats_label and tower:
@@ -91,48 +100,117 @@ func update_display():
 			var range_val = tower.range_radius if "range_radius" in tower else 0
 
 			stats_label.text = "Damage: %d\nAttack Speed: %.1f/s\nRange: %d" % [damage, attack_speed, range_val]
+		print("✅ [TowerInfoMenu] Stats set: '%s'" % stats_label.text.replace("\n", " | "))
+	else:
+		if not stats_label:
+			print("❌ [TowerInfoMenu] ERROR: stats_label is NULL!")
+		else:
+			print("⚠️ [TowerInfoMenu] Tower is invalid for stats display")
 
 	# Set button text with costs (get from tower if available)
 	if upgrade_button:
+		print("🔧 [TowerInfoMenu] Upgrade button exists - configuring...")
 		# Get upgrade cost from tower
 		if tower and tower.has_method("get_upgrade_cost"):
 			upgrade_cost = tower.get_upgrade_cost()
+			print("🔧 [TowerInfoMenu] Upgrade cost from tower: %d gold" % upgrade_cost)
 
 			# Check if this is a path choice upgrade
 			if tower.has_method("needs_path_choice") and tower.needs_path_choice():
 				upgrade_button.text = "Choose Path\n" + str(upgrade_cost) + "g"
+				print("✅ [TowerInfoMenu] Button text: 'Choose Path %dg'" % upgrade_cost)
 			elif upgrade_cost > 0:
 				var level = tower.tower_level if "tower_level" in tower else 1
 				upgrade_button.text = "Upgrade (Lv%d)\n%dg" % [level + 1, upgrade_cost]
+				print("✅ [TowerInfoMenu] Button text: 'Upgrade (Lv%d) %dg'" % [level + 1, upgrade_cost])
 			else:
 				upgrade_button.text = "MAX LEVEL"
 				upgrade_button.disabled = true
+				print("✅ [TowerInfoMenu] Button text: 'MAX LEVEL' (disabled)")
 		else:
 			upgrade_button.text = "Upgrade\n" + str(upgrade_cost) + "g"
+			print("⚠️ [TowerInfoMenu] Using fallback upgrade cost: %d" % upgrade_cost)
+	else:
+		print("❌ [TowerInfoMenu] ERROR: upgrade_button is NULL!")
+
 	if sell_button:
 		# Calculate 70% of build cost dynamically
 		var sell_value = _calculate_sell_value()
 		sell_button.text = "Sell\n" + str(sell_value) + "g"
+		print("✅ [TowerInfoMenu] Sell button text: 'Sell %dg'" % sell_value)
+	else:
+		print("❌ [TowerInfoMenu] ERROR: sell_button is NULL!")
 
 	# Update button states
+	print("🔧 [TowerInfoMenu] Updating button states...")
 	update_button_states()
 	update_targeting_buttons()
 	update_enemy_list()
+
+	print("📋 [TowerInfoMenu] update_display() complete\n")
 
 func _on_gold_changed(_new_amount):
 	update_button_states()
 
 func update_button_states():
 	if upgrade_button:
-		upgrade_button.disabled = GameManager.gold < upgrade_cost
+		var can_afford = GameManager.gold >= upgrade_cost
+		upgrade_button.disabled = not can_afford
+		print("💰 [TowerInfoMenu] Button state - Gold: %d, Cost: %d, Enabled: %s" % [GameManager.gold, upgrade_cost, str(can_afford)])
+	else:
+		print("❌ [TowerInfoMenu] Cannot update button state - upgrade_button is NULL!")
 
 func _on_upgrade_button_pressed():
+	print("\n=== 🔧 UPGRADE BUTTON PRESSED ===")
+	print("🔧 [TowerInfoMenu] Tower reference valid: %s" % str(is_instance_valid(tower)))
+	print("🔧 [TowerInfoMenu] Upgrade cost: %d gold" % upgrade_cost)
+	print("🔧 [TowerInfoMenu] Current gold: %d gold" % GameManager.gold)
+
+	if tower:
+		print("🔧 [TowerInfoMenu] Tower type: %s" % tower.get_class())
+		if "tower_level" in tower:
+			print("🔧 [TowerInfoMenu] Tower level BEFORE upgrade: %d" % tower.tower_level)
+			print("🔧 [TowerInfoMenu] Tower damage BEFORE upgrade: %d" % tower.damage)
+			print("🔧 [TowerInfoMenu] Tower attack_speed BEFORE upgrade: %.1f" % tower.attack_speed)
+			print("🔧 [TowerInfoMenu] Tower range BEFORE upgrade: %d" % tower.range_radius)
+		else:
+			print("⚠️ [TowerInfoMenu] WARNING: Tower has no tower_level property!")
+
 	if GameManager.spend_gold(upgrade_cost):
-		print("Tower upgraded!")
+		print("✅ [TowerInfoMenu] Gold spent successfully!")
+		print("🔧 [TowerInfoMenu] Emitting upgrade_selected signal...")
 		upgrade_selected.emit(tower)
-		queue_free()
+
+		# Wait for upgrade to process
+		print("🔧 [TowerInfoMenu] Waiting for upgrade to process...")
+		await get_tree().process_frame
+
+		if tower and "tower_level" in tower:
+			print("🔧 [TowerInfoMenu] Tower level AFTER upgrade: %d" % tower.tower_level)
+			print("🔧 [TowerInfoMenu] Tower damage AFTER upgrade: %d" % tower.damage)
+			print("🔧 [TowerInfoMenu] Tower attack_speed AFTER upgrade: %.1f" % tower.attack_speed)
+			print("🔧 [TowerInfoMenu] Tower range AFTER upgrade: %d" % tower.range_radius)
+
+		# Refresh menu to show new stats immediately
+		print("🔧 [TowerInfoMenu] Refreshing menu display...")
+		update_display()
+
+		# Show brief visual confirmation
+		if tower_name_label:
+			var original_text = tower_name_label.text
+			var original_color = tower_name_label.modulate
+			print("🔧 [TowerInfoMenu] Showing '✓ UPGRADED!' confirmation")
+			tower_name_label.text = "✓ UPGRADED!"
+			tower_name_label.modulate = Color(0, 1, 0)  # Green
+			await get_tree().create_timer(0.4).timeout
+			tower_name_label.modulate = original_color  # Reset color
+			print("🔧 [TowerInfoMenu] Restoring original menu text")
+			update_display()  # Restore original text with new stats
+		print("=== ✅ UPGRADE COMPLETE ===\n")
 	else:
-		print("Not enough gold for upgrade!")
+		print("❌ [TowerInfoMenu] Not enough gold for upgrade!")
+		print("   Need: %d, Have: %d" % [upgrade_cost, GameManager.gold])
+		print("=== ❌ UPGRADE FAILED ===\n")
 
 func _on_sell_button_pressed():
 	# Calculate 70% of build cost dynamically

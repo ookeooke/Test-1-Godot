@@ -9,7 +9,7 @@ func _init():
 	max_health = 500.0
 	melee_damage = 20.0
 	attack_cooldown = 1.5
-	gold_reward = 50
+	gold_reward = 40  # Reduced from 50 (tight economy)
 	life_damage = 3
 	can_be_blocked = true
 	melee_detection_range = 100.0

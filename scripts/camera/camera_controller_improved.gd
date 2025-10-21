@@ -194,6 +194,8 @@ func detect_platform() -> void:
 	"""Auto-detect platform for appropriate defaults"""
 	if OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]:
 		current_platform = Platform.MOBILE
+	elif OS.has_feature("web") or OS.get_name() == "Web":
+		current_platform = Platform.PC  # Treat web as PC (enable edge scroll, keyboard)
 	elif OS.has_feature("pc") or OS.get_name() in ["Windows", "Linux", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "BSD"]:
 		current_platform = Platform.PC
 	else:
@@ -308,18 +310,7 @@ func handle_pc_input(event) -> void:
 		if gui_element:
 			return  # Let GUI handle the input
 
-		# ZOOM DISABLED - Mouse wheel does nothing
-		# if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-		# 	var adjusted_speed = zoom_speed * user_prefs["zoom_speed_multiplier"]
-		# 	zoom_at_point(event.position, adjusted_speed)
-		# 	get_viewport().set_input_as_handled()
-		#
-		# elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-		# 	var adjusted_speed = zoom_speed * user_prefs["zoom_speed_multiplier"]
-		# 	zoom_at_point(event.position, -adjusted_speed)
-		# 	get_viewport().set_input_as_handled()
-
-		# Middle/Right mouse drag - KEEP WORKING
+		# Middle/Right mouse drag
 		if event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
 			if event.pressed:
 				start_drag(event.position)
@@ -349,22 +340,17 @@ func handle_console_input(event) -> void:
 # ============================================
 
 func handle_touch(event: InputEventScreenTouch):
-	"""Touch handling - ZOOM DISABLED, only drag works"""
+	"""Touch handling for mobile - single finger drag"""
 	if event.pressed:
-		# DOUBLE-TAP ZOOM DISABLED
-		# (Code removed - zoom locked at 1.0)
-
 		# Register touch point
 		touch_points[event.index] = event.position
 
-		# Single finger - start drag (KEEP WORKING)
+		# Single finger - start drag
 		if touch_points.size() == 1:
 			start_drag(event.position)
-
-		# Two fingers - PINCH ZOOM DISABLED, just end drag
+		# Two fingers - end drag (zoom disabled)
 		elif touch_points.size() == 2:
 			is_dragging = false
-			# Pinch zoom disabled - two finger touch does nothing
 
 	else:
 		touch_points.erase(event.index)
@@ -375,13 +361,10 @@ func handle_touch(event: InputEventScreenTouch):
 			start_drag(touch_points.values()[0])
 
 func handle_touch_drag(event: InputEventScreenDrag):
-	"""Handle touch drag motion - PINCH ZOOM DISABLED"""
+	"""Handle touch drag motion"""
 	touch_points[event.index] = event.position
 
-	# PINCH ZOOM DISABLED
-	# Two finger pinch does nothing (zoom locked at 1.0)
-
-	# Single finger drag (KEEP WORKING)
+	# Single finger drag
 	if touch_points.size() == 1 and is_dragging:
 		update_drag(event.position)
 
@@ -419,7 +402,7 @@ func update_drag(screen_pos: Vector2):
 	base_position -= delta
 
 	# Store velocity for inertia (frame-independent)
-	velocity = -delta / get_process_delta_time()
+	velocity = -delta / get_physics_process_delta_time()
 	velocity = velocity.limit_length(max_inertia_velocity)
 
 	last_mouse_pos = screen_pos
@@ -541,7 +524,7 @@ func ease_out_cubic(t: float) -> float:
 # PROCESS
 # ============================================
 
-func _process(delta):
+func _physics_process(delta):
 	# Skip runtime logic in editor
 	if Engine.is_editor_hint():
 		return
@@ -565,9 +548,6 @@ func _process(delta):
 	# Update camera shake
 	if shake_enabled:
 		update_shake(delta)
-
-	# Zoom smoothing DISABLED (zoom locked at 1.0)
-	# zoom = target_zoom (always 1.0, no smoothing needed)
 
 	# Apply final position with shake
 	position = base_position + shake_offset
