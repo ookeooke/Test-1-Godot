@@ -18,9 +18,9 @@ enum TargetingMode {
 	STRONG   # Highest current health
 }
 
-# TOWER STATS
-var damage = 15
-var attack_speed = 1.2  # Attacks per second
+# TOWER STATS (NERFED BASE - upgrades now MANDATORY for late waves!)
+var damage = 12  # Reduced from 15 (-20%) to force upgrades
+var attack_speed = 1.0  # Reduced from 1.2 (-16.7%) = 12 DPS base
 var range_radius = 300  # Detection range
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
 var build_cost = 100  # Cost to build this tower (for sell calculation)
