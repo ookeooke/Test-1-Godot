@@ -18,9 +18,9 @@ enum TargetingMode {
 	STRONG   # Highest current health
 }
 
-# TOWER STATS (NERFED BASE - upgrades now MANDATORY for late waves!)
-var damage = 12  # Reduced from 15 (-20%) to force upgrades
-var attack_speed = 1.0  # Reduced from 1.2 (-16.7%) = 12 DPS base
+# TOWER STATS (REBALANCED - +33% damage boost to reduce wolf leaks)
+var damage = 16  # Increased from 12 (+33%) = 16 DPS base
+var attack_speed = 1.0  # Attacks per second
 var range_radius = 300  # Detection range
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
 var build_cost = 100  # Cost to build this tower (for sell calculation)
@@ -535,22 +535,22 @@ func upgrade_tower():
 	tower_level += 1
 	print("🔧 [DEBUG] Level changed: %d → %d" % [old_level, tower_level])
 
-	# Apply stat increases per level (REBALANCED for 12 base damage)
+	# Apply stat increases per level (OPTION B: +33% damage boost all levels)
 	match tower_level:
 		2:
 			print("🔧 [DEBUG] Applying Level 2 stats...")
-			damage = 18  # 12 → 18 (+50% damage)
+			damage = 26  # 16 → 26 (+62.5% damage)
 			attack_speed = 1.3  # 1.0 → 1.3 (+30% speed)
 			range_radius = 350  # 300 → 350 (+50 range)
-			# Result: 23.4 DPS (+95% from Level 1)
-			print("✅ [ArcherTower] Upgraded to Level 2: DMG=18, AS=1.3, Range=350, DPS=23.4")
+			# Result: 33.8 DPS (+111% from Level 1)
+			print("✅ [ArcherTower] Upgraded to Level 2: DMG=26, AS=1.3, Range=350, DPS=33.8")
 		3:
 			print("🔧 [DEBUG] Applying Level 3 stats...")
-			damage = 24  # 18 → 24 (+33% damage)
+			damage = 36  # 26 → 36 (+38.5% damage)
 			attack_speed = 1.6  # 1.3 → 1.6 (+23% speed)
 			range_radius = 400  # 350 → 400 (+50 range)
-			# Result: 38.4 DPS (+64% from Level 2)
-			print("✅ [ArcherTower] Upgraded to Level 3: DMG=24, AS=1.6, Range=400, DPS=38.4")
+			# Result: 57.6 DPS (+70% from Level 2)
+			print("✅ [ArcherTower] Upgraded to Level 3: DMG=36, AS=1.6, Range=400, DPS=57.6")
 		_:
 			print("⚠️ [DEBUG] WARNING: Unexpected tower_level: %d" % tower_level)
 
@@ -587,12 +587,12 @@ func choose_damage_path():
 	tower_level += 1
 	upgrade_path = "damage"
 
-	# DAMAGE PATH: +50% damage, +25% attack speed
-	damage = 36  # 24 → 36 (+50%)
+	# DAMAGE PATH: +33% damage, +25% attack speed
+	damage = 48  # 36 → 48 (+33%)
 	attack_speed = 2.0  # 1.6 → 2.0 (+25%)
-	# Result: 72 DPS (+87.5% from Level 3) - GLASS CANNON!
+	# Result: 96 DPS (+67% from Level 3) - GLASS CANNON!
 
-	print("[ArcherTower] DAMAGE PATH chosen: DMG=36, AS=2.0, DPS=72 - High DPS glass cannon!")
+	print("[ArcherTower] DAMAGE PATH chosen: DMG=48, AS=2.0, DPS=96 - High DPS glass cannon!")
 
 	# Update shoot timer
 	if shoot_timer:
@@ -615,9 +615,9 @@ func choose_range_path():
 
 	# RANGE PATH: +100% range (doubles coverage area)
 	range_radius = 800  # 400 → 800 (+100%)
-	# Keeps Level 3 stats: DMG=24, AS=1.6, DPS=38.4
+	# Keeps Level 3 stats: DMG=36, AS=1.6, DPS=57.6
 
-	print("[ArcherTower] RANGE PATH chosen: Range=800, DMG=24, AS=1.6, DPS=38.4 - Long-range sniper!")
+	print("[ArcherTower] RANGE PATH chosen: Range=800, DMG=36, AS=1.6, DPS=57.6 - Long-range sniper!")
 
 	# Update detection range collision shape
 	_update_detection_range()
@@ -653,6 +653,38 @@ func get_upgrade_cost() -> int:
 		return 150  # Level 3→4 path choice (EXTREMELY EXPENSIVE!)
 
 	return 0  # Max level reached
+
+func get_upgrade_stats() -> Dictionary:
+	"""Get preview of what stats will be after upgrade (for two-click upgrade system)"""
+	var current_damage = damage
+	var current_attack_speed = attack_speed
+	var current_range = range_radius
+
+	# Calculate bonuses based on next level
+	var damage_bonus = 0
+	var attack_speed_bonus = 0.0
+	var range_bonus = 0
+
+	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
+		# Standard upgrades
+		match tower_level:
+			1:  # Level 1→2
+				damage_bonus = 26 - current_damage  # Will be 26
+				attack_speed_bonus = 1.3 - current_attack_speed  # Will be 1.3
+				range_bonus = 350 - current_range  # Will be 350
+			2:  # Level 2→3
+				damage_bonus = 36 - current_damage  # Will be 36
+				attack_speed_bonus = 1.6 - current_attack_speed  # Will be 1.6
+				range_bonus = 400 - current_range  # Will be 400
+
+	return {
+		"damage": current_damage,
+		"damage_bonus": damage_bonus,
+		"attack_speed": current_attack_speed,
+		"attack_speed_bonus": attack_speed_bonus,
+		"range": current_range,
+		"range_bonus": range_bonus
+	}
 
 func can_upgrade() -> bool:
 	"""Check if tower can be upgraded"""

@@ -8,10 +8,29 @@ extends Control
 @onready var main_menu_button: Button = $Panel/VBoxContainer/MainMenuButton
 
 func _ready():
+	# Close any open menus (tower info, build menu, etc.)
+	_close_existing_menus()
+
 	# Connect signals
 	retry_button.pressed.connect(_on_retry_pressed)
 	level_select_button.pressed.connect(_on_level_select_pressed)
 	main_menu_button.pressed.connect(_on_main_menu_pressed)
+
+func _close_existing_menus():
+	"""Close tower info menus and other UI that might be open"""
+	# Find and close tower info menus
+	var tower_info_menus = get_tree().get_nodes_in_group("tower_info_menu")
+	for menu in tower_info_menus:
+		if is_instance_valid(menu):
+			menu.queue_free()
+
+	# Find and close build menus
+	var build_menus = get_tree().get_nodes_in_group("build_menu")
+	for menu in build_menus:
+		if is_instance_valid(menu):
+			menu.queue_free()
+
+	print("[DefeatScreen] Closed existing menus")
 
 func _on_retry_pressed():
 	print("DefeatScreen: Retry level")

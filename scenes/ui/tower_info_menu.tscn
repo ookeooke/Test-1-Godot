@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/ui/tower_info_menu.gd" id="1_tower_info"]
 
-[node name="TowerInfoMenu" type="Control"]
+[node name="TowerInfoMenu" type="Control" groups=["tower_info_menu"]]
 custom_minimum_size = Vector2(250, 200)
 layout_mode = 3
 anchors_preset = 0
@@ -27,11 +27,15 @@ layout_mode = 2
 text = "Archer Tower"
 horizontal_alignment = 1
 
-[node name="StatsLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
+[node name="StatsLabel" type="RichTextLabel" parent="PanelContainer/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
+bbcode_enabled = true
 text = "Damage: 15
 Attack Speed: 1.2/s
 Range: 300"
+fit_content = true
+scroll_active = false
 
 [node name="HSeparator" type="HSeparator" parent="PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2

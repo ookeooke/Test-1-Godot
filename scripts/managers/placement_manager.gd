@@ -92,8 +92,10 @@ func show_build_menu(spot):
 
 	# CRITICAL: Wait for menu to calculate its size
 	# Menu containers need to be in tree and go through _ready() to calculate size
+	# Extra frames needed for RichTextLabel to finalize layout
 	await get_tree().process_frame
-	await get_tree().process_frame  # Two frames to ensure size is final
+	await get_tree().process_frame
+	await get_tree().process_frame  # Three frames for RichTextLabel with BBCode
 
 	# Position in screen coordinates (zoom-independent)
 	await position_menu_in_screen_space(spot)
@@ -117,8 +119,10 @@ func show_tower_info_menu(spot, tower):
 
 	# CRITICAL: Wait for menu to calculate its size
 	# Menu containers need to be in tree and go through _ready() to calculate size
+	# Extra frames needed for RichTextLabel to finalize layout
 	await get_tree().process_frame
-	await get_tree().process_frame  # Two frames to ensure size is final
+	await get_tree().process_frame
+	await get_tree().process_frame  # Three frames for RichTextLabel with BBCode
 
 	# Position in screen coordinates (zoom-independent)
 	await position_menu_in_screen_space(spot)
@@ -152,8 +156,9 @@ func position_menu_in_screen_space(spot):
 		print("  Camera zoom: ", zoom_factor)
 		print("  Camera offset: ", camera_offset)
 
+		# CRITICAL FIX: Multiply by zoom (zoom in = objects appear larger on screen)
 		screen_pos = camera_offset * zoom_factor
-		print("  After zoom multiply: ", screen_pos)
+		print("  After zoom apply: ", screen_pos)
 
 		screen_pos += get_viewport().get_visible_rect().size / 2
 		print("  Screen center: ", get_viewport().get_visible_rect().size / 2)
@@ -265,6 +270,14 @@ func _on_tower_upgraded(tower):
 
 		if upgrade_result:
 			print("✅ [PlacementManager] Tower upgraded successfully to level %d" % tower.tower_level)
+
+			# CRITICAL: Reposition menu after upgrade (menu might have changed size or tower visual changed)
+			if current_menu and current_spot:
+				print("🔧 [PlacementManager] Repositioning menu after upgrade...")
+				await get_tree().process_frame  # Wait for menu to update its display
+				await position_menu_in_screen_space(current_spot)
+				print("✅ [PlacementManager] Menu repositioned after upgrade")
+
 			print("=== ✅ UPGRADE SUCCESS ===\n")
 		else:
 			push_error("[PlacementManager] Tower upgrade failed!")

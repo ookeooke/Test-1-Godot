@@ -82,10 +82,10 @@ var current_platform: Platform
 # Camera limits are automatically calculated from level_rect
 # The pink/magenta rectangle in editor shows where camera CENTER can move
 #
-# Simply set level_rect below and limits auto-calculate at runtime
-# Accounts for viewport size and zoom level
+# NOTE: For multi-level games, set bounds via level_controller instead!
+# This default is only used as fallback if level doesn't set bounds
 @export_group("Level Bounds")
-@export var level_rect = Rect2(-200, 200, 2000, 800)  # Define your playable area here
+@export var level_rect = Rect2(-200, 200, 2000, 800)  # Default fallback bounds
 
 # ============================================
 # CAMERA SHAKE

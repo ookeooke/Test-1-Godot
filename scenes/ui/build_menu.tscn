@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cq72tgteky57f" path="res://scripts/ui/build_menu.gd" id="1_rdxwr"]
 
-[node name="BuildMenu" type="Control"]
+[node name="BuildMenu" type="Control" groups=["build_menu"]]
 custom_minimum_size = Vector2(300, 100)
 layout_mode = 3
 anchors_preset = 0

@@ -53,6 +53,21 @@ class_name LevelConfig
 ## The actual level scene to load
 @export var level_scene: PackedScene
 
+# ============================================
+# CAMERA BOUNDS
+# ============================================
+
+## Playable area bounds for camera (auto-calculated from level content if not set)
+## Format: Rect2(left_x, top_y, width, height)
+## Example: Rect2(-200, 200, 2000, 800) means playable area from (-200,200) to (1800,1000)
+@export var camera_bounds: Rect2 = Rect2(0, 0, 0, 0)  # Zero rect = auto-calculate
+
+## Should camera bounds be auto-calculated from tower spots and paths?
+@export var auto_calculate_bounds: bool = true
+
+## Padding to add when auto-calculating bounds (extra space around content)
+@export var bounds_padding: float = 200.0
+
 ## Optional: Custom background music for this level
 @export var music: AudioStream
 

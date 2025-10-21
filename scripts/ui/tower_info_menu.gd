@@ -33,6 +33,10 @@ var update_timer: Timer
 # Enemy list visibility (hidden by default)
 var enemy_list_visible = false
 
+# Upgrade preview state (two-click upgrade system)
+var is_preview_mode = false
+var preview_stats = {}  # Stores what stats will be after upgrade
+
 # Rally button for garrison towers (created dynamically)
 var rally_button: Button = null
 
@@ -47,6 +51,24 @@ func _ready():
 		strong_button.pressed.connect(_on_strong_button_pressed)
 	if enemy_list_toggle:
 		enemy_list_toggle.pressed.connect(_on_enemy_list_toggle_pressed)
+
+	# Set smaller font sizes for better UI (reduced even more)
+	if tower_name_label:
+		tower_name_label.add_theme_font_size_override("font_size", 14)  # Was 16
+	if stats_label:
+		stats_label.add_theme_font_size_override("font_size", 11)  # Was 13
+	if enemies_label:
+		enemies_label.add_theme_font_size_override("font_size", 10)  # Was 12
+	if enemy_list_toggle:
+		enemy_list_toggle.add_theme_font_size_override("font_size", 10)  # Was 12
+	if upgrade_button:
+		upgrade_button.add_theme_font_size_override("font_size", 11)  # Was 13
+	if sell_button:
+		sell_button.add_theme_font_size_override("font_size", 11)  # Was 13
+	if first_button:
+		first_button.add_theme_font_size_override("font_size", 10)  # Was 12
+	if strong_button:
+		strong_button.add_theme_font_size_override("font_size", 10)  # Was 12
 
 	# Load enemy list visibility preference
 	if GameManager.has_method("get_enemy_list_preference"):
@@ -110,6 +132,9 @@ func update_display():
 		if is_garrison:
 			_update_garrison_stats()
 		else:
+			# Disable BBCode for normal stats display
+			stats_label.bbcode_enabled = false
+
 			var damage = tower.damage if "damage" in tower else 0
 			var attack_speed = tower.attack_speed if "attack_speed" in tower else 0
 			var range_val = tower.range_radius if "range_radius" in tower else 0
@@ -177,55 +202,162 @@ func update_button_states():
 
 func _on_upgrade_button_pressed():
 	print("\n=== 🔧 UPGRADE BUTTON PRESSED ===")
-	print("🔧 [TowerInfoMenu] Tower reference valid: %s" % str(is_instance_valid(tower)))
+	print("🔧 [TowerInfoMenu] Preview mode: %s" % str(is_preview_mode))
+
+	# TWO-CLICK SYSTEM
+	if not is_preview_mode:
+		# FIRST CLICK: Enter preview mode
+		print("🔧 [TowerInfoMenu] First click - entering preview mode")
+		_enter_preview_mode()
+	else:
+		# SECOND CLICK: Actually perform upgrade
+		print("🔧 [TowerInfoMenu] Second click - confirming upgrade")
+		_confirm_upgrade()
+
+func _enter_preview_mode():
+	"""First click: Calculate and show upgrade preview with bonuses in green"""
+	if not tower:
+		return
+
+	print("🔧 [TowerInfoMenu] Entering preview mode")
+	is_preview_mode = true
+
+	# Calculate what stats will be after upgrade
+	if tower.has_method("get_upgrade_stats"):
+		# If tower has a method to preview stats, use it
+		preview_stats = tower.get_upgrade_stats()
+	else:
+		# Calculate preview based on tower level and type
+		_calculate_preview_stats()
+
+	# Update stats display to show bonuses
+	_update_stats_with_preview()
+	print("✅ [TowerInfoMenu] Preview mode active - showing upgrade bonuses")
+
+func _calculate_preview_stats():
+	"""Calculate what stats will be after upgrade (fallback method)"""
+	if not tower:
+		return
+
+	# Get current stats
+	var current_damage = tower.damage if "damage" in tower else 0
+	var current_attack_speed = tower.attack_speed if "attack_speed" in tower else 0
+	var current_range = tower.range_radius if "range_radius" in tower else 0
+	var current_level = tower.tower_level if "tower_level" in tower else 1
+
+	# Simple upgrade formula (50% damage, 25% attack speed per level)
+	# This is a fallback - towers should implement get_upgrade_stats()
+	var damage_bonus = int(current_damage * 0.5)
+	var attack_speed_bonus = current_attack_speed * 0.25
+	var range_bonus = 0  # Usually range doesn't change
+
+	preview_stats = {
+		"damage": current_damage,
+		"damage_bonus": damage_bonus,
+		"attack_speed": current_attack_speed,
+		"attack_speed_bonus": attack_speed_bonus,
+		"range": current_range,
+		"range_bonus": range_bonus
+	}
+
+func _update_stats_with_preview():
+	"""Update stats label to show current + bonus (bonus in green)"""
+	if not stats_label or not tower:
+		return
+
+	var is_garrison = _is_garrison_tower()
+	if is_garrison:
+		# Garrison towers don't show preview yet (could add later)
+		return
+
+	# Use BBCode for colored text
+	stats_label.bbcode_enabled = true
+
+	var damage = preview_stats.get("damage", tower.damage)
+	var damage_bonus = preview_stats.get("damage_bonus", 0)
+	var attack_speed = preview_stats.get("attack_speed", tower.attack_speed)
+	var attack_speed_bonus = preview_stats.get("attack_speed_bonus", 0.0)
+	var range_val = preview_stats.get("range", tower.range_radius)
+	var range_bonus = preview_stats.get("range_bonus", 0)
+
+	# Build stats text with green bonuses
+	var stats_text = ""
+
+	# Damage line
+	if damage_bonus > 0:
+		stats_text += "Damage: %d [color=green]+%d[/color]\n" % [damage, damage_bonus]
+	else:
+		stats_text += "Damage: %d\n" % damage
+
+	# Attack Speed line
+	if attack_speed_bonus > 0:
+		stats_text += "Attack Speed: %.1f/s [color=green]+%.1f/s[/color]\n" % [attack_speed, attack_speed_bonus]
+	else:
+		stats_text += "Attack Speed: %.1f/s\n" % attack_speed
+
+	# Range line
+	if range_bonus > 0:
+		stats_text += "Range: %d [color=green]+%d[/color]" % [range_val, range_bonus]
+	else:
+		stats_text += "Range: %d" % range_val
+
+	stats_label.text = stats_text
+	print("✅ [TowerInfoMenu] Stats updated with preview bonuses")
+
+func _confirm_upgrade():
+	"""Second click: Actually perform the upgrade"""
+	if not tower:
+		return
+
+	print("🔧 [TowerInfoMenu] Confirming upgrade")
 	print("🔧 [TowerInfoMenu] Upgrade cost: %d gold" % upgrade_cost)
 	print("🔧 [TowerInfoMenu] Current gold: %d gold" % GameManager.gold)
-
-	if tower:
-		print("🔧 [TowerInfoMenu] Tower type: %s" % tower.get_class())
-		if "tower_level" in tower:
-			print("🔧 [TowerInfoMenu] Tower level BEFORE upgrade: %d" % tower.tower_level)
-			print("🔧 [TowerInfoMenu] Tower damage BEFORE upgrade: %d" % tower.damage)
-			print("🔧 [TowerInfoMenu] Tower attack_speed BEFORE upgrade: %.1f" % tower.attack_speed)
-			print("🔧 [TowerInfoMenu] Tower range BEFORE upgrade: %d" % tower.range_radius)
-		else:
-			print("⚠️ [TowerInfoMenu] WARNING: Tower has no tower_level property!")
 
 	if GameManager.spend_gold(upgrade_cost):
 		print("✅ [TowerInfoMenu] Gold spent successfully!")
 		print("🔧 [TowerInfoMenu] Emitting upgrade_selected signal...")
+
+		# Exit preview mode
+		is_preview_mode = false
+		preview_stats = {}
+
+		# Emit upgrade signal
 		upgrade_selected.emit(tower)
 
 		# Wait for upgrade to process
-		print("🔧 [TowerInfoMenu] Waiting for upgrade to process...")
 		await get_tree().process_frame
 
-		if tower and "tower_level" in tower:
-			print("🔧 [TowerInfoMenu] Tower level AFTER upgrade: %d" % tower.tower_level)
-			print("🔧 [TowerInfoMenu] Tower damage AFTER upgrade: %d" % tower.damage)
-			print("🔧 [TowerInfoMenu] Tower attack_speed AFTER upgrade: %.1f" % tower.attack_speed)
-			print("🔧 [TowerInfoMenu] Tower range AFTER upgrade: %d" % tower.range_radius)
-
-		# Refresh menu to show new stats immediately
+		# Refresh menu to show new stats
 		print("🔧 [TowerInfoMenu] Refreshing menu display...")
 		update_display()
 
 		# Show brief visual confirmation
 		if tower_name_label:
-			var original_text = tower_name_label.text
 			var original_color = tower_name_label.modulate
 			print("🔧 [TowerInfoMenu] Showing '✓ UPGRADED!' confirmation")
 			tower_name_label.text = "✓ UPGRADED!"
 			tower_name_label.modulate = Color(0, 1, 0)  # Green
 			await get_tree().create_timer(0.4).timeout
-			tower_name_label.modulate = original_color  # Reset color
+			tower_name_label.modulate = original_color
 			print("🔧 [TowerInfoMenu] Restoring original menu text")
-			update_display()  # Restore original text with new stats
+			update_display()
 		print("=== ✅ UPGRADE COMPLETE ===\n")
 	else:
 		print("❌ [TowerInfoMenu] Not enough gold for upgrade!")
 		print("   Need: %d, Have: %d" % [upgrade_cost, GameManager.gold])
 		print("=== ❌ UPGRADE FAILED ===\n")
+
+func _cancel_preview():
+	"""Cancel preview mode and return to normal stats display"""
+	print("🔧 [TowerInfoMenu] Canceling preview mode")
+	is_preview_mode = false
+	preview_stats = {}
+
+	# Reset stats label to normal (no BBCode)
+	if stats_label:
+		stats_label.bbcode_enabled = false
+
+	print("✅ [TowerInfoMenu] Preview canceled")
 
 func _on_sell_button_pressed():
 	# Calculate 70% of build cost dynamically
@@ -306,6 +438,11 @@ func _unhandled_input(event):
 			is_click = event.pressed
 
 		if is_click:
+			# If in preview mode, cancel preview and close menu
+			if is_preview_mode:
+				print("❌ [TowerInfoMenu] Canceling preview - clicked outside")
+				_cancel_preview()
+
 			print("✅ [TowerInfoMenu] Closing menu - clicked outside")
 			menu_closed.emit()
 			get_viewport().set_input_as_handled()
@@ -376,7 +513,7 @@ func update_enemy_list():
 		]
 
 		# Set smaller font size
-		enemy_label.add_theme_font_size_override("font_size", 12)
+		enemy_label.add_theme_font_size_override("font_size", 9)  # Was 10
 
 		# Color code by priority (1st is red, others fade)
 		if position == 1:
