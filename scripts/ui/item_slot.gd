@@ -2,7 +2,10 @@ extends PanelContainer
 class_name ItemSlot
 
 ## ItemSlot - UI element representing a single inventory slot
-## Implements Godot's drag-and-drop system
+## Dual input system for PC and mobile:
+## - PC: Hover for tooltip, drag-drop to move, right-click for context menu
+## - Mobile: Tap to equip/use, long-press (0.5s) for context menu
+## Built-in Godot tooltips work automatically on hover
 
 signal item_clicked(item_id: String, slot: ItemSlot)
 signal item_right_clicked(item_id: String, slot: ItemSlot)
@@ -25,10 +28,16 @@ var upgrade_level: int = 0
 var is_empty: bool = true
 var is_hovered: bool = false
 
+# Long-press detection for mobile
+var touch_start_time: float = 0.0
+var is_touch_held: bool = false
+const LONG_PRESS_DURATION: float = 0.5  # 500ms
+
 
 func _ready():
-	# Set up custom minimum size for consistent slot appearance
-	custom_minimum_size = Vector2(64, 64)
+	# Set up custom minimum size for mobile-friendly touch targets
+	# 80x80px exceeds Android Material Design 48dp minimum
+	custom_minimum_size = Vector2(80, 80)
 
 	# Connect mouse signals
 	mouse_entered.connect(_on_mouse_entered)
@@ -92,9 +101,18 @@ func update_display():
 	# Item is present
 	modulate = Color.WHITE
 
-	# Set icon
-	if icon and item_data.icon:
-		icon.texture = item_data.icon
+	# Set icon (texture or emoji)
+	if icon:
+		if item_data.icon:
+			# Use texture icon if available
+			icon.texture = item_data.icon
+		elif item_data.emoji != "":
+			# Use emoji as fallback - create a temporary label to show it
+			icon.texture = null
+			_show_emoji_in_icon(item_data.emoji)
+		else:
+			# No icon at all
+			icon.texture = null
 
 	# Set quantity label (only for stackable items)
 	if quantity_label:
@@ -252,14 +270,16 @@ func _get_equipment_slot_name() -> String:
 
 func _find_equipment_manager() -> EquipmentManager:
 	"""Find equipment manager in the scene tree"""
-	# Try to find from parent EquipmentPanel
+	# Try to find from parent EquipmentView (for world map UI)
 	var node = get_parent()
 	while node != null:
+		if node is EquipmentView:
+			return node.equipment_manager
 		if node is EquipmentPanel:
 			return node.equipment_manager
 		node = node.get_parent()
 
-	# Fallback: search for hero in scene
+	# Fallback: search for hero in scene (for in-battle UI)
 	if get_tree():
 		var heroes = get_tree().get_nodes_in_group("hero")
 		for hero in heroes:
@@ -290,20 +310,40 @@ func _on_mouse_exited():
 
 ## Handle GUI input (clicks)
 func _on_gui_input(event: InputEvent):
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
+	if event is InputEventMouseButton:
+		if event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				if not is_empty:
+					item_clicked.emit(item_id, self)
+					accept_event()  # Prevent click from reaching world
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				if not is_empty:
+					item_right_clicked.emit(item_id, self)
+					accept_event()  # Prevent click from reaching world
+
+	elif event is InputEventScreenTouch:
+		if event.pressed:
+			# Touch started - begin long-press timer
 			if not is_empty:
-				item_clicked.emit(item_id, self)
-				accept_event()  # Prevent click from reaching world
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			if not is_empty:
-				item_right_clicked.emit(item_id, self)
-				accept_event()  # Prevent click from reaching world
-	elif event is InputEventScreenTouch and event.pressed:
-		# Mobile touch support
-		if not is_empty:
-			item_clicked.emit(item_id, self)
-			accept_event()  # Prevent tap from reaching world
+				touch_start_time = Time.get_ticks_msec() / 1000.0
+				is_touch_held = true
+		else:
+			# Touch released
+			if is_touch_held:
+				var hold_duration = (Time.get_ticks_msec() / 1000.0) - touch_start_time
+
+				if hold_duration >= LONG_PRESS_DURATION:
+					# Long press detected - trigger right-click action (context menu)
+					if not is_empty:
+						item_right_clicked.emit(item_id, self)
+						print("[ItemSlot] Long-press detected on %s" % item_data.item_name)
+				else:
+					# Short tap - trigger normal click (auto-equip)
+					if not is_empty:
+						item_clicked.emit(item_id, self)
+
+				is_touch_held = false
+				accept_event()  # Prevent tap from reaching world
 
 
 ## Generate tooltip with item comparison
@@ -451,3 +491,22 @@ func _get_equip_slot_name(slot: ItemData.EquipSlot) -> String:
 		ItemData.EquipSlot.ACCESSORY:
 			return "Accessory"
 	return "Unknown"
+
+
+func _show_emoji_in_icon(emoji_text: String):
+	"""Display emoji symbol in the icon slot when no texture is available"""
+	# Remove any existing emoji label first
+	if icon.has_node("EmojiLabel"):
+		icon.get_node("EmojiLabel").queue_free()
+
+	# Create label to show emoji
+	var emoji_label = Label.new()
+	emoji_label.name = "EmojiLabel"
+	emoji_label.text = emoji_text
+	emoji_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	emoji_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	emoji_label.add_theme_font_size_override("font_size", 48)  # Large emoji
+	emoji_label.anchors_preset = Control.PRESET_FULL_RECT
+	emoji_label.z_index = 10  # Above icon texture rect
+
+	icon.add_child(emoji_label)

@@ -15,6 +15,7 @@ grow_vertical = 2
 script = ExtResource("1_dual")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
+visible = false
 layer = 10
 
 [node name="Background" type="ColorRect" parent="CanvasLayer"]
@@ -33,7 +34,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="MainContainer" type="VBoxContainer" parent="CanvasLayer/CenterContainer"]
-custom_minimum_size = Vector2(1400, 800)
+custom_minimum_size = Vector2(1700, 800)
 layout_mode = 2
 theme_override_constants/separation = 0
 
@@ -78,15 +79,16 @@ text = "X"
 [node name="PanelsContainer" type="HBoxContainer" parent="CanvasLayer/CenterContainer/MainContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 10
+theme_override_constants/separation = 30
 
 [node name="LeftPanel" parent="CanvasLayer/CenterContainer/MainContainer/PanelsContainer" instance=ExtResource("2_panel")]
+custom_minimum_size = Vector2(600, 0)
 layout_mode = 2
-size_flags_horizontal = 3
 panel_side = "left"
+default_view = 0
 
 [node name="RightPanel" parent="CanvasLayer/CenterContainer/MainContainer/PanelsContainer" instance=ExtResource("2_panel")]
+custom_minimum_size = Vector2(1100, 0)
 layout_mode = 2
-size_flags_horizontal = 3
 panel_side = "right"
 default_view = 1

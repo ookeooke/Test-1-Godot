@@ -22,6 +22,7 @@ var current_health = 100.0
 var melee_damage = 10.0
 var melee_range = 100.0
 var melee_attack_speed = 1.0
+var combat_distance = 50.0  # How close to get before attacking (visual improvement)
 
 # MOVEMENT
 var movement_speed = 120.0
@@ -132,6 +133,17 @@ func handle_melee_combat_state():
 	if is_instance_valid(closest):
 		look_at(closest.global_position)
 
+		# COMBAT POSITIONING: Move to combat distance before attacking
+		var distance_to_enemy = global_position.distance_to(closest.global_position)
+		if distance_to_enemy > combat_distance:
+			# Move closer
+			var direction = (closest.global_position - global_position).normalized()
+			velocity = direction * movement_speed
+			move_and_slide()
+		else:
+			# In position - stop moving
+			velocity = Vector2.ZERO
+
 		for enemy in current_melee_targets:
 			if enemy.has_method("set_blocked_by_hero"):
 				if not enemy.is_blocked or enemy.blocking_hero != self:
@@ -172,10 +184,12 @@ func enter_melee_combat():
 	current_state = State.MELEE_COMBAT
 	velocity = Vector2.ZERO
 	melee_timer.start()
+	_set_combat_state_visual(true)
 
 func enter_returning_state():
 	current_state = State.RETURNING
 	melee_timer.stop()
+	_set_combat_state_visual(false)
 
 func enter_walking_state(destination: Vector2):
 	current_state = State.WALKING
@@ -201,9 +215,17 @@ func get_melee_targets() -> Array:
 	if enemies_in_melee_range.is_empty():
 		return []
 
-	# Filter out already-blocked enemies (by other soldiers)
+	# GANG-UP SYSTEM: Allow attacking already-blocked enemies if blocked by ally
 	var available_enemies = enemies_in_melee_range.filter(
-		func(e): return not e.is_blocked or e.blocking_hero == self
+		func(e):
+			# Can attack if: not blocked, blocked by me, or blocked by ally from same tower
+			if not e.is_blocked or e.blocking_hero == self:
+				return true
+			# Check if blocked by ally soldier from same tower
+			if e.blocking_hero and is_instance_valid(e.blocking_hero):
+				if e.blocking_hero.has_method("get") and e.blocking_hero.get("parent_tower") == parent_tower:
+					return true  # Gang up with ally!
+			return false
 	)
 
 	if available_enemies.is_empty():
@@ -236,9 +258,23 @@ func melee_attack():
 	if current_melee_targets.is_empty():
 		return
 
+	# ATTACK FLASH: Visual feedback when attacking
+	_play_attack_flash()
+
 	for enemy in current_melee_targets:
 		if is_instance_valid(enemy) and enemy.has_method("take_damage"):
-			enemy.take_damage(melee_damage)
+			enemy.take_damage(melee_damage, self, "soldier_melee")
+
+func _play_attack_flash():
+	"""Visual feedback for attack - flash white"""
+	if sprite:
+		var original_modulate = sprite.modulate
+		sprite.modulate = Color(1.5, 1.5, 1.5)  # Flash bright white
+
+		# Reset after 0.1 seconds
+		await get_tree().create_timer(0.1).timeout
+		if is_instance_valid(sprite):
+			sprite.modulate = original_modulate
 
 # ============================================
 # HEALTH & DEATH
@@ -288,3 +324,13 @@ func set_flag_position(pos: Vector2):
 	# If currently idle or returning, start walking to new position
 	if current_state == State.IDLE or current_state == State.RETURNING:
 		enter_walking_state(pos)
+
+func _set_combat_state_visual(in_combat: bool):
+	"""Visual indicator when soldier is in melee combat"""
+	if sprite:
+		if in_combat:
+			# Reddish tint = in combat
+			sprite.modulate = Color(1.2, 0.8, 0.8)
+		else:
+			# Normal color
+			sprite.modulate = Color(1, 1, 1)

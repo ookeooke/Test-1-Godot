@@ -11,10 +11,14 @@ extends Area2D
 
 @export_group("Targeting")
 @export var use_prediction: bool = true  ## Predict enemy movement
-@export var prediction_time: float = 0.3  ## How far ahead to predict (seconds)
+@export var prediction_time: float = 0.6  ## How far ahead to predict (seconds) - matches typical arrow flight time
 
 @export_group("Flight")
 @export var flight_speed: float = 500.0  ## Speed of projectile
+
+@export_group("Rotation")
+@export var rotation_smoothing: bool = true  ## Enable smooth rotation for realistic "gravity facing"
+@export var rotation_decay_rate: float = 15.0  ## Rotation smoothing speed (5=gentle, 15=balanced, 30=instant)
 
 # RUNTIME PROPERTIES
 var damage = 10  # Will be set by tower
@@ -79,10 +83,20 @@ func _calculate_target_position() -> Vector2:
 		if parent and parent is PathFollow2D:
 			# Estimate velocity based on enemy speed
 			if "speed" in target:
-				# Get the direction enemy is traveling
-				var current_pos = base_position
-				# Simple forward prediction
-				enemy_velocity = (current_pos - global_position).normalized() * target.speed
+				# FIXED: Get actual path direction, not arrow-to-enemy direction
+				# Use PathFollow2D's transform to get forward direction along path
+				var path_direction = Vector2.RIGHT  # Default fallback
+
+				# Method 1: Use PathFollow2D's rotation (most reliable)
+				if parent.has_method("get_transform"):
+					# PathFollow2D's rotation follows the path curve
+					# Transform's x-axis points in the direction of travel
+					path_direction = parent.get_transform().x.normalized()
+
+				# Calculate velocity: direction × speed
+				enemy_velocity = path_direction * target.speed
+
+				DebugConfig.log_targeting("🎯 Arrow prediction: enemy_vel=%s, speed=%.1f, dir=%s" % [enemy_velocity, target.speed, path_direction])
 
 	# Predict future position
 	var predicted_pos = base_position + (enemy_velocity * prediction_time)
@@ -191,14 +205,34 @@ func _update_ballistic_movement(_delta):
 		var shadow_scale = 1.0 - height_ratio * 0.5
 		get_node("Shadow").scale = Vector2(shadow_scale, shadow_scale)
 
-	# ROTATION: Calculate true ballistic angle
-	# Arrow angle = atan2(vertical_velocity, horizontal_velocity)
+	# ROTATION: Calculate realistic arrow orientation facing velocity vector
+	# Arrows "face gravity" by aligning with their velocity (horizontal + gravity-affected vertical)
 	var horizontal_dir = (target_position - start_position).normalized()
-	var horizontal_speed = flight_speed
 
-	# Calculate angle from velocities (negative because up is negative Y)
-	var arc_angle = atan2(-current_visual_velocity, horizontal_speed)
-	rotation = horizontal_dir.angle() + arc_angle
+	# Build FULL 2D velocity vector (not just X component!)
+	# Horizontal: Full directional velocity maintaining trajectory
+	# Vertical: Gravity-affected velocity (starts positive/up, becomes negative/down)
+	var horizontal_velocity = horizontal_dir * flight_speed  # Full 2D horizontal motion
+
+	var actual_velocity = Vector2(
+		horizontal_velocity.x,                          # X component of horizontal
+		horizontal_velocity.y - current_visual_velocity # Y component + gravity effect
+	)
+
+	# Calculate target rotation from velocity direction
+	var target_rotation = actual_velocity.angle()
+
+	# Apply rotation with optional smoothing for realistic "weight" feeling
+	if rotation_smoothing:
+		# Framerate-independent exponential decay smoothing
+		# With decay_rate=15: arrow reaches 50% in 0.05s, 90% in 0.15s
+		# This eliminates jitter and adds subtle inertia without feeling laggy
+		var dt = get_physics_process_delta_time()
+		var smoothing_factor = 1.0 - exp(-rotation_decay_rate * dt)
+		rotation = lerp_angle(rotation, target_rotation, smoothing_factor)
+	else:
+		# Instant rotation (physically accurate, current behavior)
+		rotation = target_rotation
 
 	# Check if arrow reached target (progress >= 1.0)
 	if progress >= 1.0:
@@ -224,8 +258,8 @@ func _update_homing_movement(delta):
 	global_position = new_position
 
 func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
-	"""Check for enemy collisions along the movement path using raycast
-	IMPORTANT: Raycast follows the visual arc, not just ground-level movement"""
+	"""Check for enemy collisions along the movement path using MULTI-POINT raycast
+	IMPORTANT: Uses 4 raycasts in a radial pattern to prevent tunneling through fast enemies"""
 	# Skip if we haven't moved
 	if from_pos.distance_to(to_pos) < 0.1:
 		return
@@ -250,22 +284,53 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 	var from_with_offset = from_pos + rotated_offset + visual_offset_from
 	var to_with_offset = to_pos + rotated_offset + visual_offset_to
 
-	# Create a raycast query from previous position to new position
-	var query = PhysicsRayQueryParameters2D.create(from_with_offset, to_with_offset)
-	query.collision_mask = 1  # Layer 1 = enemies (from base_enemy.gd line 70)
-	query.collide_with_areas = false  # Only check bodies, not areas
-	query.collide_with_bodies = true
+	# MULTI-POINT RAYCAST: Check 5 points (center + 4 radial points)
+	# This creates "thick" collision detection to catch fast-moving enemies
+	# Collision radius from CircleShape2D is now 12.0 (doubled from 6.0)
+	var collision_radius = 12.0
+	var check_points = [
+		Vector2.ZERO,  # Center ray
+		Vector2(collision_radius * 0.7, 0),  # Right
+		Vector2(-collision_radius * 0.7, 0),  # Left
+		Vector2(0, collision_radius * 0.7),  # Down
+		Vector2(0, -collision_radius * 0.7)  # Up
+	]
 
-	# Perform the raycast
-	var result = space_state.intersect_ray(query)
+	# Check each point for collision
+	for offset in check_points:
+		# Rotate offset to match arrow's orientation
+		var rotated_check_offset = offset.rotated(rotation)
 
-	# If we hit something
-	if result and result.has("collider"):
-		var hit_body = result.collider
+		# Create raycast from (previous + offset) to (current + offset)
+		var check_from = from_with_offset + rotated_check_offset
+		var check_to = to_with_offset + rotated_check_offset
 
-		# Check if it's an enemy
-		if hit_body.is_in_group("enemy"):
-			_hit_enemy(hit_body)
+		# DEBUG: Visualize raycast lines when F4 debug enabled
+		if DebugConfig.visual_debug_enabled:
+			_debug_draw_raycast(check_from, check_to, Color.CYAN)
+
+		var query = PhysicsRayQueryParameters2D.create(check_from, check_to)
+		query.collision_mask = 1  # Layer 1 = enemies
+		query.collide_with_areas = false  # Only check bodies, not areas
+		query.collide_with_bodies = true
+
+		# Perform the raycast
+		var result = space_state.intersect_ray(query)
+
+		# If we hit something
+		if result and result.has("collider"):
+			var hit_body = result.collider
+
+			# Check if it's an enemy
+			if hit_body.is_in_group("enemy"):
+				DebugConfig.log_targeting("✅ Multi-raycast HIT: offset=%s" % [offset])
+
+				# DEBUG: Draw hit raycast in green
+				if DebugConfig.visual_debug_enabled:
+					_debug_draw_raycast(check_from, check_to, Color.GREEN)
+
+				_hit_enemy(hit_body)
+				return  # Stop checking once we hit something
 
 func _hit_enemy(enemy):
 	"""Deal damage to enemy"""
@@ -341,3 +406,19 @@ func _get_visual_offset_at_time(time: float) -> Vector2:
 
 	# Return as Vector2 offset (negative Y = up on screen, matching line 177)
 	return Vector2(0, -height)
+
+func _debug_draw_raycast(from: Vector2, to: Vector2, color: Color):
+	"""Draw a debug line showing the raycast path (F4 debug mode)"""
+	# Create temporary line to visualize raycast
+	var debug_line = Line2D.new()
+	get_tree().root.add_child(debug_line)
+	debug_line.add_point(from)
+	debug_line.add_point(to)
+	debug_line.width = 1.0
+	debug_line.default_color = color
+	debug_line.z_index = 1000  # Draw on top
+
+	# Remove after 1 frame (0.016s at 60 FPS)
+	await get_tree().create_timer(0.016).timeout
+	if is_instance_valid(debug_line):
+		debug_line.queue_free()

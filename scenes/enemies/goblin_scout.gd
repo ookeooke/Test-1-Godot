@@ -5,7 +5,7 @@ extends "res://scripts/enemies/base_enemy.gd"
 
 func _init():
 	# Set goblin-specific stats
-	speed = 100.0
+	speed = 56.0  # Reduced from 75 (-25% Kingdom Rush pacing)
 	max_health = 50.0
 	melee_damage = 5.0
 	attack_cooldown = 1.0

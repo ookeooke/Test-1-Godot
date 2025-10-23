@@ -1,9 +1,11 @@
 extends Control
 class_name DualPanelScreen
 
-## DualPanelScreen - Professional dual-panel hero & items UI
-## Player can customize what information appears in each panel
-## Based on research from Diablo 4, WoW, Lost Ark, and Grim Dawn
+## DualPanelScreen - Mobile-first Equipment & Inventory UI
+## Left panel: Equipment (fixed)
+## Right panel: Inventory (fixed)
+## Responsive design supporting 1920x1080 to 2340x1080+ resolutions
+## Based on Diablo Immortal mobile UI patterns
 
 signal screen_closed
 
@@ -28,6 +30,9 @@ var is_transitioning: bool = false  # Prevent rapid toggling
 func _ready():
 	print("🔍 [DualPanelScreen] _ready() called - initial visible:", visible)
 
+	# Add to group for easy lookup by InventoryView
+	add_to_group("dual_panel_screen")
+
 	# Set up as always-process (for pause compatibility)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -41,7 +46,7 @@ func _ready():
 	if close_button:
 		close_button.pressed.connect(_on_close_button_pressed)
 
-	# Set panel sides for preference saving
+	# Set panel sides for identification
 	if left_panel:
 		left_panel.panel_side = "left"
 		# IMPORTANT: Defer loading to prevent auto-show
@@ -70,6 +75,10 @@ func _ready():
 		print("🚨🚨🚨 WARNING: Screen or CanvasLayer became visible!")
 		print_stack()
 
+	# Setup responsive breakpoints
+	get_viewport().size_changed.connect(_on_viewport_resized)
+	_on_viewport_resized()  # Initial check
+
 
 func _input(event: InputEvent):
 	# ESC KEY PRIORITY: This runs after level_controller and pause_menu
@@ -84,6 +93,37 @@ func _input(event: InputEvent):
 	if event.is_action_pressed("ui_cancel") and visible:
 		hide_screen()
 		get_viewport().set_input_as_handled()  # Consume to prevent further propagation
+
+
+func _on_viewport_resized():
+	"""Handle responsive layout based on viewport width"""
+	if not left_panel or not right_panel or not main_container:
+		return
+
+	var width = get_viewport().get_visible_rect().size.x
+
+	print("[DualPanelScreen] Viewport resized to: %d" % width)
+
+	if width >= 2340:  # Wide phone (19.5:9 aspect ratio like modern flagships)
+		main_container.custom_minimum_size = Vector2(1860, 800)  # 600 + 1200 + 30 separation + margins
+		left_panel.custom_minimum_size = Vector2(600, 0)
+		right_panel.custom_minimum_size = Vector2(1200, 0)
+		print("[DualPanelScreen] Applied WIDE layout (2340+): Equipment 600px, Inventory 1200px")
+
+	elif width >= 1920:  # Standard (16:9 aspect ratio)
+		main_container.custom_minimum_size = Vector2(1760, 800)  # 600 + 1100 + 30 separation + margins
+		left_panel.custom_minimum_size = Vector2(600, 0)
+		right_panel.custom_minimum_size = Vector2(1100, 0)
+		print("[DualPanelScreen] Applied STANDARD layout (1920+): Equipment 600px, Inventory 1100px")
+
+	else:  # Tablet or smaller screens
+		main_container.custom_minimum_size = Vector2(1460, 800)  # 500 + 900 + 30 separation + margins
+		left_panel.custom_minimum_size = Vector2(500, 0)
+		right_panel.custom_minimum_size = Vector2(900, 0)
+		print("[DualPanelScreen] Applied COMPACT layout (<1920): Equipment 500px, Inventory 900px")
+
+	# Force layout recalculation
+	main_container.queue_sort()
 
 
 func show_screen():
@@ -109,6 +149,11 @@ func show_screen():
 	# Re-enable panels now that we're showing
 	if left_panel:
 		left_panel.set_process_mode(Node.PROCESS_MODE_ALWAYS)
+		# Connect to equipment view's switch hero signal
+		var equipment_view = left_panel.get_current_view()
+		if equipment_view and equipment_view.has_signal("switch_hero_requested"):
+			if not equipment_view.switch_hero_requested.is_connected(_on_switch_hero_requested):
+				equipment_view.switch_hero_requested.connect(_on_switch_hero_requested)
 	if right_panel:
 		right_panel.set_process_mode(Node.PROCESS_MODE_ALWAYS)
 
@@ -296,6 +341,17 @@ func get_left_panel() -> FlexiblePanel:
 func get_right_panel() -> FlexiblePanel:
 	"""Get the right panel"""
 	return right_panel
+
+
+func _on_switch_hero_requested():
+	"""Handle hero switching request from equipment view"""
+	# TODO: Implement hero selection UI
+	# For now, just show a simple message
+	print("[DualPanelScreen] Switch hero requested - hero selection UI not yet implemented")
+
+	# Future implementation will show a hero roster overlay
+	# Player taps a hero card to switch
+	# Updates both left and right panels with new hero_id
 
 
 ## Integration with WaveManager

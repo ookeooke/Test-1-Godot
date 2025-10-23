@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_fire_bow"]
+
+[resource]
+script = ExtResource("1_fire_bow")
+item_id = "fire_bow"
+item_name = "Fire Bow"
+description = "A powerful bow imbued with flames. Burns enemies on impact!"
+emoji = "🔥🏹"
+item_type = 0
+rarity = 2
+equip_slot = 1
+max_stack = 1
+sell_value = 150
+damage_bonus = 15
+attack_speed_multiplier = 1.3
+health_bonus = 0
+defense_bonus = 0
+range_bonus = 75
+crit_chance_bonus = 10.0
+special_effects = ["fire_damage"]
+heal_amount = 0
+buff_duration = 0.0
+buff_type = ""
+can_upgrade = true
+max_upgrade_level = 10
+upgrade_costs = [100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600, 51200]
+stat_increase_per_level = 0.15
+flavor_text = "Forged in dragon fire, this bow never misses its mark."

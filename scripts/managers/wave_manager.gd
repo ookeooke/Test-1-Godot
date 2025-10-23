@@ -5,7 +5,9 @@ extends Node2D
 # ============================================
 
 # REFERENCES (drag these from Scene tree in Inspector)
-@export var enemy_path: Path2D  # The path enemies follow
+@export var enemy_path: Path2D  # The path enemies follow (OLD SYSTEM)
+@export var start_waypoint: PathWaypoint  # Starting waypoint (NEW SYSTEM - optional)
+@export var use_waypoint_system: bool = false  # Toggle between old Path2D and new waypoint system
 @export var goblin_scene: PackedScene
 @export var orc_scene: PackedScene
 @export var wolf_scene: PackedScene
@@ -267,44 +269,66 @@ func spawn_enemy():
 	if enemy_scene_to_use == null:
 		print("ERROR: Enemy scene not assigned for type: ", enemy_type)
 		return
-	
-	if enemy_path == null:
-		print("ERROR: No enemy path assigned!")
-		return
-	
-	# Create PathFollow2D
-	var path_follower = PathFollow2D.new()
-	path_follower.loop = false
-	path_follower.rotates = false  # Don't rotate enemy to follow path direction
-	enemy_path.add_child(path_follower)
-	
-	# Create the enemy
-	var enemy = enemy_scene_to_use.instantiate()
-	path_follower.add_child(enemy)
 
-	# LANE SYSTEM: Assign enemy to a lane (perpendicular offset from path)
-	if use_lane_system:
-		# Pick a random lane and apply h_offset for perpendicular positioning
-		var chosen_lane = lane_offsets[randi() % lane_offsets.size()]
-		path_follower.h_offset = chosen_lane
+	# Create the enemy based on navigation system
+	var enemy
 
-	# Apply random position offset (makes enemies spread out instead of following in a line)
-	var random_offset = Vector2(
-		randf_range(-position_offset_x, position_offset_x),
-		randf_range(-position_offset_y, position_offset_y)
-	)
-	enemy.position = random_offset
+	if use_waypoint_system:
+		# NEW WAYPOINT SYSTEM
+		if start_waypoint == null:
+			print("ERROR: No start waypoint assigned! Please assign a start_waypoint in inspector.")
+			return
 
-	# Apply random speed variation (makes enemies naturally space out over time)
-	# DISABLED: All enemies now move at their base speed
-	#var speed_multiplier = randf_range(speed_variation_min, speed_variation_max)
-	#enemy.speed *= speed_multiplier
+		# Create enemy directly in scene root (no PathFollow2D needed)
+		enemy = enemy_scene_to_use.instantiate()
+		get_tree().root.add_child(enemy)
 
-	# Connect to path
-	if enemy.has_method("set_path_follower"):
-		enemy.set_path_follower(path_follower)
+		# Initialize waypoint navigation
+		if enemy.has_method("set_waypoint_navigation"):
+			enemy.set_waypoint_navigation(start_waypoint)
+		else:
+			print("ERROR: Enemy doesn't support waypoint navigation!")
+			enemy.queue_free()
+			return
+
+		print("[WaveManager] Spawned ", enemy_type, " using WAYPOINT system")
+
 	else:
-		enemy.path_follower = path_follower
+		# OLD PATH2D SYSTEM
+		if enemy_path == null:
+			print("ERROR: No enemy path assigned!")
+			return
+
+		# Create PathFollow2D
+		var path_follower = PathFollow2D.new()
+		path_follower.loop = false
+		path_follower.rotates = false  # Don't rotate enemy to follow path direction
+		enemy_path.add_child(path_follower)
+
+		# Create the enemy
+		enemy = enemy_scene_to_use.instantiate()
+		path_follower.add_child(enemy)
+
+		# LANE SYSTEM: Assign enemy to a lane (perpendicular offset from path)
+		if use_lane_system:
+			# Pick a random lane and apply h_offset for perpendicular positioning
+			var chosen_lane = lane_offsets[randi() % lane_offsets.size()]
+			path_follower.h_offset = chosen_lane
+
+		# Apply random position offset (makes enemies spread out instead of following in a line)
+		var random_offset = Vector2(
+			randf_range(-position_offset_x, position_offset_x),
+			randf_range(-position_offset_y, position_offset_y)
+		)
+		enemy.position = random_offset
+
+		# Connect to path
+		if enemy.has_method("set_path_follower"):
+			enemy.set_path_follower(path_follower)
+		else:
+			enemy.path_follower = path_follower
+
+		print("[WaveManager] Spawned ", enemy_type, " using PATH2D system")
 	
 	# Connect death signal with enemy reference binding
 	if enemy.has_signal("enemy_died"):

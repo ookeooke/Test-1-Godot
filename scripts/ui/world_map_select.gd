@@ -18,6 +18,7 @@ signal level_chosen(level_data: LevelNodeData, difficulty: String)
 @onready var top_bar: HBoxContainer = $TopBar
 @onready var profile_label: Label = $TopBar/ProfileLabel
 @onready var back_button: Button = $TopBar/BackButton
+@onready var arsenal_button: Button = $TopBar/ArsenalButton
 @onready var progress_label: Label = $TopBar/ProgressLabel
 
 # Camera/Scrolling
@@ -25,6 +26,9 @@ signal level_chosen(level_data: LevelNodeData, difficulty: String)
 
 var level_node_scene: PackedScene = preload("res://scenes/ui/level_node.tscn")
 var level_nodes: Array[LevelNode] = []
+
+# Arsenal screen
+var arsenal_screen: ArsenalScreen = null
 
 # Difficulty selection
 var selected_level_data: LevelNodeData = null
@@ -41,6 +45,9 @@ func _ready():
 	if back_button:
 		back_button.pressed.connect(_on_back_pressed)
 
+	if arsenal_button:
+		arsenal_button.pressed.connect(_on_arsenal_pressed)
+
 	# Setup map
 	_setup_map_background()
 	_setup_level_nodes()
@@ -49,6 +56,9 @@ func _ready():
 
 	# Enable panning
 	_setup_panning()
+
+	# Create arsenal screen
+	_setup_arsenal_screen()
 
 func _setup_map_background():
 	if map_background and map_texture:
@@ -263,6 +273,30 @@ func _update_progress_display():
 func _on_back_pressed():
 	print("WorldMapSelect: Back to main menu")
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+func _setup_arsenal_screen():
+	"""Create and setup the arsenal screen"""
+	arsenal_screen = ArsenalScreen.new()
+	arsenal_screen.name = "ArsenalScreen"
+	add_child(arsenal_screen)
+
+	# Connect close signal to update displays
+	arsenal_screen.closed.connect(_on_arsenal_closed)
+
+	print("[WorldMapSelect] Arsenal screen initialized")
+
+func _on_arsenal_pressed():
+	"""Open the arsenal screen"""
+	if arsenal_screen:
+		arsenal_screen.show_screen()
+		print("[WorldMapSelect] Opening Arsenal")
+
+func _on_arsenal_closed():
+	"""Handle arsenal screen closing"""
+	# Refresh displays in case equipment/heroes changed
+	_update_profile_display()
+	_update_progress_display()
+	print("[WorldMapSelect] Arsenal closed, displays refreshed")
 
 # Public method to refresh display (call after completing a level)
 func refresh_display():

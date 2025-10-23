@@ -35,6 +35,9 @@ func _ready():
 
 	print("GameManager initialized (delegating to GameStateManager)")
 
+	# Give player some test items (TEMP FOR TESTING)
+	_give_test_items()
+
 func _on_gold_changed(new_amount: int):
 	gold_changed.emit(new_amount)
 
@@ -113,3 +116,26 @@ func set_enemy_list_preference(visible: bool):
 func get_enemy_list_preference() -> bool:
 	"""Get enemy list visibility preference"""
 	return show_enemy_list_default
+
+
+# ============================================
+# TEST ITEMS (TEMPORARY FOR DEVELOPMENT)
+# ============================================
+
+func _give_test_items():
+	"""Give player some test items to demonstrate emoji icons"""
+	# Wait for ItemDatabase to be ready
+	await get_tree().create_timer(0.1).timeout
+
+	if not InventoryManager:
+		print("[GameManager] InventoryManager not found")
+		return
+
+	# Add fire bow with emoji icon
+	InventoryManager.add_item("fire_bow", 1)
+
+	# Add other existing items for comparison
+	InventoryManager.add_item("basic_bow", 1)
+	InventoryManager.add_item("leather_vest", 1)
+
+	print("[GameManager] Test items added to inventory")

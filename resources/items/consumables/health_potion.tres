@@ -7,6 +7,7 @@ script = ExtResource("1")
 item_id = "health_potion"
 item_name = "Health Potion"
 description = "Restores 100 health when consumed."
+emoji = "🧪❤️"
 item_type = 2
 rarity = 0
 equip_slot = 0

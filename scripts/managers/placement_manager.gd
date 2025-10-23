@@ -6,6 +6,7 @@ extends Node2D
 
 var build_menu_scene = preload("res://scenes/ui/build_menu.tscn")
 var tower_info_menu_scene = preload("res://scenes/ui/tower_info_menu.tscn")
+var path_choice_menu_scene = preload("res://scenes/ui/path_choice_menu.tscn")
 var current_menu = null
 var current_spot = null
 var current_selected_tower = null  # Track selected tower for deselection
@@ -15,6 +16,9 @@ var menu_layer: Control  # Reference to MenuContainer in CanvasLayer
 
 # CAMERA - for input locking (Kingdom Rush style)
 var camera: Camera2D
+
+# ROAD RENDERER - for soldier placement validation
+var road_renderer: RoadRenderer = null
 
 func _ready():
 	await get_tree().process_frame
@@ -38,6 +42,13 @@ func _ready():
 		print("✓ Camera found successfully!")
 	else:
 		push_error("Camera2D not found! Camera locking will not work.")
+
+	# Get reference to road renderer for soldier placement validation
+	road_renderer = get_tree().get_first_node_in_group("road_renderer")
+	if road_renderer:
+		print("✓ RoadRenderer found - soldier placement validation enabled!")
+	else:
+		print("⚠ RoadRenderer not found - soldier placement validation disabled")
 
 	connect_tower_spots()
 
@@ -143,25 +154,16 @@ func position_menu_in_screen_space(spot):
 	print("🎯 Menu Positioning:")
 	print("  Tower spot world position: ", world_pos)
 
-	# STEP 2: Convert world position to screen position (accounts for camera pan/zoom)
-	var camera = get_viewport().get_camera_2d()
+	# STEP 2: Convert world position to screen position using Godot's canvas transform
+	# BEST PRACTICE: Use get_canvas_transform() which handles all transformations automatically
 	var screen_pos: Vector2
 
-	if camera:
-		# Transform: World Space → Camera Space → Screen Space
-		# Formula: (world_pos - camera_pos) * zoom + screen_center
-		var camera_offset = world_pos - camera.global_position
-		var zoom_factor = camera.zoom
-		print("  Camera position: ", camera.global_position)
-		print("  Camera zoom: ", zoom_factor)
-		print("  Camera offset: ", camera_offset)
-
-		# CRITICAL FIX: Multiply by zoom (zoom in = objects appear larger on screen)
-		screen_pos = camera_offset * zoom_factor
-		print("  After zoom apply: ", screen_pos)
-
-		screen_pos += get_viewport().get_visible_rect().size / 2
-		print("  Screen center: ", get_viewport().get_visible_rect().size / 2)
+	if get_viewport().get_camera_2d():
+		# Use Godot's built-in transform (handles camera position, zoom, rotation)
+		screen_pos = get_viewport().get_canvas_transform() * world_pos
+		print("  Using get_canvas_transform()")
+		print("  Camera position: ", get_viewport().get_camera_2d().global_position)
+		print("  Camera zoom: ", get_viewport().get_camera_2d().zoom)
 		print("  Tower screen position: ", screen_pos)
 	else:
 		# Fallback if no camera (center of screen)
@@ -230,6 +232,15 @@ func position_menu_in_screen_space(spot):
 func _on_tower_selected(tower_scene):
 	"""Handle tower build selection"""
 	if current_spot:
+		# Check if this is a soldier tower and validate placement
+		if _is_soldier_tower(tower_scene):
+			if not _can_place_soldier_tower_here(current_spot.global_position):
+				print("❌ Cannot place soldier tower here - not on road!")
+				# Show error message to player (you can add UI feedback here)
+				close_current_menu()
+				current_spot = null
+				return
+
 		current_spot.place_tower(tower_scene)
 
 		# CHANGED: Close menu AFTER placing tower (fixes race condition)
@@ -237,6 +248,28 @@ func _on_tower_selected(tower_scene):
 		current_spot = null
 	else:
 		print("ERROR: No current spot!")
+
+func _is_soldier_tower(tower_scene: PackedScene) -> bool:
+	"""Check if a tower scene is a soldier/garrison tower"""
+	var scene_path = tower_scene.resource_path
+	return "soldier" in scene_path.to_lower() or "garrison" in scene_path.to_lower()
+
+func _can_place_soldier_tower_here(position: Vector2) -> bool:
+	"""Check if a position is valid for soldier tower placement (on road)"""
+	if not road_renderer:
+		# No road renderer = allow placement anywhere (backward compatibility)
+		print("⚠ No road renderer - allowing soldier placement")
+		return true
+
+	# Check if position is on road (with 30px tolerance)
+	var on_road = road_renderer.is_point_on_road(position, 30.0)
+
+	if on_road:
+		print("✅ Position is on road - soldier placement allowed")
+	else:
+		print("❌ Position is NOT on road - soldier placement blocked")
+
+	return on_road
 
 func _on_tower_upgraded(tower):
 	"""Handle tower upgrade"""
@@ -298,18 +331,66 @@ func _show_path_choice_menu(tower):
 	"""Show UI for choosing damage or range path"""
 	print("[PlacementManager] Showing path choice menu for level 3 tower")
 
-	# For now, just show a simple dialog with buttons
-	# TODO: Create a proper UI scene for this
-	# Temporarily log that player needs to choose
-	print("🔱 TOWER LEVEL 3 REACHED - Player must choose:")
-	print("  1. DAMAGE PATH: +50% damage, +25% attack speed")
-	print("  2. RANGE PATH: +100% range")
+	# Close current menu (tower info menu)
+	close_current_menu()
 
-	# For testing: auto-choose damage path
-	# Later this will be a proper UI choice
+	# Create path choice menu
+	current_menu = path_choice_menu_scene.instantiate()
+
+	# ADD TO CANVAS LAYER (screen space)
+	menu_layer.add_child(current_menu)
+
+	if current_menu.has_method("setup"):
+		current_menu.setup(tower)
+
+	# Wait for menu to calculate its size
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	# Position in screen coordinates (zoom-independent)
+	await position_menu_in_screen_space(current_spot)
+
+	# Lock camera input
+	if camera and camera.has_method("lock_input"):
+		camera.lock_input()
+
+	# Connect signals
+	current_menu.damage_path_selected.connect(_on_damage_path_selected)
+	current_menu.range_path_selected.connect(_on_range_path_selected)
+	current_menu.menu_closed.connect(_on_menu_closed)
+
+func _on_damage_path_selected(tower):
+	"""Handle Damage Path selection"""
+	print("🔥 [PlacementManager] Damage Path selected - applying...")
+
 	if tower.has_method("choose_damage_path"):
-		tower.choose_damage_path()
-		print("[PlacementManager] Auto-selected DAMAGE path for testing")
+		var success = tower.choose_damage_path()
+		if success:
+			print("✅ [PlacementManager] Damage Path applied successfully!")
+
+			# Close path menu and show updated tower info menu
+			close_current_menu()
+			await get_tree().process_frame
+			show_tower_info_menu(current_spot, tower)
+		else:
+			print("❌ [PlacementManager] Failed to apply Damage Path!")
+
+func _on_range_path_selected(tower):
+	"""Handle Range Path selection"""
+	print("🎯 [PlacementManager] Range Path selected - applying...")
+
+	if tower.has_method("choose_range_path"):
+		var success = tower.choose_range_path()
+		if success:
+			print("✅ [PlacementManager] Range Path applied successfully!")
+
+			# Close path menu and show updated tower info menu
+			close_current_menu()
+			await get_tree().process_frame
+			show_tower_info_menu(current_spot, tower)
+		else:
+			print("❌ [PlacementManager] Failed to apply Range Path!")
 
 func _on_tower_sold(tower):
 	"""Handle tower sell"""

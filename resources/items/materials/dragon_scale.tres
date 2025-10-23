@@ -7,6 +7,7 @@ script = ExtResource("1")
 item_id = "dragon_scale"
 item_name = "Dragon Scale"
 description = "A scale from an ancient dragon. Extremely rare and valuable."
+emoji = "🐉🔶"
 item_type = 3
 rarity = 4
 equip_slot = 0

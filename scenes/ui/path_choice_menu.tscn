@@ -1,0 +1,58 @@
+[gd_scene load_steps=2 format=3 uid="uid://c4tw8xyq5mn7a"]
+
+[ext_resource type="Script" path="res://scripts/ui/path_choice_menu.gd" id="1_path_choice"]
+
+[node name="PathChoiceMenu" type="Control"]
+custom_minimum_size = Vector2(320, 240)
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_path_choice")
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Choose Specialization Path"
+horizontal_alignment = 1
+
+[node name="CostLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Cost: 150g"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="DamagePathButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(280, 60)
+layout_mode = 2
+text = "DAMAGE PATH
+DMG: 48 | AS: 2.0 | DPS: 96
+Glass Cannon - High burst damage"
+
+[node name="HSeparator2" type="HSeparator" parent="PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="RangePathButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(280, 60)
+layout_mode = 2
+text = "RANGE PATH
+Range: 800 (2x coverage)
+Long-range Sniper - Area control"

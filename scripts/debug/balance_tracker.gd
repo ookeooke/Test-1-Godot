@@ -62,6 +62,12 @@ var run_start_time: float = 0.0
 ## Run result
 var run_result: String = "in_progress"  # "victory", "defeat", "in_progress"
 
+## AI decision log (for AI playtesting)
+var ai_decision_log: Array = []
+
+## Tower placement positions (for heatmaps)
+var tower_placement_positions: Array = []
+
 # ============================================
 # INITIALIZATION
 # ============================================
@@ -124,6 +130,8 @@ func start_run(level_id: String = "unknown"):
 	tracked_heroes.clear()
 	enemy_stats.clear()
 	wave_data.clear()
+	boss_fights.clear()
+	current_boss_type = ""
 
 	# Record starting gold
 	if GameStateManager:
@@ -156,6 +164,7 @@ func end_run(result: String, stars: int = 0):
 	current_run.heroes = _serialize_hero_data()
 	current_run.enemies = _serialize_enemy_data()
 	current_run.waves = wave_data.duplicate(true)
+	current_run["boss_fights"] = boss_fights.duplicate(true)
 
 	# Calculate balance metrics
 	current_run.balance_metrics = _calculate_balance_metrics()
@@ -174,6 +183,8 @@ func reset_run():
 	tracked_heroes.clear()
 	enemy_stats.clear()
 	wave_data.clear()
+	boss_fights.clear()
+	current_boss_type = ""
 	current_run.clear()
 
 	print("[BalanceTracker] Run data reset")
@@ -213,13 +224,45 @@ func register_tower(tower_instance: Node, tower_type: String, cost: int):
 		"idle_time": 0.0,
 		"last_shot_time": 0.0,
 		"gold_spent": cost,
-		"position": tower_instance.global_position if tower_instance else Vector2.ZERO
+		"position": tower_instance.global_position if tower_instance else Vector2.ZERO,
+		"tower_level": 1,
+		"upgrade_path": "",
+		"upgrade_history": []  # [{level: int, cost: int, time: float, path: String}]
 	}
 
 	# Record tower purchase
 	_record_gold_spent(cost, "tower_%s" % tower_type)
 
 	print("[BalanceTracker] Tower registered: %s (ID:%d)" % [tower_type, instance_id])
+
+func record_tower_upgrade(tower_instance: Node, new_level: int, upgrade_cost: int, upgrade_path: String = ""):
+	"""Record that a tower was upgraded"""
+	if not is_tracking:
+		return
+
+	var instance_id = tower_instance.get_instance_id()
+	if not tracked_towers.has(instance_id):
+		push_warning("[BalanceTracker] Tower not registered: ", instance_id)
+		return
+
+	var tower_data = tracked_towers[instance_id]
+	tower_data.tower_level = new_level
+	tower_data.gold_spent += upgrade_cost
+	if upgrade_path != "":
+		tower_data.upgrade_path = upgrade_path
+
+	# Record upgrade event
+	tower_data.upgrade_history.append({
+		"level": new_level,
+		"cost": upgrade_cost,
+		"time": Time.get_ticks_msec() / 1000.0 - run_start_time,
+		"path": upgrade_path
+	})
+
+	# Record gold spent
+	_record_gold_spent(upgrade_cost, "tower_upgrade_L%d" % new_level)
+
+	print("[BalanceTracker] Tower upgraded: ID:%d → Level %d (Path: %s, Cost: %dg)" % [instance_id, new_level, upgrade_path if upgrade_path != "" else "none", upgrade_cost])
 
 func record_tower_shot(tower_instance: Node):
 	"""Record that a tower fired a shot"""
@@ -413,6 +456,121 @@ func _ensure_enemy_stats(enemy_type: String):
 			"lives_lost": 0,
 			"spawn_times": []
 		}
+
+# ============================================
+# BOSS TRACKING (Extended for Boss Fights)
+# ============================================
+
+## Boss fight data {boss_type: boss_data}
+var boss_fights: Dictionary = {}
+
+## Current active boss
+var current_boss_type: String = ""
+
+func record_boss_appeared(boss_type: String, boss_instance: Node):
+	"""Record when a boss enemy appears"""
+	if not is_tracking:
+		return
+
+	current_boss_type = boss_type
+
+	boss_fights[boss_type] = {
+		"boss_type": boss_type,
+		"appear_time": Time.get_ticks_msec() / 1000.0 - run_start_time,
+		"defeat_time": 0.0,
+		"fight_duration": 0.0,
+		"total_damage_taken": 0.0,
+		"hits_taken": 0,
+		"health_milestones": [],  # [{health_percent: float, time: float}]
+		"damage_by_tower": {},  # {instance_id: damage}
+		"damage_by_hero": {},  # {instance_id: damage}
+		"defeated": false,
+		"leaked": false,
+		"wave_number": current_wave_number
+	}
+
+	print("🔴 [BalanceTracker] BOSS APPEARED: %s at wave %d" % [boss_type, current_wave_number])
+
+func record_boss_health_milestone(boss_type: String, health_percent: float):
+	"""Record when boss reaches a health milestone (75%, 50%, 25%)"""
+	if not is_tracking or not boss_fights.has(boss_type):
+		return
+
+	var boss_data = boss_fights[boss_type]
+	var current_time = Time.get_ticks_msec() / 1000.0 - run_start_time
+
+	# Check if we already recorded this milestone
+	for milestone in boss_data.health_milestones:
+		if abs(milestone.health_percent - health_percent) < 1.0:
+			return  # Already recorded
+
+	boss_data.health_milestones.append({
+		"health_percent": health_percent,
+		"time": current_time,
+		"time_since_appear": current_time - boss_data.appear_time
+	})
+
+	print("🔴 [BalanceTracker] Boss %s at %.0f%% health" % [boss_type, health_percent])
+
+func record_boss_damage(boss_type: String, source_instance: Node, damage: float, source_type: String):
+	"""Record damage dealt to a boss"""
+	if not is_tracking or not boss_fights.has(boss_type):
+		return
+
+	var boss_data = boss_fights[boss_type]
+	var instance_id = source_instance.get_instance_id()
+
+	boss_data.total_damage_taken += damage
+	boss_data.hits_taken += 1
+
+	# Track by source
+	if source_type == "tower":
+		if not boss_data.damage_by_tower.has(instance_id):
+			boss_data.damage_by_tower[instance_id] = 0.0
+		boss_data.damage_by_tower[instance_id] += damage
+	elif source_type.begins_with("hero_"):
+		if not boss_data.damage_by_hero.has(instance_id):
+			boss_data.damage_by_hero[instance_id] = 0.0
+		boss_data.damage_by_hero[instance_id] += damage
+
+func record_boss_defeated(boss_type: String):
+	"""Record when a boss is defeated"""
+	if not is_tracking or not boss_fights.has(boss_type):
+		return
+
+	var boss_data = boss_fights[boss_type]
+	var current_time = Time.get_ticks_msec() / 1000.0 - run_start_time
+
+	boss_data.defeated = true
+	boss_data.defeat_time = current_time
+	boss_data.fight_duration = current_time - boss_data.appear_time
+
+	current_boss_type = ""
+
+	print("🔴 [BalanceTracker] BOSS DEFEATED: %s (%.1fs fight)" % [boss_type, boss_data.fight_duration])
+
+	# Calculate boss fight stats
+	var avg_dps = boss_data.total_damage_taken / boss_data.fight_duration if boss_data.fight_duration > 0 else 0.0
+	print("   - Total damage taken: %.0f" % boss_data.total_damage_taken)
+	print("   - Average DPS: %.1f" % avg_dps)
+	print("   - Hits taken: %d" % boss_data.hits_taken)
+	print("   - Health milestones: %d" % boss_data.health_milestones.size())
+
+func record_boss_leaked(boss_type: String):
+	"""Record when a boss leaks through"""
+	if not is_tracking or not boss_fights.has(boss_type):
+		return
+
+	var boss_data = boss_fights[boss_type]
+	var current_time = Time.get_ticks_msec() / 1000.0 - run_start_time
+
+	boss_data.leaked = true
+	boss_data.defeat_time = current_time
+	boss_data.fight_duration = current_time - boss_data.appear_time
+
+	current_boss_type = ""
+
+	print("🔴 [BalanceTracker] BOSS LEAKED: %s (%.1fs)" % [boss_type, boss_data.fight_duration])
 
 # ============================================
 # WAVE TRACKING
@@ -638,3 +796,38 @@ func get_hero_stats(instance_id: int) -> Dictionary:
 	if tracked_heroes.has(instance_id):
 		return tracked_heroes[instance_id].duplicate()
 	return {}
+
+
+# ============================================
+# AI PLAYTEST TRACKING (Extension for AI)
+# ============================================
+
+func record_ai_decision(action: String, target: int, reason: String, gold_before: int):
+	"""Record an AI decision for analysis"""
+	if not is_tracking:
+		return
+
+	var decision = {
+		"time": Time.get_ticks_msec() / 1000.0 - run_start_time,
+		"wave": current_wave_number,
+		"action": action,
+		"target": target,
+		"reason": reason,
+		"gold_before": gold_before,
+		"gold_after": GameStateManager.gold if GameStateManager else 0
+	}
+
+	ai_decision_log.append(decision)
+
+func record_tower_placement_position(position: Vector2, tower_type: String):
+	"""Record tower placement position for heatmaps"""
+	if not is_tracking:
+		return
+
+	tower_placement_positions.append({
+		"position": position,
+		"type": tower_type,
+		"wave": current_wave_number,
+		"time": Time.get_ticks_msec() / 1000.0 - run_start_time
+	})
+

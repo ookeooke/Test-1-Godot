@@ -6,6 +6,7 @@ class_name EquipmentView
 ## Extends BasePanelView for use in FlexiblePanel
 
 signal equipment_slot_clicked(slot_name: String)
+signal switch_hero_requested
 
 @export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
 @export var hero_id: String = "ranger"
@@ -17,14 +18,15 @@ var accessory1_slot: ItemSlot
 var accessory2_slot: ItemSlot
 
 # UI References
-@onready var weapon_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/WeaponContainer if has_node("MarginContainer/VBoxContainer/EquipmentGrid/WeaponContainer") else null
-@onready var armor_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/ArmorContainer if has_node("MarginContainer/VBoxContainer/EquipmentGrid/ArmorContainer") else null
-@onready var accessory1_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Container if has_node("MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Container") else null
-@onready var accessory2_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Container if has_node("MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Container") else null
+@onready var weapon_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot/WeaponContainer if has_node("MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot/WeaponContainer") else null
+@onready var armor_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/ArmorSlot/ArmorContainer if has_node("MarginContainer/VBoxContainer/EquipmentGrid/ArmorSlot/ArmorContainer") else null
+@onready var accessory1_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot/Accessory1Container if has_node("MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot/Accessory1Container") else null
+@onready var accessory2_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot/Accessory2Container if has_node("MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot/Accessory2Container") else null
 
 @onready var stats_label: RichTextLabel = $MarginContainer/VBoxContainer/StatsContainer/StatsLabel if has_node("MarginContainer/VBoxContainer/StatsContainer/StatsLabel") else null
-@onready var hero_name_label: Label = $MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel") else null
+@onready var hero_name_label: Label = $MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox/HeroNameLabel if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox/HeroNameLabel") else null
 @onready var hero_portrait: ColorRect = $MarginContainer/VBoxContainer/HeaderContainer/HeroPortrait if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroPortrait") else null
+@onready var switch_hero_button: Button = $MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox/SwitchHeroButton if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox/SwitchHeroButton") else null
 
 var equipment_manager: EquipmentManager = null
 
@@ -36,8 +38,12 @@ func _ready():
 	# Create equipment slots
 	_create_equipment_slots()
 
-	# Find hero's equipment manager
-	_find_equipment_manager()
+	# Create or find equipment manager
+	_setup_equipment_manager()
+
+	# Connect switch hero button
+	if switch_hero_button:
+		switch_hero_button.pressed.connect(_on_switch_hero_button_pressed)
 
 
 func on_view_shown():
@@ -53,8 +59,7 @@ func refresh_view():
 func set_hero_id(p_hero_id: String):
 	"""Set which hero's equipment to show"""
 	hero_id = p_hero_id
-	_find_equipment_manager()
-	_refresh_equipment()
+	_setup_equipment_manager()
 
 
 func _create_equipment_slots():
@@ -92,9 +97,9 @@ func _create_equipment_slots():
 		accessory2_container.add_child(accessory2_slot)
 
 
-func _find_equipment_manager():
-	"""Find the hero's equipment manager in the scene"""
-	# Try to find hero in scene
+func _setup_equipment_manager():
+	"""Find or create the equipment manager for this hero"""
+	# First, try to find hero in scene (if in battle)
 	var heroes = get_tree().get_nodes_in_group("hero")
 	for hero in heroes:
 		if hero.has_method("get_hero_id") and hero.get_hero_id() == hero_id:
@@ -102,10 +107,22 @@ func _find_equipment_manager():
 				equipment_manager = hero.get_node("EquipmentManager")
 				if not equipment_manager.equipment_changed.is_connected(_on_equipment_changed):
 					equipment_manager.equipment_changed.connect(_on_equipment_changed)
-				print("[EquipmentView] Found equipment manager for hero: ", hero_id)
+				print("[EquipmentView] Found equipment manager on hero: ", hero_id)
+				_refresh_equipment()
 				return
 
-	print("[EquipmentView] Warning: Could not find equipment manager for hero: ", hero_id)
+	# Hero not in scene (e.g., on world map) - create standalone EquipmentManager
+	if not equipment_manager:
+		equipment_manager = EquipmentManager.new()
+		equipment_manager.hero_id = hero_id
+		add_child(equipment_manager)
+
+		# Connect signals
+		if not equipment_manager.equipment_changed.is_connected(_on_equipment_changed):
+			equipment_manager.equipment_changed.connect(_on_equipment_changed)
+
+		print("[EquipmentView] Created standalone equipment manager for hero: ", hero_id)
+		_refresh_equipment()
 
 
 func set_equipment_manager(manager: EquipmentManager):
@@ -232,3 +249,9 @@ func _on_equipment_slot_right_clicked(item_id: String, slot: ItemSlot, slot_name
 	if equipment_manager:
 		equipment_manager.unequip_item(slot_name)
 		print("[EquipmentView] Unequipped item from: ", slot_name)
+
+
+func _on_switch_hero_button_pressed():
+	"""Called when Switch Hero button is pressed"""
+	switch_hero_requested.emit()
+	print("[EquipmentView] Switch hero requested")

@@ -15,11 +15,14 @@ extends StaticBody2D
 # TARGETING MODES
 enum TargetingMode {
 	FIRST,   # Furthest on path (default)
-	STRONG   # Highest current health
+	LAST,    # Closest to path start
+	CLOSE,   # Nearest to tower
+	STRONG,  # Highest current health
+	WEAK     # Lowest current health
 }
 
-# TOWER STATS (REBALANCED - +33% damage boost to reduce wolf leaks)
-var damage = 16  # Increased from 12 (+33%) = 16 DPS base
+# TOWER STATS (Kingdom Rush pacing: -25% to match slower enemies)
+var damage = 12  # Reduced from 16 (-25%) for Kingdom Rush strategic pacing
 var attack_speed = 1.0  # Attacks per second
 var range_radius = 300  # Detection range
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
@@ -92,8 +95,10 @@ func _ready():
 	detection_range.body_exited.connect(_on_enemy_exited_range)
 
 	# Godot won't emit body_entered for enemies already inside the Area2D
-	# when the tower is placed. Detect them manually right after setup.
-	call_deferred("_register_existing_enemies")
+	# when the tower is placed. Wait for physics to update, then detect them.
+	# CRITICAL: Must wait for physics frame to ensure collision detection is ready
+	# and tower position is properly set (prevents race conditions)
+	_defer_enemy_registration()
 
 	# Create shoot timer
 	shoot_timer = Timer.new()
@@ -113,6 +118,7 @@ func _ready():
 	add_child(mode_label)
 	mode_label.position = Vector2(-30, -80)  # Above tower
 	mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mode_label.add_theme_font_size_override("font_size", 10)
 	update_mode_label()
 
 	# Create debug line for visual targeting (F4)
@@ -143,6 +149,79 @@ func _process(delta):
 	else:
 		if debug_line:
 			debug_line.visible = false
+
+	# Queue redraw for custom debug rendering
+	if DebugConfig.visual_debug_enabled:
+		queue_redraw()
+
+func _physics_process(delta):
+	# Safety: Ensure monitoring is always enabled
+	# This prevents detection failures if monitoring gets disabled somehow
+	if detection_range and not detection_range.monitoring:
+		push_warning("[ArcherTower] Detection range monitoring was disabled! Re-enabling...")
+		detection_range.monitoring = true
+
+func _draw():
+	"""Custom drawing for debug visualization (F4)"""
+	if not DebugConfig.visual_debug_enabled:
+		return
+
+	# Draw detection range circle outline
+	draw_arc(Vector2.ZERO, range_radius, 0, TAU, 64, Color(0, 1, 0, 0.5), 2.0)
+
+	# Draw range text
+	var range_text = "R: %d" % range_radius
+	var font = ThemeDB.fallback_font
+	var font_size = 16
+	draw_string(font, Vector2(-20, -range_radius - 10), range_text,
+				HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.GREEN)
+
+	# Draw enemy info for all enemies in range
+	for enemy in enemies_in_range:
+		if not is_instance_valid(enemy):
+			continue
+
+		var enemy_pos = to_local(enemy.global_position)
+		var distance = global_position.distance_to(enemy.global_position)
+		var is_boss = _is_enemy_boss(enemy)
+
+		# Draw distance line - RED for boss, gray for normal enemies
+		var line_color = Color.RED if is_boss else Color(0.5, 0.5, 0.5, 0.3)
+		var line_width = 3.0 if is_boss else 1.0
+		draw_line(Vector2.ZERO, enemy_pos, line_color, line_width)
+
+		# Draw boss highlight circle
+		if is_boss:
+			draw_circle(enemy_pos, 40.0, Color(1, 0, 0, 0.3))  # Red translucent circle
+			draw_arc(enemy_pos, 40.0, 0, TAU, 32, Color.RED, 3.0)  # Red outline
+
+		# Get enemy info
+		var progress = _get_enemy_progress(enemy)
+		var health = _get_enemy_health(enemy)
+
+		# Build info text based on targeting mode
+		var info_text = ""
+		match targeting_mode:
+			TargetingMode.FIRST, TargetingMode.LAST:
+				info_text = "P:%.2f" % progress
+			TargetingMode.CLOSE:
+				info_text = "D:%d" % int(distance)
+			TargetingMode.STRONG, TargetingMode.WEAK:
+				info_text = "H:%d" % int(health)
+
+		# Add BOSS tag for boss enemies
+		if is_boss:
+			info_text = "🔴BOSS🔴\n" + info_text
+
+		# Draw info label near enemy
+		var label_pos = enemy_pos + Vector2(0, -50 if is_boss else -30)
+		var text_color = Color.RED if is_boss else (Color.YELLOW if enemy == current_target else Color.WHITE)
+		draw_string(font, label_pos, info_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 16 if is_boss else 14, text_color)
+
+	# Draw enemy count
+	var count_text = "Enemies: %d" % enemies_in_range.size()
+	draw_string(font, Vector2(-40, range_radius + 20), count_text,
+				HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.CYAN)
 
 # ============================================
 # CLICK HANDLING - Using Area2D
@@ -193,17 +272,31 @@ func _on_mouse_exited():
 func _on_enemy_entered_range(body):
 	# An enemy entered our range
 	if body.is_in_group("enemy"):
-		# Add enemy to tracking list
-		# Note: We trust Godot's physics - if collision shapes overlapped, enemy is in range
+		# CRITICAL: Connect death signal FIRST, before duplicate check
+		# This ensures signal is always connected even if enemy is already in list
+		if body.has_signal("enemy_died") and not body.enemy_died.is_connected(_on_enemy_died):
+			body.enemy_died.connect(_on_enemy_died.bind(body))
+
 		# Prevent duplicates (can happen when manually registering existing enemies)
 		if enemies_in_range.has(body):
 			return
 
+		var enemy_name = body.get_enemy_name() if body.has_method("get_enemy_name") else "Unknown"
+		var is_boss = _is_enemy_boss(body)
+		var boss_tag = " [BOSS]" if is_boss else ""
+
 		enemies_in_range.append(body)
 
-		# Connect to enemy death signal for immediate cleanup
-		if body.has_signal("enemy_died") and not body.enemy_died.is_connected(_on_enemy_died):
-			body.enemy_died.connect(_on_enemy_died.bind(body))
+		# Debug logging
+		DebugConfig.log_targeting("✅ Enemy entered range: %s%s (Total: %d)" % [enemy_name, boss_tag, enemies_in_range.size()])
+
+		# Extra debug for boss enemies
+		if is_boss:
+			print("🔴 BOSS DETECTED IN RANGE: %s at position %s" % [enemy_name, body.global_position])
+			print("   - Parent type: %s" % body.get_parent().get_class())
+			print("   - Has current_health: %s" % ("current_health" in body))
+			if "current_health" in body:
+				print("   - Current health: %.1f" % body.current_health)
 
 func _on_enemy_exited_range(body):
 	# An enemy left our range
@@ -217,12 +310,21 @@ func _on_enemy_exited_range(body):
 			_record_target_change_time()
 
 
+func _defer_enemy_registration():
+	"""Async wrapper to wait for physics frame before registering enemies"""
+	await get_tree().physics_frame
+	_register_existing_enemies()
+
 func _register_existing_enemies():
 	"""Detect enemies that were already in range when tower was placed"""
 	if not detection_range:
+		print("[ArcherTower] WARNING: detection_range not found during enemy registration")
 		return
 
-	for body in detection_range.get_overlapping_bodies():
+	var found_enemies = detection_range.get_overlapping_bodies()
+	print("[ArcherTower] Registering %d existing enemies in range" % found_enemies.size())
+
+	for body in found_enemies:
 		_on_enemy_entered_range(body)
 
 
@@ -246,12 +348,37 @@ func _on_enemy_died(enemy):
 
 func get_target_by_mode():
 	"""Get target based on current targeting mode"""
+	var original_count = enemies_in_range.size()
+
 	# Clean up dead/invalid enemies first
-	enemies_in_range = enemies_in_range.filter(func(e):
-		return (is_instance_valid(e)
-			and (not e.has_method("is_dead") or not e.is_dead())
-			and ("current_health" not in e or e.current_health > 0.0))
-	)
+	var filtered_enemies = []
+	for e in enemies_in_range:
+		var is_valid = is_instance_valid(e)
+		var is_alive = not e.has_method("is_dead") or not e.is_dead()
+		var has_health = "current_health" not in e or e.current_health > 0.0
+
+		if is_valid and is_alive and has_health:
+			filtered_enemies.append(e)
+		else:
+			# Debug logging for filtered enemies
+			var enemy_name = e.get_enemy_name() if is_valid and e.has_method("get_enemy_name") else "Unknown"
+			var reason = ""
+			if not is_valid:
+				reason = "Invalid instance"
+			elif not is_alive:
+				reason = "Dead"
+			elif not has_health:
+				reason = "No health"
+
+			if _is_enemy_boss(e):
+				print("🔴 BOSS FILTERED OUT: %s - Reason: %s" % [enemy_name, reason])
+
+			DebugConfig.log_targeting("❌ Filtered out: %s - %s" % [enemy_name, reason])
+
+	enemies_in_range = filtered_enemies
+
+	if original_count != enemies_in_range.size():
+		DebugConfig.log_targeting("Filtered enemies: %d → %d" % [original_count, enemies_in_range.size()])
 
 	if enemies_in_range.is_empty():
 		return null
@@ -260,8 +387,14 @@ func get_target_by_mode():
 	match targeting_mode:
 		TargetingMode.FIRST:
 			return get_first_enemy()
+		TargetingMode.LAST:
+			return get_last_enemy()
+		TargetingMode.CLOSE:
+			return get_closest_enemy()
 		TargetingMode.STRONG:
 			return get_strongest_enemy()
+		TargetingMode.WEAK:
+			return get_weakest_enemy()
 
 	return null
 
@@ -286,6 +419,49 @@ func get_first_enemy():
 
 	return furthest
 
+func get_last_enemy():
+	"""Target enemy closest to the path start (opposite of FIRST)"""
+	var last = enemies_in_range[0]
+	var last_progress = _get_enemy_progress(last)
+	var last_offset = _get_enemy_path_offset(last)
+
+	for enemy in enemies_in_range:
+		var progress = _get_enemy_progress(enemy)
+		if progress < last_progress - PROGRESS_EPSILON:
+			last = enemy
+			last_progress = progress
+			last_offset = _get_enemy_path_offset(enemy)
+		elif abs(progress - last_progress) <= PROGRESS_EPSILON:
+			var offset = _get_enemy_path_offset(enemy)
+			if offset < last_offset:
+				last = enemy
+				last_progress = progress
+				last_offset = offset
+
+	return last
+
+func get_closest_enemy():
+	"""Target enemy nearest to this tower (distance-based, not path-based)"""
+	var closest = enemies_in_range[0]
+	var min_distance = global_position.distance_to(closest.global_position)
+	var furthest_progress = _get_enemy_progress(closest)
+
+	for enemy in enemies_in_range:
+		var distance = global_position.distance_to(enemy.global_position)
+		if distance < min_distance - 1.0:  # 1px epsilon for distance comparison
+			closest = enemy
+			min_distance = distance
+			furthest_progress = _get_enemy_progress(enemy)
+		elif abs(distance - min_distance) <= 1.0:
+			# Tie-breaker: prefer enemy further on path
+			var progress = _get_enemy_progress(enemy)
+			if progress > furthest_progress + PROGRESS_EPSILON:
+				closest = enemy
+				min_distance = distance
+				furthest_progress = progress
+
+	return closest
+
 func get_strongest_enemy():
 	"""Target enemy with highest current health"""
 	var strongest = enemies_in_range[0]
@@ -307,19 +483,51 @@ func get_strongest_enemy():
 
 	return strongest
 
+func get_weakest_enemy():
+	"""Target enemy with lowest current health (opposite of STRONG)"""
+	var weakest = enemies_in_range[0]
+	var lowest_health = _get_enemy_health(weakest)
+	var furthest_progress = _get_enemy_progress(weakest)
+
+	for enemy in enemies_in_range:
+		var enemy_health = _get_enemy_health(enemy)
+		if enemy_health < lowest_health - HEALTH_EPSILON:
+			weakest = enemy
+			lowest_health = enemy_health
+			furthest_progress = _get_enemy_progress(enemy)
+		elif abs(enemy_health - lowest_health) <= HEALTH_EPSILON:
+			# Tie-breaker: prefer enemy further on path
+			var progress = _get_enemy_progress(enemy)
+			if progress > furthest_progress + PROGRESS_EPSILON:
+				weakest = enemy
+				lowest_health = enemy_health
+				furthest_progress = progress
+
+	return weakest
+
 func _get_enemy_progress(enemy) -> float:
 	"""Get how far along the path an enemy is (0.0 = start, 1.0 = end)"""
 	if not enemy or not is_instance_valid(enemy):
 		return 0.0
 
-	# Enemy is a child of PathFollow2D
+	# Enemy is a child of PathFollow2D (Path2D system)
 	var path_follower = enemy.get_parent()
 	if path_follower and path_follower is PathFollow2D:
 		return path_follower.progress_ratio
 
-	# Fallback: if no path follower found, use distance as approximation
-	# (should not happen in normal gameplay)
-	return 0.0
+	# Fallback: Check if enemy has waypoint_progress property (Waypoint system)
+	if "waypoint_progress" in enemy:
+		return enemy.waypoint_progress
+
+	# Fallback: Check if enemy has a get_progress() method
+	if enemy.has_method("get_progress"):
+		return enemy.get_progress()
+
+	# Last resort: Use global position as rough approximation
+	# Enemies further right/down are considered "further" in progress
+	# This ensures targeting still works even without proper path tracking
+	var normalized_position = enemy.global_position / 1000.0  # Normalize to 0.0-1.0 range
+	return clamp(normalized_position.x + normalized_position.y, 0.0, 1.0)
 
 func _get_enemy_path_offset(enemy) -> float:
 	if not enemy or not is_instance_valid(enemy):
@@ -339,6 +547,19 @@ func _get_enemy_health(enemy) -> float:
 		return float(enemy.current_health)
 
 	return 0.0
+
+func _is_enemy_boss(enemy) -> bool:
+	"""Check if an enemy is a boss (by name or properties)"""
+	if not enemy or not is_instance_valid(enemy):
+		return false
+
+	# Check for boss flag
+	if "is_boss" in enemy:
+		return enemy.is_boss
+
+	# Check by enemy name/type
+	var enemy_name = enemy.get_enemy_name() if enemy.has_method("get_enemy_name") else ""
+	return "troll" in enemy_name.to_lower() or "boss" in enemy_name.to_lower()
 
 func _pick_target_with_stickiness(old_target, candidate_target):
 	if candidate_target == null:
@@ -364,10 +585,25 @@ func _pick_target_with_stickiness(old_target, candidate_target):
 				var new_progress = _get_enemy_progress(candidate_target)
 				if new_progress < old_progress + PROGRESS_SWITCH_THRESHOLD:
 					return old_target
+			TargetingMode.LAST:
+				var old_progress = _get_enemy_progress(old_target)
+				var new_progress = _get_enemy_progress(candidate_target)
+				if new_progress > old_progress - PROGRESS_SWITCH_THRESHOLD:
+					return old_target
+			TargetingMode.CLOSE:
+				var old_dist = global_position.distance_to(old_target.global_position)
+				var new_dist = global_position.distance_to(candidate_target.global_position)
+				if new_dist > old_dist - 50.0:  # Must be 50px closer to switch
+					return old_target
 			TargetingMode.STRONG:
 				var old_health = _get_enemy_health(old_target)
 				var new_health = _get_enemy_health(candidate_target)
 				if new_health <= old_health + HEALTH_SWITCH_THRESHOLD:
+					return old_target
+			TargetingMode.WEAK:
+				var old_health = _get_enemy_health(old_target)
+				var new_health = _get_enemy_health(candidate_target)
+				if new_health >= old_health - HEALTH_SWITCH_THRESHOLD:
 					return old_target
 
 	if old_target != candidate_target:
@@ -382,8 +618,18 @@ func set_targeting_mode(mode: TargetingMode):
 	"""Change the targeting mode and update visual feedback"""
 	targeting_mode = mode
 	update_mode_label()
-	var mode_name = "FIRST" if mode == TargetingMode.FIRST else "STRONG"
+	var mode_name = _get_mode_name(mode)
 	DebugConfig.log_targeting("Mode changed to: %s" % mode_name)
+
+func _get_mode_name(mode: TargetingMode) -> String:
+	"""Get string name for targeting mode"""
+	match mode:
+		TargetingMode.FIRST: return "FIRST"
+		TargetingMode.LAST: return "LAST"
+		TargetingMode.CLOSE: return "CLOSE"
+		TargetingMode.STRONG: return "STRONG"
+		TargetingMode.WEAK: return "WEAK"
+	return "UNKNOWN"
 
 func update_mode_label():
 	"""Update the visual label showing current targeting mode"""
@@ -394,9 +640,18 @@ func update_mode_label():
 		TargetingMode.FIRST:
 			mode_label.text = "[FIRST]"
 			mode_label.modulate = Color.CYAN
+		TargetingMode.LAST:
+			mode_label.text = "[LAST]"
+			mode_label.modulate = Color.LIGHT_BLUE
+		TargetingMode.CLOSE:
+			mode_label.text = "[CLOSE]"
+			mode_label.modulate = Color.YELLOW
 		TargetingMode.STRONG:
 			mode_label.text = "[STRONG]"
 			mode_label.modulate = Color.RED
+		TargetingMode.WEAK:
+			mode_label.text = "[WEAK]"
+			mode_label.modulate = Color.ORANGE
 
 # ============================================
 # SHOOTING FUNCTIONS
@@ -412,7 +667,7 @@ func _on_shoot_timer_timeout():
 	# Debug: Show when tower switches targets (F3)
 	if current_target != old_target and current_target != null:
 		var target_name = current_target.get_enemy_name() if current_target.has_method("get_enemy_name") else "Enemy"
-		var mode_name = "FIRST" if targeting_mode == TargetingMode.FIRST else "STRONG"
+		var mode_name = _get_mode_name(targeting_mode)
 
 		if old_target == null:
 			DebugConfig.log_targeting("Tower → %s (%s mode)" % [target_name, mode_name])
@@ -443,18 +698,26 @@ func shoot_at(target):
 		current_target = null
 		return
 
-	# Double-check: Only shoot if target is actually in range
-	# Add small buffer (10px) to account for physics timing
-	var distance_to_target = global_position.distance_to(target.global_position)
-	if distance_to_target > range_radius + 10:
-		print("⚠ Target out of range (", distance_to_target, " > ", range_radius, "), skipping shot")
-		# Remove from enemies_in_range since it's unreachable
-		enemies_in_range.erase(target)
-		if target.has_method("set_debug_targeted"):
-			target.set_debug_targeted(false)
+	# PRIMARY VALIDATION: Trust Area2D collision detection (Kingdom Rush approach)
+	# If enemy is in our detection list, we can shoot it
+	if not enemies_in_range.has(target):
+		# Enemy left range - Area2D already removed it
 		current_target = null
-		_record_target_change_time()
 		return
+
+	# SECONDARY DIAGNOSTIC: Distance check for debugging/monitoring only
+	# This NEVER rejects shots - it only logs warnings for extreme cases
+	var distance_to_target = global_position.distance_to(target.global_position)
+
+	if distance_to_target > range_radius + 100:
+		# Extremely far beyond range - shouldn't happen, but we shoot anyway
+		DebugConfig.log_targeting("⚠ WARNING: Shooting far beyond range: %.1f / %d (+100px buffer exceeded)" % [distance_to_target, range_radius])
+	elif distance_to_target > range_radius + 50:
+		# Moderately beyond range - expected for large enemies like bosses
+		DebugConfig.log_targeting("ℹ Target beyond buffer: %.1f / %d (+50px buffer)" % [distance_to_target, range_radius])
+	elif distance_to_target > range_radius:
+		# Slightly beyond range - normal for moving enemies at edge
+		DebugConfig.log_targeting("ℹ Target at edge: %.1f / %d (within detection)" % [distance_to_target, range_radius])
 
 	# Track shot fired
 	if BalanceTracker:
@@ -468,14 +731,27 @@ func _spawn_projectile(target):
 	"""Spawn arrow projectile (called deferred to avoid physics errors)"""
 	# Double-check target is still valid
 	if not is_instance_valid(target):
+		DebugConfig.log_targeting("⚠ WARNING: Deferred shot target became invalid before projectile spawn!")
+		# Target died/disappeared between shoot decision and actual spawn
+		# This is expected in fast-paced gameplay, so just skip the shot
 		return
+
+	# Trigger muzzle flash effect (AFTER validation passes)
+	if archer_weapon and archer_weapon.has_node("MuzzleFlash"):
+		var muzzle_flash = archer_weapon.get_node("MuzzleFlash")
+		muzzle_flash.restart()
 
 	# Create projectile
 	var arrow = projectile_scene.instantiate()
 	get_tree().root.add_child(arrow)  # Add to scene root (not as child of tower)
 
-	# Position arrow at tower's position
-	arrow.global_position = global_position
+	# Position arrow at weapon position (not tower center)
+	# This creates visual continuity - arrow spawns where bow is
+	if archer_weapon:
+		arrow.global_position = archer_weapon.global_position
+	else:
+		# Fallback to tower center if weapon not found
+		arrow.global_position = global_position
 
 	# Tell arrow where to go and who shot it
 	arrow.setup(target, damage, self)
@@ -532,25 +808,26 @@ func upgrade_tower():
 
 	print("✅ [DEBUG] Upgrade check passed - proceeding with upgrade")
 	var old_level = tower_level
+	var upgrade_cost = get_upgrade_cost()  # Get cost BEFORE upgrading
 	tower_level += 1
-	print("🔧 [DEBUG] Level changed: %d → %d" % [old_level, tower_level])
+	print("🔧 [DEBUG] Level changed: %d → %d (Cost: %dg)" % [old_level, tower_level, upgrade_cost])
 
-	# Apply stat increases per level (OPTION B: +33% damage boost all levels)
+	# Apply stat increases per level (Kingdom Rush -25% damage scaling)
 	match tower_level:
 		2:
 			print("🔧 [DEBUG] Applying Level 2 stats...")
-			damage = 26  # 16 → 26 (+62.5% damage)
+			damage = 20  # 12 → 20 (+67% damage)
 			attack_speed = 1.3  # 1.0 → 1.3 (+30% speed)
 			range_radius = 350  # 300 → 350 (+50 range)
-			# Result: 33.8 DPS (+111% from Level 1)
-			print("✅ [ArcherTower] Upgraded to Level 2: DMG=26, AS=1.3, Range=350, DPS=33.8")
+			# Result: 26.0 DPS (+117% from Level 1)
+			print("✅ [ArcherTower] Upgraded to Level 2: DMG=20, AS=1.3, Range=350, DPS=26.0")
 		3:
 			print("🔧 [DEBUG] Applying Level 3 stats...")
-			damage = 36  # 26 → 36 (+38.5% damage)
+			damage = 27  # 20 → 27 (+35% damage)
 			attack_speed = 1.6  # 1.3 → 1.6 (+23% speed)
 			range_radius = 400  # 350 → 400 (+50 range)
-			# Result: 57.6 DPS (+70% from Level 2)
-			print("✅ [ArcherTower] Upgraded to Level 3: DMG=36, AS=1.6, Range=400, DPS=57.6")
+			# Result: 43.2 DPS (+66% from Level 2)
+			print("✅ [ArcherTower] Upgraded to Level 3: DMG=27, AS=1.6, Range=400, DPS=43.2")
 		_:
 			print("⚠️ [DEBUG] WARNING: Unexpected tower_level: %d" % tower_level)
 
@@ -571,6 +848,10 @@ func upgrade_tower():
 	else:
 		print("⚠️ [DEBUG] WARNING: shoot_timer is null!")
 
+	# Track upgrade in BalanceTracker
+	if BalanceTracker:
+		BalanceTracker.record_tower_upgrade(self, tower_level, upgrade_cost)
+
 	print("✅ [DEBUG] upgrade_tower() completed successfully")
 	return true
 
@@ -584,19 +865,24 @@ func choose_damage_path():
 		push_warning("[ArcherTower] Path already chosen: %s" % upgrade_path)
 		return false
 
+	var path_cost = get_upgrade_cost()  # Get cost before upgrading
 	tower_level += 1
 	upgrade_path = "damage"
 
 	# DAMAGE PATH: +33% damage, +25% attack speed
-	damage = 48  # 36 → 48 (+33%)
+	damage = 36  # 27 → 36 (+33%)
 	attack_speed = 2.0  # 1.6 → 2.0 (+25%)
-	# Result: 96 DPS (+67% from Level 3) - GLASS CANNON!
+	# Result: 72 DPS (+67% from Level 3) - GLASS CANNON!
 
-	print("[ArcherTower] DAMAGE PATH chosen: DMG=48, AS=2.0, DPS=96 - High DPS glass cannon!")
+	print("[ArcherTower] DAMAGE PATH chosen: DMG=36, AS=2.0, DPS=72 - High DPS glass cannon!")
 
 	# Update shoot timer
 	if shoot_timer:
 		shoot_timer.wait_time = 1.0 / attack_speed
+
+	# Track upgrade in BalanceTracker
+	if BalanceTracker:
+		BalanceTracker.record_tower_upgrade(self, tower_level, path_cost, "damage")
 
 	return true
 
@@ -610,20 +896,25 @@ func choose_range_path():
 		push_warning("[ArcherTower] Path already chosen: %s" % upgrade_path)
 		return false
 
+	var path_cost = get_upgrade_cost()  # Get cost before upgrading
 	tower_level += 1
 	upgrade_path = "range"
 
 	# RANGE PATH: +100% range (doubles coverage area)
 	range_radius = 800  # 400 → 800 (+100%)
-	# Keeps Level 3 stats: DMG=36, AS=1.6, DPS=57.6
+	# Keeps Level 3 stats: DMG=27, AS=1.6, DPS=43.2
 
-	print("[ArcherTower] RANGE PATH chosen: Range=800, DMG=36, AS=1.6, DPS=57.6 - Long-range sniper!")
+	print("[ArcherTower] RANGE PATH chosen: Range=800, DMG=27, AS=1.6, DPS=43.2 - Long-range sniper!")
 
 	# Update detection range collision shape
 	_update_detection_range()
 
 	# Redraw range indicator
 	draw_range_circle()
+
+	# Track upgrade in BalanceTracker
+	if BalanceTracker:
+		BalanceTracker.record_tower_upgrade(self, tower_level, path_cost, "range")
 
 	return true
 
@@ -636,10 +927,39 @@ func _update_detection_range():
 	for child in detection_range.get_children():
 		if child is CollisionShape2D:
 			var shape = child.shape
-			if shape is CircleShape2D:
+			if shape and shape is CircleShape2D:
 				shape.radius = range_radius
 				print("[ArcherTower] Detection range updated to: %d" % range_radius)
+			else:
+				push_error("[ArcherTower] Failed to update detection range - shape is invalid or not CircleShape2D")
 			break
+
+	# CRITICAL: Revalidate all tracked enemies after range change
+	# Range shrinking doesn't emit body_exited, enemies might be outside new range
+	call_deferred("_revalidate_enemies_in_range")
+
+func _revalidate_enemies_in_range():
+	"""Remove enemies that are now outside the updated range"""
+	var enemies_to_remove = []
+
+	for enemy in enemies_in_range:
+		if not is_instance_valid(enemy):
+			enemies_to_remove.append(enemy)
+			continue
+
+		var distance = global_position.distance_to(enemy.global_position)
+		if distance > range_radius:
+			enemies_to_remove.append(enemy)
+			print("[ArcherTower] Enemy removed from range after range update (distance: %d > %d)" % [distance, range_radius])
+
+	# Remove invalid enemies
+	for enemy in enemies_to_remove:
+		enemies_in_range.erase(enemy)
+		if current_target == enemy:
+			if enemy.has_method("set_debug_targeted"):
+				enemy.set_debug_targeted(false)
+			current_target = null
+			_record_target_change_time()
 
 func get_upgrade_cost() -> int:
 	"""Get cost for next upgrade (EXPENSIVE to force economic pressure)"""

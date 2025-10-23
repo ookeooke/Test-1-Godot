@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_power_ring"]
+
+[resource]
+script = ExtResource("1_power_ring")
+item_id = "power_ring"
+item_name = "Power Ring"
+description = "A magical ring that increases damage."
+emoji = "💍⚡"
+item_type = 1
+rarity = 1
+equip_slot = 3
+max_stack = 1
+sell_value = 40
+damage_bonus = 8
+attack_speed_multiplier = 1.0
+health_bonus = 0
+defense_bonus = 0
+range_bonus = 0
+crit_chance_bonus = 0.05
+special_effects = []
+heal_amount = 0
+buff_duration = 0.0
+buff_type = ""
+can_upgrade = true
+max_upgrade_level = 10
+upgrade_costs = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600]
+stat_increase_per_level = 0.1
+flavor_text = "Enchanted with raw power."

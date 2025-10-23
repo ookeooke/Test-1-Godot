@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://waypoint_scene_001"]
+
+[ext_resource type="Script" path="res://scripts/pathfinding/path_waypoint.gd" id="1_waypoint"]
+
+[node name="PathWaypoint" type="Node2D" groups=["waypoints"]]
+script = ExtResource("1_waypoint")
+road_width = 100.0
+waypoint_color = Color(1, 0.8, 0, 1)
+visible_in_game = false
+marker_radius = 15.0
+allows_soldier_placement = true

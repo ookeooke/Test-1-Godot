@@ -32,6 +32,7 @@ enum EquipSlot {
 @export var item_name: String = ""
 @export_multiline var description: String = ""
 @export var icon: Texture2D
+@export var emoji: String = ""  ## Unicode emoji symbol (e.g., "🏹", "🛡️", "💍") - shown if no icon texture
 @export var item_type: ItemType = ItemType.MATERIAL
 @export var rarity: Rarity = Rarity.COMMON
 @export var equip_slot: EquipSlot = EquipSlot.NONE

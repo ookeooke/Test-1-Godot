@@ -165,7 +165,7 @@ func complete_level(stars: int) -> void:
 	level_completed.emit(current_level.level_id, stars)
 
 	# Save progress (handled by SaveManager)
-	SaveManager.save_level_completion(current_level.level_id, stars)
+	SaveManager.mark_level_complete(current_level.level_id, stars)
 
 # ============================================
 # HELPER METHODS

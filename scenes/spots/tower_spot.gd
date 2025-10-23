@@ -66,10 +66,20 @@ func place_tower(tower_scene: PackedScene):
 	if "parent_spot" in tower:
 		tower.parent_spot = self
 
-	# Add to tree first - this triggers _ready()
+	# CRITICAL: Set position BEFORE adding to tree
+	# This ensures tower's _ready() and collision detection use the correct position
+	# Setting position after add_child() causes timing issues where get_overlapping_bodies()
+	# checks from the wrong position (0,0 relative to parent)
+	tower.position = Vector2.ZERO  # Position relative to this spot (spot is already at correct position)
+
+	# Start tower invisible and small for build animation
+	tower.scale = Vector2.ZERO
+	tower.modulate.a = 0.0
+
+	# Add to tree - this triggers _ready() with correct position
 	add_child(tower)
 
-	# Then set position (needs to be in tree for global_position to work)
+	# Ensure global position is correct (redundant but safe)
 	tower.global_position = global_position
 
 	current_tower = tower
@@ -81,10 +91,64 @@ func place_tower(tower_scene: PackedScene):
 	if click_area:
 		click_area.input_pickable = false
 
+	# Play quick build animation (instant gameplay, visual polish)
+	_play_build_animation(tower)
+
 	# Camera effects: focus on new tower (shake disabled)
 	# var camera = get_viewport().get_camera_2d()
 	# CameraEffects.medium_shake(camera)  # Disabled - adjust in inspector if needed
 	# CameraEffects.focus_on_tower(camera, tower)  # Disabled - no auto-focus
+
+func _play_build_animation(tower: Node2D):
+	"""Quick pop-in animation - tower works immediately but looks nice"""
+	const BUILD_DURATION = 0.2  # Very quick - doesn't affect gameplay
+
+	# Tower is fully functional immediately (no construction time)
+	# This is just a visual effect
+
+	# Create build particles
+	var particles = CPUParticles2D.new()
+	add_child(particles)
+	particles.position = Vector2.ZERO
+	particles.emitting = true
+	particles.one_shot = true
+	particles.amount = 8
+	particles.lifetime = 0.3
+	particles.explosiveness = 1.0
+	particles.randomness = 0.4
+
+	# Dust cloud effect
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 20.0
+	particles.direction = Vector2(0, -1)  # Upward
+	particles.spread = 90.0
+	particles.initial_velocity_min = 30.0
+	particles.initial_velocity_max = 60.0
+	particles.gravity = Vector2(0, 100)
+	particles.scale_amount_min = 2.0
+	particles.scale_amount_max = 4.0
+	particles.color = Color(0.7, 0.6, 0.5, 0.6)  # Dust/construction color
+
+	# Fade out
+	var gradient = Gradient.new()
+	gradient.add_point(0.0, Color(0.8, 0.7, 0.6, 0.8))
+	gradient.add_point(1.0, Color(0.5, 0.4, 0.3, 0.0))
+	particles.color_ramp = gradient
+
+	# Tween animation for tower
+	var tween = create_tween()
+	tween.set_parallel(true)
+
+	# Pop-in: scale from 0 to 1 with bounce
+	tween.tween_property(tower, "scale", Vector2.ONE, BUILD_DURATION).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+
+	# Fade in
+	tween.tween_property(tower, "modulate:a", 1.0, BUILD_DURATION * 0.7).set_ease(Tween.EASE_OUT)
+
+	# Cleanup particles
+	await get_tree().create_timer(particles.lifetime + 0.1).timeout
+	if is_instance_valid(particles):
+		particles.queue_free()
 
 func remove_tower():
 	"""Called when tower is sold"""

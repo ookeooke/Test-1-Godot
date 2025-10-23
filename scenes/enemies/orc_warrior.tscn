@@ -28,6 +28,7 @@ color = Color(1, 0.00999999, 0.00999999, 1)
 layout_mode = 0
 offset_right = 74.0
 offset_bottom = 50.0
+theme_override_font_sizes/font_size = 10
 text = "ORC"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

@@ -23,6 +23,7 @@ signal level_chosen(level_data: LevelNodeData, difficulty: String)
 # Buttons created programmatically
 var heroes_button: Button = null
 var gear_button: Button = null
+var arsenal_button: Button = null
 
 var level_buttons: Array[Button] = []
 
@@ -35,6 +36,9 @@ var hero_management_panel: HeroManagementPanel = null
 
 # Dual panel screen (gear management)
 var dual_panel_screen: DualPanelScreen = null
+
+# Arsenal screen
+var arsenal_screen: ArsenalScreen = null
 
 func _ready():
 	# Connect signals
@@ -53,11 +57,20 @@ func _ready():
 	else:
 		heroes_button.pressed.connect(_on_heroes_button_pressed)
 
+	# Create arsenal button if it doesn't exist
+	if not arsenal_button:
+		_create_arsenal_button()
+	else:
+		arsenal_button.pressed.connect(_on_arsenal_button_pressed)
+
 	# Create hero management panel
 	_setup_hero_management_panel()
 
 	# Create dual panel screen
 	_setup_dual_panel_screen()
+
+	# Create arsenal screen
+	_setup_arsenal_screen()
 
 	# Setup
 	_setup_level_nodes()
@@ -147,6 +160,28 @@ func _create_heroes_button():
 		top_bar.move_child(heroes_button, top_bar.get_child_count() - 2)
 
 	print("✅ Created Heroes button")
+
+func _create_arsenal_button():
+	"""Create the Arsenal button programmatically"""
+	arsenal_button = Button.new()
+	arsenal_button.name = "ArsenalButton"
+	arsenal_button.text = "⚔ ARSENAL"
+	arsenal_button.custom_minimum_size = Vector2(140, 40)
+
+	# IMPORTANT: Ensure button can receive clicks
+	arsenal_button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	arsenal_button.pressed.connect(_on_arsenal_button_pressed)
+
+	# Add tooltip
+	arsenal_button.tooltip_text = "Manage heroes, equipment, and loadouts"
+
+	# Add to top bar (before progress label)
+	if top_bar:
+		top_bar.add_child(arsenal_button)
+		top_bar.move_child(arsenal_button, top_bar.get_child_count() - 2)
+
+	print("✅ Created Arsenal button")
 
 func _setup_dual_panel_screen():
 	"""Create the dual panel screen for gear management"""
@@ -315,6 +350,43 @@ func _on_skill_purchased(hero_id: String, skill_id: String):
 func _on_skill_upgraded(hero_id: String, skill_id: String):
 	"""Called when a skill is upgraded"""
 	print("⬆️ Skill upgraded: ", skill_id, " for ", hero_id)
+
+func _setup_arsenal_screen():
+	"""Create and setup the arsenal screen"""
+	arsenal_screen = ArsenalScreen.new()
+	arsenal_screen.name = "ArsenalScreen"
+	ui_layer.add_child(arsenal_screen)
+
+	# Connect close signal to update displays
+	arsenal_screen.closed.connect(_on_arsenal_closed)
+
+	print("✅ Arsenal screen initialized")
+
+func _on_arsenal_button_pressed():
+	"""Open the arsenal screen"""
+	print("🎮 ARSENAL BUTTON CLICKED!")
+
+	if not arsenal_screen:
+		push_error("❌ Arsenal screen not initialized")
+		return
+
+	print("✅ Opening Arsenal screen...")
+
+	# Button press animation
+	if arsenal_button:
+		var press_tween = create_tween()
+		press_tween.tween_property(arsenal_button, "scale", Vector2(0.95, 0.95), 0.05)
+		press_tween.tween_property(arsenal_button, "scale", Vector2.ONE, 0.1)
+
+	# Open the screen
+	arsenal_screen.show_screen()
+
+func _on_arsenal_closed():
+	"""Handle arsenal screen closing"""
+	# Refresh displays in case equipment/heroes changed
+	_update_profile_display()
+	_update_progress_display()
+	print("✅ Arsenal closed, displays refreshed")
 
 func _setup_level_nodes():
 	# Clear existing buttons

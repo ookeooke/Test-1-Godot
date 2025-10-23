@@ -161,6 +161,12 @@ func _ready():
 	if Engine.is_editor_hint():
 		return
 
+	# WEB PLATFORM FIX: Defer initialization on web to allow canvas setup
+	if OS.has_feature("web") or OS.get_name() == "Web":
+		# Wait 2 frames for canvas to be fully initialized
+		await get_tree().process_frame
+		await get_tree().process_frame
+
 	# Runtime-only initialization
 	calculate_baseline_zoom()
 	detect_platform()
@@ -183,6 +189,12 @@ func _ready():
 func calculate_baseline_zoom() -> void:
 	"""Calculate baseline zoom from viewport to maintain consistent framing across devices"""
 	var viewport_size = get_viewport_rect().size
+
+	# VALIDATION: Prevent division by zero or invalid viewport (especially on web)
+	if viewport_size.y <= 0 or viewport_size.x <= 0:
+		push_warning("[Camera] Invalid viewport size: ", viewport_size, " - using default baseline")
+		baseline_zoom = 1.0
+		return
 
 	# Use height as the primary dimension for zoom calculation
 	# This keeps vertical framing consistent (same amount of world space visible vertically)

@@ -1,24 +1,19 @@
 extends BasePanelView
 class_name InventoryView
 
-## InventoryView - Main inventory UI with categorized tabs
-## Diablo-style grid inventory with drag-drop support
+## InventoryView - Unified single inventory for all items
+## Mobile-first Diablo Immortal style - no category tabs
+## All equipment, consumables, and materials in one grid
 ## Extends BasePanelView for use in FlexiblePanel
 
 @export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
+@export var swap_dialog_scene: PackedScene = preload("res://scenes/ui/swap_confirmation_dialog.tscn")
+@export var total_slots: int = 60  # Total inventory capacity
 
-# Tab buttons
-@onready var equipment_tab: Button = $MarginContainer/VBoxContainer/TabContainer/EquipmentTab if has_node("MarginContainer/VBoxContainer/TabContainer/EquipmentTab") else null
-@onready var consumables_tab: Button = $MarginContainer/VBoxContainer/TabContainer/ConsumablesTab if has_node("MarginContainer/VBoxContainer/TabContainer/ConsumablesTab") else null
-@onready var materials_tab: Button = $MarginContainer/VBoxContainer/TabContainer/MaterialsTab if has_node("MarginContainer/VBoxContainer/TabContainer/MaterialsTab") else null
-
-# Grid containers for each category
-@onready var equipment_grid: GridContainer = $MarginContainer/VBoxContainer/ContentContainer/EquipmentGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/EquipmentGrid") else null
-@onready var consumables_grid: GridContainer = $MarginContainer/VBoxContainer/ContentContainer/ConsumablesGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/ConsumablesGrid") else null
-@onready var materials_grid: GridContainer = $MarginContainer/VBoxContainer/ContentContainer/MaterialsGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/MaterialsGrid") else null
+# Grid container
+@onready var inventory_grid: GridContainer = $MarginContainer/VBoxContainer/ContentContainer/InventoryGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/InventoryGrid") else null
 
 # Info labels
-@onready var category_label: Label = $MarginContainer/VBoxContainer/HeaderContainer/CategoryLabel if has_node("MarginContainer/VBoxContainer/HeaderContainer/CategoryLabel") else null
 @onready var slots_label: Label = $MarginContainer/VBoxContainer/FooterContainer/SlotsLabel if has_node("MarginContainer/VBoxContainer/FooterContainer/SlotsLabel") else null
 @onready var gold_label: Label = $MarginContainer/VBoxContainer/FooterContainer/GoldLabel if has_node("MarginContainer/VBoxContainer/FooterContainer/GoldLabel") else null
 
@@ -26,21 +21,18 @@ class_name InventoryView
 @onready var tooltip_panel: PanelContainer = $TooltipPanel if has_node("TooltipPanel") else null
 @onready var tooltip_label: RichTextLabel = $TooltipPanel/MarginContainer/TooltipLabel if has_node("TooltipPanel/MarginContainer/TooltipLabel") else null
 
-# Current state
-var current_category: String = "equipment"
-var item_slots: Dictionary = {}  # {category: Array[ItemSlot]}
+# Item slots
+var item_slots: Array[ItemSlot] = []
+
+# Swap confirmation dialog
+var swap_dialog: SwapConfirmationDialog = null
 
 
 func _ready():
 	super._ready()
 	view_name = "Inventory"
 
-	# Initialize item slot arrays
-	item_slots["equipment"] = []
-	item_slots["consumables"] = []
-	item_slots["materials"] = []
-
-	# Create item slots for each category
+	# Create unified inventory slots
 	_create_item_slots()
 
 	# Connect signals
@@ -48,20 +40,16 @@ func _ready():
 		if not InventoryManager.inventory_changed.is_connected(_on_inventory_changed):
 			InventoryManager.inventory_changed.connect(_on_inventory_changed)
 
-	# Set up tab buttons
-	if equipment_tab:
-		equipment_tab.pressed.connect(_on_equipment_tab_pressed)
-	if consumables_tab:
-		consumables_tab.pressed.connect(_on_consumables_tab_pressed)
-	if materials_tab:
-		materials_tab.pressed.connect(_on_materials_tab_pressed)
-
 	# Hide tooltip initially
 	if tooltip_panel:
 		tooltip_panel.visible = false
 
-	# Show equipment tab by default
-	_switch_to_category("equipment")
+	# Setup responsive column adjustment
+	get_viewport().size_changed.connect(_on_viewport_resized)
+	_on_viewport_resized()  # Initial setup
+
+	# Create swap confirmation dialog
+	_setup_swap_dialog()
 
 
 func on_view_shown():
@@ -75,28 +63,15 @@ func refresh_view():
 
 
 func _create_item_slots():
-	"""Create ItemSlot instances for each category"""
-	# Equipment slots
-	var equipment_count = InventoryManager.max_slots.get("equipment", 20)
-	_create_slots_for_category("equipment", equipment_grid, equipment_count, 5)
-
-	# Consumables slots
-	var consumables_count = InventoryManager.max_slots.get("consumables", 15)
-	_create_slots_for_category("consumables", consumables_grid, consumables_count, 5)
-
-	# Materials slots
-	var materials_count = InventoryManager.max_slots.get("materials", 30)
-	_create_slots_for_category("materials", materials_grid, materials_count, 6)
-
-
-func _create_slots_for_category(category: String, grid: GridContainer, count: int, columns: int):
-	"""Create item slots in a grid"""
-	if grid == null:
+	"""Create unified inventory slots - all items in one grid"""
+	if inventory_grid == null:
 		return
 
-	grid.columns = columns
+	# Set grid columns (will be adjusted by responsive system)
+	inventory_grid.columns = 8
 
-	for i in count:
+	# Create all inventory slots
+	for i in total_slots:
 		var slot = item_slot_scene.instantiate() as ItemSlot
 		slot.slot_index = i
 		slot.slot_type = "inventory"
@@ -107,8 +82,8 @@ func _create_slots_for_category(category: String, grid: GridContainer, count: in
 		slot.mouse_entered.connect(_on_item_slot_hovered.bind(slot))
 		slot.mouse_exited.connect(_on_item_slot_unhovered)
 
-		grid.add_child(slot)
-		item_slots[category].append(slot)
+		inventory_grid.add_child(slot)
+		item_slots.append(slot)
 
 
 func _refresh_inventory():
@@ -117,36 +92,19 @@ func _refresh_inventory():
 		return
 
 	# Clear all slots first
-	for category in item_slots.keys():
-		for slot in item_slots[category]:
-			slot.clear_slot()
+	for slot in item_slots:
+		slot.clear_slot()
 
-	# Fill equipment slots
-	var equipment_items = InventoryManager.get_items_by_category("equipment")
-	_fill_category_slots("equipment", equipment_items)
+	# Get ALL items from inventory (all categories combined)
+	var all_items = InventoryManager.get_all_items()
 
-	# Fill consumables slots
-	var consumables_items = InventoryManager.get_items_by_category("consumables")
-	_fill_category_slots("consumables", consumables_items)
-
-	# Fill materials slots
-	var materials_items = InventoryManager.get_items_by_category("materials")
-	_fill_category_slots("materials", materials_items)
-
-	# Update labels
-	_update_labels()
-
-
-func _fill_category_slots(category: String, items: Array):
-	"""Fill slots for a category with items"""
-	var slots = item_slots.get(category, [])
+	# Fill slots with items
 	var slot_index = 0
-
-	for item_info in items:
-		if slot_index >= slots.size():
+	for item_info in all_items:
+		if slot_index >= item_slots.size():
 			break
 
-		var slot = slots[slot_index]
+		var slot = item_slots[slot_index]
 		slot.set_item(
 			item_info.item_id,
 			item_info.quantity,
@@ -154,24 +112,7 @@ func _fill_category_slots(category: String, items: Array):
 		)
 		slot_index += 1
 
-
-func _switch_to_category(category: String):
-	"""Switch visible category"""
-	current_category = category
-
-	# Hide all grids
-	if equipment_grid:
-		equipment_grid.visible = (category == "equipment")
-	if consumables_grid:
-		consumables_grid.visible = (category == "consumables")
-	if materials_grid:
-		materials_grid.visible = (category == "materials")
-
-	# Update category label
-	if category_label:
-		category_label.text = category.capitalize() + " Inventory"
-
-	# Update slots label
+	# Update labels
 	_update_labels()
 
 
@@ -184,9 +125,8 @@ func _update_labels():
 
 	# Update slots label
 	if slots_label:
-		var category_items = InventoryManager.get_items_by_category(current_category)
-		var max_slots = InventoryManager.max_slots.get(current_category, 20)
-		slots_label.text = "Slots: %d / %d" % [category_items.size(), max_slots]
+		var all_items = InventoryManager.get_all_items()
+		slots_label.text = "Slots: %d / %d" % [all_items.size(), total_slots]
 
 
 func _on_inventory_changed():
@@ -194,22 +134,24 @@ func _on_inventory_changed():
 	_refresh_inventory()
 
 
-func _on_equipment_tab_pressed():
-	_switch_to_category("equipment")
-
-
-func _on_consumables_tab_pressed():
-	_switch_to_category("consumables")
-
-
-func _on_materials_tab_pressed():
-	_switch_to_category("materials")
-
-
 func _on_item_slot_clicked(item_id: String, slot: ItemSlot):
-	"""Called when an item slot is left-clicked"""
+	"""Called when an item slot is left-clicked - auto-equip for mobile"""
 	print("[InventoryView] Item clicked: ", item_id)
-	# TODO: Show item details, use consumable, etc.
+
+	# Get item data
+	var item_data = ItemDatabase.get_item(item_id)
+	if not item_data:
+		return
+
+	# Auto-equip logic for equipment items
+	if item_data.item_type == ItemData.ItemType.WEAPON or item_data.item_type == ItemData.ItemType.ARMOR:
+		_try_auto_equip_item(item_id, item_data)
+	elif item_data.item_type == ItemData.ItemType.CONSUMABLE:
+		# TODO: Use consumable
+		print("[InventoryView] Consumable clicked - use not yet implemented")
+	else:
+		# Just show info for other items
+		print("[InventoryView] Item clicked - showing info only")
 
 
 func _on_item_slot_right_clicked(item_id: String, slot: ItemSlot):
@@ -271,6 +213,167 @@ func _on_item_slot_unhovered():
 	"""Hide tooltip"""
 	if tooltip_panel:
 		tooltip_panel.visible = false
+
+
+func _try_auto_equip_item(item_id: String, item_data: ItemData):
+	"""Try to auto-equip an item when tapped (mobile-friendly)"""
+	# Find equipment manager
+	var equipment_manager = _find_equipment_manager()
+	if not equipment_manager:
+		print("[InventoryView] Error: Could not find EquipmentManager")
+		return
+
+	# Determine which slot to equip to
+	var slot_name = _get_slot_name_for_item(item_data)
+	if slot_name == "":
+		print("[InventoryView] Error: Could not determine slot for item")
+		return
+
+	# Check if there's already an item equipped in this slot
+	var equipped_item_id = equipment_manager.get_equipped_item(slot_name)
+
+	if equipped_item_id != "":
+		# Item already equipped in this slot - show swap confirmation
+		_show_swap_confirmation(item_id, item_data, equipped_item_id, slot_name, equipment_manager)
+	else:
+		# No item equipped - just equip directly
+		equipment_manager.equip_item(slot_name, item_id)
+		print("[InventoryView] Auto-equipped %s to %s" % [item_data.item_name, slot_name])
+
+
+func _get_slot_name_for_item(item_data: ItemData) -> String:
+	"""Get the equipment slot name for an item"""
+	match item_data.equip_slot:
+		ItemData.EquipSlot.WEAPON:
+			return "weapon"
+		ItemData.EquipSlot.ARMOR:
+			return "armor"
+		ItemData.EquipSlot.ACCESSORY:
+			# For accessories, find first empty slot or use slot 1
+			var equipment_manager = _find_equipment_manager()
+			if equipment_manager:
+				var acc1 = equipment_manager.get_equipped_item("accessory_1")
+				if acc1 == "":
+					return "accessory_1"
+				else:
+					return "accessory_2"
+			return "accessory_1"
+	return ""
+
+
+func _setup_swap_dialog():
+	"""Create and setup the swap confirmation dialog"""
+	if not swap_dialog_scene:
+		print("[InventoryView] Error: No swap dialog scene configured")
+		return
+
+	swap_dialog = swap_dialog_scene.instantiate() as SwapConfirmationDialog
+	if not swap_dialog:
+		print("[InventoryView] Error: Could not instantiate swap dialog")
+		return
+
+	# Add to scene tree
+	add_child(swap_dialog)
+
+	# Connect signals
+	swap_dialog.confirmed.connect(_on_swap_confirmed)
+	swap_dialog.cancelled.connect(_on_swap_cancelled)
+
+	print("[InventoryView] Swap dialog created and ready")
+
+
+func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_item_id: String, slot_name: String, equipment_manager: EquipmentManager):
+	"""Show confirmation dialog for swapping equipped item"""
+	var old_item_data = ItemDatabase.get_item(old_item_id)
+	if not old_item_data:
+		# If can't load old item, just equip new one
+		equipment_manager.equip_item(slot_name, new_item_id)
+		return
+
+	# Show swap confirmation dialog
+	if swap_dialog:
+		swap_dialog.show_dialog(new_item_id, old_item_id, slot_name)
+	else:
+		# Fallback: auto-swap if dialog not available
+		print("[InventoryView] Warning: Swap dialog not available, auto-swapping")
+		equipment_manager.equip_item(slot_name, new_item_id)
+
+
+func _on_swap_confirmed(new_item_id: String, slot_name: String):
+	"""Handle confirmed swap from dialog"""
+	var equipment_manager = _find_equipment_manager()
+	if equipment_manager:
+		equipment_manager.equip_item(slot_name, new_item_id)
+		print("[InventoryView] Item swapped successfully: %s to %s" % [new_item_id, slot_name])
+
+
+func _on_swap_cancelled():
+	"""Handle cancelled swap from dialog"""
+	print("[InventoryView] Swap cancelled by user")
+
+
+func _find_equipment_manager() -> EquipmentManager:
+	"""Find equipment manager in the scene tree"""
+	# Try to find from parent views/panels
+	var node = get_parent()
+	while node != null:
+		if node is EquipmentView:
+			return node.equipment_manager
+		if node.has_method("get_current_view"):
+			# This is likely a FlexiblePanel, check its views
+			var panel = node
+			var left_panel = _find_flexible_panel_with_equipment()
+			if left_panel:
+				var equipment_view = left_panel.get_current_view()
+				if equipment_view and equipment_view.has_node_and_resource("equipment_manager"):
+					return equipment_view.equipment_manager
+		node = node.get_parent()
+
+	# Search in scene tree for DualPanelScreen
+	if get_tree():
+		var dual_panels = get_tree().get_nodes_in_group("dual_panel_screen")
+		for panel in dual_panels:
+			if panel.has_method("get_left_panel"):
+				var left_panel = panel.get_left_panel()
+				if left_panel:
+					var equipment_view = left_panel.get_current_view()
+					if equipment_view and "equipment_manager" in equipment_view:
+						return equipment_view.equipment_manager
+
+	return null
+
+
+func _find_flexible_panel_with_equipment() -> FlexiblePanel:
+	"""Find the FlexiblePanel that contains EquipmentView"""
+	if get_tree():
+		var dual_panels = get_tree().get_nodes_in_group("dual_panel_screen")
+		for panel in dual_panels:
+			if panel.has_method("get_left_panel"):
+				return panel.get_left_panel()
+	return null
+
+
+func _on_viewport_resized():
+	"""Adjust grid columns based on viewport width (responsive design)"""
+	if not inventory_grid:
+		return
+
+	var width = get_viewport().get_visible_rect().size.x
+
+	if width >= 2340:
+		# Wide phone (19.5:9 aspect ratio) - more horizontal space
+		inventory_grid.columns = 9
+		print("[InventoryView] Wide layout: 9 columns (width: %d)" % width)
+
+	elif width >= 1920:
+		# Standard (16:9 aspect ratio)
+		inventory_grid.columns = 8
+		print("[InventoryView] Standard layout: 8 columns (width: %d)" % width)
+
+	else:
+		# Compact/tablet screens
+		inventory_grid.columns = 6
+		print("[InventoryView] Compact layout: 6 columns (width: %d)" % width)
 
 
 func cleanup():

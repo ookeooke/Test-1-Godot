@@ -189,6 +189,25 @@ func get_items_by_type(item_type: ItemData.ItemType) -> Array:
 	return result
 
 
+## Get ALL items in inventory (all categories combined)
+func get_all_items() -> Array:
+	var result = []
+
+	for item_id in global_inventory.keys():
+		var item_data = ItemDatabase.get_item(item_id)
+		if item_data == null:
+			continue
+
+		result.append({
+			"item_id": item_id,
+			"item_data": item_data,
+			"quantity": global_inventory[item_id].quantity,
+			"upgrade_level": global_inventory[item_id].upgrade_level
+		})
+
+	return result
+
+
 ## Get category string for an item type
 func _get_category_for_item_type(item_type: ItemData.ItemType) -> String:
 	match item_type:

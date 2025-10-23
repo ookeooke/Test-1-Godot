@@ -50,6 +50,9 @@ func _ready():
 	# Animate entrance
 	_animate_entrance()
 
+	# AI AUTO-SKIP: If AI is active, automatically take all loot and leave
+	_check_ai_auto_skip()
+
 
 func _load_heroes():
 	"""Load available heroes into dropdown"""
@@ -565,3 +568,30 @@ func _transition_out():
 	tween.tween_property(self, "scale", Vector2(0.9, 0.9), 0.2).set_ease(Tween.EASE_IN)
 	await tween.finished
 	queue_free()
+
+
+func _check_ai_auto_skip():
+	"""Check if AI is active and automatically skip loot screen"""
+	# Wait for scene to fully load
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	# Check if AIController exists in the scene tree
+	var ai_controller = get_tree().get_first_node_in_group("ai_controller")
+
+	if ai_controller:
+		print("[LootDistScreen] AI detected - auto-skipping loot screen...")
+
+		# Wait a brief moment so the screen is visible (for debugging)
+		await get_tree().create_timer(0.5).timeout
+
+		# Take all items automatically
+		_on_take_all_pressed()
+
+		# Wait for items to be processed
+		await get_tree().process_frame
+
+		# Leave automatically
+		_on_leave_pressed()
+
+		print("[LootDistScreen] AI auto-skip complete")

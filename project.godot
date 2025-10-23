@@ -26,13 +26,16 @@ SaveManager="*res://scripts/autoloads/save_manager.gd"
 LevelManager="*res://scripts/autoloads/level_manager.gd"
 ClickFeedback="*res://scripts/autoloads/click_feedback.gd"
 ItemDatabase="*res://scripts/autoloads/item_database.gd"
+HeroDatabase="*res://scripts/autoloads/hero_database.gd"
 InventoryManager="*res://scripts/autoloads/inventory_manager.gd"
 LootManager="*res://scripts/autoloads/loot_manager.gd"
 TestItemsLoader="*res://scripts/autoloads/test_items_loader.gd"
 BalanceTracker="*res://scripts/debug/balance_tracker.gd"
 BalanceExporter="*res://scripts/debug/balance_exporter.gd"
 BalanceAnalyzer="*res://scripts/debug/balance_analyzer.gd"
+BossDebugHUD="*res://scripts/debug/boss_debug_hud.gd"
 GameSpeedController="*res://scripts/autoloads/game_speed_controller.gd"
+EnemyManager="*res://scripts/managers/enemy_manager.gd"
 
 [debug]
 
@@ -42,8 +45,9 @@ file_logging/enable_file_logging=true
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
-window/stretch/mode="viewport"
-window/stretch/aspect="expand"
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/handheld/orientation=0
 
 [gui]
 

@@ -453,3 +453,168 @@ func get_user_preference(key: String, default_value: Variant = null) -> Variant:
 		return default_value
 
 	return current_profile["user_preferences"][key]
+
+
+# ============================================
+# HERO LOADOUT MANAGEMENT (Diablo 2 style)
+# ============================================
+
+const MAX_LOADOUT_SLOTS: int = 3  # Build A, B, C
+
+func save_hero_loadout(hero_id: String, slot: int, loadout_data: Dictionary) -> void:
+	"""Save a loadout preset for a hero (equipment + skills)"""
+	if not has_current_profile():
+		push_error("SaveManager: No profile loaded")
+		return
+
+	if slot < 0 or slot >= MAX_LOADOUT_SLOTS:
+		push_error("SaveManager: Invalid loadout slot: ", slot)
+		return
+
+	# Ensure hero_loadouts exists
+	if not current_profile.has("hero_loadouts"):
+		current_profile["hero_loadouts"] = {}
+
+	if not current_profile["hero_loadouts"].has(hero_id):
+		current_profile["hero_loadouts"][hero_id] = {}
+
+	# Add timestamp
+	loadout_data["timestamp"] = Time.get_unix_time_from_system()
+
+	# Save to slot
+	current_profile["hero_loadouts"][hero_id][str(slot)] = loadout_data.duplicate()
+
+	save_current_profile()
+	print("💾 Saved loadout '%s' for %s (slot %d)" % [loadout_data.get("loadout_name", "Build"), hero_id, slot])
+
+
+func load_hero_loadout(hero_id: String, slot: int) -> Dictionary:
+	"""Load a loadout preset for a hero"""
+	if not has_current_profile():
+		return {}
+
+	if not current_profile.has("hero_loadouts"):
+		return {}
+
+	if not current_profile["hero_loadouts"].has(hero_id):
+		return {}
+
+	var loadout_data = current_profile["hero_loadouts"][hero_id].get(str(slot), {})
+	return loadout_data.duplicate()
+
+
+func get_hero_loadouts(hero_id: String) -> Array[Dictionary]:
+	"""Get all loadout presets for a hero (returns 3 slots, some may be empty)"""
+	var loadouts: Array[Dictionary] = []
+
+	for i in MAX_LOADOUT_SLOTS:
+		var loadout = load_hero_loadout(hero_id, i)
+		loadouts.append(loadout)  # Empty dict if no loadout
+
+	return loadouts
+
+
+func delete_hero_loadout(hero_id: String, slot: int) -> void:
+	"""Delete a loadout preset"""
+	if not has_current_profile():
+		return
+
+	if current_profile.has("hero_loadouts") and \
+	   current_profile["hero_loadouts"].has(hero_id):
+		current_profile["hero_loadouts"][hero_id].erase(str(slot))
+		save_current_profile()
+		print("🗑️ Deleted loadout for %s (slot %d)" % [hero_id, slot])
+
+
+# ============================================
+# CURRENT SQUAD MANAGEMENT
+# ============================================
+
+func set_current_squad(hero_ids: Array[String]) -> void:
+	"""Set the active squad for missions (max 3 heroes)"""
+	if not has_current_profile():
+		return
+
+	# Ensure max 3 heroes
+	var squad = hero_ids.duplicate()
+	if squad.size() > 3:
+		squad.resize(3)
+
+	current_profile["current_squad"] = squad
+	save_current_profile()
+	print("👥 Squad updated: ", squad)
+
+
+func get_current_squad() -> Array[String]:
+	"""Get the active squad hero IDs"""
+	if not has_current_profile():
+		return []
+
+	return current_profile.get("current_squad", [])
+
+
+func add_hero_to_squad(hero_id: String) -> bool:
+	"""Add a hero to the current squad (max 3)"""
+	var squad = get_current_squad()
+
+	# Check if already in squad
+	if squad.has(hero_id):
+		print("⚠️ Hero already in squad: ", hero_id)
+		return false
+
+	# Check max size
+	if squad.size() >= 3:
+		print("⚠️ Squad is full (max 3 heroes)")
+		return false
+
+	squad.append(hero_id)
+	set_current_squad(squad)
+	return true
+
+
+func remove_hero_from_squad(hero_id: String) -> bool:
+	"""Remove a hero from the current squad"""
+	var squad = get_current_squad()
+
+	if not squad.has(hero_id):
+		return false
+
+	squad.erase(hero_id)
+	set_current_squad(squad)
+	return true
+
+
+# ============================================
+# HERO UNLOCK MANAGEMENT
+# ============================================
+
+func unlock_hero(hero_id: String) -> bool:
+	"""Unlock a hero (for heroes that cost gold)"""
+	if not has_current_profile():
+		return false
+
+	# Ensure unlocked_heroes exists
+	if not current_profile.has("unlocked_heroes"):
+		current_profile["unlocked_heroes"] = []
+
+	# Check if already unlocked
+	if current_profile["unlocked_heroes"].has(hero_id):
+		print("⚠️ Hero already unlocked: ", hero_id)
+		return false
+
+	# Unlock
+	current_profile["unlocked_heroes"].append(hero_id)
+	save_current_profile()
+	print("✅ Unlocked hero: ", hero_id)
+	return true
+
+
+func is_hero_unlocked(hero_id: String) -> bool:
+	"""Check if a hero is unlocked"""
+	if not has_current_profile():
+		return false
+
+	if not current_profile.has("unlocked_heroes"):
+		return false
+
+	return current_profile["unlocked_heroes"].has(hero_id)

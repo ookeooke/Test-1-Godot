@@ -16,13 +16,14 @@ var max_health = 200.0
 var current_health = 200.0
 var hero_level = 1
 
-# COMBAT STATS
-var ranged_damage = 15.0
-var melee_damage = 12.0
+# COMBAT STATS (Kingdom Rush pacing: -25% to match slower enemies)
+var ranged_damage = 14.0  # Reduced from 18 (-22%) for Kingdom Rush pacing
+var melee_damage = 6.0  # Reduced from 8 (-25%) - melee is for blocking
 var ranged_range = 300.0
 var melee_range = 100.0
-var ranged_attack_speed = 0.67
-var melee_attack_speed = 0.5
+var ranged_attack_speed = 0.6  # 23.3 DPS ranged
+var melee_attack_speed = 0.8  # 7.5 DPS melee
+var combat_distance = 50.0  # How close to get before attacking (visual improvement)
 
 # MOVEMENT
 var movement_speed = 150.0
@@ -31,7 +32,7 @@ var home_position = Vector2.ZERO
 var target_position = Vector2.ZERO
 
 # ENEMY MANAGEMENT
-var max_melee_enemies = 1  # Kingdom Rush style: Block only 1 enemy at a time
+var max_melee_enemies = 2  # HEROES ARE STRONGER: Block 2 enemies at once (soldiers = 1)
 var enemies_in_melee_range = []
 var enemies_in_ranged_range = []
 var current_ranged_target = null
@@ -154,8 +155,8 @@ func _apply_equipment_bonuses():
 
 	# Reset to base stats first (to avoid stacking)
 	var base_max_health = 200.0
-	var base_ranged_damage = 15.0
-	var base_ranged_attack_speed = 0.67
+	var base_ranged_damage = 14.0  # Updated for Kingdom Rush pacing
+	var base_ranged_attack_speed = 0.6  # Updated to match new base
 
 	# Apply equipment bonuses
 	max_health = base_max_health + equipment_manager.get_health_bonus()
@@ -261,7 +262,7 @@ func _execute_multishot():
 
 		# Apply skill damage multiplier
 		var damage = ranged_damage * damage_multiplier
-		arrow.setup(target, damage)
+		arrow.setup(target, damage, self)  # Pass self as source for balance tracking
 
 	print("🏹🏹🏹 MULTISHOT: Fired ", targets.size(), " arrows!")
 
@@ -411,10 +412,26 @@ func handle_melee_combat_state():
 			if enemy.has_method("unblock") and enemy.is_blocked and enemy.blocking_hero == self:
 				enemy.unblock()
 
-	# Block only the target enemy
+	# Block target enemies (hero can block up to 2)
 	var closest = current_melee_targets[0]
 	if is_instance_valid(closest):
-		look_at(closest.global_position)
+		# COMBAT POSITIONING: Move to combat distance before attacking
+		var distance_to_enemy = global_position.distance_to(closest.global_position)
+		if distance_to_enemy > combat_distance:
+			# Move closer
+			var direction = (closest.global_position - global_position).normalized()
+			velocity = direction * movement_speed
+			move_and_slide()
+		else:
+			# In position - stop moving
+			velocity = Vector2.ZERO
+
+		# Look at center point between targets if fighting 2
+		if current_melee_targets.size() > 1:
+			var center = (current_melee_targets[0].global_position + current_melee_targets[1].global_position) / 2
+			look_at(center)
+		else:
+			look_at(closest.global_position)
 
 		for enemy in current_melee_targets:
 			if enemy.has_method("set_blocked_by_hero"):
@@ -459,11 +476,13 @@ func enter_melee_combat():
 	velocity = Vector2.ZERO
 	ranged_timer.stop()
 	melee_timer.start()
+	_set_combat_state_visual(true)
 
 func enter_returning_state():
 	current_state = State.RETURNING
 	ranged_timer.stop()
 	melee_timer.stop()
+	_set_combat_state_visual(false)
 
 func enter_walking_state(destination: Vector2):
 	current_state = State.WALKING
@@ -576,6 +595,9 @@ func melee_attack():
 	if current_melee_targets.is_empty():
 		return
 
+	# ATTACK FLASH: Visual feedback when attacking
+	_play_attack_flash()
+
 	for enemy in current_melee_targets:
 		if is_instance_valid(enemy) and enemy.has_method("take_damage"):
 			# Track melee damage
@@ -584,6 +606,17 @@ func melee_attack():
 
 			# Deal damage (pass source for kill tracking)
 			enemy.take_damage(melee_damage, self, "hero_melee")
+
+func _play_attack_flash():
+	"""Visual feedback for attack - flash white"""
+	if sprite:
+		var original_modulate = sprite.modulate
+		sprite.modulate = Color(1.5, 1.5, 1.5)  # Flash bright white
+
+		# Reset after 0.1 seconds
+		await get_tree().create_timer(0.1).timeout
+		if is_instance_valid(sprite):
+			sprite.modulate = original_modulate
 
 # ============================================
 # HEALTH & DEATH
@@ -655,6 +688,16 @@ func set_home_position(pos: Vector2):
 
 func move_to_position(pos: Vector2):
 	enter_walking_state(pos)
+
+func _set_combat_state_visual(in_combat: bool):
+	"""Visual indicator when hero is in melee combat"""
+	if sprite and not is_selected:  # Don't override selection color
+		if in_combat:
+			# Reddish tint = in combat
+			sprite.modulate = Color(1.2, 0.8, 0.8)
+		else:
+			# Normal color
+			sprite.modulate = Color(1, 1, 1)
 
 # ============================================
 # CLEANUP

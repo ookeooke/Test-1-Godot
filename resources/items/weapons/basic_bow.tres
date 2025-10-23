@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_basic_bow"]
+
+[resource]
+script = ExtResource("1_basic_bow")
+item_id = "basic_bow"
+item_name = "Basic Bow"
+description = "A simple wooden bow. Good for beginners."
+emoji = "🏹"
+item_type = 0
+rarity = 0
+equip_slot = 1
+max_stack = 1
+sell_value = 20
+damage_bonus = 5
+attack_speed_multiplier = 1.1
+health_bonus = 0
+defense_bonus = 0
+range_bonus = 50
+crit_chance_bonus = 0.0
+special_effects = []
+heal_amount = 0
+buff_duration = 0.0
+buff_type = ""
+can_upgrade = true
+max_upgrade_level = 10
+upgrade_costs = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600]
+stat_increase_per_level = 0.1
+flavor_text = "Every ranger's first bow."

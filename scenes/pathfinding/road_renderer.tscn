@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3 uid="uid://road_renderer_001"]
+
+[ext_resource type="Script" path="res://scripts/pathfinding/road_renderer.gd" id="1_renderer"]
+
+[node name="RoadRenderer" type="Node2D" groups=["road_renderer"]]
+z_index = -10
+script = ExtResource("1_renderer")
+road_color = Color(0.3, 0.25, 0.2, 1)
+road_border_color = Color(0.2, 0.15, 0.1, 1)
+visible_in_game = true
+auto_update_in_editor = true
+segments_per_connection = 20
+draw_border = true
+border_width = 4.0
+draw_grid_lines = false

@@ -63,6 +63,14 @@ var spawn_time: float = 0.0
 var last_damage_source = null
 var last_damage_source_type = "unknown"
 
+# WAYPOINT NAVIGATION SYSTEM (new)
+var use_waypoint_navigation: bool = false  # Set by wave_manager when spawning
+var current_waypoint: PathWaypoint = null
+var target_position: Vector2 = Vector2.ZERO
+var waypoint_reached_distance: float = 30.0
+var lateral_wander: Vector2 = Vector2.ZERO  # Random drift within road
+var wander_timer: float = 0.0
+
 # ============================================
 # REFERENCES
 # ============================================
@@ -109,6 +117,10 @@ func _ready():
 	if BalanceTracker:
 		var enemy_type = get_enemy_name().to_lower().replace(" ", "_")
 		BalanceTracker.record_enemy_spawned(enemy_type)
+
+	# Register with EnemyManager for centralized tracking
+	if EnemyManager:
+		EnemyManager.register_enemy(self)
 
 # ============================================
 # HIT POINT MARKER SYSTEM
@@ -170,24 +182,80 @@ func set_debug_targeted(is_targeted: bool):
 # ============================================
 
 func _physics_process(delta):
+	# Handle blocking state first (same for both systems)
 	if is_blocked and blocking_hero and is_instance_valid(blocking_hero):
 		# I am the blocked enemy - check if hero is still close
 		var distance = global_position.distance_to(blocking_hero.global_position)
 		if distance > melee_detection_range:
 			# Hero walked away - resume movement
 			unblock()
-			if path_follower:
-				path_follower.progress += speed * delta
-				if path_follower.progress_ratio >= 1.0:
-					reached_end()
+			_continue_movement(delta)
 		else:
 			# Hero still close - I'm blocked, so fight!
 			handle_hero_combat(delta)
 	else:
-		# I am NOT blocked - just walk the path normally (ignore hero)
-		if path_follower:
-			path_follower.progress += speed * delta
-			if path_follower.progress_ratio >= 1.0:
+		# I am NOT blocked - move normally
+		_continue_movement(delta)
+
+func _continue_movement(delta):
+	"""Handle movement based on current navigation system"""
+	if use_waypoint_navigation:
+		_waypoint_movement(delta)
+	else:
+		_path2d_movement(delta)
+
+func _path2d_movement(delta):
+	"""Original Path2D movement system"""
+	if path_follower:
+		path_follower.progress += speed * delta
+		# CRITICAL: Manual position sync to fix collision detection
+		# This ensures collision shape position matches visual position
+		# Fixes Godot engine bug with PathFollow2D physics desync
+		global_position = path_follower.global_position
+		if path_follower.progress_ratio >= 1.0:
+			reached_end()
+
+func _waypoint_movement(delta):
+	"""New waypoint navigation system with natural spread"""
+	if not current_waypoint:
+		print("ERROR: Enemy using waypoint navigation but no current waypoint!")
+		return
+
+	# Update wander timer for natural side-to-side movement
+	wander_timer -= delta
+	if wander_timer <= 0:
+		wander_timer = randf_range(1.0, 3.0)
+		# Create new random drift within road bounds
+		lateral_wander = Vector2(
+			randf_range(-20, 20),
+			randf_range(-20, 20)
+		)
+
+	# Calculate direction to target
+	var to_target = target_position - global_position
+	var distance_to_target = to_target.length()
+
+	# Gradually blend in the lateral wander
+	var direction = to_target.normalized()
+	var wander_influence = clamp(distance_to_target / 100.0, 0.0, 1.0)
+	direction = (direction + lateral_wander.normalized() * wander_influence * 0.3).normalized()
+
+	# Move toward target with wander
+	velocity = direction * speed
+	move_and_slide()
+
+	# Check if reached waypoint
+	if distance_to_target < waypoint_reached_distance:
+		# Move to next waypoint
+		if current_waypoint.next_waypoints.is_empty():
+			reached_end()
+		else:
+			# Pick next waypoint (random if multiple branches)
+			current_waypoint = current_waypoint.get_next_waypoint()
+			if current_waypoint:
+				target_position = current_waypoint.get_random_position_in_road()
+				print(get_enemy_name(), " moving to next waypoint: ", current_waypoint.name)
+			else:
 				reached_end()
 
 # ============================================
@@ -213,14 +281,19 @@ func set_blocked_by_hero(hero):
 	if not can_be_blocked:
 		return
 
-	is_blocked = true
-	blocking_hero = hero
-	attack_timer = 0.0
+	# Only set as THE blocker if not already blocked
+	# This allows multiple units to attack, but only one is the "official" blocker
+	if not is_blocked:
+		is_blocked = true
+		blocking_hero = hero
+		attack_timer = 0.0
+		_set_combat_state_visual(true)
 
 func unblock():
 	"""Called when hero dies or moves away"""
 	is_blocked = false
 	blocking_hero = null
+	_set_combat_state_visual(false)
 
 # ============================================
 # HEALTH & DEATH
@@ -238,10 +311,20 @@ func take_damage(amount: float, damage_source = null, damage_source_type = "unkn
 	# Update health bar
 	_update_health_bar()
 
+	# VISUAL FEEDBACK 1: Hit flash (white flash on hit)
+	_play_hit_flash()
+
+	# VISUAL FEEDBACK 2: Floating damage number
+	_spawn_damage_number(amount)
+
 	# Play hit animation and particles
 	_play_animation("hit")
 	if hit_particles:
 		hit_particles.restart()
+
+	# IMPACT PARTICLES: Spawn hit particles for melee combat
+	if damage_source_type in ["soldier_melee", "hero_melee"]:
+		_spawn_impact_particles(damage_source)
 
 	if current_health <= 0:
 		die()
@@ -265,6 +348,12 @@ func die():
 
 	# Award gold
 	GameManager.add_gold(gold_reward)
+
+	# Spawn gold coin visual effect
+	_spawn_gold_coin_effect()
+
+	# Play death animation before destroying
+	await _play_death_animation()
 
 	# Camera shake based on enemy type (direct call - no wrapper)
 	var camera = get_viewport().get_camera_2d()
@@ -309,6 +398,19 @@ func set_path_follower(follower: PathFollow2D):
 	"""Set the path follower for this enemy"""
 	path_follower = follower
 
+func set_waypoint_navigation(start_waypoint: PathWaypoint):
+	"""Initialize waypoint navigation system (new way)"""
+	use_waypoint_navigation = true
+	current_waypoint = start_waypoint
+
+	if current_waypoint:
+		# Set initial target to random position within first waypoint's road width
+		target_position = current_waypoint.get_random_position_in_road()
+		global_position = target_position  # Start at first waypoint
+		print(get_enemy_name(), " starting waypoint navigation at: ", current_waypoint.name)
+	else:
+		print("ERROR: No start waypoint provided!")
+
 # ============================================
 # HELPER METHODS
 # ============================================
@@ -317,10 +419,297 @@ func get_enemy_name() -> String:
 	"""Override this in child classes to return enemy name"""
 	return "Enemy"
 
+func is_dead() -> bool:
+	"""Check if this enemy is dead (used by tower targeting logic)"""
+	return current_health <= 0.0
+
 func _play_animation(anim_name: String):
 	"""Play animation if AnimationPlayer exists"""
 	if anim_player and anim_player.has_animation(anim_name):
 		anim_player.play(anim_name)
+
+func _spawn_impact_particles(damage_source):
+	"""Create impact particles for melee hits - subtle blood splatter"""
+	var particles = CPUParticles2D.new()
+	add_child(particles)
+
+	# Calculate direction away from attacker
+	var direction = Vector2.RIGHT
+	if damage_source and is_instance_valid(damage_source):
+		direction = (global_position - damage_source.global_position).normalized()
+
+	# Particle settings - fewer, smaller particles
+	particles.emitting = true
+	particles.one_shot = true
+	particles.amount = 5
+	particles.lifetime = 0.3
+	particles.explosiveness = 0.8
+	particles.randomness = 0.4
+
+	# Emission shape - small cone pointing away from attacker
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 3.0
+	particles.direction = direction
+	particles.spread = 35.0
+
+	# Movement - slower, more natural
+	particles.initial_velocity_min = 30.0
+	particles.initial_velocity_max = 60.0
+	particles.gravity = Vector2(0, 250)
+	particles.damping_min = 5.0
+	particles.damping_max = 10.0
+
+	# Visuals - smaller, darker red
+	particles.scale_amount_min = 0.8
+	particles.scale_amount_max = 1.5
+	particles.color = Color(0.6, 0.1, 0.1, 0.9)  # Dark blood color
+
+	# Fade out naturally
+	var gradient = Gradient.new()
+	gradient.add_point(0.0, Color(0.7, 0.15, 0.15, 1.0))
+	gradient.add_point(0.7, Color(0.5, 0.1, 0.1, 0.6))
+	gradient.add_point(1.0, Color(0.3, 0.05, 0.05, 0.0))
+	particles.color_ramp = gradient
+
+	# Auto-cleanup
+	await get_tree().create_timer(particles.lifetime + 0.1).timeout
+	if is_instance_valid(particles):
+		particles.queue_free()
+
+func _play_hit_flash():
+	"""Flash enemy white briefly when hit - instant visual feedback"""
+	# Quick white flash to show damage
+	var original_modulate = modulate
+	modulate = Color(2.0, 2.0, 2.0, 1.0)  # Bright white flash
+
+	# Return to normal color after 0.1 seconds
+	await get_tree().create_timer(0.1).timeout
+	if is_instance_valid(self):
+		modulate = original_modulate
+
+func _spawn_damage_number(damage: float):
+	"""Spawn floating damage number above enemy - satisfying feedback"""
+	# Create label for damage number
+	var damage_label = Label.new()
+	get_parent().add_child(damage_label)
+
+	# Position above enemy
+	damage_label.global_position = global_position + Vector2(randf_range(-10, 10), -30)
+
+	# Format damage number (round to integer for cleaner display)
+	var damage_int = int(round(damage))
+	damage_label.text = str(damage_int)
+
+	# Styling - small, bold, colored
+	damage_label.add_theme_font_size_override("font_size", 14)
+	damage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	damage_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	damage_label.z_index = 100  # Above everything
+
+	# Color based on damage amount (visual feedback for damage size)
+	if damage >= 20:
+		damage_label.modulate = Color(1.0, 0.3, 0.3)  # Red for high damage
+	elif damage >= 10:
+		damage_label.modulate = Color(1.0, 0.7, 0.2)  # Orange for medium damage
+	else:
+		damage_label.modulate = Color(1.0, 1.0, 0.5)  # Yellow for low damage
+
+	# Animate: float upward and fade out
+	var tween = create_tween()
+	tween.set_parallel(true)
+
+	# Float upward
+	tween.tween_property(damage_label, "global_position:y", damage_label.global_position.y - 50, 0.8).set_ease(Tween.EASE_OUT)
+
+	# Fade out
+	tween.tween_property(damage_label, "modulate:a", 0.0, 0.8).set_ease(Tween.EASE_IN)
+
+	# Scale up slightly then down (pop effect)
+	tween.tween_property(damage_label, "scale", Vector2(1.3, 1.3), 0.2).set_ease(Tween.EASE_OUT)
+	tween.tween_property(damage_label, "scale", Vector2(0.8, 0.8), 0.6).set_ease(Tween.EASE_IN).set_delay(0.2)
+
+	# Cleanup after animation
+	await tween.finished
+	if is_instance_valid(damage_label):
+		damage_label.queue_free()
+
+func _spawn_death_particles():
+	"""Create subtle death particles when enemy dies"""
+	# Create particle system
+	var particles = CPUParticles2D.new()
+	get_parent().add_child(particles)
+	particles.global_position = global_position
+
+	# Particle burst settings - fewer, more natural
+	particles.emitting = true
+	particles.one_shot = true
+	particles.amount = 12
+	particles.lifetime = 0.5
+	particles.explosiveness = 0.9
+	particles.randomness = 0.6
+
+	# Emission shape - small circle burst
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 8.0
+
+	# Movement - moderate explosion
+	particles.direction = Vector2.ZERO
+	particles.spread = 180.0
+	particles.initial_velocity_min = 50.0
+	particles.initial_velocity_max = 100.0
+	particles.gravity = Vector2(0, 200)
+	particles.damping_min = 3.0
+	particles.damping_max = 8.0
+
+	# Rotation - less extreme
+	particles.angular_velocity_min = -120.0
+	particles.angular_velocity_max = 120.0
+
+	# Visuals - smaller, darker particles
+	particles.scale_amount_min = 1.0
+	particles.scale_amount_max = 2.5
+	particles.color = Color(0.8, 0.3, 0.15, 1)
+
+	# Natural fade out gradient
+	var gradient = Gradient.new()
+	gradient.add_point(0.0, Color(0.9, 0.4, 0.2, 1.0))
+	gradient.add_point(0.4, Color(0.7, 0.25, 0.1, 0.7))
+	gradient.add_point(1.0, Color(0.4, 0.15, 0.05, 0.0))
+	particles.color_ramp = gradient
+
+	# Auto-cleanup
+	await get_tree().create_timer(particles.lifetime + 0.1).timeout
+	if is_instance_valid(particles):
+		particles.queue_free()
+
+func _spawn_gold_coin_effect():
+	"""Spawn subtle gold coin particles toward UI - rewarding but not distracting"""
+	# Only spawn if we actually give gold
+	if gold_reward <= 0:
+		return
+
+	# Find the gold label in UI
+	var gold_label = get_tree().get_first_node_in_group("gold_label")
+	if not gold_label:
+		return  # No UI target, skip effect
+
+	# Create small particle burst
+	var particles = CPUParticles2D.new()
+	get_parent().add_child(particles)
+	particles.global_position = global_position
+
+	# Subtle gold particles
+	particles.emitting = true
+	particles.one_shot = true
+	particles.amount = 3  # Very few particles - subtle
+	particles.lifetime = 0.4  # Quick animation
+	particles.explosiveness = 1.0
+	particles.randomness = 0.3
+
+	# Small upward arc
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 5.0
+	particles.direction = Vector2(0, -1)  # Upward
+	particles.spread = 30.0
+
+	# Movement - gentle upward float
+	particles.initial_velocity_min = 40.0
+	particles.initial_velocity_max = 70.0
+	particles.gravity = Vector2(0, -50)  # Float up
+	particles.damping_min = 3.0
+	particles.damping_max = 5.0
+
+	# Visuals - dark gold color (subtle)
+	particles.scale_amount_min = 1.5
+	particles.scale_amount_max = 2.5
+	particles.color = Color(0.7, 0.6, 0.2, 0.9)  # Dark gold
+
+	# Fade out gracefully
+	var gradient = Gradient.new()
+	gradient.add_point(0.0, Color(0.8, 0.65, 0.25, 1.0))
+	gradient.add_point(0.5, Color(0.7, 0.55, 0.2, 0.7))
+	gradient.add_point(1.0, Color(0.5, 0.4, 0.15, 0.0))
+	particles.color_ramp = gradient
+
+	# Auto-cleanup
+	await get_tree().create_timer(particles.lifetime + 0.1).timeout
+	if is_instance_valid(particles):
+		particles.queue_free()
+
+func _play_death_animation():
+	"""Play death animation with corpse lingering - fast-paced like Kingdom Rush"""
+	const DEATH_DURATION = 0.25  # Initial death animation
+	const CORPSE_LINGER_TIME = 0.6  # How long corpse stays visible (fast-paced)
+	const FADE_OUT_TIME = 0.4  # Final fade out duration
+
+	# Spawn particles first
+	_spawn_death_particles()
+
+	# Hide health bar immediately
+	if health_bar:
+		health_bar.visible = false
+
+	# Stop movement - FREEZE in place
+	set_physics_process(false)
+	velocity = Vector2.ZERO  # Stop any momentum
+
+	# CRITICAL: Disable collisions so corpse is PURELY VISUAL
+	# Arrows and other attacks pass through the corpse
+	collision_layer = 0  # Remove from all collision layers
+	collision_mask = 0   # Don't detect any collisions
+
+	# Disable all Area2D children (detection zones) so towers don't target corpses
+	for child in get_children():
+		if child is Area2D:
+			child.monitoring = false
+			child.monitorable = false
+
+	# Phase 1: Initial death animation (shrink slightly + darken)
+	var tween1 = create_tween()
+	tween1.set_parallel(true)
+
+	# Shrink to 70% size (not disappear completely)
+	tween1.tween_property(self, "scale", scale * 0.7, DEATH_DURATION).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+
+	# Darken slightly (not fully transparent)
+	tween1.tween_property(self, "modulate", Color(0.6, 0.5, 0.5, 0.8), DEATH_DURATION).set_ease(Tween.EASE_OUT)
+
+	# Small rotation
+	tween1.tween_property(self, "rotation", rotation + PI * 0.5, DEATH_DURATION).set_ease(Tween.EASE_OUT)
+
+	await tween1.finished
+
+	# Phase 2: Corpse lingers (stays visible for player satisfaction)
+	await get_tree().create_timer(CORPSE_LINGER_TIME).timeout
+
+	# Phase 3: Final fade out (slow disappearance)
+	var tween2 = create_tween()
+	tween2.set_parallel(true)
+
+	# Shrink to nothing
+	tween2.tween_property(self, "scale", Vector2.ZERO, FADE_OUT_TIME).set_ease(Tween.EASE_IN)
+
+	# Fade to transparent
+	tween2.tween_property(self, "modulate:a", 0.0, FADE_OUT_TIME).set_ease(Tween.EASE_IN)
+
+	await tween2.finished
+
+func _set_combat_state_visual(in_combat: bool):
+	"""Visual indicator when enemy is in melee combat"""
+	# Find Sprite2D or AnimatedSprite2D child
+	var sprite_node = null
+	for child in get_children():
+		if child is Sprite2D or child is AnimatedSprite2D:
+			sprite_node = child
+			break
+
+	if sprite_node:
+		if in_combat:
+			# Reddish tint = in combat
+			sprite_node.modulate = Color(1.2, 0.8, 0.8)
+		else:
+			# Normal color
+			sprite_node.modulate = Color(1, 1, 1)
 
 # ============================================
 # CLEANUP
