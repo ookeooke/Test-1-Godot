@@ -43,19 +43,19 @@ func _ready():
 	update_button_states()
 
 	# Connect to gold changes
-	GameManager.gold_changed.connect(_on_gold_changed)
+	GameStateManager.gold_changed.connect(_on_gold_changed)
 
 func _on_gold_changed(_new_amount):
 	update_button_states()
 
 func update_button_states():
 	# Enable/disable buttons based on gold
-	archer_button.disabled = GameManager.gold < archer_cost
-	mage_button.disabled = GameManager.gold < barracks_cost
+	archer_button.disabled = GameStateManager.gold < archer_cost
+	mage_button.disabled = GameStateManager.gold < barracks_cost
 
 func _on_archer_button_pressed():
 	print("🏹 Archer button pressed!")
-	if GameManager.spend_gold(archer_cost):
+	if GameStateManager.spend_gold(archer_cost):
 		print("  ✓ Gold spent, emitting tower_selected signal")
 		tower_selected.emit(archer_tower_scene)
 	else:
@@ -63,7 +63,7 @@ func _on_archer_button_pressed():
 
 func _on_mage_button_pressed():
 	print("🏰 Barracks button pressed!")
-	if GameManager.spend_gold(barracks_cost):
+	if GameStateManager.spend_gold(barracks_cost):
 		print("  ✓ Gold spent, placing barracks tower")
 		tower_selected.emit(barracks_tower_scene)
 	else:

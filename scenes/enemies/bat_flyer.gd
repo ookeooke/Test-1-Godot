@@ -9,7 +9,7 @@ func _init():
 	max_health = 120.0
 	melee_damage = 0.0  # Bats don't attack heroes
 	attack_cooldown = 1.0
-	gold_reward = 10  # Reduced from 12 (tight economy)
+	gold_reward = 12  # Increased from 10 (+20% gold rewards)
 	life_damage = 1
 	can_be_blocked = false  # FLYING - can't be blocked!
 	melee_detection_range = 100.0

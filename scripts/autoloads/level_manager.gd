@@ -158,8 +158,10 @@ func complete_level(stars: int) -> void:
 		1: bonus_gold = current_level.one_star_gold_bonus
 
 	if bonus_gold > 0:
-		GameManager.add_gold(bonus_gold)
-		print("LevelManager: Bonus gold awarded: ", bonus_gold)
+		# TODO: This should add gems (persistent currency), not mission gold!
+		# For now, commenting out until gem system is implemented
+		# GameStateManager.add_gold(bonus_gold)
+		print("LevelManager: Bonus gold reward (TEMP DISABLED - will be gems): ", bonus_gold)
 
 	# Emit completion signal
 	level_completed.emit(current_level.level_id, stars)

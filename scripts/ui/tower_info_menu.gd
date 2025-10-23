@@ -91,9 +91,8 @@ func _ready():
 	if weak_button:
 		weak_button.add_theme_font_size_override("font_size", 8)
 
-	# Load enemy list visibility preference
-	if GameManager.has_method("get_enemy_list_preference"):
-		enemy_list_visible = GameManager.get_enemy_list_preference()
+	# Load enemy list visibility preference (removed - was GameManager feature)
+	enemy_list_visible = false  # Default to hidden
 
 	# Apply initial visibility state
 	_update_enemy_list_visibility()
@@ -101,7 +100,7 @@ func _ready():
 	update_display()
 
 	# Connect to gold changes
-	GameManager.gold_changed.connect(_on_gold_changed)
+	GameStateManager.gold_changed.connect(_on_gold_changed)
 
 	# Create update timer for enemy list
 	update_timer = Timer.new()
@@ -246,9 +245,9 @@ func _on_gold_changed(_new_amount):
 
 func update_button_states():
 	if upgrade_button:
-		var can_afford = GameManager.gold >= upgrade_cost
+		var can_afford = GameStateManager.gold >= upgrade_cost
 		upgrade_button.disabled = not can_afford
-		print("💰 [TowerInfoMenu] Button state - Gold: %d, Cost: %d, Enabled: %s" % [GameManager.gold, upgrade_cost, str(can_afford)])
+		print("💰 [TowerInfoMenu] Button state - Gold: %d, Cost: %d, Enabled: %s" % [GameStateManager.gold, upgrade_cost, str(can_afford)])
 	else:
 		print("❌ [TowerInfoMenu] Cannot update button state - upgrade_button is NULL!")
 
@@ -363,9 +362,9 @@ func _confirm_upgrade():
 
 	print("🔧 [TowerInfoMenu] Confirming upgrade")
 	print("🔧 [TowerInfoMenu] Upgrade cost: %d gold" % upgrade_cost)
-	print("🔧 [TowerInfoMenu] Current gold: %d gold" % GameManager.gold)
+	print("🔧 [TowerInfoMenu] Current gold: %d gold" % GameStateManager.gold)
 
-	if GameManager.spend_gold(upgrade_cost):
+	if GameStateManager.spend_gold(upgrade_cost):
 		print("✅ [TowerInfoMenu] Gold spent successfully!")
 		print("🔧 [TowerInfoMenu] Emitting upgrade_selected signal...")
 
@@ -396,7 +395,7 @@ func _confirm_upgrade():
 		print("=== ✅ UPGRADE COMPLETE ===\n")
 	else:
 		print("❌ [TowerInfoMenu] Not enough gold for upgrade!")
-		print("   Need: %d, Have: %d" % [upgrade_cost, GameManager.gold])
+		print("   Need: %d, Have: %d" % [upgrade_cost, GameStateManager.gold])
 		print("=== ❌ UPGRADE FAILED ===\n")
 
 func _cancel_preview():
@@ -414,7 +413,7 @@ func _cancel_preview():
 func _on_sell_button_pressed():
 	# Calculate 70% of build cost dynamically
 	var sell_value = _calculate_sell_value()
-	GameManager.add_gold(sell_value)
+	GameStateManager.add_gold(sell_value)
 	print("Tower sold for ", sell_value, " gold")
 	sell_selected.emit(tower)
 	queue_free()
@@ -655,10 +654,7 @@ func _on_enemy_list_toggle_pressed():
 	enemy_list_visible = not enemy_list_visible
 	_update_enemy_list_visibility()
 
-	# Save preference
-	if GameManager.has_method("set_enemy_list_preference"):
-		GameManager.set_enemy_list_preference(enemy_list_visible)
-
+	# Note: Enemy list preference removed (was GameManager feature)
 	print("[TowerInfoMenu] Enemy list toggled: %s" % ("visible" if enemy_list_visible else "hidden"))
 
 func _update_enemy_list_visibility():

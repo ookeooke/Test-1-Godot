@@ -92,9 +92,9 @@ func _create_ui_structure():
 	top_bar_hbox.add_child(spacer)
 
 	gold_label = Label.new()
-	gold_label.text = "💰 0"
+	gold_label.text = "💎 0"  # Gems (persistent currency)
 	gold_label.add_theme_font_size_override("font_size", 28)
-	gold_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
+	gold_label.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))  # Blue for gems
 	top_bar_hbox.add_child(gold_label)
 
 	close_button = Button.new()
@@ -220,9 +220,9 @@ func show_screen():
 	if canvas_layer:
 		canvas_layer.visible = true
 
-	# Update gold display
+	# Update gems display (persistent currency)
 	if gold_label:
-		gold_label.text = "💰 %d" % SaveManager.get_currency()
+		gold_label.text = "💎 %d" % SaveManager.get_gems()
 
 	# DEBUG: Add test items to inventory if empty (first time opening Arsenal)
 	if InventoryManager.get_unique_item_count() == 0:

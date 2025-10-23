@@ -17,8 +17,8 @@ var current_health = 200.0
 var hero_level = 1
 
 # COMBAT STATS (Kingdom Rush pacing: -25% to match slower enemies)
-var ranged_damage = 14.0  # Reduced from 18 (-22%) for Kingdom Rush pacing
-var melee_damage = 6.0  # Reduced from 8 (-25%) - melee is for blocking
+var ranged_damage = 10.0  # Reduced from 14 (-29%) for balanced difficulty
+var melee_damage = 5.0  # Reduced from 6 (-17%) - melee is for blocking
 var ranged_range = 300.0
 var melee_range = 100.0
 var ranged_attack_speed = 0.6  # 23.3 DPS ranged
@@ -155,7 +155,7 @@ func _apply_equipment_bonuses():
 
 	# Reset to base stats first (to avoid stacking)
 	var base_max_health = 200.0
-	var base_ranged_damage = 14.0  # Updated for Kingdom Rush pacing
+	var base_ranged_damage = 10.0  # Updated for balanced difficulty
 	var base_ranged_attack_speed = 0.6  # Updated to match new base
 
 	# Apply equipment bonuses
@@ -312,6 +312,7 @@ func get_hero_id() -> String:
 # ============================================
 
 func _on_area_input_event(_viewport, event, _shape_idx):
+	# Handle mouse input
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_on_clicked()
@@ -319,6 +320,10 @@ func _on_area_input_event(_viewport, event, _shape_idx):
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			_on_right_clicked()
 			get_viewport().set_input_as_handled()
+	# Handle touch input
+	elif event is InputEventScreenTouch and event.pressed:
+		_on_clicked()
+		get_viewport().set_input_as_handled()
 
 func _on_clicked() -> void:
 	"""Called when this hero is clicked"""

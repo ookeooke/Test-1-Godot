@@ -46,6 +46,10 @@ signal enemy_died
 ## This is where arrows/projectiles will aim (relative to enemy origin)
 @export var hit_point_offset: Vector2 = Vector2.ZERO
 
+## Armor percentage (0.0-1.0) - reduces incoming damage
+## Example: 0.3 = 30% damage reduction
+@export_range(0.0, 1.0, 0.05) var armor: float = 0.0
+
 # ============================================
 # RUNTIME VARIABLES
 # ============================================
@@ -300,8 +304,10 @@ func unblock():
 # ============================================
 
 func take_damage(amount: float, damage_source = null, damage_source_type = "unknown"):
-	"""Apply damage to this enemy"""
-	current_health -= amount
+	"""Apply damage to this enemy (reduced by armor)"""
+	# Apply armor reduction
+	var actual_damage = amount * (1.0 - armor)
+	current_health -= actual_damage
 
 	# Track last damage source for kill attribution
 	if damage_source:
@@ -314,8 +320,8 @@ func take_damage(amount: float, damage_source = null, damage_source_type = "unkn
 	# VISUAL FEEDBACK 1: Hit flash (white flash on hit)
 	_play_hit_flash()
 
-	# VISUAL FEEDBACK 2: Floating damage number
-	_spawn_damage_number(amount)
+	# VISUAL FEEDBACK 2: Floating damage number (show actual damage after armor)
+	_spawn_damage_number(actual_damage)
 
 	# Play hit animation and particles
 	_play_animation("hit")
@@ -347,7 +353,7 @@ func die():
 			BalanceTracker.record_kill(last_damage_source, enemy_type, gold_reward, last_damage_source_type)
 
 	# Award gold
-	GameManager.add_gold(gold_reward)
+	GameStateManager.add_gold(gold_reward)
 
 	# Spawn gold coin visual effect
 	_spawn_gold_coin_effect()
@@ -390,7 +396,7 @@ func reached_end():
 		var enemy_type = get_enemy_name().to_lower().replace(" ", "_")
 		BalanceTracker.record_enemy_leaked(enemy_type, life_damage)
 
-	GameManager.lose_life(life_damage)
+	GameStateManager.lose_life(life_damage)
 	enemy_died.emit()
 	queue_free()
 

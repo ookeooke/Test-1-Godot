@@ -16,14 +16,15 @@ var boss_tracking_started: bool = false
 func _init():
 	# Set troll boss-specific stats
 	speed = 23.0  # Reduced from 30 (-25% Kingdom Rush pacing)
-	max_health = 500.0
+	max_health = 2000.0  # Increased from 500 (+300% for epic boss fights!)
 	melee_damage = 20.0
 	attack_cooldown = 1.5
-	gold_reward = 40  # Reduced from 50 (tight economy)
+	gold_reward = 50  # Increased from 40 (+25% gold rewards)
 	life_damage = 3
 	can_be_blocked = true
 	melee_detection_range = 100.0
-	death_shake = "None"
+	death_shake = "Large"  # Epic boss shake!
+	armor = 0.30  # 30% damage reduction for boss
 
 	# Hit point for arrows (upper chest of large troll)
 	hit_point_offset = Vector2(0, -15)

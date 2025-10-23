@@ -164,27 +164,32 @@ func _spawn_item_pickup(item_id: String, position: Vector2):
 
 ## Spawn gold pickup in the world
 func _spawn_gold_pickup(amount: int, position: Vector2):
-	# For now, just add directly to pending wave gold
-	# Later we can create actual gold pickup nodes
+	# Add gold directly to mission gold (temporary, lost after mission ends)
+	# This is DIFFERENT from gems (permanent currency)
+	if GameStateManager:
+		GameStateManager.add_gold(amount)
+
+	# Track for stats/logging
 	pending_wave_gold += amount
+
 	gold_spawned.emit(amount, position)
-	print("[LootManager] Spawned gold: ", amount)
+	print("[LootManager] Enemy dropped %d mission gold (temporary)" % amount)
 
 
-## Auto-collect gold at wave end (gold goes directly to currency)
-## Items stay in pending_wave_loot until victory screen (Option D)
+## REMOVED - Enemy gold now goes directly to mission_gold (not persistent gems)
+## Items stay in pending_wave_loot until victory screen
 func collect_wave_loot() -> void:
 	var items_pending: int = pending_wave_loot.size()
 	var gold_collected: int = pending_wave_gold
 
-	# Only collect gold automatically (add to currency)
-	if pending_wave_gold > 0:
-		SaveManager.add_currency(pending_wave_gold)
-		pending_wave_gold = 0
+	# NOTE: Gold is NO LONGER added to persistent gems here!
+	# Enemy gold drops are now added to GameStateManager.mission_gold immediately in _spawn_gold_pickup()
+	# This function just clears the pending_wave_gold counter
+	pending_wave_gold = 0
 
 	# Items remain in pending_wave_loot for victory screen distribution
 	if items_pending > 0 or gold_collected > 0:
-		print("[LootManager] Wave complete: %d items pending, %d gold collected" % [items_pending, gold_collected])
+		print("[LootManager] Wave complete: %d items pending, %d mission gold earned this wave" % [items_pending, gold_collected])
 
 
 ## Add item to pending wave loot (for auto-collect at wave end)

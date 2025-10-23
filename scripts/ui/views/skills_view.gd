@@ -78,7 +78,7 @@ func _load_hero_skills():
 func _refresh_display():
 	"""Update all UI elements"""
 	# Update currency
-	current_currency = SaveManager.get_currency()
+	current_currency = SaveManager.get_gems()
 	if currency_label:
 		currency_label.text = "Gold: %d" % current_currency
 
@@ -193,7 +193,7 @@ func _on_unlock_skill_pressed(skill_data: HeroSkillData):
 		return
 
 	# Deduct currency
-	SaveManager.add_currency(-cost)
+	SaveManager.add_gems(-cost)
 
 	# Unlock skill in save data
 	SaveManager.unlock_hero_skill(hero_id, skill_data.skill_id)
@@ -218,7 +218,7 @@ func _on_upgrade_skill_pressed(skill_data: HeroSkillData):
 		return
 
 	# Deduct currency
-	SaveManager.add_currency(-cost)
+	SaveManager.add_gems(-cost)
 
 	# Upgrade skill in save data
 	SaveManager.upgrade_hero_skill(hero_id, skill_data.skill_id)

@@ -173,6 +173,11 @@ func wave_completed():
 	if BalanceTracker:
 		BalanceTracker.end_wave(current_wave)
 
+	# Award wave completion bonus (20g per wave)
+	var wave_bonus = 20
+	GameStateManager.add_gold(wave_bonus)
+	print("[WaveManager] Wave completion bonus: +%dg" % wave_bonus)
+
 	# Set combat state to inactive
 	is_combat_active = false
 	combat_ended.emit()
@@ -409,6 +414,10 @@ func _show_victory_screen():
 	if LevelManager.current_level:
 		level_id = LevelManager.current_level.level_id
 
+	# Award gems based on stars earned!
+	var gems_earned = _award_star_gems(stars)
+	print("💎 [WaveManager] Earned %d gems for %d stars!" % [gems_earned, stars])
+
 	# Notify LevelManager of completion
 	if LevelManager.current_level:
 		LevelManager.complete_level(stars)
@@ -422,7 +431,7 @@ func _show_victory_screen():
 
 	if loot_count > 0:
 		print("[WaveManager] Showing loot distribution screen (%d items pending)" % loot_count)
-		await _show_loot_distribution_screen(stars)
+		await _show_loot_distribution_screen(stars, gems_earned)
 	else:
 		print("[WaveManager] No loot to distribute, skipping loot screen")
 
@@ -438,7 +447,7 @@ func _show_victory_screen():
 	print("[WaveManager] Scene change to world map initiated")
 
 
-func _show_loot_distribution_screen(stars: int):
+func _show_loot_distribution_screen(stars: int, gems_earned: int):
 	"""Show loot distribution screen and wait for user to continue"""
 	# Create canvas layer for loot screen
 	var canvas_layer = CanvasLayer.new()
@@ -448,8 +457,10 @@ func _show_loot_distribution_screen(stars: int):
 	# Instantiate loot distribution screen
 	var loot_screen = loot_distribution_scene.instantiate()
 
-	# Set stars earned (must set BEFORE adding to tree)
+	# Set stars earned and gems (must set BEFORE adding to tree)
 	loot_screen.stars_earned = stars
+	if loot_screen.has_method("set_gems_earned") or "gems_earned" in loot_screen:
+		loot_screen.gems_earned = gems_earned
 
 	# Add to scene tree
 	get_tree().root.add_child(canvas_layer)
@@ -465,7 +476,7 @@ func _calculate_stars() -> int:
 	# 3 stars: 16+ lives (80%+ health)
 	# 2 stars: 10-15 lives (50-75% health)
 	# 1 star: 1-9 lives (survived but barely)
-	var lives_left = GameManager.lives
+	var lives_left = GameStateManager.lives
 
 	if lives_left >= 16:
 		return 3
@@ -473,6 +484,34 @@ func _calculate_stars() -> int:
 		return 2
 	else:
 		return 1
+
+func _award_star_gems(stars: int) -> int:
+	"""Award gems based on stars earned (from level_config)"""
+	if not LevelManager.current_level:
+		print("[WaveManager] No level config, cannot award gems")
+		return 0
+
+	var level_config = LevelManager.current_level
+	var gems_to_award = 0
+
+	# Get gem reward based on stars from level config
+	match stars:
+		3:
+			gems_to_award = level_config.three_star_gold_bonus  # TODO: Rename to three_star_gem_reward
+		2:
+			gems_to_award = level_config.two_star_gold_bonus    # TODO: Rename to two_star_gem_reward
+		1:
+			gems_to_award = level_config.one_star_gold_bonus    # TODO: Rename to one_star_gem_reward
+		_:
+			print("[WaveManager] Invalid star count: ", stars)
+			return 0
+
+	# Award gems to player
+	if SaveManager and gems_to_award > 0:
+		SaveManager.add_gems(gems_to_award)
+		print("💎 [WaveManager] Awarded %d gems for completing with %d stars!" % [gems_to_award, stars])
+
+	return gems_to_award
 
 # ============================================
 # PER-WAVE STAT MODIFIERS

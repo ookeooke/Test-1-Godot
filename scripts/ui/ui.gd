@@ -11,9 +11,9 @@ extends CanvasLayer
 var current_speed: int = 1  # Current game speed (1, 2, 4, or 8)
 
 func _ready():
-	# Connect to GameManager signals
-	GameManager.gold_changed.connect(_on_gold_changed)
-	GameManager.lives_changed.connect(_on_lives_changed)
+	# Connect to GameStateManager signals
+	GameStateManager.gold_changed.connect(_on_gold_changed)
+	GameStateManager.lives_changed.connect(_on_lives_changed)
 
 	# Connect speed button
 	speed_button.pressed.connect(_on_speed_button_pressed)
@@ -22,8 +22,8 @@ func _ready():
 	debug_hud_button.pressed.connect(_on_debug_hud_button_pressed)
 
 	# Initialize display
-	gold_label.text = "Gold: " + str(GameManager.gold)
-	lives_label.text = "Lives: " + str(GameManager.lives)
+	gold_label.text = "Gold: " + str(GameStateManager.gold)
+	lives_label.text = "Lives: " + str(GameStateManager.lives)
 	_update_speed_display()
 	_update_debug_hud_button()
 

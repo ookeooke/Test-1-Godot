@@ -121,13 +121,13 @@ func upgrade_item(item_id: String) -> bool:
 	if upgrade_cost < 0:
 		return false
 
-	# Check if player has enough gold (integrate with SaveManager)
-	if SaveManager.get_currency() < upgrade_cost:
-		print("[InventoryManager] Not enough gold to upgrade")
+	# Check if player has enough gems (persistent currency)
+	if SaveManager.get_gems() < upgrade_cost:
+		print("[InventoryManager] Not enough gems to upgrade")
 		return false
 
 	# Deduct cost and upgrade
-	SaveManager.add_currency(-upgrade_cost)
+	SaveManager.add_gems(-upgrade_cost)
 	global_inventory[item_id].upgrade_level += 1
 
 	inventory_changed.emit()
@@ -226,13 +226,13 @@ func upgrade_inventory_slots(category: String) -> bool:
 	if !max_slots.has(category):
 		return false
 
-	# Check if player has enough gold
-	if SaveManager.get_currency() < SLOT_UPGRADE_COST:
-		print("[InventoryManager] Not enough gold to upgrade slots")
+	# Check if player has enough gems
+	if SaveManager.get_gems() < SLOT_UPGRADE_COST:
+		print("[InventoryManager] Not enough gems to upgrade slots")
 		return false
 
 	# Deduct cost and increase slots
-	SaveManager.add_currency(-SLOT_UPGRADE_COST)
+	SaveManager.add_gems(-SLOT_UPGRADE_COST)
 	max_slots[category] += SLOTS_PER_UPGRADE
 
 	inventory_changed.emit()
@@ -250,9 +250,9 @@ func sell_item(item_id: String, quantity: int = 1) -> bool:
 		return false
 
 	var sell_value = item_data.sell_value * quantity
-	SaveManager.add_currency(sell_value)
+	SaveManager.add_gems(sell_value)
 
-	print("[InventoryManager] Sold %d x %s for %d gold" % [quantity, item_data.item_name, sell_value])
+	print("[InventoryManager] Sold %d x %s for %d gems" % [quantity, item_data.item_name, sell_value])
 	return true
 
 

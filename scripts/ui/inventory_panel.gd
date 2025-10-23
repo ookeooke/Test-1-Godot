@@ -176,7 +176,7 @@ func _update_labels():
 	"""Update info labels"""
 	# Update gold label
 	if gold_label:
-		var gold = SaveManager.get_currency()
+		var gold = SaveManager.get_gems()
 		gold_label.text = "Gold: %d" % gold
 
 	# Update slots label

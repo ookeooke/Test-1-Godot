@@ -22,6 +22,7 @@ signal continue_to_victory
 # Data
 var loot_items: Array = []  # Items in Found Loot panel
 var stars_earned: int = 3
+var gems_earned: int = 0  # Gems earned from star bonus
 var selected_hero = null  # Currently selected hero
 
 # Drag state
@@ -530,13 +531,18 @@ func _update_counters():
 
 
 func _update_stars_display():
-	"""Update star rating"""
+	"""Update star rating and gems earned"""
 	if stars_label:
 		var star_text = ""
 		for i in range(3):
 			star_text += "★" if i < stars_earned else "☆"
 
-		stars_label.text = "%s (%d Stars Earned)" % [star_text, stars_earned]
+		# Show stars AND gems earned
+		if gems_earned > 0:
+			stars_label.text = "%s (%d Stars) | 💎 +%d Gems" % [star_text, stars_earned, gems_earned]
+		else:
+			stars_label.text = "%s (%d Stars)" % [star_text, stars_earned]
+
 		stars_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
 
 

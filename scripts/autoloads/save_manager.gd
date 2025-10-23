@@ -41,7 +41,7 @@ func create_new_profile(profile_name: String) -> bool:
 		"last_played": Time.get_datetime_string_from_system(),
 		"completed_levels": [],
 		"level_stars": {}, # level_id: stars_earned (1-3)
-		"currency": 1000,  # Starting gold for skill purchases
+		"gems": 1000,  # Starting gems for skill purchases / hero unlocks
 		"hero_skills": {},  # hero_id: { skill_id: level }
 		"inventory": {  # New: Inventory system data
 			"global_inventory": {},
@@ -270,43 +270,68 @@ func save_current_profile() -> bool:
 	return save_profile(current_profile)
 
 # ============================================
-# CURRENCY MANAGEMENT
+# GEMS MANAGEMENT (Persistent Meta-Currency)
 # ============================================
+# Gems are the PERMANENT currency earned from completing levels (star bonuses)
+# Used for: hero unlocks, skill upgrades, item upgrades, inventory slots
+# NOT used for: in-mission tower building (that uses temporary mission_gold)
 
-func get_currency() -> int:
-	"""Get player's current currency (gold)"""
+func get_gems() -> int:
+	"""Get player's current gems (persistent currency)"""
 	if not has_current_profile():
 		return 0
 
-	# Ensure currency field exists (for backwards compatibility)
-	if not current_profile.has("currency"):
-		current_profile["currency"] = 0
+	# Ensure gems field exists (auto-migrate from old 'currency' field)
+	if not current_profile.has("gems"):
+		# Migrate old 'currency' field if it exists
+		if current_profile.has("currency"):
+			current_profile["gems"] = current_profile["currency"]
+			current_profile.erase("currency")  # Remove old field
+			print("💎 SaveManager: Migrated 'currency' → 'gems' (%d)" % current_profile["gems"])
+		else:
+			current_profile["gems"] = 0
 
-	return current_profile["currency"]
+	return current_profile["gems"]
 
-func add_currency(amount: int) -> void:
-	"""Add or remove currency (use negative for spending)"""
+func add_gems(amount: int) -> void:
+	"""Add or remove gems (use negative for spending)"""
 	if not has_current_profile():
 		push_error("SaveManager: No profile loaded")
 		return
 
-	if not current_profile.has("currency"):
-		current_profile["currency"] = 0
+	if not current_profile.has("gems"):
+		current_profile["gems"] = 0
 
-	current_profile["currency"] += amount
-	current_profile["currency"] = maxi(current_profile["currency"], 0)  # Don't go negative
+	current_profile["gems"] += amount
+	current_profile["gems"] = maxi(current_profile["gems"], 0)  # Don't go negative
 
-	print("💰 Currency: ", current_profile["currency"], " (", "+%d" % amount if amount > 0 else str(amount), ")")
+	print("💎 Gems: ", current_profile["gems"], " (", "+%d" % amount if amount > 0 else str(amount), ")")
 
 	save_current_profile()
 
-func set_currency(amount: int) -> void:
-	"""Set currency to a specific amount"""
+func set_gems(amount: int) -> void:
+	"""Set gems to a specific amount"""
 	if not has_current_profile():
 		return
 
-	current_profile["currency"] = maxi(amount, 0)
+	current_profile["gems"] = maxi(amount, 0)
 	save_current_profile()
+
+# ============================================
+# DEPRECATED - Backward Compatibility Wrappers
+# ============================================
+
+func get_currency() -> int:
+	"""DEPRECATED: Use get_gems() instead. Kept for backward compatibility."""
+	return get_gems()
+
+func add_currency(amount: int) -> void:
+	"""DEPRECATED: Use add_gems() instead. Kept for backward compatibility."""
+	add_gems(amount)
+
+func set_currency(amount: int) -> void:
+	"""DEPRECATED: Use set_gems() instead. Kept for backward compatibility."""
+	set_gems(amount)
 
 # ============================================
 # HERO SKILLS MANAGEMENT

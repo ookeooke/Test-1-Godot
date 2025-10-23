@@ -248,7 +248,7 @@ func _update_economy_section(run_data: Dictionary):
 		return
 
 	var economy = run_data.economy
-	var current_gold = GameManager.gold if GameManager else 0
+	var current_gold = GameStateManager.gold if GameStateManager else 0
 	var total_available = economy.starting_gold + economy.total_earned
 
 	var efficiency = float(economy.total_spent) / float(total_available) if total_available > 0 else 0.0
@@ -273,7 +273,7 @@ func _update_performance_section(run_data: Dictionary):
 		return
 
 	var metrics = run_data.balance_metrics
-	var lives = GameManager.lives if GameManager else 0
+	var lives = GameStateManager.lives if GameStateManager else 0
 
 	var text = "[b]PERFORMANCE[/b]\n"
 

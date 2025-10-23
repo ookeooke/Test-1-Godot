@@ -305,10 +305,26 @@ func lose_life(amount: int = 1):
 func game_over():
 	print("[GameStateManager] GAME OVER!")
 
-	# Delegate to GameManager for actual game over handling
-	# (showing defeat screen, triggering balance tracking, etc.)
-	if GameManager:
-		GameManager.game_over()
+	# End balance tracking with defeat
+	if BalanceTracker:
+		BalanceTracker.end_run("defeat", 0)
+		# Auto-save data on defeat
+		if BalanceExporter:
+			BalanceExporter.export_current_run()
+
+	# Show defeat screen
+	_show_defeat_screen()
+
+func _show_defeat_screen():
+	"""Show the defeat screen"""
+	var defeat_screen_scene = preload("res://scenes/ui/defeat_screen.tscn")
+	var root = get_tree().root
+
+	# Instantiate defeat screen
+	var defeat_screen = defeat_screen_scene.instantiate()
+	root.add_child(defeat_screen)
+
+	print("[GameStateManager] Defeat screen shown")
 
 # ============================================
 # DEBUG & INSPECTION

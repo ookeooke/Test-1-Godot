@@ -84,6 +84,9 @@ func clear_slot():
 
 ## Update the visual display
 func update_display():
+	# ALWAYS clear old emoji labels first to prevent visual bugs
+	_clear_emoji_label()
+
 	if is_empty or item_data == null:
 		# Empty slot
 		if icon:
@@ -356,18 +359,18 @@ func _generate_tooltip() -> String:
 	# Item name with rarity color
 	var rarity_name = item_data.get_rarity_name()
 	tooltip += "%s (%s)\n" % [item_data.item_name, rarity_name]
-	tooltip += "─────────────────────\n"
+	tooltip += "───────────\n"
 
-	# Item type
-	var type_name = _get_item_type_name(item_data.item_type)
-	tooltip += "Type: %s\n" % type_name
-
-	# Equip slot (if equipment)
+	# Equip slot (if equipment) - skip item type, it's redundant
 	if _is_equipment_type(item_data.item_type):
 		var slot_name = _get_equip_slot_name(item_data.equip_slot)
 		tooltip += "Slot: %s\n" % slot_name
-
-	tooltip += "─────────────────────\n"
+		tooltip += "───────────\n"
+	else:
+		# For non-equipment, show type
+		var type_name = _get_item_type_name(item_data.item_type)
+		tooltip += "%s\n" % type_name
+		tooltip += "───────────\n"
 
 	# Stats (for equipment)
 	if _is_equipment_type(item_data.item_type):
@@ -381,19 +384,14 @@ func _generate_tooltip() -> String:
 			tooltip += "Attack Speed: %+.0f%%\n" % bonus_percent
 
 		if item_data.crit_chance_bonus > 0:
-			tooltip += "Crit Chance: +%.1f%%\n" % item_data.crit_chance_bonus
+			tooltip += "Crit Chance: +%.1f%%\n" % (item_data.crit_chance_bonus * 100)
 
 		# Add comparison if not in equipment slot and item can be equipped
 		if slot_type == "inventory":
 			tooltip += _generate_comparison()
 
-	# Description
-	if item_data.description and item_data.description != "":
-		tooltip += "─────────────────────\n"
-		tooltip += '"%s"\n' % item_data.description
-
 	# Sell value
-	tooltip += "─────────────────────\n"
+	tooltip += "───────────\n"
 	tooltip += "Sell: %d gold\n" % item_data.sell_value
 
 	return tooltip
@@ -419,15 +417,15 @@ func _generate_comparison() -> String:
 	# Get equipped item in same slot
 	var equipped_item_id = equipment_manager.get_equipped_item_by_type(item_data.equip_slot)
 	if equipped_item_id == "":
-		return "\n─────────────────────\nNo item equipped in this slot\n"
+		return "\n───────────\nNo item equipped\n"
 
 	var equipped_item = ItemDatabase.get_item(equipped_item_id)
 	if not equipped_item:
 		return ""
 
 	# Generate comparison
-	var comparison = "\n─────────────────────\n"
-	comparison += "COMPARED TO EQUIPPED:\n"
+	var comparison = "\n───────────\n"
+	comparison += "VS EQUIPPED:\n"
 
 	comparison += _compare_stat("Damage", item_data.damage_bonus, equipped_item.damage_bonus)
 	comparison += _compare_stat("Health", item_data.health_bonus, equipped_item.health_bonus)
@@ -442,7 +440,7 @@ func _generate_comparison() -> String:
 
 	# Crit chance comparison
 	if item_data.crit_chance_bonus != equipped_item.crit_chance_bonus:
-		var diff = item_data.crit_chance_bonus - equipped_item.crit_chance_bonus
+		var diff = (item_data.crit_chance_bonus - equipped_item.crit_chance_bonus) * 100
 		var color = "green" if diff > 0 else "red" if diff < 0 else "gray"
 		comparison += "[color=%s]Crit Chance: %+.1f%%[/color]\n" % [color, diff]
 
@@ -493,12 +491,16 @@ func _get_equip_slot_name(slot: ItemData.EquipSlot) -> String:
 	return "Unknown"
 
 
+func _clear_emoji_label():
+	"""Remove any existing emoji label immediately"""
+	if icon and icon.has_node("EmojiLabel"):
+		var old_label = icon.get_node("EmojiLabel")
+		icon.remove_child(old_label)
+		old_label.queue_free()
+
+
 func _show_emoji_in_icon(emoji_text: String):
 	"""Display emoji symbol in the icon slot when no texture is available"""
-	# Remove any existing emoji label first
-	if icon.has_node("EmojiLabel"):
-		icon.get_node("EmojiLabel").queue_free()
-
 	# Create label to show emoji
 	var emoji_label = Label.new()
 	emoji_label.name = "EmojiLabel"

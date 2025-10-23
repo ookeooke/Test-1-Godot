@@ -194,5 +194,21 @@ func _input(event):
 	# ESC key to pause (highest priority - runs before other UI handlers)
 	# Only trigger if game is not already paused to avoid conflicts with pause_menu
 	if event.is_action_pressed("ui_cancel") and not get_tree().paused:
-		GameManager.show_pause_menu()
+		_show_pause_menu()
 		get_viewport().set_input_as_handled()  # Consume to prevent other handlers
+
+func _show_pause_menu():
+	"""Show the pause menu"""
+	var pause_menu_scene = preload("res://scenes/ui/pause_menu.tscn")
+	var root = get_tree().root
+
+	# Check if pause menu already exists
+	if root.has_node("PauseMenu"):
+		print("[LevelController] Pause menu already open")
+		return
+
+	# Instantiate pause menu
+	var pause_menu = pause_menu_scene.instantiate()
+	root.add_child(pause_menu)
+
+	print("[LevelController] Pause menu shown")

@@ -35,7 +35,7 @@ func _ready():
 		range_button.pressed.connect(_on_range_button_pressed)
 
 	# Connect to gold changes
-	GameManager.gold_changed.connect(_on_gold_changed)
+	GameStateManager.gold_changed.connect(_on_gold_changed)
 
 	# Update button states
 	update_button_states()
@@ -52,7 +52,7 @@ func _on_gold_changed(_new_amount):
 
 func update_button_states():
 	"""Enable/disable buttons based on gold"""
-	var can_afford = GameManager.gold >= path_choice_cost
+	var can_afford = GameStateManager.gold >= path_choice_cost
 
 	if damage_button:
 		damage_button.disabled = not can_afford and not is_damage_preview
@@ -135,16 +135,16 @@ func _confirm_damage_path():
 
 	print("🔥 [PathChoiceMenu] Confirming DAMAGE path")
 	print("🔥 [PathChoiceMenu] Cost: %d gold" % path_choice_cost)
-	print("🔥 [PathChoiceMenu] Current gold: %d gold" % GameManager.gold)
+	print("🔥 [PathChoiceMenu] Current gold: %d gold" % GameStateManager.gold)
 
-	if GameManager.spend_gold(path_choice_cost):
+	if GameStateManager.spend_gold(path_choice_cost):
 		print("✅ [PathChoiceMenu] Gold spent successfully!")
 		print("🔥 [PathChoiceMenu] Emitting damage_path_selected signal...")
 		damage_path_selected.emit(tower)
 		print("=== ✅ DAMAGE PATH CHOSEN ===\n")
 	else:
 		print("❌ [PathChoiceMenu] Not enough gold!")
-		print("   Need: %d, Have: %d" % [path_choice_cost, GameManager.gold])
+		print("   Need: %d, Have: %d" % [path_choice_cost, GameStateManager.gold])
 
 func _confirm_range_path():
 	"""Second click: Actually choose Range Path"""
@@ -153,16 +153,16 @@ func _confirm_range_path():
 
 	print("🎯 [PathChoiceMenu] Confirming RANGE path")
 	print("🎯 [PathChoiceMenu] Cost: %d gold" % path_choice_cost)
-	print("🎯 [PathChoiceMenu] Current gold: %d gold" % GameManager.gold)
+	print("🎯 [PathChoiceMenu] Current gold: %d gold" % GameStateManager.gold)
 
-	if GameManager.spend_gold(path_choice_cost):
+	if GameStateManager.spend_gold(path_choice_cost):
 		print("✅ [PathChoiceMenu] Gold spent successfully!")
 		print("🎯 [PathChoiceMenu] Emitting range_path_selected signal...")
 		range_path_selected.emit(tower)
 		print("=== ✅ RANGE PATH CHOSEN ===\n")
 	else:
 		print("❌ [PathChoiceMenu] Not enough gold!")
-		print("   Need: %d, Have: %d" % [path_choice_cost, GameManager.gold])
+		print("   Need: %d, Have: %d" % [path_choice_cost, GameStateManager.gold])
 
 func _gui_input(event):
 	"""Handle input on this control - consume events inside menu"""

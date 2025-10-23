@@ -147,15 +147,15 @@ func unlock_hero(hero_id: String) -> bool:
 
 	# Check if player can afford
 	var cost = hero.unlock_cost
-	if SaveManager.get_currency() < cost:
-		print("[HeroDatabase] Not enough currency to unlock hero. Need: ", cost)
+	if SaveManager.get_gems() < cost:
+		print("[HeroDatabase] Not enough gems to unlock hero. Need: ", cost)
 		return false
 
-	# Deduct currency and unlock
-	SaveManager.add_currency(-cost)
+	# Deduct gems and unlock
+	SaveManager.add_gems(-cost)
 	SaveManager.unlock_hero(hero_id)
 
-	print("[HeroDatabase] ✅ Unlocked hero: ", hero.hero_name, " for ", cost, " gold")
+	print("[HeroDatabase] ✅ Unlocked hero: ", hero.hero_name, " for ", cost, " gems")
 	return true
 
 

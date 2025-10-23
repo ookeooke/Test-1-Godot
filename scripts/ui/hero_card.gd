@@ -119,10 +119,14 @@ func _on_select_pressed():
 
 
 func _on_button_gui_input(event: InputEvent):
-	"""Handle right-click for context menu"""
+	"""Handle right-click for context menu and touch input"""
 	if event is InputEventMouseButton:
 		var mouse_event = event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_RIGHT and mouse_event.pressed:
 			if hero_data:
 				hero_right_clicked.emit(hero_data)
 			get_viewport().set_input_as_handled()
+	elif event is InputEventScreenTouch:
+		# Touch input is handled by button's normal pressed signal
+		# This ensures touch works the same as left-click
+		pass

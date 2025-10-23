@@ -60,7 +60,7 @@ func open_panel(p_hero_id: String, skills: Array[HeroSkillData]):
 	available_skills = skills
 
 	# Update currency
-	current_currency = SaveManager.get_currency()
+	current_currency = SaveManager.get_gems()
 
 	# Refresh display
 	_refresh_display()
@@ -236,8 +236,8 @@ func _on_unlock_skill_pressed(skill_data: HeroSkillData):
 		return
 
 	# Deduct currency
-	SaveManager.add_currency(-cost)
-	current_currency = SaveManager.get_currency()
+	SaveManager.add_gems(-cost)
+	current_currency = SaveManager.get_gems()
 
 	# Unlock skill in save data
 	SaveManager.unlock_hero_skill(hero_id, skill_data.skill_id)
@@ -265,8 +265,8 @@ func _on_upgrade_skill_pressed(skill_data: HeroSkillData):
 		return
 
 	# Deduct currency
-	SaveManager.add_currency(-cost)
-	current_currency = SaveManager.get_currency()
+	SaveManager.add_gems(-cost)
+	current_currency = SaveManager.get_gems()
 
 	# Upgrade skill in save data
 	SaveManager.upgrade_hero_skill(hero_id, skill_data.skill_id)

@@ -962,15 +962,15 @@ func _revalidate_enemies_in_range():
 			_record_target_change_time()
 
 func get_upgrade_cost() -> int:
-	"""Get cost for next upgrade (EXPENSIVE to force economic pressure)"""
+	"""Get cost for next upgrade (REDUCED by 25% for better economy)"""
 	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
 		# Standard upgrades
 		match tower_level:
-			1: return 80  # Level 1→2 (EXPENSIVE!)
-			2: return 120  # Level 2→3 (VERY EXPENSIVE!)
+			1: return 60  # Level 1→2 (Reduced from 80g -25%)
+			2: return 90  # Level 2→3 (Reduced from 120g -25%)
 	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
 		# Path choice upgrade
-		return 150  # Level 3→4 path choice (EXTREMELY EXPENSIVE!)
+		return 120  # Level 3→4 path choice (Reduced from 150g -20%)
 
 	return 0  # Max level reached
 
