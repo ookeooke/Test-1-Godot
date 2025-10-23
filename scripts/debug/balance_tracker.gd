@@ -120,6 +120,8 @@ func start_run(level_id: String = "unknown"):
 			"total_spent": 0,
 			"ending_gold": 0,
 			"completion_bonus": 0,
+			"wave_bonuses": {},  # {wave_number: bonus_amount}
+			"total_wave_bonus": 0,
 			"gold_history": []  # [{time: float, amount: int, reason: String}]
 		},
 		"balance_metrics": {}
@@ -223,6 +225,8 @@ func register_tower(tower_instance: Node, tower_type: String, cost: int):
 		"active_time": 0.0,
 		"idle_time": 0.0,
 		"last_shot_time": 0.0,
+		"last_state": "idle",  # "active" or "idle"
+		"last_state_change_time": Time.get_ticks_msec() / 1000.0 - run_start_time,
 		"gold_spent": cost,
 		"position": tower_instance.global_position if tower_instance else Vector2.ZERO,
 		"tower_level": 1,
@@ -276,6 +280,31 @@ func record_tower_shot(tower_instance: Node):
 
 	tracked_towers[instance_id].shots_fired += 1
 	tracked_towers[instance_id].last_shot_time = Time.get_ticks_msec() / 1000.0 - run_start_time
+
+func record_tower_state(tower_instance: Node, is_active: bool):
+	"""Track when tower is active (has targets) vs idle (no targets)"""
+	if not is_tracking:
+		return
+
+	var instance_id = tower_instance.get_instance_id()
+	if not tracked_towers.has(instance_id):
+		return
+
+	var tower_data = tracked_towers[instance_id]
+	var current_time = Time.get_ticks_msec() / 1000.0 - run_start_time
+	var new_state = "active" if is_active else "idle"
+
+	# Calculate time spent in previous state
+	if tower_data.last_state_change_time > 0:
+		var time_in_state = current_time - tower_data.last_state_change_time
+		if tower_data.last_state == "active":
+			tower_data.active_time += time_in_state
+		else:
+			tower_data.idle_time += time_in_state
+
+	# Update to new state
+	tower_data.last_state = new_state
+	tower_data.last_state_change_time = current_time
 
 func record_damage(source_instance: Node, target: Node, damage: float, source_type: String):
 	"""Record damage dealt by a tower or hero"""
@@ -345,7 +374,14 @@ func register_hero(hero_instance: Node, hero_id: String):
 			"returning": 0.0
 		},
 		"last_state": "idle",
-		"last_state_change_time": 0.0
+		"last_state_change_time": 0.0,
+		"equipped_items": {},  # {slot: item_id}
+		"equipment_bonuses": {
+			"damage": 0.0,
+			"health": 0.0,
+			"attack_speed_mult": 1.0,
+			"range": 0.0
+		}
 	}
 
 	print("[BalanceTracker] Hero registered: %s (ID:%d)" % [hero_id, instance_id])
@@ -407,6 +443,20 @@ func record_hero_death(hero_instance: Node):
 	var instance_id = hero_instance.get_instance_id()
 	if tracked_heroes.has(instance_id):
 		tracked_heroes[instance_id].deaths += 1
+
+func record_hero_equipment(hero_instance: Node, equipped_items: Dictionary, bonuses: Dictionary):
+	"""Track hero equipment and stat bonuses"""
+	if not is_tracking:
+		return
+
+	var instance_id = hero_instance.get_instance_id()
+	if not tracked_heroes.has(instance_id):
+		return
+
+	tracked_heroes[instance_id].equipped_items = equipped_items.duplicate()
+	tracked_heroes[instance_id].equipment_bonuses = bonuses.duplicate()
+
+	print("[BalanceTracker] Hero equipment recorded: %d items, +%.1f damage" % [equipped_items.size(), bonuses.get("damage", 0.0)])
 
 # ============================================
 # ENEMY TRACKING
@@ -657,6 +707,19 @@ func _record_gold_spent(amount: int, reason: String):
 		"reason": reason,
 		"type": "spent"
 	})
+
+func record_wave_bonus(wave_number: int, bonus_amount: int):
+	"""Track wave completion bonuses separately"""
+	if not is_tracking:
+		return
+
+	current_run.economy.wave_bonuses[wave_number] = bonus_amount
+	current_run.economy.total_wave_bonus += bonus_amount
+
+	# Also record in gold history
+	_record_gold_earned(bonus_amount, "wave_%d_bonus" % wave_number)
+
+	print("[BalanceTracker] Wave %d bonus recorded: +%dg" % [wave_number, bonus_amount])
 
 # ============================================
 # DATA SERIALIZATION

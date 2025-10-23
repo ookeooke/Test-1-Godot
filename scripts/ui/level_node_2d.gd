@@ -13,9 +13,9 @@ signal level_selected(level_data: LevelNodeData)
 @onready var collision_shape: CollisionShape2D = $ButtonArea/CollisionShape2D
 @onready var button_sprite: ColorRect = $ButtonSprite
 @onready var stars_container: Node2D = $StarsContainer
-@onready var star_1: Sprite2D = $StarsContainer/Star1
-@onready var star_2: Sprite2D = $StarsContainer/Star2
-@onready var star_3: Sprite2D = $StarsContainer/Star3
+@onready var star_1: Label = $StarsContainer/Star1
+@onready var star_2: Label = $StarsContainer/Star2
+@onready var star_3: Label = $StarsContainer/Star3
 @onready var lock_icon: Sprite2D = $LockIcon
 @onready var glow_sprite: ColorRect = $GlowSprite
 @onready var label: Label = $Label

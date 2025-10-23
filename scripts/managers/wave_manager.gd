@@ -178,6 +178,10 @@ func wave_completed():
 	GameStateManager.add_gold(wave_bonus)
 	print("[WaveManager] Wave completion bonus: +%dg" % wave_bonus)
 
+	# Track wave bonus in BalanceTracker
+	if BalanceTracker:
+		BalanceTracker.record_wave_bonus(current_wave, wave_bonus)
+
 	# Set combat state to inactive
 	is_combat_active = false
 	combat_ended.emit()

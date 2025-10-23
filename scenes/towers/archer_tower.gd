@@ -664,6 +664,13 @@ func _on_shoot_timer_timeout():
 	var candidate_target = get_target_by_mode()
 	current_target = _pick_target_with_stickiness(old_target, candidate_target)
 
+	# Track tower state (active when has target, idle when no target)
+	if BalanceTracker:
+		var has_target = current_target != null
+		var had_target = old_target != null
+		if has_target != had_target:  # State changed
+			BalanceTracker.record_tower_state(self, has_target)
+
 	# Debug: Show when tower switches targets (F3)
 	if current_target != old_target and current_target != null:
 		var target_name = current_target.get_enemy_name() if current_target.has_method("get_enemy_name") else "Enemy"

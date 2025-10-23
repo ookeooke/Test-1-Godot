@@ -68,12 +68,32 @@ func _on_retry_pressed():
 	print("VictoryScreen: Retry level")
 	# Unpause the game
 	get_tree().paused = false
+
+	# Clean up autoloads before restart
+	_cleanup_before_restart()
+
 	# Free the victory screen and its canvas layer parent, then reload
 	var canvas_layer = get_parent()
 	if canvas_layer:
 		canvas_layer.queue_free()
 	await get_tree().process_frame  # Wait for cleanup
 	get_tree().reload_current_scene()
+
+func _cleanup_before_restart():
+	"""Clean up persistent autoload state before restarting level"""
+	# Reset BalanceTracker
+	if BalanceTracker:
+		BalanceTracker.reset_run()
+
+	# Clear pending loot
+	if LootManager:
+		LootManager.clear_pending_loot()
+
+	# Reset GameStateManager (it will be re-initialized by LevelManager)
+	if GameStateManager:
+		GameStateManager.reset_for_new_run()
+
+	print("[VictoryScreen] Autoloads cleaned up for restart")
 
 func _on_level_select_pressed():
 	print("VictoryScreen: Return to world map")

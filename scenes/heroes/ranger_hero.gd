@@ -11,25 +11,51 @@ signal hero_selected(hero)
 enum State { IDLE, RANGED_COMBAT, MELEE_COMBAT, RETURNING, WALKING }
 var current_state = State.IDLE
 
-# STATS
-var max_health = 200.0
-var current_health = 200.0
+# STATS - NEW UNIFIED SYSTEM
 var hero_level = 1
 
-# COMBAT STATS (Kingdom Rush pacing: -25% to match slower enemies)
-var ranged_damage = 10.0  # Reduced from 14 (-29%) for balanced difficulty
-var melee_damage = 5.0  # Reduced from 6 (-17%) - melee is for blocking
-var ranged_range = 300.0
+# Core stats using new Stat system (with modifiers from equipment/skills)
+var stat_max_health: Stat
+var stat_ranged_damage: Stat
+var stat_melee_damage: Stat
+var stat_ranged_range: Stat
+var stat_ranged_attack_speed: Stat
+var stat_movement_speed: Stat
+
+# Current health (not a Stat, just a runtime value)
+var current_health = 200.0
+
+# Base stats (for reference and reset)
+const BASE_MAX_HEALTH = 200.0
+const BASE_RANGED_DAMAGE = 10.0  # Reduced from 14 (-29%) for balanced difficulty
+const BASE_MELEE_DAMAGE = 5.0  # Reduced from 6 (-17%) - melee is for blocking
+const BASE_RANGED_RANGE = 300.0
+const BASE_RANGED_ATTACK_SPEED = 0.6  # 23.3 DPS ranged (lower = faster)
+const BASE_MOVEMENT_SPEED = 150.0
+
+# Fixed stats (not affected by modifiers)
 var melee_range = 100.0
-var ranged_attack_speed = 0.6  # 23.3 DPS ranged
 var melee_attack_speed = 0.8  # 7.5 DPS melee
 var combat_distance = 50.0  # How close to get before attacking (visual improvement)
 
 # MOVEMENT
-var movement_speed = 150.0
 var max_distance_from_home = 50.0
 var home_position = Vector2.ZERO
 var target_position = Vector2.ZERO
+
+# Convenience properties for backward compatibility
+var max_health: float:
+	get: return stat_max_health.get_value() if stat_max_health else BASE_MAX_HEALTH
+var ranged_damage: float:
+	get: return stat_ranged_damage.get_value() if stat_ranged_damage else BASE_RANGED_DAMAGE
+var melee_damage: float:
+	get: return stat_melee_damage.get_value() if stat_melee_damage else BASE_MELEE_DAMAGE
+var ranged_range: float:
+	get: return stat_ranged_range.get_value() if stat_ranged_range else BASE_RANGED_RANGE
+var ranged_attack_speed: float:
+	get: return stat_ranged_attack_speed.get_value() if stat_ranged_attack_speed else BASE_RANGED_ATTACK_SPEED
+var movement_speed: float:
+	get: return stat_movement_speed.get_value() if stat_movement_speed else BASE_MOVEMENT_SPEED
 
 # ENEMY MANAGEMENT
 var max_melee_enemies = 2  # HEROES ARE STRONGER: Block 2 enemies at once (soldiers = 1)
@@ -68,14 +94,17 @@ var equipment_manager: EquipmentManager = null
 # ============================================
 
 func _ready():
+	# Initialize stat system FIRST (before equipment/skills)
+	_initialize_stats()
+
 	# Initialize equipment system
 	_setup_equipment_system()
 
 	# Initialize skill system
 	_setup_skill_system()
 
-	# Apply equipment bonuses to stats
-	_apply_equipment_bonuses()
+	# Apply all modifiers from equipment and skills
+	_recalculate_all_stats()
 
 	# Set collision layers
 	collision_layer = 2
@@ -94,24 +123,24 @@ func _ready():
 		click_area.input_event.connect(_on_area_input_event)
 		click_area.mouse_entered.connect(_on_mouse_entered)
 		click_area.mouse_exited.connect(_on_mouse_exited)
-	
+
 	# Connect signals
 	ranged_detection.body_entered.connect(_on_ranged_enemy_entered)
 	ranged_detection.body_exited.connect(_on_ranged_enemy_exited)
 	melee_detection.body_entered.connect(_on_melee_enemy_entered)
 	melee_detection.body_exited.connect(_on_melee_enemy_exited)
-	
+
 	# Create timers
 	ranged_timer = Timer.new()
 	ranged_timer.wait_time = ranged_attack_speed
 	ranged_timer.timeout.connect(_on_ranged_timer_timeout)
 	add_child(ranged_timer)
-	
+
 	melee_timer = Timer.new()
 	melee_timer.wait_time = melee_attack_speed
 	melee_timer.timeout.connect(_on_melee_timer_timeout)
 	add_child(melee_timer)
-	
+
 	# Setup visuals
 	draw_range_circle()
 	range_indicator.visible = false
@@ -122,6 +151,97 @@ func _ready():
 		BalanceTracker.register_hero(self, get_hero_id())
 
 	print("✓ Ranger Hero ready at: ", global_position)
+
+# ============================================
+# STAT SYSTEM - NEW UNIFIED APPROACH
+# ============================================
+
+func _initialize_stats():
+	"""Initialize all Stat objects with base values"""
+	stat_max_health = Stat.new(BASE_MAX_HEALTH)
+	stat_ranged_damage = Stat.new(BASE_RANGED_DAMAGE)
+	stat_melee_damage = Stat.new(BASE_MELEE_DAMAGE)
+	stat_ranged_range = Stat.new(BASE_RANGED_RANGE)
+	stat_ranged_attack_speed = Stat.new(BASE_RANGED_ATTACK_SPEED)
+	stat_movement_speed = Stat.new(BASE_MOVEMENT_SPEED)
+
+	# Set initial health to max
+	current_health = BASE_MAX_HEALTH
+
+	print("✅ Stats initialized with base values")
+
+
+func _recalculate_all_stats():
+	"""Recalculate all stats by applying modifiers from equipment and skills"""
+	if not stat_max_health:
+		push_error("[RangerHero] Stats not initialized!")
+		return
+
+	# Clear all existing modifiers
+	stat_max_health.clear_modifiers()
+	stat_ranged_damage.clear_modifiers()
+	stat_melee_damage.clear_modifiers()
+	stat_ranged_range.clear_modifiers()
+	stat_ranged_attack_speed.clear_modifiers()
+	stat_movement_speed.clear_modifiers()
+
+	# Gather modifiers from equipment
+	if equipment_manager:
+		var equipment_modifiers = equipment_manager.get_all_stat_modifiers()
+		for modifier in equipment_modifiers:
+			_apply_modifier_to_appropriate_stat(modifier)
+
+	# Gather modifiers from skills
+	if skill_manager:
+		var skill_modifiers = skill_manager.get_passive_skill_modifiers()
+		for modifier in skill_modifiers:
+			_apply_modifier_to_appropriate_stat(modifier)
+
+	# Update timer with new attack speed
+	if ranged_timer:
+		ranged_timer.wait_time = ranged_attack_speed
+
+	# Update visuals
+	draw_range_circle()  # Range might have changed
+	update_health_bar()
+
+	# Ensure current health doesn't exceed new max
+	if current_health > max_health:
+		current_health = max_health
+
+	print("📊 Stats recalculated: HP=%.0f, Damage=%.1f, Range=%.0f, AttackSpeed=%.2f" % [max_health, ranged_damage, ranged_range, ranged_attack_speed])
+
+	# Track equipment in BalanceTracker
+	if BalanceTracker and equipment_manager:
+		var equipped_items = equipment_manager.get_all_equipped()
+		var bonuses = {
+			"damage": ranged_damage - BASE_RANGED_DAMAGE,
+			"health": max_health - BASE_MAX_HEALTH,
+			"attack_speed_mult": BASE_RANGED_ATTACK_SPEED / ranged_attack_speed,
+			"range": ranged_range - BASE_RANGED_RANGE
+		}
+		BalanceTracker.record_hero_equipment(self, equipped_items, bonuses)
+
+
+func _apply_modifier_to_appropriate_stat(modifier: StatModifier):
+	"""Route a modifier to the correct stat based on its description"""
+	var desc_lower = modifier.description.to_lower()
+
+	# Match modifier to appropriate stat
+	if "damage" in desc_lower and "melee" not in desc_lower:
+		stat_ranged_damage.add_modifier(modifier)
+	elif "melee" in desc_lower and "damage" in desc_lower:
+		stat_melee_damage.add_modifier(modifier)
+	elif "health" in desc_lower:
+		stat_max_health.add_modifier(modifier)
+	elif "range" in desc_lower:
+		stat_ranged_range.add_modifier(modifier)
+	elif "attack speed" in desc_lower:
+		stat_ranged_attack_speed.add_modifier(modifier)
+	elif "movement" in desc_lower or "speed" in desc_lower:
+		stat_movement_speed.add_modifier(modifier)
+	else:
+		push_warning("[RangerHero] Could not match modifier to stat: ", modifier.description)
 
 # ============================================
 # EQUIPMENT SYSTEM SETUP
@@ -143,38 +263,8 @@ func _setup_equipment_system():
 
 func _on_equipment_changed():
 	"""Called when equipment changes - recalculate stats"""
-	_apply_equipment_bonuses()
-	update_health_bar()
+	_recalculate_all_stats()
 	print("⚡ Equipment changed - stats updated")
-
-
-func _apply_equipment_bonuses():
-	"""Apply stat bonuses from equipped items"""
-	if not equipment_manager:
-		return
-
-	# Reset to base stats first (to avoid stacking)
-	var base_max_health = 200.0
-	var base_ranged_damage = 10.0  # Updated for balanced difficulty
-	var base_ranged_attack_speed = 0.6  # Updated to match new base
-
-	# Apply equipment bonuses
-	max_health = base_max_health + equipment_manager.get_health_bonus()
-	ranged_damage = base_ranged_damage + equipment_manager.get_damage_bonus()
-	ranged_range = 300.0 + equipment_manager.get_range_bonus()
-
-	# Attack speed is multiplicative
-	ranged_attack_speed = base_ranged_attack_speed / equipment_manager.get_attack_speed_multiplier()
-
-	# Update timer if it exists
-	if ranged_timer:
-		ranged_timer.wait_time = ranged_attack_speed
-
-	# Ensure current health doesn't exceed new max
-	if current_health > max_health:
-		current_health = max_health
-
-	print("📊 Stats applied: HP=%d, Damage=%.1f, Range=%.0f, AttackSpeed=%.2f" % [max_health, ranged_damage, ranged_range, ranged_attack_speed])
 
 
 # ============================================
@@ -451,6 +541,9 @@ func handle_returning_state(delta):
 	if global_position.distance_to(home_position) < 5:
 		velocity = Vector2.ZERO
 		current_state = State.IDLE
+		# Track state change for balance metrics
+		if BalanceTracker:
+			BalanceTracker.record_hero_state_change(self, "idle")
 	
 	if not enemies_in_melee_range.is_empty():
 		enter_melee_combat()
@@ -466,6 +559,9 @@ func handle_walking_state(delta):
 		velocity = Vector2.ZERO
 		home_position = global_position
 		current_state = State.IDLE
+		# Track state change for balance metrics
+		if BalanceTracker:
+			BalanceTracker.record_hero_state_change(self, "idle")
 
 # ============================================
 # STATE TRANSITIONS
@@ -476,6 +572,10 @@ func enter_ranged_combat():
 	velocity = Vector2.ZERO
 	ranged_timer.start()
 
+	# Track state change for balance metrics
+	if BalanceTracker:
+		BalanceTracker.record_hero_state_change(self, "ranged_combat")
+
 func enter_melee_combat():
 	current_state = State.MELEE_COMBAT
 	velocity = Vector2.ZERO
@@ -483,17 +583,29 @@ func enter_melee_combat():
 	melee_timer.start()
 	_set_combat_state_visual(true)
 
+	# Track state change for balance metrics
+	if BalanceTracker:
+		BalanceTracker.record_hero_state_change(self, "melee_combat")
+
 func enter_returning_state():
 	current_state = State.RETURNING
 	ranged_timer.stop()
 	melee_timer.stop()
 	_set_combat_state_visual(false)
 
+	# Track state change for balance metrics
+	if BalanceTracker:
+		BalanceTracker.record_hero_state_change(self, "returning")
+
 func enter_walking_state(destination: Vector2):
 	current_state = State.WALKING
 	target_position = destination
 	ranged_timer.stop()
 	melee_timer.stop()
+
+	# Track state change for balance metrics
+	if BalanceTracker:
+		BalanceTracker.record_hero_state_change(self, "walking")
 
 # ============================================
 # ENEMY DETECTION

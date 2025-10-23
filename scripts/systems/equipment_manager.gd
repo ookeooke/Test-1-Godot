@@ -18,7 +18,9 @@ var equipped_items: Dictionary = {
 	"accessory_2": ""
 }
 
-# Cached stat bonuses (updated when equipment changes)
+# DEPRECATED: Old cached stat system
+# These are kept for backward compatibility during migration
+# Use get_all_stat_modifiers() for new unified system
 var cached_damage_bonus: int = 0
 var cached_health_bonus: int = 0
 var cached_defense_bonus: int = 0
@@ -118,6 +120,41 @@ func _can_equip_in_slot(item_data: ItemData, slot: String) -> bool:
 
 	return false
 
+
+## ============================================
+## NEW UNIFIED STAT SYSTEM
+## ============================================
+
+## Get all stat modifiers from equipped items (NEW unified system)
+## This is the primary method for the new stat system
+func get_all_stat_modifiers() -> Array[StatModifier]:
+	var all_modifiers: Array[StatModifier] = []
+
+	for item_id in equipped_items.values():
+		if item_id == "":
+			continue
+
+		var item_data = ItemDatabase.get_item(item_id)
+		if item_data == null:
+			continue
+
+		# Get upgrade level if item is upgraded
+		var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
+
+		# Get modifiers from this item (includes upgrade bonuses)
+		var item_modifiers = item_data.get_stat_modifiers(upgrade_level)
+		all_modifiers.append_array(item_modifiers)
+
+	if all_modifiers.size() > 0:
+		print("[EquipmentManager] Generated %d stat modifiers from equipment" % all_modifiers.size())
+
+	return all_modifiers
+
+## ============================================
+## OLD CACHED STAT SYSTEM (DEPRECATED)
+## ============================================
+## Kept for backward compatibility during migration
+## Will be removed once all heroes use new Stat system
 
 ## Recalculate total stat bonuses from all equipped items
 func _recalculate_stats():

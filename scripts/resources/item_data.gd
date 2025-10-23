@@ -147,3 +147,73 @@ func is_equippable() -> bool:
 ## Check if this item is stackable
 func is_stackable() -> bool:
 	return max_stack > 1
+
+
+## ============================================
+## STAT MODIFIER GENERATION (New Unified System)
+## ============================================
+
+## Generate StatModifier objects from this item's stats
+## This converts flat bonuses into the unified modifier system
+## upgrade_level: Current upgrade level of the item (0 = base level)
+func get_stat_modifiers(upgrade_level: int = 0) -> Array[StatModifier]:
+	var modifiers: Array[StatModifier] = []
+	var source_id = "item_" + item_id
+
+	# Only generate modifiers for equippable items
+	if not is_equippable():
+		return modifiers
+
+	# Calculate upgraded stats if applicable
+	var final_damage = damage_bonus
+	var final_health = health_bonus
+	var final_defense = defense_bonus
+	var final_range = range_bonus
+
+	if can_upgrade and upgrade_level > 0:
+		final_damage = int(get_upgraded_stat(damage_bonus, upgrade_level))
+		final_health = int(get_upgraded_stat(health_bonus, upgrade_level))
+		final_defense = int(get_upgraded_stat(defense_bonus, upgrade_level))
+		final_range = int(get_upgraded_stat(range_bonus, upgrade_level))
+
+	# Damage modifier (flat bonus)
+	if final_damage > 0:
+		var desc = "+%d Damage" % final_damage
+		if upgrade_level > 0:
+			desc += " (+%d)" % upgrade_level
+		modifiers.append(StatModifier.create_flat(final_damage, source_id, desc))
+
+	# Health modifier (flat bonus)
+	if final_health > 0:
+		var desc = "+%d Health" % final_health
+		if upgrade_level > 0:
+			desc += " (+%d)" % upgrade_level
+		modifiers.append(StatModifier.create_flat(final_health, source_id, desc))
+
+	# Defense modifier (flat bonus)
+	if final_defense > 0:
+		var desc = "+%d Defense" % final_defense
+		if upgrade_level > 0:
+			desc += " (+%d)" % upgrade_level
+		modifiers.append(StatModifier.create_flat(final_defense, source_id, desc))
+
+	# Range modifier (flat bonus)
+	if final_range > 0:
+		var desc = "+%d Range" % final_range
+		if upgrade_level > 0:
+			desc += " (+%d)" % upgrade_level
+		modifiers.append(StatModifier.create_flat(final_range, source_id, desc))
+
+	# Attack Speed modifier (multiplicative)
+	if attack_speed_multiplier != 1.0:
+		var desc = "×%.2f Attack Speed" % attack_speed_multiplier
+		modifiers.append(StatModifier.create_multiplicative(attack_speed_multiplier, source_id, desc))
+
+	# Crit Chance modifier (additive percentage)
+	if crit_chance_bonus > 0.0:
+		var crit_percent = crit_chance_bonus * 100.0
+		var desc = "+%.1f%% Crit Chance" % crit_percent
+		# Convert decimal to percentage for additive modifier
+		modifiers.append(StatModifier.create_additive(crit_percent, source_id, desc))
+
+	return modifiers

@@ -200,11 +200,77 @@ func get_cooldown_progress(skill_id: String) -> float:
 	return 1.0 - (remaining / total_cooldown)
 
 # ============================================
-# PASSIVE SKILL APPLICATION
+## NEW UNIFIED STAT SYSTEM
 # ============================================
 
+## Get all stat modifiers from owned passive skills (NEW unified system)
+## This is the primary method for the new stat system
+func get_passive_skill_modifiers() -> Array[StatModifier]:
+	"""Generate StatModifiers from all owned passive skills"""
+	var all_modifiers: Array[StatModifier] = []
+
+	for skill_id in owned_skills.keys():
+		var skill_data = get_skill_data(skill_id)
+		if not skill_data or skill_data.skill_type != HeroSkillData.SkillType.PASSIVE:
+			continue
+
+		var upgrade_level = owned_skills[skill_id]
+		var skill_modifiers = _generate_modifiers_from_skill(skill_id, skill_data, upgrade_level)
+		all_modifiers.append_array(skill_modifiers)
+
+	if all_modifiers.size() > 0:
+		print("[SkillManager] Generated %d stat modifiers from skills" % all_modifiers.size())
+
+	return all_modifiers
+
+## Helper: Generate StatModifiers from a single skill
+func _generate_modifiers_from_skill(skill_id: String, skill_data: HeroSkillData, upgrade_level: int) -> Array[StatModifier]:
+	"""Convert skill bonuses into StatModifier objects"""
+	var modifiers: Array[StatModifier] = []
+	var source_id = "skill_" + skill_id
+
+	# Damage multiplier
+	var damage_mult = skill_data.get_current_damage_multiplier(upgrade_level)
+	if damage_mult != 1.0:
+		var desc = "Skill: ×%.2f Ranged Damage" % damage_mult
+		modifiers.append(StatModifier.create_multiplicative(damage_mult, source_id, desc))
+
+	# Melee damage multiplier
+	if skill_data.melee_damage_multiplier != 1.0:
+		var desc = "Skill: ×%.2f Melee Damage" % skill_data.melee_damage_multiplier
+		modifiers.append(StatModifier.create_multiplicative(skill_data.melee_damage_multiplier, source_id, desc))
+
+	# Attack speed multiplier
+	if skill_data.attack_speed_multiplier != 1.0:
+		var desc = "Skill: ×%.2f Attack Speed" % skill_data.attack_speed_multiplier
+		modifiers.append(StatModifier.create_multiplicative(skill_data.attack_speed_multiplier, source_id, desc))
+
+	# Movement speed multiplier
+	if skill_data.movement_speed_multiplier != 1.0:
+		var desc = "Skill: ×%.2f Movement Speed" % skill_data.movement_speed_multiplier
+		modifiers.append(StatModifier.create_multiplicative(skill_data.movement_speed_multiplier, source_id, desc))
+
+	# Health bonus (flat)
+	if skill_data.max_health_bonus != 0.0:
+		var desc = "Skill: +%.0f Max Health" % skill_data.max_health_bonus
+		modifiers.append(StatModifier.create_flat(skill_data.max_health_bonus, source_id, desc))
+
+	# Range bonus (flat)
+	if skill_data.range_bonus != 0.0:
+		var desc = "Skill: +%.0f Range" % skill_data.range_bonus
+		modifiers.append(StatModifier.create_flat(skill_data.range_bonus, source_id, desc))
+
+	return modifiers
+
+# ============================================
+## OLD SYSTEM (DEPRECATED)
+# ============================================
+## Kept for backward compatibility during migration
+## Will be removed once all heroes use new Stat system
+
 func _apply_passive_skill(skill_id: String, skill_data: HeroSkillData, upgrade_level: int):
-	"""Apply passive skill effects to the hero"""
+	"""DEPRECATED: Apply passive skill effects to the hero
+	Use get_passive_skill_modifiers() instead for new unified stat system"""
 	if not hero:
 		return
 
