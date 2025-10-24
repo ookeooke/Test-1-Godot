@@ -685,10 +685,6 @@ func _on_call_wave_button_pressed():
 	# Award gold bonus
 	GameStateManager.add_gold(gold_bonus)
 
-	# Track in BalanceTracker
-	if BalanceTracker:
-		BalanceTracker.record_event("early_wave_call", {"bonus_gold": gold_bonus, "wave": current_wave})
-
 	# Clear buttons and stop wave break timer
 	clear_call_wave_buttons()
 	wave_break_timer.stop()

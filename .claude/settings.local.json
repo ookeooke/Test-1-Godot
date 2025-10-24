@@ -6,7 +6,8 @@
       "Bash(rm:*)",
       "Bash(dir:*)",
       "Bash(git log:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

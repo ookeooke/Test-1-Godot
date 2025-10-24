@@ -29,21 +29,21 @@ enum Platform { MOBILE, PC, CONSOLE }
 var current_platform: Platform
 
 # ============================================
-# ZOOM SETTINGS - LOCKED (Zoom disabled for now)
+# ZOOM SETTINGS - Slight zoom enabled for detail viewing
 # ============================================
 @export_group("Zoom Settings")
-@export var min_zoom = 1.0  # LOCKED - Zoom disabled
-@export var max_zoom = 1.0  # LOCKED - Zoom disabled
-@export var default_zoom = 1.0  # LOCKED - Start closer (was 0.6 - too far!)
-@export var zoom_speed = 0.0  # DISABLED
-@export var zoom_smoothing = 0.0  # DISABLED
+@export var min_zoom = 1.0  # Baseline (furthest out)
+@export var max_zoom = 1.0  # Will be set to 1.25 by platform defaults (25% closer)
+@export var default_zoom = 1.0  # Start at baseline
+@export var zoom_speed = 0.1  # Smooth zoom speed
+@export var zoom_smoothing = 0.15  # Smooth interpolation
 
-# Mobile-specific zoom - LOCKED
-@export var mobile_min_zoom = 1.0  # LOCKED
-@export var mobile_max_zoom = 1.0  # LOCKED
-@export var mobile_zoom_speed = 0.0  # DISABLED
+# Mobile-specific zoom
+@export var mobile_min_zoom = 1.0  # Baseline
+@export var mobile_max_zoom = 1.0  # Will be set to 1.2 (20% closer for mobile)
+@export var mobile_zoom_speed = 0.08  # Slightly slower for mobile
 
-# Double-tap zoom (mobile) - DISABLED
+# Double-tap zoom (mobile) - Keep disabled for now
 @export var double_tap_zoom_in = 1.0  # DISABLED
 @export var double_tap_zoom_out = 1.0  # DISABLED
 @export var double_tap_time_threshold = 0.3  # DISABLED
@@ -220,11 +220,11 @@ func apply_platform_defaults() -> void:
 	"""Set platform-appropriate defaults as ratios of baseline"""
 	match current_platform:
 		Platform.MOBILE:
-			# Mobile: Platform tuning as multipliers, not absolute values
-			# Allow 10% tighter zoom and 20% wider zoom than baseline
-			min_zoom = baseline_zoom * 0.9  # 10% closer
-			max_zoom = baseline_zoom * 1.2  # 20% further
+			# Mobile: Slight zoom-in capability (20% closer for detail viewing)
+			min_zoom = baseline_zoom  # Baseline is furthest out
+			max_zoom = baseline_zoom * 1.2  # 20% closer to see details
 			default_zoom = baseline_zoom  # Start at baseline
+			zoom_speed = mobile_zoom_speed
 
 			# Mobile-specific behavior
 			drag_speed = mobile_drag_speed
@@ -233,10 +233,11 @@ func apply_platform_defaults() -> void:
 			edge_scroll_enabled = false
 
 		Platform.PC:
-			# PC: Slightly wider zoom range for mouse wheel control
-			min_zoom = baseline_zoom * 0.8  # 20% closer
-			max_zoom = baseline_zoom * 1.5  # 50% further
+			# PC: Slight zoom-in capability (25% closer for detail viewing)
+			min_zoom = baseline_zoom  # Baseline is furthest out
+			max_zoom = baseline_zoom * 1.25  # 25% closer to see details
 			default_zoom = baseline_zoom  # Start at baseline
+			zoom_speed = zoom_speed  # Use default zoom_speed
 
 			# PC-specific behavior
 			drag_speed = pc_drag_speed
@@ -245,10 +246,11 @@ func apply_platform_defaults() -> void:
 			edge_scroll_enabled = true
 
 		Platform.CONSOLE:
-			# Console: Similar to PC but no keyboard pan
-			min_zoom = baseline_zoom * 0.8
-			max_zoom = baseline_zoom * 1.5
+			# Console: Similar to PC zoom range
+			min_zoom = baseline_zoom
+			max_zoom = baseline_zoom * 1.25
 			default_zoom = baseline_zoom
+			zoom_speed = zoom_speed
 
 			drag_speed = pc_drag_speed
 			drag_threshold = pc_drag_threshold
@@ -347,8 +349,20 @@ func handle_pc_input(event) -> void:
 		if gui_element:
 			return  # Let GUI handle the input
 
+		# Mouse wheel zoom
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			if event.pressed:
+				var zoom_delta = zoom_speed * user_prefs["zoom_speed_multiplier"]
+				zoom_at_point(event.position, zoom_delta)
+				get_viewport().set_input_as_handled()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			if event.pressed:
+				var zoom_delta = -zoom_speed * user_prefs["zoom_speed_multiplier"]
+				zoom_at_point(event.position, zoom_delta)
+				get_viewport().set_input_as_handled()
+
 		# Middle/Right mouse drag
-		if event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
+		elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
 			if event.pressed:
 				start_drag(event.position)
 			else:
@@ -581,6 +595,13 @@ func _physics_process(delta):
 	# Handle inertia
 	if is_inertia_moving and not is_snapping:
 		update_inertia(delta)
+
+	# Smooth zoom interpolation
+	if zoom != target_zoom:
+		zoom = zoom.lerp(target_zoom, zoom_smoothing)
+		# Snap to target if very close
+		if abs(zoom.x - target_zoom.x) < 0.001:
+			zoom = target_zoom
 
 	# Update camera shake
 	if shake_enabled:

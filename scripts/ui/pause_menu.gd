@@ -1,4 +1,4 @@
-extends Control
+extends CanvasLayer
 
 # Pause Menu - In-game pause overlay
 # Triggered by ESC key during gameplay

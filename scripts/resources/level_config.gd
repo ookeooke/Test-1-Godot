@@ -1,8 +1,39 @@
 extends Resource
 class_name LevelConfig
 
-## Level Configuration Resource
-## Contains all metadata and settings for a single level
+## Level Configuration Resource - GAMEPLAY AUTHORITY
+##
+## ARCHITECTURE: SEPARATED PATTERN (Recommended for Kingdom Rush-style games)
+##
+## This resource focuses on GAMEPLAY DATA ONLY:
+##   - Waves, enemies, difficulty
+##   - Starting resources (gold, lives)
+##   - Progression and rewards
+##
+## UI/World Map data is in LevelNodeData (separate resource):
+##   - Position on world map
+##   - Scene file path (as string)
+##   - Unlock requirements display
+##
+## WHY SEPARATED?
+##   ✓ World map loads minimal data (not 16 waves per button)
+##   ✓ Daily challenges can skip UI metadata
+##   ✓ Difficulty variants share UI, vary gameplay
+##   ✓ Level editor only needs gameplay fields
+##   ✓ Scales to 100+ levels without issues
+##
+## USAGE PATTERNS:
+##
+## Pattern 1: Unified Loading (if level_scene is set)
+##   NavigationManager.load_level(level_config)
+##   └─ Loads scene from level_config.level_scene (PackedScene)
+##
+## Pattern 2: Separated Loading (current - level_scene is NULL)
+##   LevelManager.load_level_config(level_config)  # Init game state
+##   get_tree().change_scene_to_file(node_data.level_scene_path)  # Load scene
+##   └─ WorldMapSelectNode2D uses this pattern automatically
+##
+## Both patterns work! Use whichever fits your workflow.
 
 # ============================================
 # BASIC INFO

@@ -85,14 +85,36 @@ func load_level(campaign_id: String, level_id: String) -> void:
 	load_level_config(level, campaign)
 
 ## Load a level from a LevelConfig resource directly
+##
+## ARCHITECTURE NOTE:
+## This function expects level_scene to be set in the LevelConfig resource.
+## However, the current architecture uses a SEPARATED PATTERN where:
+##   - LevelConfig holds gameplay data (waves, gold, lives)
+##   - LevelNodeData holds UI data and scene path (as STRING)
+##   - WorldMapSelectNode2D handles the integration via fallback loading
+##
+## This separation is INTENTIONAL and supports:
+##   - Daily challenges (no world map position needed)
+##   - Difficulty variants (share UI data, different gameplay configs)
+##   - Level editor (create gameplay without UI metadata)
+##
+## If level_scene is NULL, caller should use direct scene loading:
+##   LevelManager.load_level_config(config)  # Initialize game state
+##   get_tree().change_scene_to_file(node_data.level_scene_path)  # Load scene
 func load_level_config(level_config: LevelConfig, campaign: CampaignData = null) -> void:
 	if not level_config:
 		push_error("LevelManager: Invalid level config!")
 		return
 
-	# Safety check: make sure level has a scene
+	# Note: level_scene is optional in separated architecture
+	# If NULL, caller is responsible for loading the scene separately
 	if not level_config.level_scene:
-		push_error("LevelManager: Level '", level_config.level_id, "' has no scene assigned!")
+		print("[LevelManager] Note: Level '%s' uses separated loading (scene path in LevelNodeData)" % level_config.level_id)
+		print("[LevelManager] Initializing game state only - caller must load scene separately")
+		current_level = level_config
+		current_campaign = campaign
+		GameStateManager.initialize_level(level_config)
+		level_loaded.emit(level_config)
 		return
 
 	current_level = level_config
