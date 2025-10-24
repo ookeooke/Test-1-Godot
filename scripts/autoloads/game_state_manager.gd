@@ -365,3 +365,59 @@ func get_debug_info() -> String:
 ## Print debug info to console
 func print_debug_info():
 	print(get_debug_info())
+
+# ============================================
+# STAR CALCULATION (centralized logic)
+# ============================================
+
+## Calculate star rating based on lives remaining
+## Returns 1-3 stars based on percentage of lives left
+func calculate_stars(lives_remaining: int, max_lives: int) -> int:
+	"""
+	Calculate star rating based on lives remaining.
+
+	Star thresholds:
+	  3 stars: 80%+ lives remaining (16/20 = 80%)
+	  2 stars: 50-79% lives remaining (10-15/20)
+	  1 star: Completed but less than 50% lives
+
+	Args:
+	  lives_remaining: Current lives count
+	  max_lives: Maximum lives for the level
+
+	Returns:
+	  Star rating (1-3)
+	"""
+	if max_lives <= 0:
+		push_warning("[GameStateManager] Cannot calculate stars: max_lives is 0")
+		return 1
+
+	var lives_percent = (float(lives_remaining) / float(max_lives)) * 100.0
+
+	if lives_percent >= 80.0:  # 80%+ health = 3 stars
+		return 3
+	elif lives_percent >= 50.0:  # 50-79% health = 2 stars
+		return 2
+	else:  # Survived but barely = 1 star
+		return 1
+
+## Get current star rating during gameplay
+## Uses current lives and base starting lives
+func get_current_star_rating() -> int:
+	"""
+	Calculate star rating for current game state.
+	Useful for showing "current stars" in UI during gameplay.
+
+	Returns:
+	  Star rating (1-3) based on current lives
+	"""
+	if _base_starting_lives <= 0:
+		push_warning("[GameStateManager] Cannot calculate current stars: no level loaded")
+		return 1
+
+	return calculate_stars(lives, _base_starting_lives)
+
+## Get maximum possible lives for current level
+func get_max_lives() -> int:
+	"""Get the starting lives count (max lives for star calculation)"""
+	return _base_starting_lives

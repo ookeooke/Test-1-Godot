@@ -47,7 +47,6 @@ wolf_scene = ExtResource("3_wolf")
 troll_scene = ExtResource("4_troll")
 bat_scene = ExtResource("5_bat")
 wave_label = NodePath("../UI/TopBar/HBoxContainer/WaveLabel")
-waves = Array[ExtResource("8_e6lid")]([])
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(900, 450)

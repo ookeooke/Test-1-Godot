@@ -9,6 +9,14 @@ signal level_chosen(level_data: LevelNodeData, difficulty: String)
 # Export variables for easy configuration in editor
 @export var level_nodes_data: Array[LevelNodeData] = []  # All level configurations
 
+# STAR COLOR CONSTANTS (Kingdom Rush style)
+const STAR_COLORS = {
+	3: Color("#FFD700"),  # Gold - 3 stars
+	2: Color("#C0C0C0"),  # Silver - 2 stars
+	1: Color("#CD7F32"),  # Bronze - 1 star
+	0: Color("#404040")   # Gray - Not completed
+}
+
 # References
 @onready var camera: Camera2D = $Camera2D
 @onready var map_background: Sprite2D = $MapBackground
@@ -409,6 +417,9 @@ func _setup_level_nodes():
 		var is_unlocked = _check_unlock_status(level_data)
 		button.disabled = not is_unlocked
 
+		# Apply star-based color coding (Gold/Silver/Bronze/Gray)
+		_apply_star_color_to_button(button, level_data)
+
 		# Connect the pressed signal
 		button.pressed.connect(_on_level_button_pressed.bind(level_data))
 
@@ -522,7 +533,29 @@ func _start_level(level_data: LevelNodeData, difficulty: String):
 		push_error("WorldMapSelect: Level scene path is empty for ", level_data.level_name)
 		return
 
-	get_tree().change_scene_to_file(level_data.level_scene_path)
+	# Try to load via LevelManager if level config exists
+	var level_config = _get_level_config_for_level_data(level_data)
+	if level_config and level_config.level_scene:
+		# Use NavigationManager with full config
+		NavigationManager.load_level(level_config)
+	else:
+		# Fallback: Load level config manually and use direct scene navigation
+		# This handles cases where level_scene is not set in the .tres file
+		if level_config:
+			# We have a config but no scene in it - initialize manually
+			LevelManager.load_level_config(level_config)
+
+		# Navigate directly to scene
+		get_tree().change_scene_to_file(level_data.level_scene_path)
+		print("WorldMapSelect: Using direct scene navigation (config.level_scene not set)")
+
+func _get_level_config_for_level_data(level_data: LevelNodeData) -> LevelConfig:
+	"""Get the LevelConfig resource for a given LevelNodeData"""
+	# Try to load the level config based on level_id
+	var config_path = "res://data/level_configs/%s_config.tres" % level_data.level_id
+	if ResourceLoader.exists(config_path):
+		return load(config_path) as LevelConfig
+	return null
 
 func _update_profile_display():
 	if not profile_label:
@@ -555,7 +588,7 @@ func _update_progress_display():
 func _on_back_pressed():
 	print("🎮 BACK BUTTON CLICKED!")
 	print("✅ Returning to main menu...")
-	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	NavigationManager.go_to_main_menu()
 
 # Public method to refresh display (call after completing a level)
 func refresh_display():
@@ -581,3 +614,99 @@ func _check_unlock_status(level_data: LevelNodeData) -> bool:
 		return total_stars >= level_data.required_stars
 
 	return true
+
+func _apply_star_color_to_button(button: Button, level_data: LevelNodeData) -> void:
+	"""
+	Apply color-coded border to button based on stars earned.
+	Gold = 3 stars, Silver = 2 stars, Bronze = 1 star, Gray = not completed
+	"""
+	# Get stars earned for this level
+	var stars = SaveManager.get_level_stars(level_data.level_id)
+	var border_color = STAR_COLORS.get(stars, STAR_COLORS[0])
+
+	# Create StyleBoxFlat for the button
+	var style_normal = StyleBoxFlat.new()
+	var style_hover = StyleBoxFlat.new()
+	var style_pressed = StyleBoxFlat.new()
+	var style_disabled = StyleBoxFlat.new()
+
+	# NORMAL state
+	style_normal.bg_color = Color(0.15, 0.15, 0.15, 0.95)  # Dark background
+	style_normal.border_width_left = 4
+	style_normal.border_width_right = 4
+	style_normal.border_width_top = 4
+	style_normal.border_width_bottom = 4
+	style_normal.border_color = border_color  # Star-based color!
+	style_normal.corner_radius_top_left = 8
+	style_normal.corner_radius_top_right = 8
+	style_normal.corner_radius_bottom_left = 8
+	style_normal.corner_radius_bottom_right = 8
+	style_normal.content_margin_left = 10
+	style_normal.content_margin_right = 10
+	style_normal.content_margin_top = 10
+	style_normal.content_margin_bottom = 10
+
+	# HOVER state (brighter border)
+	style_hover.bg_color = Color(0.2, 0.2, 0.2, 0.95)
+	style_hover.border_width_left = 5
+	style_hover.border_width_right = 5
+	style_hover.border_width_top = 5
+	style_hover.border_width_bottom = 5
+	style_hover.border_color = border_color.lightened(0.2)  # Lighter on hover
+	style_hover.corner_radius_top_left = 8
+	style_hover.corner_radius_top_right = 8
+	style_hover.corner_radius_bottom_left = 8
+	style_hover.corner_radius_bottom_right = 8
+	style_hover.content_margin_left = 10
+	style_hover.content_margin_right = 10
+	style_hover.content_margin_top = 10
+	style_hover.content_margin_bottom = 10
+
+	# PRESSED state (darker)
+	style_pressed.bg_color = Color(0.1, 0.1, 0.1, 0.95)
+	style_pressed.border_width_left = 4
+	style_pressed.border_width_right = 4
+	style_pressed.border_width_top = 4
+	style_pressed.border_width_bottom = 4
+	style_pressed.border_color = border_color.darkened(0.2)  # Darker when pressed
+	style_pressed.corner_radius_top_left = 8
+	style_pressed.corner_radius_top_right = 8
+	style_pressed.corner_radius_bottom_left = 8
+	style_pressed.corner_radius_bottom_right = 8
+	style_pressed.content_margin_left = 10
+	style_pressed.content_margin_right = 10
+	style_pressed.content_margin_top = 10
+	style_pressed.content_margin_bottom = 10
+
+	# DISABLED state (gray)
+	style_disabled.bg_color = Color(0.1, 0.1, 0.1, 0.7)
+	style_disabled.border_width_left = 3
+	style_disabled.border_width_right = 3
+	style_disabled.border_width_top = 3
+	style_disabled.border_width_bottom = 3
+	style_disabled.border_color = Color(0.3, 0.3, 0.3, 0.8)  # Locked = dark gray
+	style_disabled.corner_radius_top_left = 8
+	style_disabled.corner_radius_top_right = 8
+	style_disabled.corner_radius_bottom_left = 8
+	style_disabled.corner_radius_bottom_right = 8
+	style_disabled.content_margin_left = 10
+	style_disabled.content_margin_right = 10
+	style_disabled.content_margin_top = 10
+	style_disabled.content_margin_bottom = 10
+
+	# Apply styles to button
+	button.add_theme_stylebox_override("normal", style_normal)
+	button.add_theme_stylebox_override("hover", style_hover)
+	button.add_theme_stylebox_override("pressed", style_pressed)
+	button.add_theme_stylebox_override("disabled", style_disabled)
+
+	# Add star text to button (optional visual enhancement)
+	if stars > 0:
+		var star_text = ""
+		for i in range(stars):
+			star_text += "★"
+		button.text = "%s\n%s" % [level_data.level_name, star_text]
+		button.add_theme_color_override("font_color", border_color)
+	else:
+		button.text = level_data.level_name
+		button.add_theme_color_override("font_color", Color.WHITE)

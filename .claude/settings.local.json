@@ -3,7 +3,10 @@
     "allow": [
       "Bash(cat:*)",
       "Read(//c/Users/ollil/AppData/Roaming/Godot/app_userdata/Test 1/balance_debug/exports/**)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(dir:*)",
+      "Bash(git log:*)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

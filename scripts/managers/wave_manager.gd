@@ -3,6 +3,12 @@ extends Node2D
 # ============================================
 # WAVE MANAGER - Spawns enemies in waves
 # ============================================
+#
+# NEW FEATURE: Kingdom Rush-style "Call Next Wave" buttons
+# - Floating buttons appear at spawn points during wave breaks
+# - Players can call the next wave early for a gold bonus
+# - Bonus decays over break time (5g instant → 1g near end)
+# - Buttons auto-position to follow spawn points on screen
 
 # REFERENCES (drag these from Scene tree in Inspector)
 @export var enemy_path: Path2D  # The path enemies follow (OLD SYSTEM)
@@ -57,6 +63,12 @@ var wave_break_timer: Timer
 var loot_distribution_scene = preload("res://scenes/ui/loot_distribution_screen.tscn")
 var victory_screen_scene = preload("res://scenes/ui/victory_screen.tscn")
 
+# CALL WAVE BUTTON SYSTEM (Kingdom Rush style)
+var call_wave_button_scene = preload("res://scenes/ui/call_wave_button.tscn")
+var active_call_wave_buttons: Array = []  # Currently visible buttons
+var spawn_point_positions: Array[Vector2] = []  # World positions of spawn points
+var early_call_enabled: bool = false  # Whether early call is currently allowed
+
 # ============================================
 # BUILT-IN FUNCTIONS
 # ============================================
@@ -66,6 +78,7 @@ func _ready():
 	# Load waves from LevelManager if available
 	if LevelManager.current_level:
 		waves = LevelManager.current_level.waves.duplicate()
+		print("[WaveManager] ✅ Loaded %d waves from LevelManager.current_level" % waves.size())
 	else:
 		# EDITOR TESTING MODE: If testing directly from F5, initialize GameStateManager manually
 		push_warning("[WaveManager] No current_level found - you're testing from editor!")
@@ -75,7 +88,18 @@ func _ready():
 		var test_config = load("res://data/level_configs/level_01_config.tres") as LevelConfig
 		if test_config:
 			GameStateManager.initialize_level(test_config)
-			print("[WaveManager] GameStateManager initialized with test config (starting gold: %d)" % GameStateManager.gold)
+			waves = test_config.waves.duplicate()
+			print("[WaveManager] ✅ Loaded %d waves from test config (starting gold: %d)" % [waves.size(), GameStateManager.gold])
+
+	# VALIDATION: Warn if wave count seems wrong
+	if waves.size() == 0:
+		push_error("[WaveManager] ❌ NO WAVES LOADED! Check level configuration!")
+	elif waves.size() < 10:
+		push_warning("[WaveManager] ⚠️ Only %d waves loaded - expected 16 for level_01!" % waves.size())
+	elif waves.size() != 16:
+		push_warning("[WaveManager] ⚠️ Loaded %d waves - expected 16 for level_01!" % waves.size())
+	else:
+		print("[WaveManager] ✅ Wave count validated: 16 waves ready!")
 
 	# Create the spawn timer
 	spawn_timer = Timer.new()
@@ -95,6 +119,9 @@ func _ready():
 	if BalanceTracker:
 		var level_id = LevelManager.current_level.level_id if LevelManager.current_level else "unknown"
 		BalanceTracker.start_run(level_id)
+
+	# Detect spawn point positions for call wave buttons
+	detect_spawn_points()
 
 	# Start the first wave after 2 seconds (gives player time to prepare)
 	await get_tree().create_timer(2.0).timeout
@@ -152,6 +179,9 @@ func start_next_wave():
 	is_combat_active = true
 	combat_started.emit()
 	print("[WaveManager] Combat started - Wave ", current_wave)
+
+	# Clear any call wave buttons (in case wave was started early)
+	clear_call_wave_buttons()
 
 	# Track wave start
 	if BalanceTracker:
@@ -240,6 +270,9 @@ func wave_completed():
 	print("Next wave in ", break_time, " seconds...")
 	wave_break_timer.wait_time = break_time
 	wave_break_timer.start()
+
+	# Create call wave buttons during break (Kingdom Rush style)
+	create_call_wave_buttons()
 
 
 ## Helper function to check if combat is active
@@ -480,18 +513,9 @@ func _show_loot_distribution_screen(stars: int, gems_earned: int):
 	print("[WaveManager] Loot distribution complete, continuing to results screen")
 
 func _calculate_stars() -> int:
-	# Star calculation based on lives remaining (10 waves is harder!)
-	# 3 stars: 16+ lives (80%+ health)
-	# 2 stars: 10-15 lives (50-75% health)
-	# 1 star: 1-9 lives (survived but barely)
-	var lives_left = GameStateManager.lives
-
-	if lives_left >= 16:
-		return 3
-	elif lives_left >= 10:
-		return 2
-	else:
-		return 1
+	# Use centralized star calculation from GameStateManager
+	# This ensures consistent star calculation across the game
+	return GameStateManager.get_current_star_rating()
 
 func _award_star_gems(stars: int) -> int:
 	"""Award gems based on stars earned (from level_config)"""
@@ -563,6 +587,114 @@ func _apply_wave_modifiers(enemy, enemy_type: String):
 		var new_gold = int(original_gold * gold_mult)
 		enemy.gold_reward = new_gold
 		print("[WaveManager] Wave %d: %s gold scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_gold, new_gold, gold_mult])
+
+# ============================================
+# CALL WAVE BUTTON SYSTEM
+# ============================================
+
+func detect_spawn_points():
+	"""Detect spawn point positions from the level"""
+	spawn_point_positions.clear()
+
+	if use_waypoint_system:
+		# NEW WAYPOINT SYSTEM: Use waypoint position
+		if start_waypoint:
+			spawn_point_positions.append(start_waypoint.global_position)
+			print("[WaveManager] Detected spawn point (waypoint): ", start_waypoint.global_position)
+	else:
+		# OLD PATH2D SYSTEM: Use first point of path curve
+		if enemy_path and enemy_path.curve and enemy_path.curve.point_count > 0:
+			var first_point = enemy_path.curve.get_point_position(0)
+			var spawn_pos = enemy_path.global_position + first_point
+			spawn_point_positions.append(spawn_pos)
+			print("[WaveManager] Detected spawn point (path): ", spawn_pos)
+
+	# If we have wave data with multiple spawn points, detect those too
+	if current_wave_data and current_wave_data.enemies.size() > 0:
+		var unique_spawn_indices = []
+		for enemy_group in current_wave_data.enemies:
+			if enemy_group.spawn_point_index not in unique_spawn_indices:
+				unique_spawn_indices.append(enemy_group.spawn_point_index)
+
+		# If multiple spawn indices found, we might need to add more spawn positions
+		# For now, just log the info (future enhancement: support multiple paths)
+		if unique_spawn_indices.size() > 1:
+			print("[WaveManager] Wave uses %d different spawn points (indices: %s)" % [unique_spawn_indices.size(), unique_spawn_indices])
+
+	if spawn_point_positions.is_empty():
+		push_warning("[WaveManager] No spawn points detected! Call wave buttons will not appear.")
+
+func create_call_wave_buttons():
+	"""Create call wave buttons at each spawn point"""
+	# Clear any existing buttons
+	clear_call_wave_buttons()
+
+	# Get UI canvas layer (find the camera's UI layer)
+	var ui_layer = get_tree().root.get_node_or_null("TestLevel/UI")
+	if not ui_layer:
+		# Try to find any CanvasLayer in the scene
+		var canvas_layers = get_tree().get_nodes_in_group("ui_layer")
+		if canvas_layers.size() > 0:
+			ui_layer = canvas_layers[0]
+		else:
+			push_warning("[WaveManager] No UI CanvasLayer found - buttons will not appear!")
+			return
+
+	# Get break time for this wave
+	var break_time = current_wave_data.break_time if current_wave_data else wave_break_time
+
+	# Create button at each spawn point
+	for spawn_pos in spawn_point_positions:
+		var button = call_wave_button_scene.instantiate()
+		ui_layer.add_child(button)
+
+		# Setup button with spawn position and timing
+		button.setup(spawn_pos, break_time, 5)  # 5 gold base bonus
+
+		# Connect signal
+		button.wave_called.connect(_on_call_wave_button_pressed)
+
+		# Add to tracking array
+		active_call_wave_buttons.append(button)
+
+	early_call_enabled = true
+	print("[WaveManager] Created %d call wave button(s)" % active_call_wave_buttons.size())
+
+func clear_call_wave_buttons():
+	"""Remove all active call wave buttons"""
+	for button in active_call_wave_buttons:
+		if is_instance_valid(button):
+			button.queue_free()
+
+	active_call_wave_buttons.clear()
+	early_call_enabled = false
+
+func _on_call_wave_button_pressed():
+	"""Handle call wave button click - start wave early"""
+	if not early_call_enabled:
+		print("[WaveManager] Early call not allowed right now")
+		return
+
+	# Get gold bonus from first button (they should all have same bonus)
+	var gold_bonus = 0
+	if active_call_wave_buttons.size() > 0 and is_instance_valid(active_call_wave_buttons[0]):
+		gold_bonus = active_call_wave_buttons[0].get_current_bonus()
+
+	print("[WaveManager] Wave called early! Bonus: +%dg" % gold_bonus)
+
+	# Award gold bonus
+	GameStateManager.add_gold(gold_bonus)
+
+	# Track in BalanceTracker
+	if BalanceTracker:
+		BalanceTracker.record_event("early_wave_call", {"bonus_gold": gold_bonus, "wave": current_wave})
+
+	# Clear buttons and stop wave break timer
+	clear_call_wave_buttons()
+	wave_break_timer.stop()
+
+	# Start next wave immediately
+	start_next_wave()
 
 # ============================================
 # LOOT SYSTEM INTEGRATION

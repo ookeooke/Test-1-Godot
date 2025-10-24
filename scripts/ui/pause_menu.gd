@@ -36,35 +36,18 @@ func _on_resume_pressed():
 func _on_restart_pressed():
 	print("PauseMenu: Restart level")
 	get_tree().paused = false
+	queue_free()  # Remove pause menu before restarting
 
-	# Clean up autoloads before restart
-	_cleanup_before_restart()
-
-	# Reload current scene
-	get_tree().reload_current_scene()
-
-func _cleanup_before_restart():
-	"""Clean up persistent autoload state before restarting level"""
-	# Reset BalanceTracker
-	if BalanceTracker:
-		BalanceTracker.reset_run()
-
-	# Clear pending loot
-	if LootManager:
-		LootManager.clear_pending_loot()
-
-	# Reset GameStateManager (it will be re-initialized by LevelManager)
-	if GameStateManager:
-		GameStateManager.reset_for_new_run()
-
-	print("[PauseMenu] Autoloads cleaned up for restart")
+	# Use centralized restart logic
+	NavigationManager.restart_current_level()
 
 func _on_main_menu_pressed():
 	print("PauseMenu: Return to world map")
 	get_tree().paused = false
+	queue_free()  # Remove pause menu before navigating away
 
-	# Return to world map
-	get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
+	# Use centralized navigation
+	NavigationManager.go_to_world_map()
 
 func _exit_tree():
 	# Ensure game is unpaused when menu is removed

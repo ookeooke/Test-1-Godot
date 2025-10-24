@@ -35,32 +35,15 @@ func _close_existing_menus():
 func _on_retry_pressed():
 	print("DefeatScreen: Retry level")
 
-	# Clean up autoloads before restart
-	_cleanup_before_restart()
-
-	# Reload current level
-	get_tree().reload_current_scene()
-
-func _cleanup_before_restart():
-	"""Clean up persistent autoload state before restarting level"""
-	# Reset BalanceTracker
-	if BalanceTracker:
-		BalanceTracker.reset_run()
-
-	# Clear pending loot
-	if LootManager:
-		LootManager.clear_pending_loot()
-
-	# Reset GameStateManager (it will be re-initialized by LevelManager)
-	if GameStateManager:
-		GameStateManager.reset_for_new_run()
-
-	print("[DefeatScreen] Autoloads cleaned up for restart")
+	# Use centralized restart logic
+	NavigationManager.restart_current_level()
 
 func _on_level_select_pressed():
-	print("DefeatScreen: Return to level select")
-	get_tree().change_scene_to_file("res://scenes/ui/level_select.tscn")
+	print("DefeatScreen: Return to world map")
+	# Use centralized navigation (fixes bug: was going to non-existent level_select.tscn)
+	NavigationManager.go_to_world_map()
 
 func _on_main_menu_pressed():
 	print("DefeatScreen: Return to main menu")
-	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	# Use centralized navigation
+	NavigationManager.go_to_main_menu()

@@ -69,42 +69,28 @@ func _on_retry_pressed():
 	# Unpause the game
 	get_tree().paused = false
 
-	# Clean up autoloads before restart
-	_cleanup_before_restart()
-
-	# Free the victory screen and its canvas layer parent, then reload
+	# Free the victory screen and its canvas layer parent
 	var canvas_layer = get_parent()
 	if canvas_layer:
 		canvas_layer.queue_free()
 	await get_tree().process_frame  # Wait for cleanup
-	get_tree().reload_current_scene()
 
-func _cleanup_before_restart():
-	"""Clean up persistent autoload state before restarting level"""
-	# Reset BalanceTracker
-	if BalanceTracker:
-		BalanceTracker.reset_run()
-
-	# Clear pending loot
-	if LootManager:
-		LootManager.clear_pending_loot()
-
-	# Reset GameStateManager (it will be re-initialized by LevelManager)
-	if GameStateManager:
-		GameStateManager.reset_for_new_run()
-
-	print("[VictoryScreen] Autoloads cleaned up for restart")
+	# Use centralized restart logic
+	NavigationManager.restart_current_level()
 
 func _on_level_select_pressed():
 	print("VictoryScreen: Return to world map")
 	# Unpause the game
 	get_tree().paused = false
-	# Free the victory screen and its canvas layer parent, then change scene
+
+	# Free the victory screen and its canvas layer parent
 	var canvas_layer = get_parent()
 	if canvas_layer:
 		canvas_layer.queue_free()
 	await get_tree().process_frame  # Wait for cleanup
-	get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
+
+	# Use centralized navigation
+	NavigationManager.go_to_world_map()
 
 # Called from WaveManager to set stars earned
 func set_stars(stars: int):
