@@ -173,10 +173,14 @@ func wave_completed():
 	if BalanceTracker:
 		BalanceTracker.end_wave(current_wave)
 
-	# Award wave completion bonus (20g per wave)
-	var wave_bonus = 20
+	# Award wave completion bonus (progressive: 12g/13g/15g based on wave)
+	var wave_bonus = 12
+	if current_wave >= 7:
+		wave_bonus = 13  # Mid-game bonus
+	if current_wave >= 13:
+		wave_bonus = 15  # Late-game bonus
 	GameStateManager.add_gold(wave_bonus)
-	print("[WaveManager] Wave completion bonus: +%dg" % wave_bonus)
+	print("[WaveManager] Wave completion bonus: +%dg (wave %d)" % [wave_bonus, current_wave])
 
 	# Track wave bonus in BalanceTracker
 	if BalanceTracker:

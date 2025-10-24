@@ -27,10 +27,10 @@ var current_health = 200.0
 
 # Base stats (for reference and reset)
 const BASE_MAX_HEALTH = 200.0
-const BASE_RANGED_DAMAGE = 10.0  # Reduced from 14 (-29%) for balanced difficulty
+const BASE_RANGED_DAMAGE = 12.0  # Buffed from 10.0 (+20%) to hit 1.82x tower DPS ratio
 const BASE_MELEE_DAMAGE = 5.0  # Reduced from 6 (-17%) - melee is for blocking
 const BASE_RANGED_RANGE = 300.0
-const BASE_RANGED_ATTACK_SPEED = 0.6  # 23.3 DPS ranged (lower = faster)
+const BASE_RANGED_ATTACK_SPEED = 0.55  # 21.8 DPS ranged (lower = faster, buffed from 0.6s)
 const BASE_MOVEMENT_SPEED = 150.0
 
 # Fixed stats (not affected by modifiers)

@@ -26,7 +26,7 @@ var damage = 12  # Reduced from 16 (-25%) for Kingdom Rush strategic pacing
 var attack_speed = 1.0  # Attacks per second
 var range_radius = 300  # Detection range
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
-var build_cost = 100  # Cost to build this tower (for sell calculation)
+var build_cost = 80  # Cost to build this tower (balanced for 2.5 towers at start with 200g)
 
 # UPGRADE SYSTEM
 var tower_level = 1  # Current upgrade level (1-3, then can choose path at level 4)
@@ -823,11 +823,11 @@ func upgrade_tower():
 	match tower_level:
 		2:
 			print("🔧 [DEBUG] Applying Level 2 stats...")
-			damage = 20  # 12 → 20 (+67% damage)
+			damage = 17  # 12 → 17 (+42% damage, reduced from 20 for balance)
 			attack_speed = 1.3  # 1.0 → 1.3 (+30% speed)
 			range_radius = 350  # 300 → 350 (+50 range)
-			# Result: 26.0 DPS (+117% from Level 1)
-			print("✅ [ArcherTower] Upgraded to Level 2: DMG=20, AS=1.3, Range=350, DPS=26.0")
+			# Result: 22.1 DPS (+84% from Level 1, efficiency 1.84x vs 2.17x before)
+			print("✅ [ArcherTower] Upgraded to Level 2: DMG=17, AS=1.3, Range=350, DPS=22.1")
 		3:
 			print("🔧 [DEBUG] Applying Level 3 stats...")
 			damage = 27  # 20 → 27 (+35% damage)
@@ -977,7 +977,7 @@ func get_upgrade_cost() -> int:
 			2: return 90  # Level 2→3 (Reduced from 120g -25%)
 	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
 		# Path choice upgrade
-		return 120  # Level 3→4 path choice (Reduced from 150g -20%)
+		return 150  # Level 3→4 path choice (increased for economy balance)
 
 	return 0  # Max level reached
 
