@@ -18,10 +18,8 @@ signal campaign_completed(campaign_id: String)
 ## All available campaigns (assign in project settings or load from file)
 @export var campaigns: Array[CampaignData] = []
 
-## Preload all campaigns automatically
-const FOREST_CAMPAIGN = preload("res://data/campaigns/forest_campaign.tres")
-const DESERT_CAMPAIGN = preload("res://data/campaigns/desert_campaign.tres")
-const MOUNTAINS_CAMPAIGN = preload("res://data/campaigns/mountains_campaign.tres")
+## Preload main campaign
+const MAIN_CAMPAIGN = preload("res://data/campaigns/main_campaign.tres")
 
 # ============================================
 # CURRENT STATE
@@ -40,12 +38,10 @@ var current_campaign: CampaignData = null
 func _ready():
 	print("LevelManager initialized")
 
-	# Auto-load all campaigns if campaigns array is empty
+	# Auto-load main campaign if campaigns array is empty
 	if campaigns.is_empty():
-		print("LevelManager: Auto-loading campaigns")
-		campaigns.append(FOREST_CAMPAIGN)
-		campaigns.append(DESERT_CAMPAIGN)
-		campaigns.append(MOUNTAINS_CAMPAIGN)
+		print("LevelManager: Auto-loading main campaign")
+		campaigns.append(MAIN_CAMPAIGN)
 
 	print("LevelManager: ", campaigns.size(), " campaign(s) loaded")
 	for campaign in campaigns:
