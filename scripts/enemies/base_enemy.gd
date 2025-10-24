@@ -66,6 +66,7 @@ var hit_point_visual: Polygon2D  # Visual indicator for hit point in editor
 var spawn_time: float = 0.0
 var last_damage_source = null
 var last_damage_source_type = "unknown"
+var _has_died: bool = false  # Guard to prevent die() from being called multiple times
 
 # WAYPOINT NAVIGATION SYSTEM (new)
 var use_waypoint_navigation: bool = false  # Set by wave_manager when spawning
@@ -342,6 +343,11 @@ func _update_health_bar():
 
 func die():
 	"""Handle enemy death"""
+	# Guard: Prevent die() from being called multiple times
+	if _has_died:
+		return
+	_has_died = true
+
 	# Track enemy killed
 	if BalanceTracker:
 		var enemy_type = get_enemy_name().to_lower().replace(" ", "_")
@@ -389,6 +395,11 @@ func die():
 
 func reached_end():
 	"""Called when enemy reaches the end of the path"""
+	# Guard: Prevent reached_end() from being called multiple times (or after death)
+	if _has_died:
+		return
+	_has_died = true
+
 	print(get_enemy_name(), " reached the end! -", life_damage, " lives")
 
 	# Track enemy leaked

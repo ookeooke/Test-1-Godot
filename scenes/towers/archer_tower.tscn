@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://qnw05e5e648g"]
+[gd_scene load_steps=5 format=3 uid="uid://qnw05e5e648g"]
 
 [ext_resource type="Script" uid="uid://c7nwjkie0crhr" path="res://scenes/towers/archer_tower.gd" id="1_6gcww"]
 [ext_resource type="PackedScene" uid="uid://coirid61w00ks" path="res://scenes/projectiles/arrow.tscn" id="2_10wjk"]
@@ -27,7 +27,6 @@ offset_left = 14.0
 offset_top = 25.0
 offset_right = 66.0
 offset_bottom = 48.0
-mouse_filter = 2
 theme_override_font_sizes/font_size = 10
 text = "Archer"
 horizontal_alignment = 1
@@ -67,7 +66,6 @@ explosiveness = 1.0
 randomness = 0.3
 emission_shape = 1
 emission_sphere_radius = 3.0
-direction = Vector2(1, 0)
 spread = 30.0
 gravity = Vector2(0, 0)
 initial_velocity_min = 40.0
@@ -78,7 +76,6 @@ color = Color(1, 0.9, 0.4, 1)
 
 [node name="DetectionRange" type="Area2D" parent="."]
 collision_layer = 8
-collision_mask = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionRange"]
 shape = SubResource("CircleShape2D_cbvk8")
@@ -89,7 +86,6 @@ color = Color(0.3, 0.5, 1, 0.3)
 [node name="ClickArea" type="Area2D" parent="."]
 collision_layer = 64
 collision_mask = 0
-input_pickable = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]
 shape = SubResource("CircleShape2D_click")

@@ -165,8 +165,8 @@ Different tower types can shoot different arrow types:
    ```gdscript
    # In archer_tower.gd upgrade function
    if upgrade_path == "anti_air":
-       # Ensure arrows target elevated hitboxes
-       projectile_scene = preload("res://scenes/projectiles/arrow_air.tscn")
+	   # Ensure arrows target elevated hitboxes
+	   projectile_scene = preload("res://scenes/projectiles/arrow_air.tscn")
    ```
 
 ## Debug Mode (F4)
