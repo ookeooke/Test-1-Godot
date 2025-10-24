@@ -6,7 +6,7 @@ extends Area2D
 
 # INSPECTOR SETTINGS - Adjust these to tune arrow behavior!
 @export_group("Trajectory")
-@export var arc_height: float = 50.0  ## How high the arrow arcs visually (0 = straight line, 100 = high arc)
+@export var arc_height: float = 50.0  ## Arc intensity: 0=flat/direct, 50=normal, 100=high arc, 200=very high arc
 @export var use_ballistic: bool = true  ## Use arc trajectory (true) or homing (false)
 
 @export_group("Targeting")
@@ -75,6 +75,14 @@ func _calculate_target_position() -> Vector2:
 	# Get the base hit point (visual center or HitPoint marker)
 	var base_position = _get_target_hit_point()
 
+	# DYNAMIC PREDICTION: Calculate actual arrow flight time based on distance
+	# This prevents over-prediction for close shots and under-prediction for far shots
+	var distance_to_target = global_position.distance_to(base_position)
+	var actual_flight_time = distance_to_target / flight_speed  # Real time arrow takes to arrive
+
+	# Cap flight time to prevent extreme predictions (0.05s min, 1.0s max)
+	actual_flight_time = clamp(actual_flight_time, 0.05, 1.0)
+
 	# Try to get enemy velocity for prediction
 	var enemy_velocity = Vector2.ZERO
 	if target is CharacterBody2D:
@@ -96,10 +104,10 @@ func _calculate_target_position() -> Vector2:
 				# Calculate velocity: direction × speed
 				enemy_velocity = path_direction * target.speed
 
-				DebugConfig.log_targeting("🎯 Arrow prediction: enemy_vel=%s, speed=%.1f, dir=%s" % [enemy_velocity, target.speed, path_direction])
+				DebugConfig.log_targeting("🎯 Arrow prediction: dist=%.1fpx, flight_time=%.3fs, enemy_vel=%s" % [distance_to_target, actual_flight_time, enemy_velocity])
 
-	# Predict future position
-	var predicted_pos = base_position + (enemy_velocity * prediction_time)
+	# Predict future position using ACTUAL flight time (not fixed prediction_time)
+	var predicted_pos = base_position + (enemy_velocity * actual_flight_time)
 	return predicted_pos
 
 func _get_target_hit_point() -> Vector2:
@@ -164,63 +172,75 @@ func _physics_process(delta):
 		queue_free()
 
 func _update_ballistic_movement(_delta):
-	"""Ballistic arc with gravity simulation - looks like Kingdom Rush!"""
+	"""Ballistic arc with REAL parabolic trajectory - proper arrow physics!"""
 
 	# Calculate progress from 0.0 (start) to 1.0 (target)
 	var progress = clamp(travel_time / flight_time, 0.0, 1.0)
 
+	# LINEAR HORIZONTAL MOVEMENT: Interpolate from start to target on ground plane
+	var ground_position = start_position.lerp(target_position, progress)
+
+	# PARABOLIC ARC OFFSET: Arrow moves UP and DOWN in a parabola
+	# Arc height is proportional to distance (longer shots = higher arcs)
+	# The arc_height export variable controls the arc intensity
+	var distance = start_position.distance_to(target_position)
+	var arc_multiplier = arc_height / 200.0  # Convert arc_height to multiplier (default 50/200 = 0.25)
+	var dynamic_arc_height = distance * arc_multiplier  # Arc peak height based on distance
+
+	# Parabolic formula: height = 4h * progress * (1 - progress)
+	# This creates a parabola that: starts at 0, peaks at 0.5 progress, ends at 0
+	var arc_offset_y = 4.0 * dynamic_arc_height * progress * (1.0 - progress)
+
+	# ACTUAL POSITION: Ground position + arc offset (Godot: -Y is up)
+	var new_position = ground_position + Vector2(0, -arc_offset_y)
+
 	# CONTINUOUS COLLISION DETECTION: Check path before moving
-	var new_position = start_position.lerp(target_position, progress)
 	_check_collision_along_path(previous_position, new_position)
 
-	# POSITION: Move in straight line from start to target (lerp)
-	previous_position = global_position  # Store old position
+	# Update position
+	previous_position = global_position
 	global_position = new_position
 
-	# VISUAL ARC: Use gravity physics for realistic arc
-	# Current vertical velocity (decreases due to gravity)
-	var current_visual_velocity = visual_z_velocity - (visual_gravity * travel_time)
+	# CALCULATE CURRENT VELOCITY for rotation (derivative of parabola)
+	# Horizontal velocity: constant forward speed
+	var direction = (target_position - start_position).normalized()
+	var horizontal_velocity = direction * flight_speed
 
-	# Calculate height using ballistic formula: h = v0*t - 0.5*g*t^2
-	var visual_height = (visual_z_velocity * travel_time) - (0.5 * visual_gravity * travel_time * travel_time)
+	# Vertical velocity: derivative of parabolic arc
+	# d/dt[4h * t * (1-t)] = 4h * (1 - 2t) / flight_time
+	# This gives upward velocity at start, zero at peak, downward at end
+	var vertical_velocity_factor = 4.0 * dynamic_arc_height * (1.0 - 2.0 * progress) / flight_time
+	var vertical_velocity = vertical_velocity_factor  # Negative = downward
 
-	# Clamp to ground level (don't go below 0)
-	visual_height = max(0.0, visual_height)
-
-	# Move arrow sprite UP (negative Y = up on screen)
-	if has_node("ColorRect"):
-		var arrow_sprite = get_node("ColorRect")
-		arrow_sprite.position.y = -visual_height  # Negative = UP on screen
+	# VISUAL ENHANCEMENTS: Scale and shadow (optional, based on height)
+	var visual_height = arc_offset_y  # Current height above ground
+	var expected_peak = dynamic_arc_height
+	var height_ratio = visual_height / max(expected_peak, 1.0)
 
 	# Scale arrow larger when higher (simulates perspective)
-	# Use actual height vs expected peak height
-	var expected_peak = (visual_z_velocity * visual_z_velocity) / (2.0 * visual_gravity)
-	var height_ratio = visual_height / max(expected_peak, 1.0)
 	var scale_factor = 1.0 + height_ratio * 0.4
 	if has_node("ColorRect"):
 		get_node("ColorRect").scale = Vector2(scale_factor, scale_factor)
+		get_node("ColorRect").position = Vector2.ZERO  # No sprite offset needed - position IS the arc!
 
 	# Shadow gets smaller when arrow is higher
 	if has_node("Shadow"):
 		var shadow_scale = 1.0 - height_ratio * 0.5
 		get_node("Shadow").scale = Vector2(shadow_scale, shadow_scale)
 
-	# ROTATION: Calculate realistic arrow orientation facing velocity vector
-	# Arrows "face gravity" by aligning with their velocity (horizontal + gravity-affected vertical)
-	var horizontal_dir = (target_position - start_position).normalized()
+	# ROTATION: Arrow points along its instantaneous velocity vector
+	# This creates natural rotation: upward at launch, horizontal at peak, downward at landing
 
-	# Build FULL 2D velocity vector (not just X component!)
-	# Horizontal: Full directional velocity maintaining trajectory
-	# Vertical: Gravity-affected velocity (starts positive/up, becomes negative/down)
-	var horizontal_velocity = horizontal_dir * flight_speed  # Full 2D horizontal motion
-
-	var actual_velocity = Vector2(
-		horizontal_velocity.x,                          # X component of horizontal
-		horizontal_velocity.y - current_visual_velocity # Y component + gravity effect
+	# Build full 2D velocity vector
+	# Horizontal: constant forward velocity toward target
+	# Vertical: parabolic velocity (up at start, zero at peak, down at end)
+	var velocity_2d = Vector2(
+		horizontal_velocity.x,
+		horizontal_velocity.y - vertical_velocity  # Subtract because -Y is up in Godot
 	)
 
-	# Calculate target rotation from velocity direction
-	var target_rotation = actual_velocity.angle()
+	# Calculate rotation from velocity direction
+	var target_rotation = velocity_2d.angle()
 
 	# Apply rotation with optional smoothing for realistic "weight" feeling
 	if rotation_smoothing:
@@ -231,7 +251,7 @@ func _update_ballistic_movement(_delta):
 		var smoothing_factor = 1.0 - exp(-rotation_decay_rate * dt)
 		rotation = lerp_angle(rotation, target_rotation, smoothing_factor)
 	else:
-		# Instant rotation (physically accurate, current behavior)
+		# Instant rotation (follows velocity vector precisely)
 		rotation = target_rotation
 
 	# Check if arrow reached target (progress >= 1.0)
@@ -392,20 +412,12 @@ func _on_body_entered(body):
 # ============================================
 
 func _get_visual_offset_at_time(time: float) -> Vector2:
-	"""Calculate the visual Y-offset at a specific time in the flight
-	This is used to make collision detection follow the visual arc"""
-	if not use_ballistic:
-		return Vector2.ZERO
-
-	# Use same physics formula as _update_ballistic_movement (line 169)
-	# Calculate height using ballistic formula: h = v0*t - 0.5*g*t^2
-	var height = (visual_z_velocity * time) - (0.5 * visual_gravity * time * time)
-
-	# Clamp to ground level (don't go below 0)
-	height = max(0.0, height)
-
-	# Return as Vector2 offset (negative Y = up on screen, matching line 177)
-	return Vector2(0, -height)
+	"""Calculate the arc Y-offset at a specific time in the flight
+	This is used to make collision detection follow the parabolic arc
+	NOTE: With the new system, the arc is built into global_position, so this returns ZERO"""
+	# The new parabolic arc system moves the arrow's actual position (not just sprite offset)
+	# Collision detection now automatically follows the arc because global_position includes it
+	return Vector2.ZERO
 
 func _debug_draw_raycast(from: Vector2, to: Vector2, color: Color):
 	"""Draw a debug line showing the raycast path (F4 debug mode)"""

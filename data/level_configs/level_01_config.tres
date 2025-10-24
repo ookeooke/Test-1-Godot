@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="LevelConfig" load_steps=13 format=3 uid="uid://config_level_01"]
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=18 format=3 uid="uid://config_level_01"]
 
 [ext_resource type="Script" path="res://scripts/resources/level_config.gd" id="1_config"]
-[ext_resource type="PackedScene" uid="uid://d3pnndyqupwqw" path="res://scenes/levels/level_01.tscn" id="2_scene"]
 [ext_resource type="Resource" uid="uid://cew3vj76fgf52" path="res://data/levels/level_01/waves/wave_01.tres" id="3_w01"]
 [ext_resource type="Resource" uid="uid://efkt5o3e53ax" path="res://data/levels/level_01/waves/wave_02.tres" id="4_w02"]
 [ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_03.tres" id="5_w03"]
@@ -12,20 +11,25 @@
 [ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_08.tres" id="10_w08"]
 [ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_09.tres" id="11_w09"]
 [ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_10.tres" id="12_w10"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_11.tres" id="13_w11"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_12.tres" id="14_w12"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_13.tres" id="15_w13"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_14.tres" id="16_w14"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_15.tres" id="17_w15"]
+[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_16.tres" id="18_w16"]
 
 [resource]
 script = ExtResource("1_config")
 level_id = "level_01"
 level_name = "Forest Path"
 level_description = "A simple path through the forest. Perfect for beginners!"
-starting_gold = 150
+starting_gold = 200
 starting_lives = 15
-waves = Array[Resource("res://scripts/resources/wave_data.gd")]([ExtResource("3_w01"), ExtResource("4_w02"), ExtResource("5_w03"), ExtResource("6_w04"), ExtResource("7_w05"), ExtResource("8_w06"), ExtResource("9_w07"), ExtResource("10_w08"), ExtResource("11_w09"), ExtResource("12_w10")])
+waves = Array[Resource("res://scripts/resources/wave_data.gd")]([ExtResource("3_w01"), ExtResource("4_w02"), ExtResource("5_w03"), ExtResource("6_w04"), ExtResource("7_w05"), ExtResource("8_w06"), ExtResource("9_w07"), ExtResource("10_w08"), ExtResource("11_w09"), ExtResource("12_w10"), ExtResource("13_w11"), ExtResource("14_w12"), ExtResource("15_w13"), ExtResource("16_w14"), ExtResource("17_w15"), ExtResource("18_w16")])
 difficulty = 1
 required_stars = 0
 campaign_id = "main"
 level_index = 1
-level_scene = ExtResource("2_scene")
 camera_bounds = Rect2(0, 0, 0, 0)
 auto_calculate_bounds = true
 bounds_padding = 200.0

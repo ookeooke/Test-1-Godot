@@ -1,7 +1,8 @@
 extends Area2D
 class_name ItemPickup
 
-## ItemPickup - Hybrid collection system (Option D)
+## ItemPickup - Simplified glow-only visual system
+## - Shows only a small colored glow on the ground (no sprite, no labels)
 ## - Common/Materials: Auto-collect after delay
 ## - Rare+: Manual click required (with timeout fallback)
 ## - All items go to LootManager.pending_wave_loot
@@ -17,10 +18,8 @@ enum CollectionMode {
 	INSTANT    # Instant auto-collect (Gold/Currency)
 }
 
-@onready var sprite: Sprite2D = $Sprite2D
-@onready var label: Label = $Label
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
-@onready var animation_player: AnimationPlayer = $AnimationPlayer if has_node("AnimationPlayer") else null
+@onready var ground_glow: Sprite2D = $GroundGlow
 
 var item_data: ItemData
 var is_collected: bool = false
@@ -48,10 +47,6 @@ func _ready():
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 
-	# Start idle animation
-	if animation_player and animation_player.has_animation("idle"):
-		animation_player.play("idle")
-
 	print("[ItemPickup] Ready at ", global_position, " | Item: ", item_id, " | Mode: ", CollectionMode.keys()[collection_mode])
 
 
@@ -63,24 +58,18 @@ func load_item_data():
 		queue_free()
 		return
 
-	# Set up visuals
-	if item_data.icon and sprite:
-		sprite.texture = item_data.icon
-	else:
-		# Fallback: colored square based on rarity
-		sprite.modulate = item_data.get_rarity_color()
-
-	# Set up label with item name and rarity color
-	if label:
-		label.text = item_data.item_name
-		label.modulate = item_data.get_rarity_color()
+	# Set up ground glow with rarity color
+	if ground_glow:
+		ground_glow.modulate = item_data.get_rarity_color()
+		# Small, subtle glow - scale slightly based on rarity
+		var glow_scale = 0.6 + (item_data.rarity * 0.1)  # 0.6 to 1.0
+		ground_glow.scale = Vector2(glow_scale, glow_scale)
 
 	# Determine collection mode based on rarity
 	_setup_collection_mode()
 
-	# Add glow effect for higher rarities
-	if item_data.rarity >= ItemData.Rarity.RARE:
-		_add_glow_effect()
+	# Add pulsing glow effect
+	_add_glow_effect()
 
 
 func _setup_collection_mode():
@@ -100,10 +89,6 @@ func _setup_collection_mode():
 			collection_mode = CollectionMode.MANUAL
 			_start_fallback_timer(FALLBACK_TIMEOUT)
 			print("[ItemPickup] ", item_data.get_rarity_name(), " item - manual click required (", FALLBACK_TIMEOUT, "s timeout)")
-
-			# Add visual cue for clickable items
-			if label:
-				label.text = "🖱 " + item_data.item_name + " 🖱"
 
 
 func _start_auto_collect_timer(delay: float):
@@ -158,28 +143,24 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int):
 
 
 func _on_mouse_entered():
-	"""Visual feedback on hover"""
-	if not is_collected and sprite:
+	"""Visual feedback on hover - brighten glow"""
+	if not is_collected and ground_glow:
 		var tween = create_tween()
 		tween.set_ease(Tween.EASE_OUT)
 		tween.set_trans(Tween.TRANS_BACK)
-		tween.tween_property(sprite, "scale", Vector2(1.2, 1.2), 0.2)
-
-		# Brighten label
-		if label:
-			label.modulate = item_data.get_rarity_color() * 1.5
+		tween.tween_property(ground_glow, "scale", ground_glow.scale * 1.3, 0.2)
+		tween.tween_property(ground_glow, "modulate:a", 0.9, 0.2)
 
 
 func _on_mouse_exited():
 	"""Reset visual feedback"""
-	if not is_collected and sprite:
+	if not is_collected and ground_glow and item_data:
+		var original_scale = 0.6 + (item_data.rarity * 0.1)
 		var tween = create_tween()
 		tween.set_ease(Tween.EASE_OUT)
 		tween.set_trans(Tween.TRANS_CUBIC)
-		tween.tween_property(sprite, "scale", Vector2(1.0, 1.0), 0.2)
-
-		if label:
-			label.modulate = item_data.get_rarity_color()
+		tween.tween_property(ground_glow, "scale", Vector2(original_scale, original_scale), 0.2)
+		tween.tween_property(ground_glow, "modulate:a", 0.6, 0.2)
 
 
 func collect_item(was_auto: bool = false):
@@ -217,28 +198,25 @@ func collect_item(was_auto: bool = false):
 
 
 func _play_collect_animation():
-	"""Animate item collection"""
-	if animation_player and animation_player.has_animation("collect"):
-		animation_player.play("collect")
-		await animation_player.animation_finished
-	else:
-		# Default animation: fly up and fade
-		var tween = create_tween()
-		tween.set_parallel(true)
-		tween.tween_property(self, "global_position:y", global_position.y - 50, 0.5).set_ease(Tween.EASE_OUT)
-		tween.tween_property(self, "modulate:a", 0.0, 0.5).set_ease(Tween.EASE_IN)
-		tween.set_parallel(false)
-		await tween.finished
+	"""Animate item collection - fade out glow"""
+	var tween = create_tween()
+	tween.set_parallel(true)
 
+	if ground_glow:
+		tween.tween_property(ground_glow, "modulate:a", 0.0, 0.3).set_ease(Tween.EASE_IN)
+		tween.tween_property(ground_glow, "scale", ground_glow.scale * 1.5, 0.3).set_ease(Tween.EASE_OUT)
+
+	await tween.finished
 	queue_free()
 
 
 func _add_glow_effect():
-	"""Add pulsing glow for rare items"""
-	var glow_tween = create_tween()
-	glow_tween.set_loops()
-	glow_tween.tween_property(sprite, "modulate", item_data.get_rarity_color() * 1.5, 0.7)
-	glow_tween.tween_property(sprite, "modulate", Color.WHITE, 0.7)
+	"""Add subtle pulsing glow effect"""
+	if ground_glow:
+		var glow_tween = create_tween()
+		glow_tween.set_loops()
+		glow_tween.tween_property(ground_glow, "modulate:a", 0.7, 1.0).set_ease(Tween.EASE_IN_OUT)
+		glow_tween.tween_property(ground_glow, "modulate:a", 0.4, 1.0).set_ease(Tween.EASE_IN_OUT)
 
 
 ## Public API for external control
