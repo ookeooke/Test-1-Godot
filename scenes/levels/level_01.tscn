@@ -1,8 +1,6 @@
-[gd_scene load_steps=33 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=31 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://mxt3ckx3n6mu" path="res://scripts/managers/wave_manager.gd" id="1_0e48y"]
-[ext_resource type="Script" path="res://scripts/ai/ai_test_simple.gd" id="1_ai_test"]
-[ext_resource type="Script" path="res://scripts/ai/ai_learning_system.gd" id="1_ai_learning"]
 [ext_resource type="PackedScene" uid="uid://b6yn3cxqs75wl" path="res://scenes/debug/balance_debug_hud.tscn" id="1_balance_hud"]
 [ext_resource type="Script" uid="uid://idfvb3maml47" path="res://scripts/level_controller.gd" id="1_level_controller"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://scenes/enemies/goblin_scout.tscn" id="1_wtcfe"]
@@ -184,14 +182,4 @@ ranger_hero_scene = ExtResource("8_ir8iy")
 position = Vector2(761, 675)
 position = Vector2(761, 675)
 
-# AI Test disabled for manual play - uncomment to enable AI
-#[node name="AITest" type="Node" parent="."]
-#script = ExtResource("1_ai_test")
-#strategy = "Archer Rush"
-#show_debug_info = false
-
-# AI Learning System disabled - uncomment to enable mass testing
-#[node name="AILearning" type="Node" parent="."]
-#script = ExtResource("1_ai_learning")
-#total_games_to_play = 100
-#show_progress = true
+# AI systems removed - not needed for single-level game
