@@ -534,10 +534,12 @@ func _spawn_damage_number(damage: float):
 	tween.tween_property(damage_label, "scale", Vector2(1.3, 1.3), 0.2).set_ease(Tween.EASE_OUT)
 	tween.tween_property(damage_label, "scale", Vector2(0.8, 0.8), 0.6).set_ease(Tween.EASE_IN).set_delay(0.2)
 
-	# Cleanup after animation
-	await tween.finished
-	if is_instance_valid(damage_label):
-		damage_label.queue_free()
+	# Cleanup after animation - use tween callback instead of await
+	# This ensures cleanup happens even if enemy dies during animation
+	tween.finished.connect(func():
+		if is_instance_valid(damage_label):
+			damage_label.queue_free()
+	)
 
 func _spawn_death_particles():
 	"""Create subtle death particles when enemy dies"""

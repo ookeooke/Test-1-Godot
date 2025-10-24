@@ -44,8 +44,11 @@ var tracked_towers: Dictionary = {}
 ## Hero instances being tracked {hero_id: hero_data}
 var tracked_heroes: Dictionary = {}
 
-## Enemy type statistics {enemy_type: stats}
+## Enemy type statistics {enemy_type: stats} - CUMULATIVE across entire run
 var enemy_stats: Dictionary = {}
+
+## Current wave enemy tracking {enemy_type: stats} - RESET each wave
+var current_wave_enemies: Dictionary = {}
 
 ## Wave data {wave_number: wave_data}
 var wave_data: Dictionary = {}
@@ -468,8 +471,14 @@ func record_enemy_spawned(enemy_type: String):
 		return
 
 	_ensure_enemy_stats(enemy_type)
+	_ensure_current_wave_stats(enemy_type)
+
+	# Track cumulative (entire run)
 	enemy_stats[enemy_type].spawned += 1
 	enemy_stats[enemy_type].spawn_times.append(Time.get_ticks_msec() / 1000.0 - run_start_time)
+
+	# Track per-wave
+	current_wave_enemies[enemy_type].spawned += 1
 
 func record_enemy_killed(enemy_type: String, time_alive: float, gold_reward: int):
 	"""Record that an enemy was killed"""
@@ -477,9 +486,15 @@ func record_enemy_killed(enemy_type: String, time_alive: float, gold_reward: int
 		return
 
 	_ensure_enemy_stats(enemy_type)
+	_ensure_current_wave_stats(enemy_type)
+
+	# Track cumulative (entire run)
 	enemy_stats[enemy_type].killed += 1
 	enemy_stats[enemy_type].total_time_alive += time_alive
 	enemy_stats[enemy_type].gold_rewarded += gold_reward
+
+	# Track per-wave
+	current_wave_enemies[enemy_type].killed += 1
 
 	# Record gold earned
 	_record_gold_earned(gold_reward, "enemy_kill_%s" % enemy_type)
@@ -490,11 +505,18 @@ func record_enemy_leaked(enemy_type: String, lives_lost: int):
 		return
 
 	_ensure_enemy_stats(enemy_type)
+	_ensure_current_wave_stats(enemy_type)
+
+	# Track cumulative (entire run)
 	enemy_stats[enemy_type].leaked += 1
 	enemy_stats[enemy_type].lives_lost += lives_lost
 
+	# Track per-wave
+	current_wave_enemies[enemy_type].leaked += 1
+	current_wave_enemies[enemy_type].lives_lost += lives_lost
+
 func _ensure_enemy_stats(enemy_type: String):
-	"""Ensure enemy stats dictionary exists"""
+	"""Ensure enemy stats dictionary exists (cumulative)"""
 	if not enemy_stats.has(enemy_type):
 		enemy_stats[enemy_type] = {
 			"type": enemy_type,
@@ -505,6 +527,17 @@ func _ensure_enemy_stats(enemy_type: String):
 			"gold_rewarded": 0,
 			"lives_lost": 0,
 			"spawn_times": []
+		}
+
+func _ensure_current_wave_stats(enemy_type: String):
+	"""Ensure current wave enemy stats dictionary exists (per-wave)"""
+	if not current_wave_enemies.has(enemy_type):
+		current_wave_enemies[enemy_type] = {
+			"type": enemy_type,
+			"spawned": 0,
+			"killed": 0,
+			"leaked": 0,
+			"lives_lost": 0
 		}
 
 # ============================================
@@ -633,6 +666,9 @@ func start_wave(wave_number: int, enemy_composition: Dictionary = {}):
 
 	current_wave_number = wave_number
 
+	# Reset per-wave enemy tracking
+	current_wave_enemies.clear()
+
 	wave_data[wave_number] = {
 		"wave_number": wave_number,
 		"start_time": Time.get_ticks_msec() / 1000.0 - run_start_time,
@@ -668,15 +704,15 @@ func end_wave(wave_number: int):
 	wave.gold_at_end = GameStateManager.gold if GameStateManager else 0
 	wave.lives_at_end = GameStateManager.lives if GameStateManager else 0
 
-	# Calculate wave totals from enemy stats
-	for enemy_type in enemy_stats:
-		var stats = enemy_stats[enemy_type]
+	# Calculate wave totals from CURRENT WAVE enemies (not cumulative!)
+	for enemy_type in current_wave_enemies:
+		var stats = current_wave_enemies[enemy_type]
 		wave.enemies_spawned += stats.spawned
 		wave.enemies_killed += stats.killed
 		wave.enemies_leaked += stats.leaked
 		wave.lives_lost += stats.lives_lost
 
-	print("[BalanceTracker] Wave %d ended (%.1fs)" % [wave_number, wave.duration])
+	print("[BalanceTracker] Wave %d ended (%.1fs, %d spawned, %d killed, %d leaked)" % [wave_number, wave.duration, wave.enemies_spawned, wave.enemies_killed, wave.enemies_leaked])
 
 # ============================================
 # ECONOMY TRACKING

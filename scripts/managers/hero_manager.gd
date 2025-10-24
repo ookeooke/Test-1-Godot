@@ -5,6 +5,7 @@ extends Node2D
 # ============================================
 
 @export var ranger_hero_scene: PackedScene
+@export var debug_input = false  # Print all input events
 
 var current_hero = null
 var spawned_heroes = []
@@ -75,14 +76,28 @@ func _unhandled_input(event):
 	# This allows UI controls and Area2D physics clicks to process first
 	# This prevents blocking tower/hero clicks when no hero is selected
 
+	# DEBUG: Log input events
+	if debug_input:
+		print("[HeroManager DEBUG] _unhandled_input called")
+		print("  Event type: ", event.get_class())
+		print("  current_hero: ", current_hero)
+		if event is InputEventMouseButton:
+			print("  Button: ", event.button_index, " Pressed: ", event.pressed)
+
 	# Don't process input if GUI is focused
 	var gui_element = get_viewport().gui_get_hovered_control()
+	if debug_input:
+		print("[HeroManager DEBUG] GUI element: ", gui_element)
 	if gui_element:
+		if debug_input:
+			print("[HeroManager DEBUG] GUI detected - returning")
 		return
 
 	# ESC to deselect (also check InputMap action)
 	if Input.is_action_just_pressed("deselect"):
 		if current_hero and is_instance_valid(current_hero):
+			if debug_input:
+				print("[HeroManager DEBUG] ESC pressed - deselecting hero")
 			current_hero.deselect()
 			current_hero = null
 			if hero_button:
@@ -93,6 +108,8 @@ func _unhandled_input(event):
 	# Left-click/tap on empty space to move hero (using InputMap action)
 	if Input.is_action_just_pressed("interact"):
 		if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
+			if debug_input:
+				print("[HeroManager DEBUG] Left-click - moving hero")
 			# Get world position
 			var camera = get_viewport().get_camera_2d()
 			if camera:
@@ -112,10 +129,17 @@ func _unhandled_input(event):
 
 	# Right-click/two-finger to deselect
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		if debug_input:
+			print("[HeroManager DEBUG] Right-click detected")
 		if current_hero and is_instance_valid(current_hero):
+			if debug_input:
+				print("[HeroManager DEBUG] Hero selected - deselecting and consuming input")
 			current_hero.deselect()
 			current_hero = null
 			if hero_button:
 				hero_button.set_selected(false)
 			get_viewport().set_input_as_handled()
-		return
+			return  # Only consume input if we actually deselected a hero
+		# If no hero selected, don't consume - let camera handle right-click for dragging
+		if debug_input:
+			print("[HeroManager DEBUG] No hero selected - passing input to camera")

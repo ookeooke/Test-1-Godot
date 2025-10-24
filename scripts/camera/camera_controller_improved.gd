@@ -29,6 +29,12 @@ enum Platform { MOBILE, PC, CONSOLE }
 var current_platform: Platform
 
 # ============================================
+# DEBUG SETTINGS
+# ============================================
+@export_group("Debug")
+@export var debug_input = false  # Print all input events
+
+# ============================================
 # ZOOM SETTINGS - Slight zoom enabled for detail viewing
 # ============================================
 @export_group("Zoom Settings")
@@ -329,8 +335,18 @@ func _unhandled_input(event):
 	if Engine.is_editor_hint():
 		return
 
+	# DEBUG: Log all input events
+	if debug_input:
+		print("[Camera DEBUG] _unhandled_input called")
+		print("  Event type: ", event.get_class())
+		print("  input_locked: ", input_locked)
+		if event is InputEventMouseButton:
+			print("  Button: ", event.button_index, " Pressed: ", event.pressed, " Position: ", event.position)
+
 	# Skip if input is locked (menu open)
 	if input_locked:
+		if debug_input:
+			print("[Camera DEBUG] Input locked - ignoring event")
 		return
 
 	match current_platform:
@@ -346,30 +362,48 @@ func handle_pc_input(event) -> void:
 	if event is InputEventMouseButton:
 		# Don't interact with camera when mouse is over GUI
 		var gui_element = get_viewport().gui_get_hovered_control()
+		if debug_input:
+			print("[Camera DEBUG] handle_pc_input - MouseButton")
+			print("  GUI element hovered: ", gui_element)
+
 		if gui_element:
+			if debug_input:
+				print("[Camera DEBUG] GUI element detected - ignoring input")
 			return  # Let GUI handle the input
 
 		# Mouse wheel zoom
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			if event.pressed:
+				if debug_input:
+					print("[Camera DEBUG] Mouse wheel UP - zooming in")
 				var zoom_delta = zoom_speed * user_prefs["zoom_speed_multiplier"]
 				zoom_at_point(event.position, zoom_delta)
 				get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			if event.pressed:
+				if debug_input:
+					print("[Camera DEBUG] Mouse wheel DOWN - zooming out")
 				var zoom_delta = -zoom_speed * user_prefs["zoom_speed_multiplier"]
 				zoom_at_point(event.position, zoom_delta)
 				get_viewport().set_input_as_handled()
 
 		# Middle/Right mouse drag
 		elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
+			if debug_input:
+				print("[Camera DEBUG] Right/Middle mouse - Button: ", event.button_index, " Pressed: ", event.pressed)
 			if event.pressed:
+				if debug_input:
+					print("[Camera DEBUG] Starting drag at: ", event.position)
 				start_drag(event.position)
 			else:
+				if debug_input:
+					print("[Camera DEBUG] Ending drag")
 				end_drag()
 			get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseMotion:
+		if debug_input and is_dragging:
+			print("[Camera DEBUG] Mouse motion while dragging - Position: ", event.position)
 		if is_dragging:
 			update_drag(event.position)
 			get_viewport().set_input_as_handled()

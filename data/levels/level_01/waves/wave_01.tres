@@ -10,5 +10,3 @@ count = 8
 [resource]
 script = ExtResource("1_wave")
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
-hp_multiplier = 1.0
-gold_multiplier = 1.0

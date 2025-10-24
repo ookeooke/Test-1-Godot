@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3 uid="uid://wave15_unique_id"]
+[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3 uid="uid://dots2abf7uahd"]
 
 [ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="1_wave"]
 [ext_resource type="Script" uid="uid://cmgol7ax0wy0t" path="res://scripts/resources/enemy_spawn_data.gd" id="2_enemy"]
@@ -21,6 +21,4 @@ wave_number = 15
 break_time = 5.0
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1"), SubResource("EnemySpawnData_2")])
 wave_name = "Final Push"
-hp_multiplier = 8.0
-gold_multiplier = 1.0
-max_gold_from_kills = 400
+hp_multiplier = 7.5

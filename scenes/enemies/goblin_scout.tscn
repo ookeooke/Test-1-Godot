@@ -3,27 +3,38 @@
 [ext_resource type="Script" uid="uid://dhbpq6hpw151g" path="res://scenes/enemies/goblin_scout.gd" id="1_gndxd"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_vmpv5"]
-radius = 16.0
-
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_goblin"]
 size = Vector2(32, 32)
 
-[sub_resource type="Animation" id="Animation_idle"]
-resource_name = "idle"
-length = 2.0
-loop_mode = 1
+[sub_resource type="CircleShape2D" id="CircleShape2D_vmpv5"]
+radius = 16.0
+
+[sub_resource type="Animation" id="Animation_attack"]
+resource_name = "attack"
+length = 0.4
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("Sprite:position")
+tracks/0/path = NodePath("Sprite:scale")
 tracks/0/interp = 2
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 1, 2),
+"times": PackedFloat32Array(0, 0.2, 0.4),
 "transitions": PackedFloat32Array(1, 1, 1),
 "update": 0,
-"values": [Vector2(0, 0), Vector2(0, -2), Vector2(0, 0)]
+"values": [Vector2(1, 1), Vector2(1.1, 1.1), Vector2(1, 1)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Sprite:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.2, 0.4),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [0.0, 0.174533, 0.0]
 }
 
 [sub_resource type="Animation" id="Animation_hit"]
@@ -54,54 +65,44 @@ tracks/1/keys = {
 "values": [Vector2(1, 1), Vector2(0.9, 0.9), Vector2(1, 1)]
 }
 
-[sub_resource type="Animation" id="Animation_attack"]
-resource_name = "attack"
-length = 0.4
+[sub_resource type="Animation" id="Animation_idle"]
+resource_name = "idle"
+length = 2.0
+loop_mode = 1
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("Sprite:scale")
+tracks/0/path = NodePath("Sprite:position")
 tracks/0/interp = 2
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.2, 0.4),
+"times": PackedFloat32Array(0, 1, 2),
 "transitions": PackedFloat32Array(1, 1, 1),
 "update": 0,
-"values": [Vector2(1, 1), Vector2(1.1, 1.1), Vector2(1, 1)]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Sprite:rotation")
-tracks/1/interp = 2
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.2, 0.4),
-"transitions": PackedFloat32Array(1, 1, 1),
-"update": 0,
-"values": [0.0, 0.174533, 0.0]
+"values": [Vector2(0, 0), Vector2(0, -2), Vector2(0, 0)]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_goblin"]
 _data = {
-"attack": SubResource("Animation_attack"),
-"hit": SubResource("Animation_hit"),
-"idle": SubResource("Animation_idle")
+&"attack": SubResource("Animation_attack"),
+&"hit": SubResource("Animation_hit"),
+&"idle": SubResource("Animation_idle")
 }
 
 [node name="GoblinScout" type="CharacterBody2D" groups=["enemy"]]
-collision_layer = 1
 collision_mask = 0
 script = ExtResource("1_gndxd")
 
 [node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
-offset_top = -30.0
-offset_bottom = -25.0
+offset_left = -26.0
+offset_top = -22.0
+offset_right = 24.0
+offset_bottom = -17.0
 
 [node name="Sprite" type="Sprite2D" parent="."]
+modulate = Color(0.4, 0.6, 0.2, 1)
 texture_filter = 1
 texture = SubResource("PlaceholderTexture2D_goblin")
-modulate = Color(0.4, 0.6, 0.2, 1)
 
 [node name="Label" type="Label" parent="Sprite"]
 offset_left = -20.0
@@ -117,17 +118,15 @@ vertical_alignment = 1
 shape = SubResource("CircleShape2D_vmpv5")
 
 [node name="HitPoint" type="Marker2D" parent="."]
-position = Vector2(0, 0)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-autoplay = "idle"
 libraries = {
-"": SubResource("AnimationLibrary_goblin")
+&"": SubResource("AnimationLibrary_goblin")
 }
+autoplay = "idle"
 
 [node name="HitParticles" type="CPUParticles2D" parent="."]
 emitting = false
-amount = 8
 one_shot = true
 explosiveness = 1.0
 randomness = 0.5

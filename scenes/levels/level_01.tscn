@@ -52,6 +52,7 @@ wave_label = NodePath("../UI/TopBar/HBoxContainer/WaveLabel")
 position = Vector2(900, 450)
 editor_draw_limits = true
 script = ExtResource("2_camera")
+debug_input = true
 
 [node name="EnemyPath" type="Path2D" parent="."]
 position = Vector2(5, -2)
@@ -163,6 +164,7 @@ position = Vector2(1500, 300)
 [node name="HeroManager" type="Node2D" parent="." groups=["hero_manager"]]
 modulate = Color(0.9575384, 0.84961164, 0.8779932, 1)
 script = ExtResource("7_4d7sh")
+debug_input = true
 ranger_hero_scene = ExtResource("8_ir8iy")
 
 [node name="HeroSpots" type="Node2D" parent="."]

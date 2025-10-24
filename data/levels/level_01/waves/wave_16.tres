@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=4 format=3 uid="uid://wave16_unique_id"]
+[gd_resource type="Resource" script_class="WaveData" load_steps=4 format=3 uid="uid://dtta12x6d77sc"]
 
 [ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="1_wave"]
 [ext_resource type="Script" uid="uid://cmgol7ax0wy0t" path="res://scripts/resources/enemy_spawn_data.gd" id="2_enemy"]
@@ -6,19 +6,15 @@
 [sub_resource type="Resource" id="EnemySpawnData_1"]
 script = ExtResource("2_enemy")
 enemy_type = "troll"
-count = 5
 spawn_delay = 8.0
 
 [resource]
 script = ExtResource("1_wave")
 wave_number = 16
-break_time = 3.0
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
 wave_name = "EPIC FINAL BOSS"
 is_boss_wave = true
-hp_multiplier = 12.0
-gold_multiplier = 1.0
+hp_multiplier = 10.0
 custom_hp_multipliers = {
-"troll": 12.0
+"troll": 10.0
 }
-max_gold_from_kills = 250

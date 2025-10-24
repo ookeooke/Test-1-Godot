@@ -13,4 +13,3 @@ wave_number = 7
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
 wave_name = "Goblin Horde"
 hp_multiplier = 2.3
-gold_multiplier = 1.0

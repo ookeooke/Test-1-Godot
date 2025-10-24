@@ -145,9 +145,6 @@ func _setup_ballistic_trajectory():
 # ============================================
 
 func _ready():
-	# Connect collision signal
-	body_entered.connect(_on_body_entered)
-
 	# Get shadow reference if it exists
 	if has_node("Shadow"):
 		var shadow = get_node("Shadow")
@@ -397,15 +394,6 @@ func _hit_enemy(enemy):
 
 	# Destroy arrow
 	queue_free()
-
-# ============================================
-# COLLISION
-# ============================================
-
-func _on_body_entered(body):
-	# We hit something!
-	if body.is_in_group("enemy"):
-		_hit_enemy(body)
 
 # ============================================
 # HELPER FUNCTIONS
