@@ -66,14 +66,14 @@ level_rect = Rect2(-200, 200, 2000, 800)
 #### **Step 2: Auto-Calculate Camera Limits**
 ```gdscript
 func update_camera_limits() -> void:
-    var viewport_size = get_viewport_rect().size
-    var half_view = (viewport_size / zoom) / 2.0
+	var viewport_size = get_viewport_rect().size
+	var half_view = (viewport_size / zoom) / 2.0
 
-    # Camera CENTER can only move within these limits:
-    limit_left = int(level_rect.position.x + half_view.x)
-    limit_right = int(level_rect.end.x - half_view.x)
-    limit_top = int(level_rect.position.y + half_view.y)
-    limit_bottom = int(level_rect.end.y - half_view.y)
+	# Camera CENTER can only move within these limits:
+	limit_left = int(level_rect.position.x + half_view.x)
+	limit_right = int(level_rect.end.x - half_view.x)
+	limit_top = int(level_rect.position.y + half_view.y)
+	limit_bottom = int(level_rect.end.y - half_view.y)
 ```
 
 **What This Means:**
@@ -596,4 +596,3 @@ Your camera border system is **professional-grade** and requires **no changes**.
 - **Auto-Calculate Function:** Lines 648-667 - `update_camera_limits()`
 - **Level Scenes:** `scenes/levels/level_01.tscn`, `level_02.tscn`
 - **Camera Node:** Line 53-56 in level scenes
-

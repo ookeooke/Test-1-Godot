@@ -6,8 +6,8 @@
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_goblin"]
 size = Vector2(32, 32)
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_vmpv5"]
-radius = 16.0
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_af0go"]
+radius = 15.0
 
 [sub_resource type="Animation" id="Animation_attack"]
 resource_name = "attack"
@@ -94,10 +94,10 @@ collision_mask = 0
 script = ExtResource("1_gndxd")
 
 [node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
-offset_left = -26.0
-offset_top = -22.0
-offset_right = 24.0
-offset_bottom = -17.0
+offset_left = -25.0
+offset_top = -5.0
+offset_right = 25.0
+offset_bottom = 0.0
 
 [node name="Sprite" type="Sprite2D" parent="."]
 modulate = Color(0.4, 0.6, 0.2, 1)
@@ -115,7 +115,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("CircleShape2D_vmpv5")
+shape = SubResource("CapsuleShape2D_af0go")
 
 [node name="HitPoint" type="Marker2D" parent="."]
 
