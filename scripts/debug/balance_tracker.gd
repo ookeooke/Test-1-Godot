@@ -183,6 +183,9 @@ func reset_run():
 	"""Reset current run data (soft reset)"""
 	if is_tracking:
 		end_run("reset")
+	else:
+		# Run already ended (e.g., from game_over), just clean up data
+		print("[BalanceTracker] Run already ended, cleaning up data...")
 
 	tracked_towers.clear()
 	tracked_heroes.clear()
@@ -929,4 +932,3 @@ func record_tower_placement_position(position: Vector2, tower_type: String):
 		"wave": current_wave_number,
 		"time": Time.get_ticks_msec() / 1000.0 - run_start_time
 	})
-

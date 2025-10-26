@@ -68,13 +68,13 @@ text = "Retry Level"
 custom_minimum_size = Vector2(250, 40)
 layout_mode = 2
 size_flags_horizontal = 4
-text = "Level Select"
+text = "Main Menu"
 
 [node name="MainMenuButton" type="Button" parent="Panel/VBoxContainer"]
 custom_minimum_size = Vector2(250, 40)
 layout_mode = 2
 size_flags_horizontal = 4
-text = "Main Menu"
+text = "World Map"
 
 [node name="SpacerBottom" type="Control" parent="Panel/VBoxContainer"]
 custom_minimum_size = Vector2(0, 20)

@@ -13,8 +13,8 @@ func _ready():
 
 	# Connect signals
 	retry_button.pressed.connect(_on_retry_pressed)
-	level_select_button.pressed.connect(_on_level_select_pressed)
-	main_menu_button.pressed.connect(_on_main_menu_pressed)
+	level_select_button.pressed.connect(_on_main_menu_pressed)  # Swapped: middle button → main menu
+	main_menu_button.pressed.connect(_on_level_select_pressed)  # Swapped: bottom button → world map
 
 func _close_existing_menus():
 	"""Close tower info menus and other UI that might be open"""
@@ -35,15 +35,86 @@ func _close_existing_menus():
 func _on_retry_pressed():
 	print("DefeatScreen: Retry level")
 
-	# Use centralized restart logic
-	NavigationManager.restart_current_level()
+	# Defensive check: verify we're in the right state
+	assert(is_instance_valid(self), "DefeatScreen was freed before button handler!")
+
+	# Unpause the game before restarting
+	get_tree().paused = false
+
+	# Use centralized restart logic (does this BEFORE freeing to avoid deadlock)
+	if NavigationManager:
+		NavigationManager.restart_current_level()
+	else:
+		push_error("[DefeatScreen] NavigationManager not found - cannot restart!")
+		return
+
+	# Free the canvas layer parent (after navigation starts)
+	var canvas_layer = get_parent()
+	if canvas_layer and canvas_layer is CanvasLayer:
+		canvas_layer.queue_free()
+	else:
+		push_warning("[DefeatScreen] Parent is not a CanvasLayer - manual cleanup may be needed")
 
 func _on_level_select_pressed():
 	print("DefeatScreen: Return to world map")
-	# Use centralized navigation (fixes bug: was going to non-existent level_select.tscn)
-	NavigationManager.go_to_world_map()
+
+	# Defensive check: verify we're in the right state
+	assert(is_instance_valid(self), "DefeatScreen was freed before button handler!")
+
+	# Unpause the game before navigation
+	get_tree().paused = false
+
+	# Clean up level state before exiting (fixes bug: autoloads kept dirty state)
+	if RestartManager:
+		RestartManager.cleanup_for_exit()
+	else:
+		push_error("[DefeatScreen] RestartManager not found - state may be dirty!")
+
+	# Use centralized navigation (BEFORE freeing to avoid deadlock)
+	if NavigationManager:
+		NavigationManager.go_to_world_map()
+	else:
+		push_error("[DefeatScreen] NavigationManager not found - cannot navigate!")
+		return
+
+	# Free the canvas layer parent (after navigation starts)
+	var canvas_layer = get_parent()
+	if canvas_layer and canvas_layer is CanvasLayer:
+		canvas_layer.queue_free()
+	else:
+		push_warning("[DefeatScreen] Parent is not a CanvasLayer - manual cleanup may be needed")
 
 func _on_main_menu_pressed():
 	print("DefeatScreen: Return to main menu")
-	# Use centralized navigation
-	NavigationManager.go_to_main_menu()
+
+	# Defensive check: verify we're in the right state
+	assert(is_instance_valid(self), "DefeatScreen was freed before button handler!")
+
+	# Unpause the game before navigation
+	get_tree().paused = false
+
+	# Clean up level state before exiting (fixes bug: autoloads kept dirty state)
+	if RestartManager:
+		RestartManager.cleanup_for_exit()
+	else:
+		push_error("[DefeatScreen] RestartManager not found - state may be dirty!")
+
+	# Use centralized navigation (BEFORE freeing to avoid deadlock)
+	if NavigationManager:
+		NavigationManager.go_to_main_menu()
+	else:
+		push_error("[DefeatScreen] NavigationManager not found - cannot navigate!")
+		return
+
+	# Free the canvas layer parent (after navigation starts)
+	var canvas_layer = get_parent()
+	if canvas_layer and canvas_layer is CanvasLayer:
+		canvas_layer.queue_free()
+	else:
+		push_warning("[DefeatScreen] Parent is not a CanvasLayer - manual cleanup may be needed")
+
+func _exit_tree():
+	# Ensure game is unpaused when defeat screen is removed
+	# Safety net in case screen is removed unexpectedly
+	get_tree().paused = false
+	print("[DefeatScreen] Cleaned up and unpaused")

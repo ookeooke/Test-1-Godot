@@ -26,28 +26,46 @@ func cleanup_for_restart() -> void:
 	Clean up persistent autoload state before restarting a level.
 	Called before any level restart (from pause menu, victory, or defeat).
 	"""
-	print("[RestartManager] Starting cleanup for restart...")
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[RestartManager] 🧹 Starting cleanup for restart...")
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 	# Reset BalanceTracker (gameplay statistics)
 	if BalanceTracker:
+		var was_tracking = BalanceTracker.is_tracking
 		BalanceTracker.reset_run()
-		print("[RestartManager] ✓ BalanceTracker reset")
+		print("[RestartManager] ✓ BalanceTracker reset (was tracking: %s)" % was_tracking)
 	else:
-		push_warning("[RestartManager] BalanceTracker not found")
+		push_warning("[RestartManager] ⚠️ BalanceTracker not found")
 
 	# Clear pending loot (items waiting to be distributed)
 	if LootManager:
+		var loot_count = LootManager.get_pending_loot_count() if LootManager.has_method("get_pending_loot_count") else "unknown"
 		LootManager.clear_pending_loot()
-		print("[RestartManager] ✓ LootManager cleared")
+		print("[RestartManager] ✓ LootManager cleared (had %s pending items)" % loot_count)
 	else:
-		push_warning("[RestartManager] LootManager not found")
+		push_warning("[RestartManager] ⚠️ LootManager not found")
 
 	# Reset GameStateManager (will be re-initialized by LevelManager)
 	if GameStateManager:
+		var old_gold = GameStateManager.gold
+		var old_lives = GameStateManager.lives
 		GameStateManager.reset_for_new_run()
-		print("[RestartManager] ✓ GameStateManager reset")
+		print("[RestartManager] ✓ GameStateManager reset (was: %dg, %d lives)" % [old_gold, old_lives])
 	else:
-		push_warning("[RestartManager] GameStateManager not found")
+		push_warning("[RestartManager] ⚠️ GameStateManager not found")
+
+	# Reset game speed to normal (fixes bug: speed persisted across levels)
+	if GameSpeedController:
+		var old_speed = GameSpeedController.get_current_speed_name()
+		GameSpeedController.reset_speed()
+		print("[RestartManager] ✓ Game speed reset (%s → 1x)" % old_speed)
+	else:
+		push_warning("[RestartManager] ⚠️ GameSpeedController not found")
+
+	# Verify pause state
+	var pause_state = "paused" if get_tree().paused else "running"
+	print("[RestartManager] ℹ️ Game state: %s" % pause_state)
 
 	# EXPANSION POINT: Add new cleanup here as needed
 	# When you add new managers that need cleanup on restart, add them here.
@@ -56,7 +74,9 @@ func cleanup_for_restart() -> void:
 	#   - AchievementManager.reset_level_progress()
 	#   - PowerUpManager.clear_active_powerups()
 
-	print("[RestartManager] Cleanup complete ✓")
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[RestartManager] ✅ Cleanup complete!")
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 func cleanup_for_exit() -> void:
 	"""

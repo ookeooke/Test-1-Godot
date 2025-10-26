@@ -303,7 +303,13 @@ func lose_life(amount: int = 1):
 
 ## Trigger game over
 func game_over():
-	print("[GameStateManager] GAME OVER!")
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[GameStateManager] 💀 GAME OVER!")
+	print("[GameStateManager] Final state: %dg, %d lives" % [gold, lives])
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+	# Pause the game (stops enemies, towers, timers)
+	get_tree().paused = true
 
 	# End balance tracking with defeat
 	if BalanceTracker:
@@ -318,13 +324,20 @@ func game_over():
 func _show_defeat_screen():
 	"""Show the defeat screen"""
 	var defeat_screen_scene = preload("res://scenes/ui/defeat_screen.tscn")
-	var root = get_tree().root
+
+	# Create canvas layer for defeat screen (matches victory screen pattern)
+	var canvas_layer = CanvasLayer.new()
+	canvas_layer.layer = 100  # Above everything (higher than victory screen's 99)
+	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS  # Works while paused
 
 	# Instantiate defeat screen
 	var defeat_screen = defeat_screen_scene.instantiate()
-	root.add_child(defeat_screen)
 
-	print("[GameStateManager] Defeat screen shown")
+	# Add to scene tree (canvas layer to root, screen to canvas layer)
+	get_tree().root.add_child(canvas_layer)
+	canvas_layer.add_child(defeat_screen)
+
+	print("[GameStateManager] Defeat screen shown (on CanvasLayer)")
 
 # ============================================
 # DEBUG & INSPECTION

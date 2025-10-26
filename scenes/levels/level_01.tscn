@@ -150,22 +150,25 @@ script = ExtResource("5_kdubu")
 [node name="TowerSpots" type="Node2D" parent="."]
 
 [node name="TowerSpot1" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(422, 461)
+position = Vector2(430, 521)
 
 [node name="TowerSpot2" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(984, 271)
+position = Vector2(1002, 228)
 
 [node name="TowerSpot3" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(1200, 600)
+position = Vector2(1193, 527)
 
 [node name="TowerSpot4" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
 position = Vector2(1500, 300)
 
 [node name="TowerSpot5" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(606, 318)
+position = Vector2(663, 329)
 
 [node name="TowerSpot6" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(797, 548)
+position = Vector2(751, 525)
+
+[node name="TowerSpot7" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
+position = Vector2(205, 399)
 
 [node name="HeroManager" type="Node2D" parent="." groups=["hero_manager"]]
 modulate = Color(0.9575384, 0.84961164, 0.8779932, 1)

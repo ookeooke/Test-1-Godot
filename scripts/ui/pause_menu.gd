@@ -46,6 +46,10 @@ func _on_main_menu_pressed():
 	get_tree().paused = false
 	queue_free()  # Remove pause menu before navigating away
 
+	# Clean up level state before exiting (fixes bug: autoloads kept dirty state)
+	if RestartManager:
+		RestartManager.cleanup_for_exit()
+
 	# Use centralized navigation
 	NavigationManager.go_to_world_map()
 

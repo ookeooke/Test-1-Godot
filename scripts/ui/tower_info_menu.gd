@@ -7,12 +7,19 @@ extends Control
 signal upgrade_selected(tower)
 signal sell_selected(tower)
 signal menu_closed()
+signal damage_path_chosen(tower)
+signal range_path_chosen(tower)
 
 var tower = null
 var spot = null
 
 # Upgrade costs (dynamic based on tower level)
 var upgrade_cost = 60  # Default, will be updated from tower
+
+# Path selection state (for level 3 → level 4 choice)
+var is_damage_path_preview = false
+var is_range_path_preview = false
+var path_choice_cost = 150
 
 # References
 @onready var panel = $PanelContainer
@@ -25,6 +32,8 @@ var upgrade_cost = 60  # Default, will be updated from tower
 @onready var weak_button = $PanelContainer/MarginContainer/VBoxContainer/TargetingButtons/WeakButton if has_node("PanelContainer/MarginContainer/VBoxContainer/TargetingButtons/WeakButton") else null
 @onready var upgrade_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/UpgradeButton
 @onready var sell_button = $PanelContainer/MarginContainer/VBoxContainer/HBoxContainer/SellButton
+@onready var damage_path_button = $PanelContainer/MarginContainer/VBoxContainer/DamagePathButton
+@onready var range_path_button = $PanelContainer/MarginContainer/VBoxContainer/RangePathButton
 @onready var enemy_list_toggle = $PanelContainer/MarginContainer/VBoxContainer/EnemyListToggle
 @onready var enemies_label = $PanelContainer/MarginContainer/VBoxContainer/EnemiesLabel
 @onready var enemy_list_scroll = $PanelContainer/MarginContainer/VBoxContainer/EnemyListScroll
@@ -49,6 +58,10 @@ func _ready():
 		upgrade_button.pressed.connect(_on_upgrade_button_pressed)
 	if sell_button:
 		sell_button.pressed.connect(_on_sell_button_pressed)
+	if damage_path_button:
+		damage_path_button.pressed.connect(_on_damage_path_button_pressed)
+	if range_path_button:
+		range_path_button.pressed.connect(_on_range_path_button_pressed)
 	if enemy_list_toggle:
 		enemy_list_toggle.pressed.connect(_on_enemy_list_toggle_pressed)
 
@@ -90,6 +103,10 @@ func _ready():
 		strong_button.add_theme_font_size_override("font_size", 8)
 	if weak_button:
 		weak_button.add_theme_font_size_override("font_size", 8)
+	if damage_path_button:
+		damage_path_button.add_theme_font_size_override("font_size", 9)
+	if range_path_button:
+		range_path_button.add_theme_font_size_override("font_size", 9)
 
 	# Load enemy list visibility preference (removed - was GameManager feature)
 	enemy_list_visible = false  # Default to hidden
@@ -199,30 +216,49 @@ func update_display():
 			print("⚠️ [TowerInfoMenu] Tower is invalid for stats display")
 
 	# Set button text with costs (get from tower if available)
-	if upgrade_button:
-		print("🔧 [TowerInfoMenu] Upgrade button exists - configuring...")
-		# Get upgrade cost from tower
-		if tower and tower.has_method("get_upgrade_cost"):
-			upgrade_cost = tower.get_upgrade_cost()
-			print("🔧 [TowerInfoMenu] Upgrade cost from tower: %d gold" % upgrade_cost)
+	# Check if this is a path choice upgrade - SHOW PATH BUTTONS INSTEAD
+	var needs_path_choice = tower and tower.has_method("needs_path_choice") and tower.needs_path_choice()
 
-			# Check if this is a path choice upgrade
-			if tower.has_method("needs_path_choice") and tower.needs_path_choice():
-				upgrade_button.text = "Choose Path\n" + str(upgrade_cost) + "g"
-				print("✅ [TowerInfoMenu] Button text: 'Choose Path %dg'" % upgrade_cost)
-			elif upgrade_cost > 0:
-				var level = tower.tower_level if "tower_level" in tower else 1
-				upgrade_button.text = "Upgrade (Lv%d)\n%dg" % [level + 1, upgrade_cost]
-				print("✅ [TowerInfoMenu] Button text: 'Upgrade (Lv%d) %dg'" % [level + 1, upgrade_cost])
-			else:
-				upgrade_button.text = "MAX LEVEL"
-				upgrade_button.disabled = true
-				print("✅ [TowerInfoMenu] Button text: 'MAX LEVEL' (disabled)")
-		else:
-			upgrade_button.text = "Upgrade\n" + str(upgrade_cost) + "g"
-			print("⚠️ [TowerInfoMenu] Using fallback upgrade cost: %d" % upgrade_cost)
+	if needs_path_choice:
+		print("🔧 [TowerInfoMenu] Tower needs path choice - showing path buttons!")
+		# HIDE normal upgrade button, SHOW path buttons
+		if upgrade_button:
+			upgrade_button.visible = false
+		if damage_path_button:
+			damage_path_button.visible = true
+		if range_path_button:
+			range_path_button.visible = true
+
+		# Update path button affordability
+		_update_path_button_states()
 	else:
-		print("❌ [TowerInfoMenu] ERROR: upgrade_button is NULL!")
+		# SHOW normal upgrade button, HIDE path buttons
+		if damage_path_button:
+			damage_path_button.visible = false
+		if range_path_button:
+			range_path_button.visible = false
+
+		if upgrade_button:
+			upgrade_button.visible = true
+			print("🔧 [TowerInfoMenu] Upgrade button exists - configuring...")
+			# Get upgrade cost from tower
+			if tower and tower.has_method("get_upgrade_cost"):
+				upgrade_cost = tower.get_upgrade_cost()
+				print("🔧 [TowerInfoMenu] Upgrade cost from tower: %d gold" % upgrade_cost)
+
+				if upgrade_cost > 0:
+					var level = tower.tower_level if "tower_level" in tower else 1
+					upgrade_button.text = "Upgrade (Lv%d)\n%dg" % [level + 1, upgrade_cost]
+					print("✅ [TowerInfoMenu] Button text: 'Upgrade (Lv%d) %dg'" % [level + 1, upgrade_cost])
+				else:
+					upgrade_button.text = "MAX LEVEL"
+					upgrade_button.disabled = true
+					print("✅ [TowerInfoMenu] Button text: 'MAX LEVEL' (disabled)")
+			else:
+				upgrade_button.text = "Upgrade\n" + str(upgrade_cost) + "g"
+				print("⚠️ [TowerInfoMenu] Using fallback upgrade cost: %d" % upgrade_cost)
+		else:
+			print("❌ [TowerInfoMenu] ERROR: upgrade_button is NULL!")
 
 	if sell_button:
 		# Calculate 70% of build cost dynamically
@@ -515,6 +551,11 @@ func _unhandled_input(event):
 				print("❌ [TowerInfoMenu] Canceling preview - clicked outside")
 				_cancel_preview()
 
+			# If in path preview mode, cancel path preview
+			if is_damage_path_preview or is_range_path_preview:
+				print("❌ [TowerInfoMenu] Canceling path preview - clicked outside")
+				_cancel_path_preview()
+
 			print("✅ [TowerInfoMenu] Closing menu - clicked outside")
 			menu_closed.emit()
 			get_viewport().set_input_as_handled()
@@ -757,3 +798,176 @@ func _on_rally_button_pressed():
 		# Close the menu so player can click the map
 		menu_closed.emit()
 		queue_free()
+
+# ============================================
+# PATH CHOICE SYSTEM (Kingdom Rush Style)
+# ============================================
+
+func _update_path_button_states():
+	"""Update path button affordability based on current gold"""
+	var can_afford = GameStateManager.gold >= path_choice_cost
+
+	if damage_path_button:
+		damage_path_button.disabled = not can_afford and not is_damage_path_preview
+	if range_path_button:
+		range_path_button.disabled = not can_afford and not is_range_path_preview
+
+	print("💰 [TowerInfoMenu] Path buttons - Gold: %d, Cost: %d, Affordable: %s" % [GameStateManager.gold, path_choice_cost, str(can_afford)])
+
+func _on_damage_path_button_pressed():
+	"""Handle damage path button click - TWO-CLICK SYSTEM"""
+	print("\n=== 🔥 DAMAGE PATH BUTTON PRESSED ===")
+
+	if not is_damage_path_preview:
+		# FIRST CLICK: Enter preview mode
+		print("🔥 [TowerInfoMenu] First click - entering DAMAGE preview mode")
+		_enter_damage_path_preview()
+	else:
+		# SECOND CLICK: Confirm choice
+		print("🔥 [TowerInfoMenu] Second click - confirming DAMAGE path")
+		_confirm_damage_path()
+
+func _on_range_path_button_pressed():
+	"""Handle range path button click - TWO-CLICK SYSTEM"""
+	print("\n=== 🎯 RANGE PATH BUTTON PRESSED ===")
+
+	if not is_range_path_preview:
+		# FIRST CLICK: Enter preview mode
+		print("🎯 [TowerInfoMenu] First click - entering RANGE preview mode")
+		_enter_range_path_preview()
+	else:
+		# SECOND CLICK: Confirm choice
+		print("🎯 [TowerInfoMenu] Second click - confirming RANGE path")
+		_confirm_range_path()
+
+func _enter_damage_path_preview():
+	"""First click on Damage Path: Show preview with visual feedback"""
+	is_damage_path_preview = true
+	is_range_path_preview = false
+
+	# Visual feedback - highlight selected button (Kingdom Rush orange)
+	if damage_path_button:
+		damage_path_button.modulate = Color(1.2, 1.0, 0.8)  # Orange tint
+		damage_path_button.text = "🔥 DAMAGE PATH (Click to Confirm)\nDMG: 36 | AS: 2.0 | DPS: 72\n150g - Glass Cannon"
+	if range_path_button:
+		range_path_button.modulate = Color(0.7, 0.7, 0.7)  # Dim the other
+
+	print("✅ [TowerInfoMenu] Damage path preview mode active")
+
+func _enter_range_path_preview():
+	"""First click on Range Path: Show preview with visual feedback"""
+	is_range_path_preview = true
+	is_damage_path_preview = false
+
+	# Visual feedback - highlight selected button (Kingdom Rush blue)
+	if range_path_button:
+		range_path_button.modulate = Color(0.8, 1.0, 1.2)  # Blue tint
+		range_path_button.text = "🎯 RANGE PATH (Click to Confirm)\nRange: 800 (2x coverage)\n150g - Long-range Sniper"
+	if damage_path_button:
+		damage_path_button.modulate = Color(0.7, 0.7, 0.7)  # Dim the other
+
+	print("✅ [TowerInfoMenu] Range path preview mode active")
+
+func _confirm_damage_path():
+	"""Second click: Actually choose Damage Path"""
+	if not tower:
+		return
+
+	print("🔥 [TowerInfoMenu] Confirming DAMAGE path")
+	print("🔥 [TowerInfoMenu] Cost: %d gold" % path_choice_cost)
+	print("🔥 [TowerInfoMenu] Current gold: %d gold" % GameStateManager.gold)
+
+	if GameStateManager.spend_gold(path_choice_cost):
+		print("✅ [TowerInfoMenu] Gold spent successfully!")
+
+		# Reset preview state
+		is_damage_path_preview = false
+		is_range_path_preview = false
+
+		# Emit signal for PlacementManager to handle
+		print("🔥 [TowerInfoMenu] Emitting damage_path_chosen signal...")
+		damage_path_chosen.emit(tower)
+
+		# Wait for tower to update
+		await get_tree().process_frame
+
+		# Refresh menu to show new level 4 stats
+		print("🔥 [TowerInfoMenu] Refreshing menu display...")
+		update_display()
+
+		# Show brief visual confirmation
+		if tower_name_label:
+			var original_color = tower_name_label.modulate
+			print("🔥 [TowerInfoMenu] Showing '✓ DAMAGE PATH!' confirmation")
+			tower_name_label.text = "✓ DAMAGE PATH!"
+			tower_name_label.modulate = Color(1.0, 0.6, 0.3)  # Orange
+			await get_tree().create_timer(0.4).timeout
+			tower_name_label.modulate = original_color
+			print("🔥 [TowerInfoMenu] Restoring original menu text")
+			update_display()
+
+		print("=== ✅ DAMAGE PATH CHOSEN ===\n")
+	else:
+		print("❌ [TowerInfoMenu] Not enough gold for damage path!")
+		print("   Need: %d, Have: %d" % [path_choice_cost, GameStateManager.gold])
+		print("=== ❌ UPGRADE FAILED ===\n")
+
+func _confirm_range_path():
+	"""Second click: Actually choose Range Path"""
+	if not tower:
+		return
+
+	print("🎯 [TowerInfoMenu] Confirming RANGE path")
+	print("🎯 [TowerInfoMenu] Cost: %d gold" % path_choice_cost)
+	print("🎯 [TowerInfoMenu] Current gold: %d gold" % GameStateManager.gold)
+
+	if GameStateManager.spend_gold(path_choice_cost):
+		print("✅ [TowerInfoMenu] Gold spent successfully!")
+
+		# Reset preview state
+		is_damage_path_preview = false
+		is_range_path_preview = false
+
+		# Emit signal for PlacementManager to handle
+		print("🎯 [TowerInfoMenu] Emitting range_path_chosen signal...")
+		range_path_chosen.emit(tower)
+
+		# Wait for tower to update
+		await get_tree().process_frame
+
+		# Refresh menu to show new level 4 stats
+		print("🎯 [TowerInfoMenu] Refreshing menu display...")
+		update_display()
+
+		# Show brief visual confirmation
+		if tower_name_label:
+			var original_color = tower_name_label.modulate
+			print("🎯 [TowerInfoMenu] Showing '✓ RANGE PATH!' confirmation")
+			tower_name_label.text = "✓ RANGE PATH!"
+			tower_name_label.modulate = Color(0.3, 0.8, 1.0)  # Blue
+			await get_tree().create_timer(0.4).timeout
+			tower_name_label.modulate = original_color
+			print("🎯 [TowerInfoMenu] Restoring original menu text")
+			update_display()
+
+		print("=== ✅ RANGE PATH CHOSEN ===\n")
+	else:
+		print("❌ [TowerInfoMenu] Not enough gold for range path!")
+		print("   Need: %d, Have: %d" % [path_choice_cost, GameStateManager.gold])
+		print("=== ❌ UPGRADE FAILED ===\n")
+
+func _cancel_path_preview():
+	"""Cancel path preview and return to normal state"""
+	print("🔧 [TowerInfoMenu] Canceling path preview")
+	is_damage_path_preview = false
+	is_range_path_preview = false
+
+	# Reset button colors and text
+	if damage_path_button:
+		damage_path_button.modulate = Color(1.0, 1.0, 1.0)
+		damage_path_button.text = "🔥 DAMAGE PATH\nDMG: 36 | AS: 2.0 | DPS: 72\n150g - Glass Cannon"
+	if range_path_button:
+		range_path_button.modulate = Color(1.0, 1.0, 1.0)
+		range_path_button.text = "🎯 RANGE PATH\nRange: 800 (2x coverage)\n150g - Long-range Sniper"
+
+	print("✅ [TowerInfoMenu] Path preview canceled")
