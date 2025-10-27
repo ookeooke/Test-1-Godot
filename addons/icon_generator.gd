@@ -7,7 +7,7 @@ extends EditorScript
 const ICON_SIZE = 64
 
 func _run():
-	print("="*50)
+	print("==================================================")
 	print("[ICON GENERATOR] Starting...")
 
 	# Create directory
@@ -42,7 +42,7 @@ func _run():
 	print("[ICON GENERATOR] Complete! Generated %d icons" % count)
 	print("[IMPORTANT] Reload the project to see the icons:")
 	print("  Project -> Reload Current Project")
-	print("="*50)
+	print("==================================================")
 
 
 func create_simple_icon(base_color: Color) -> Image:

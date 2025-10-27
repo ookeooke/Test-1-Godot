@@ -6,6 +6,7 @@
 [node name="DualPanelScreen" type="Control"]
 process_mode = 3
 visible = false
+mouse_filter = 2
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

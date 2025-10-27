@@ -1,3 +1,4 @@
+@tool
 extends Camera2D
 
 # ============================================
@@ -33,6 +34,12 @@ var current_platform: Platform
 # ============================================
 @export_group("Debug")
 @export var debug_input = false  # Print all input events
+@export var debug_drag_only = true  # Only debug drag events (not every mouse motion)
+
+# Editor visualization
+@export var show_level_borders_in_editor = true  # Show yellow border rectangle in editor
+@export var editor_border_color = Color.YELLOW  # Border color (change in Inspector)
+@export var editor_border_width = 4.0  # Border line width in pixels
 
 # ============================================
 # ZOOM SETTINGS - Slight zoom enabled for detail viewing
@@ -83,15 +90,15 @@ var current_platform: Platform
 @export var max_inertia_velocity = 2000.0  # Cap for fast swipes
 
 # ============================================
-# BOUNDS - AUTOMATED SYSTEM
+# BOUNDS - MANAGED BY LEVEL CONTROLLER
 # ============================================
 # Camera limits are automatically calculated from level_rect
 # The pink/magenta rectangle in editor shows where camera CENTER can move
 #
-# NOTE: For multi-level games, set bounds via level_controller instead!
-# This default is only used as fallback if level doesn't set bounds
-@export_group("Level Bounds")
-@export var level_rect = Rect2(-200, 200, 2000, 800)  # Default fallback bounds
+# IMPORTANT: Level bounds MUST be set by LevelController via set_level_bounds()
+# This camera does NOT have a default fallback - bounds come from LevelConfig
+@export_group("Level Bounds (Read-Only)")
+var level_rect: Rect2 = Rect2()  # Set by LevelController - do not edit directly
 
 # ============================================
 # CAMERA SHAKE
@@ -121,6 +128,7 @@ var input_locked = false
 
 # Input state
 var is_dragging = false
+var drag_button_pressed = false  # Track if drag button is held (separate from threshold)
 var drag_start_pos = Vector2.ZERO
 var last_mouse_pos = Vector2.ZERO
 var drag_threshold = 5.0
@@ -163,6 +171,14 @@ var user_prefs = {
 # ============================================
 
 func _ready():
+	# STARTUP DEBUG - Verify camera script loads
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("🎥 [CAMERA] _ready() called!")
+	print("   debug_input: ", debug_input)
+	print("   Node path: ", get_path())
+	print("   Is editor: ", Engine.is_editor_hint())
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
 	# Skip runtime initialization in editor
 	if Engine.is_editor_hint():
 		return
@@ -184,6 +200,13 @@ func _ready():
 	zoom = target_zoom
 	base_position = position
 
+	# Validate that bounds have been set by LevelController
+	if level_rect.size == Vector2.ZERO:
+		push_warning("[Camera] ⚠️ WARNING: Level bounds not set! Camera requires LevelController to call set_level_bounds()")
+		push_warning("[Camera] → Add a LevelController script to your level scene")
+		push_warning("[Camera] → Assign a LevelConfig resource to the LevelController")
+		push_warning("[Camera] → Camera will continue with zero bounds (may not work correctly)")
+
 	# Auto-calculate camera bounds from level_rect
 	update_camera_limits()
 
@@ -191,6 +214,8 @@ func _ready():
 	get_viewport().size_changed.connect(_on_viewport_resized)
 
 	print("[Camera] Initialized - Baseline zoom:", baseline_zoom, " Zoom:", zoom, " Bounds:", Vector4i(limit_left, limit_top, limit_right, limit_bottom))
+	if level_rect.size != Vector2.ZERO:
+		print("[Camera] Level rect:", level_rect)
 
 func calculate_baseline_zoom() -> void:
 	"""Calculate baseline zoom from viewport to maintain consistent framing across devices"""
@@ -330,9 +355,30 @@ func unlock_input() -> void:
 # INPUT HANDLING
 # ============================================
 
+func _input(event):
+	"""DEBUG ONLY - Verify input reaches camera node (runs BEFORE _unhandled_input)"""
+	if debug_input:
+		# Print for EVERY mouse event to ensure we see SOMETHING
+		if event is InputEventMouseButton:
+			print("🔵🔵🔵 [Camera _input()] MOUSE BUTTON EVENT RECEIVED!")
+			print("  Button: ", event.button_index, " (",
+				  "LEFT" if event.button_index == MOUSE_BUTTON_LEFT else
+				  "RIGHT" if event.button_index == MOUSE_BUTTON_RIGHT else
+				  "MIDDLE" if event.button_index == MOUSE_BUTTON_MIDDLE else "OTHER", ")")
+			print("  Pressed: ", event.pressed)
+			print("  Position: ", event.position)
+			print("  ✅ This PROVES input is reaching the camera node!")
+		elif event is InputEventMouseMotion:
+			# Only print motion during drag to avoid spam
+			if is_dragging:
+				print("🟢 [Camera _input()] Mouse motion while dragging")
+
 func _unhandled_input(event):
-	# Skip input handling in editor
+	# Skip in editor mode (camera script does NOT work in editor 2D view)
 	if Engine.is_editor_hint():
+		if debug_input and event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
+			print("[Camera DEBUG] ⚠️ In EDITOR MODE - camera script does NOT handle input!")
+			print("[Camera DEBUG]   Use Godot built-in editor camera: Middle-mouse drag to pan")
 		return
 
 	# DEBUG: Log all input events
@@ -414,9 +460,10 @@ func handle_pc_input(event) -> void:
 			get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseMotion:
-		if debug_input and is_dragging:
-			print("[Camera DEBUG] Mouse motion while dragging - Position: ", event.position)
-		if is_dragging:
+		# Only debug mouse motion if debug_drag_only is FALSE (reduces spam)
+		if debug_input and not debug_drag_only and drag_button_pressed:
+			print("[Camera DEBUG] Mouse motion while drag button pressed - Position: ", event.position)
+		if drag_button_pressed:
 			update_drag(event.position)
 			get_viewport().set_input_as_handled()
 
@@ -471,9 +518,15 @@ func handle_touch_drag(event: InputEventScreenDrag):
 
 func start_drag(screen_pos: Vector2):
 	"""Start dragging the camera"""
+	if debug_input:
+		print("[Camera DRAG] 🎯 start_drag() called at position: ", screen_pos)
+		print("[Camera DRAG]   input_locked: ", input_locked)
+		print("[Camera DRAG]   is_snapping: ", is_snapping)
+
 	if is_snapping:
 		cancel_snap()
 
+	drag_button_pressed = true  # Button is held - ready to check threshold
 	drag_start_pos = screen_pos
 	last_mouse_pos = screen_pos
 	is_dragging = false  # Wait for threshold
@@ -484,9 +537,15 @@ func update_drag(screen_pos: Vector2):
 	"""Update camera position while dragging"""
 	# Check if we've moved enough to start drag
 	if not is_dragging:
-		if drag_start_pos.distance_to(screen_pos) > drag_threshold:
+		var distance = drag_start_pos.distance_to(screen_pos)
+		if distance > drag_threshold:
 			is_dragging = true
+			if debug_input:
+				print("[Camera DRAG] ✅ Drag threshold exceeded! distance=", distance, " threshold=", drag_threshold)
+				print("[Camera DRAG]   NOW DRAGGING - camera will move")
 		else:
+			if debug_input and debug_drag_only:
+				print("[Camera DRAG] ⏳ Waiting for threshold... distance=", distance, " / ", drag_threshold)
 			return
 
 	# Calculate movement
@@ -512,6 +571,7 @@ func end_drag():
 		is_inertia_moving = false
 		velocity = Vector2.ZERO
 
+	drag_button_pressed = false  # Button released
 	is_dragging = false
 
 # ============================================
@@ -656,6 +716,24 @@ func _physics_process(delta):
 	# Apply final position with shake
 	position = base_position + shake_offset
 
+	# Manually clamp camera position to stay within level boundaries
+	# (Godot's built-in limits are disabled to prevent interference with custom logic)
+	var viewport_size = get_viewport_rect().size
+	var half_view = (viewport_size / zoom) / 2.0
+
+	# Calculate actual boundaries accounting for viewport size
+	var min_x = level_rect.position.x + half_view.x
+	var max_x = level_rect.end.x - half_view.x
+	var min_y = level_rect.position.y + half_view.y
+	var max_y = level_rect.end.y - half_view.y
+
+	# Clamp position to boundaries
+	position.x = clamp(position.x, min_x, max_x)
+	position.y = clamp(position.y, min_y, max_y)
+
+	# Update base_position to match (so drag state stays consistent)
+	base_position = position - shake_offset
+
 func handle_keyboard_pan(delta):
 	"""Pan camera with arrow keys or WASD (using InputMap actions)"""
 	if is_snapping or input_locked:
@@ -725,35 +803,28 @@ func update_inertia(delta):
 # ============================================
 
 func update_camera_limits() -> void:
-	"""Automatically calculate camera limits from level_rect"""
+	"""Disable Godot's automatic limit clamping - camera uses custom boundary logic"""
 	var viewport_size = get_viewport_rect().size
 
-	# Calculate visible area at current zoom
+	# Calculate visible area at current zoom (for reference/debugging)
 	var half_view = (viewport_size / zoom) / 2.0
 
-	# Set Godot's built-in limit properties (renders as magenta rectangle in editor)
-	limit_left = int(level_rect.position.x + half_view.x)
-	limit_right = int(level_rect.end.x - half_view.x)
-	limit_top = int(level_rect.position.y + half_view.y)
-	limit_bottom = int(level_rect.end.y - half_view.y)
+	# DISABLE Godot's built-in limit clamping by setting to very large values
+	# This allows the camera's custom movement logic to work without interference
+	# The camera script will handle boundary constraints manually in _physics_process()
+	limit_left = -100000
+	limit_right = 100000
+	limit_top = -100000
+	limit_bottom = 100000
 
-	# Ensure limits are valid
-	if limit_left >= limit_right:
-		limit_left = int(level_rect.position.x)
-		limit_right = int(level_rect.end.x)
-	if limit_top >= limit_bottom:
-		limit_top = int(level_rect.position.y)
-		limit_bottom = int(level_rect.end.y)
-
-	# DEBUG: Print detailed camera limit info
-	print("[Camera] 📐 LIMITS CALCULATED:")
+	# DEBUG: Print camera configuration
+	print("[Camera] 📐 LIMITS DISABLED (Using custom boundary logic):")
 	print("  Viewport size: ", viewport_size)
 	print("  Zoom: ", zoom)
 	print("  Half view: ", half_view)
 	print("  Level rect: ", level_rect)
-	print("  Camera limits:")
-	print("    Left: ", limit_left, " → Right: ", limit_right, " (Range: ", limit_right - limit_left, " pixels)")
-	print("    Top: ", limit_top, " → Bottom: ", limit_bottom, " (Range: ", limit_bottom - limit_top, " pixels)")
+	print("  Godot limits: INFINITE (", limit_left, " to ", limit_right, ")")
+	print("  Custom boundaries will constrain movement to level_rect")
 	print("  Current camera position: ", position)
 
 func set_level_bounds(rect: Rect2) -> void:
@@ -820,3 +891,56 @@ func set_camera_state(state: Dictionary) -> void:
 	if state.has("preferences"):
 		user_prefs = state["preferences"].duplicate()
 		load_user_preferences()
+
+# ============================================
+# EDITOR VISUALIZATION
+# ============================================
+
+func _process(_delta):
+	"""Update editor visualization (runs in editor only)"""
+	if Engine.is_editor_hint() and show_level_borders_in_editor:
+		queue_redraw()  # Request redraw every frame in editor
+
+func _draw():
+	"""Draw yellow border rectangle in editor to visualize playable area from LevelConfig"""
+	# Only draw in editor mode
+	if not Engine.is_editor_hint():
+		return
+
+	if not show_level_borders_in_editor:
+		return
+
+	# Try to find LevelController and get bounds from LevelConfig
+	var bounds_to_draw: Rect2 = Rect2()
+
+	# Find the level controller in the scene
+	var level_controller = get_parent()
+	if level_controller and "level_config" in level_controller:
+		var level_config = level_controller.level_config
+		if level_config and level_config.camera_bounds:
+			bounds_to_draw = level_config.camera_bounds
+
+	# Fallback: If no LevelConfig found, try to use camera's level_rect
+	if bounds_to_draw.size == Vector2.ZERO:
+		bounds_to_draw = level_rect
+
+	# If still no valid bounds, don't draw anything
+	if bounds_to_draw.size == Vector2.ZERO:
+		return
+
+	# Draw yellow rectangle showing playable area bounds
+	# Convert world coordinates to local coordinates for drawing
+	var local_rect_pos = to_local(bounds_to_draw.position)
+	var local_rect_end = to_local(bounds_to_draw.end)
+
+	# Draw 4 lines forming the border rectangle
+	var top_left = local_rect_pos
+	var top_right = Vector2(local_rect_end.x, local_rect_pos.y)
+	var bottom_right = local_rect_end
+	var bottom_left = Vector2(local_rect_pos.x, local_rect_end.y)
+
+	# Draw rectangle lines
+	draw_line(top_left, top_right, editor_border_color, editor_border_width)  # Top
+	draw_line(top_right, bottom_right, editor_border_color, editor_border_width)  # Right
+	draw_line(bottom_right, bottom_left, editor_border_color, editor_border_width)  # Bottom
+	draw_line(bottom_left, top_left, editor_border_color, editor_border_width)  # Left

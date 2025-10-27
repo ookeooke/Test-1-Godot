@@ -41,8 +41,13 @@ func _on_combat_ended():
 
 func _setup_camera_bounds():
 	"""Setup camera bounds from level config or auto-calculate"""
+	# Reduced verbosity - only print essential info to avoid output overflow
+	if level_config:
+		print("[LevelController] Camera bounds:", level_config.camera_bounds)
+
 	if not camera:
-		print("[LevelController] No camera found - skipping bounds setup")
+		push_error("[LevelController] ❌ No camera found - skipping bounds setup")
+		push_error("[LevelController] → Camera should be a child node named 'Camera2D'")
 		return
 
 	# VALIDATION: Check for conflicting configurations
@@ -131,12 +136,13 @@ func _calculate_bounds_from_content() -> Rect2:
 					max_pos.y = max(max_pos.y, pos.y)
 					found_content = true
 
-	# If no content found, use camera's current bounds as fallback (more intelligent than hardcoded)
+	# If no content found, use safe fallback bounds
 	if not found_content:
-		var fallback = camera.level_rect if camera else Rect2(-500, -500, 2000, 1500)
-		print("[LevelController] ⚠️ WARNING: No content found for auto-calculation")
-		print("[LevelController] → Using fallback bounds:", fallback)
-		print("[LevelController] → Tip: Check that TowerSpots, Path, Spawners, or Goals nodes exist")
+		var fallback = Rect2(-500, -500, 2000, 1500)  # Safe default fallback
+		push_warning("[LevelController] ⚠️ WARNING: No content found for auto-calculation")
+		push_warning("[LevelController] → Using fallback bounds: " + str(fallback))
+		push_warning("[LevelController] → Tip: Check that TowerSpots, Path, Spawners, or Goals nodes exist")
+		push_warning("[LevelController] → Consider setting manual camera_bounds in LevelConfig instead")
 		return fallback
 
 	# Add padding

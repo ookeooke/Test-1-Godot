@@ -77,9 +77,11 @@ anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 100.0
 grow_horizontal = 2
+mouse_filter = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="UI/TopBar"]
 layout_mode = 2
+mouse_filter = 2
 
 [node name="LivesLabel" type="Label" parent="UI/TopBar/HBoxContainer"]
 layout_mode = 2
@@ -90,6 +92,7 @@ vertical_alignment = 1
 [node name="Spacer1" type="Control" parent="UI/TopBar/HBoxContainer"]
 custom_minimum_size = Vector2(20, 0)
 layout_mode = 2
+mouse_filter = 2
 
 [node name="GoldLabel" type="Label" parent="UI/TopBar/HBoxContainer" groups=["gold_label"]]
 layout_mode = 2
@@ -101,6 +104,7 @@ vertical_alignment = 1
 [node name="Spacer2" type="Control" parent="UI/TopBar/HBoxContainer"]
 custom_minimum_size = Vector2(20, 0)
 layout_mode = 2
+mouse_filter = 2
 
 [node name="WaveLabel" type="Label" parent="UI/TopBar/HBoxContainer"]
 layout_mode = 2
@@ -112,6 +116,7 @@ vertical_alignment = 1
 [node name="Spacer3" type="Control" parent="UI/TopBar/HBoxContainer"]
 custom_minimum_size = Vector2(20, 0)
 layout_mode = 2
+mouse_filter = 2
 
 [node name="SpeedButton" type="Button" parent="UI/TopBar/HBoxContainer"]
 custom_minimum_size = Vector2(80, 40)
@@ -121,6 +126,7 @@ text = "1x"
 [node name="Spacer4" type="Control" parent="UI/TopBar/HBoxContainer"]
 custom_minimum_size = Vector2(20, 0)
 layout_mode = 2
+mouse_filter = 2
 
 [node name="DebugHudButton" type="Button" parent="UI/TopBar/HBoxContainer"]
 custom_minimum_size = Vector2(100, 40)
@@ -132,16 +138,15 @@ layout_mode = 3
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -140.0
-offset_right = 110.0
-offset_bottom = -20.0
+offset_left = 81.0
+offset_top = -184.0
+offset_right = 171.0
+offset_bottom = -64.0
 grow_vertical = 0
 
 [node name="MenuLayer" parent="." instance=ExtResource("10_menu_layer")]
 
 [node name="DualPanelScreen" parent="." instance=ExtResource("10_dual_panel")]
-visible = true
 
 [node name="BalanceDebugHUD" parent="." instance=ExtResource("1_balance_hud")]
 visible = false
@@ -172,11 +177,22 @@ position = Vector2(751, 525)
 [node name="TowerSpot7" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
 position = Vector2(205, 399)
 
+[node name="TowerSpot8" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
+position = Vector2(-948, 1937)
+
+[node name="TowerSpot9" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
+position = Vector2(-923, -963)
+
+[node name="TowerSpot10" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
+position = Vector2(2950, -936)
+
+[node name="TowerSpot11" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
+position = Vector2(2939, 1920)
+
 [node name="HeroManager" type="Node2D" parent="." groups=["hero_manager"]]
 modulate = Color(0.9575384, 0.84961164, 0.8779932, 1)
 script = ExtResource("7_4d7sh")
 ranger_hero_scene = ExtResource("8_ir8iy")
-debug_input = true
 
 [node name="HeroSpots" type="Node2D" parent="."]
 
