@@ -19,6 +19,7 @@ signal screen_closed
 @onready var left_panel: FlexiblePanel = $CanvasLayer/CenterContainer/MainContainer/PanelsContainer/LeftPanel if has_node("CanvasLayer/CenterContainer/MainContainer/PanelsContainer/LeftPanel") else null
 @onready var right_panel: FlexiblePanel = $CanvasLayer/CenterContainer/MainContainer/PanelsContainer/RightPanel if has_node("CanvasLayer/CenterContainer/MainContainer/PanelsContainer/RightPanel") else null
 @onready var close_button: Button = $CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/CloseButton if has_node("CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/CloseButton") else null
+@onready var back_button: Button = $CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/BackButton if has_node("CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/BackButton") else null
 @onready var title_label: Label = $CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/TitleLabel if has_node("CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/TitleLabel") else null
 @onready var wave_status_label: Label = $CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/WaveStatusLabel if has_node("CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/WaveStatusLabel") else null
 
@@ -36,44 +37,47 @@ func _ready():
 	# Set up as always-process (for pause compatibility)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
-	# IMPORTANT: Hide by default - should only open when user clicks button
-	visible = false
-	hide()
-
-	print("🔍 [DualPanelScreen] After hide() - visible:", visible)
-
 	# Connect signals
 	if close_button:
 		close_button.pressed.connect(_on_close_button_pressed)
 
+	if back_button:
+		back_button.pressed.connect(_on_back_button_pressed)
+
 	# Set panel sides for identification
 	if left_panel:
 		left_panel.panel_side = "left"
-		# IMPORTANT: Defer loading to prevent auto-show
-		left_panel.set_process_mode(Node.PROCESS_MODE_DISABLED)
 	if right_panel:
 		right_panel.panel_side = "right"
-		# IMPORTANT: Defer loading to prevent auto-show
-		right_panel.set_process_mode(Node.PROCESS_MODE_DISABLED)
 
 	# Update title
 	if title_label:
-		title_label.text = "Hero Management"
+		title_label.text = "Gear & Equipment"
 
-	print("🔍 [DualPanelScreen] _ready() complete - final visible:", visible)
-
-	# CRITICAL FIX: CanvasLayer bypasses parent visibility!
-	# We need to hide the CanvasLayer itself, not just the Control parent
-	if canvas_layer:
-		canvas_layer.visible = false
-		print("🔍 [DualPanelScreen] CanvasLayer hidden")
-
-	# Double-check after a frame
-	await get_tree().process_frame
-	print("🔍 [DualPanelScreen] After 1 frame - visible:", visible, "canvas_layer.visible:", canvas_layer.visible if canvas_layer else "null")
-	if visible or (canvas_layer and canvas_layer.visible):
-		print("🚨🚨🚨 WARNING: Screen or CanvasLayer became visible!")
-		print_stack()
+	# Detect if we're in standalone mode (has back button) or overlay mode (has close button only)
+	if back_button:
+		# STANDALONE MODE - stay visible and enable panels
+		print("🔍 [DualPanelScreen] Standalone mode detected - staying visible")
+		visible = true
+		if canvas_layer:
+			canvas_layer.visible = true
+		# Enable panels for interaction
+		if left_panel:
+			left_panel.set_process_mode(Node.PROCESS_MODE_INHERIT)
+		if right_panel:
+			right_panel.set_process_mode(Node.PROCESS_MODE_INHERIT)
+	else:
+		# OVERLAY MODE - hide by default until user opens it
+		print("🔍 [DualPanelScreen] Overlay mode - hiding by default")
+		visible = false
+		hide()
+		if canvas_layer:
+			canvas_layer.visible = false
+		# Defer panel loading
+		if left_panel:
+			left_panel.set_process_mode(Node.PROCESS_MODE_DISABLED)
+		if right_panel:
+			right_panel.set_process_mode(Node.PROCESS_MODE_DISABLED)
 
 	# Setup responsive breakpoints
 	get_viewport().size_changed.connect(_on_viewport_resized)
@@ -233,6 +237,10 @@ func hide_screen():
 func _on_close_button_pressed():
 	hide_screen()
 
+func _on_back_button_pressed():
+	"""Return to world map (used in standalone scene mode)"""
+	print("⬅️ [GearScreen] Back button pressed - returning to world map")
+	get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
 
 func set_hero_id(p_hero_id: String):
 	"""Set which hero to display"""

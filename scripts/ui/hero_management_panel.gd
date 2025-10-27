@@ -25,7 +25,8 @@ signal closed()
 # ============================================
 
 @onready var title_label: Label = $Panel/VBox/TitleBar/TitleLabel
-@onready var close_button: Button = $Panel/VBox/TitleBar/CloseButton
+@onready var close_button: Button = $Panel/VBox/TitleBar/CloseButton if has_node("Panel/VBox/TitleBar/CloseButton") else null
+@onready var back_button: Button = $Panel/VBox/TitleBar/BackButton if has_node("Panel/VBox/TitleBar/BackButton") else null
 @onready var hero_portrait: ColorRect = $Panel/VBox/HeroInfo/Portrait
 @onready var hero_name_label: Label = $Panel/VBox/HeroInfo/VBox/NameLabel
 @onready var stats_label: Label = $Panel/VBox/HeroInfo/VBox/StatsLabel
@@ -51,8 +52,19 @@ func _ready():
 	if close_button:
 		close_button.pressed.connect(_on_close_pressed)
 
-	# Hide by default
-	hide()
+	if back_button:
+		back_button.pressed.connect(_on_back_button_pressed)
+		# Standalone mode - auto-initialize with skills
+		print("[HeroPanel] Standalone mode - auto-loading skills")
+		_initialize_standalone()
+	else:
+		# Overlay mode - hide and wait for open_panel() call
+		hide()
+
+func _initialize_standalone():
+	"""Initialize panel in standalone mode with default skills"""
+	var ranger_skills = _load_ranger_skills()
+	open_panel("ranger", ranger_skills)
 
 func open_panel(p_hero_id: String, skills: Array[HeroSkillData]):
 	"""Open the panel with hero data"""
@@ -68,6 +80,74 @@ func open_panel(p_hero_id: String, skills: Array[HeroSkillData]):
 	# Show panel
 	show()
 	print("📋 HeroManagementPanel opened for: ", hero_id)
+
+func _load_ranger_skills() -> Array[HeroSkillData]:
+	"""Load all available skills for the ranger hero"""
+	var skills: Array[HeroSkillData] = []
+
+	# ACTIVE SKILL 1: Rapid Fire
+	var rapid_fire = HeroSkillData.new()
+	rapid_fire.skill_id = "rapid_fire"
+	rapid_fire.skill_name = "Rapid Fire"
+	rapid_fire.description = "Fire multiple arrows in quick succession"
+	rapid_fire.skill_type = HeroSkillData.SkillType.ACTIVE
+	rapid_fire.unlock_cost = 100
+	rapid_fire.max_upgrade_level = 3
+	rapid_fire.upgrade_costs.assign([50, 100])
+	rapid_fire.cooldown = 30.0
+	skills.append(rapid_fire)
+
+	# ACTIVE SKILL 2: Power Shot
+	var power_shot = HeroSkillData.new()
+	power_shot.skill_id = "power_shot"
+	power_shot.skill_name = "Power Shot"
+	power_shot.description = "Charge up a powerful shot that deals 300% damage and pierces enemies"
+	power_shot.skill_type = HeroSkillData.SkillType.ACTIVE
+	power_shot.unlock_cost = 150
+	power_shot.max_upgrade_level = 3
+	power_shot.upgrade_costs.assign([75, 150])
+	power_shot.cooldown = 45.0
+	power_shot.damage_multiplier = 3.0
+	skills.append(power_shot)
+
+	# PASSIVE SKILL 1: Eagle Eye
+	var eagle_eye = HeroSkillData.new()
+	eagle_eye.skill_id = "eagle_eye"
+	eagle_eye.skill_name = "Eagle Eye"
+	eagle_eye.description = "+20% attack range per level"
+	eagle_eye.skill_type = HeroSkillData.SkillType.PASSIVE
+	eagle_eye.unlock_cost = 80
+	eagle_eye.max_upgrade_level = 5
+	eagle_eye.upgrade_costs.assign([40, 80, 120, 160])
+	eagle_eye.range_bonus = 60.0
+	skills.append(eagle_eye)
+
+	# PASSIVE SKILL 2: Critical Strike
+	var crit_strike = HeroSkillData.new()
+	crit_strike.skill_id = "critical_strike"
+	crit_strike.skill_name = "Critical Strike"
+	crit_strike.description = "+5% critical hit chance per level (double damage)"
+	crit_strike.skill_type = HeroSkillData.SkillType.PASSIVE
+	crit_strike.unlock_cost = 120
+	crit_strike.max_upgrade_level = 5
+	crit_strike.upgrade_costs.assign([60, 120, 180, 240])
+	crit_strike.crit_chance = 0.05
+	skills.append(crit_strike)
+
+	# PASSIVE SKILL 3: Attack Speed
+	var attack_speed = HeroSkillData.new()
+	attack_speed.skill_id = "attack_speed"
+	attack_speed.skill_name = "Quick Draw"
+	attack_speed.description = "+10% attack speed per level"
+	attack_speed.skill_type = HeroSkillData.SkillType.PASSIVE
+	attack_speed.unlock_cost = 100
+	attack_speed.max_upgrade_level = 4
+	attack_speed.upgrade_costs.assign([50, 100, 150])
+	attack_speed.attack_speed_multiplier = 1.1
+	skills.append(attack_speed)
+
+	print("✅ Loaded %d skills for Ranger" % skills.size())
+	return skills
 
 func _refresh_display():
 	"""Update all UI elements"""
@@ -286,6 +366,11 @@ func _on_close_pressed():
 	"""Handle close button press"""
 	hide()
 	closed.emit()
+
+func _on_back_button_pressed():
+	"""Return to world map (used in standalone scene mode)"""
+	print("⬅️ [HeroScreen] Back button pressed - returning to world map")
+	get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
 
 # ============================================
 # VISUAL FEEDBACK

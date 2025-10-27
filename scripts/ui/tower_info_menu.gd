@@ -145,6 +145,7 @@ func _ensure_all_targeting_buttons_exist():
 			new_button.name = button_name
 			new_button.text = label
 			new_button.custom_minimum_size = Vector2(60, 30)
+			new_button.add_theme_font_size_override("font_size", 12)  # Smaller font
 			targeting_container.add_child(new_button)
 			return new_button
 		return existing_button
@@ -184,7 +185,12 @@ func update_display():
 	# Set tower name with level
 	if tower_name_label:
 		if is_garrison:
-			tower_name_label.text = "Soldier Tower"
+			# Show level and path for soldier tower too!
+			var level = tower.tower_level if "tower_level" in tower else 1
+			var path_text = ""
+			if "upgrade_path" in tower and tower.upgrade_path != "":
+				path_text = " [%s]" % tower.upgrade_path.to_upper()
+			tower_name_label.text = "Soldier Tower Lv%d%s" % [level, path_text]
 		else:
 			var level = tower.tower_level if "tower_level" in tower else 1
 			var path_text = ""
@@ -216,10 +222,26 @@ func update_display():
 			print("⚠️ [TowerInfoMenu] Tower is invalid for stats display")
 
 	# Set button text with costs (get from tower if available)
-	# Check if this is a path choice upgrade - SHOW PATH BUTTONS INSTEAD
+	# Check tower upgrade state
 	var needs_path_choice = tower and tower.has_method("needs_path_choice") and tower.needs_path_choice()
+	var tower_level = tower.tower_level if tower and "tower_level" in tower else 1
+	var upgrade_path = tower.upgrade_path if tower and "upgrade_path" in tower else ""
+	var is_max_level = (tower_level >= 5)  # Level 5+ = MAX LEVEL
 
-	if needs_path_choice:
+	if is_max_level:
+		print("🔧 [TowerInfoMenu] Tower is MAX LEVEL (Level 4, path: %s)" % upgrade_path)
+		# HIDE all upgrade options - tower is fully upgraded
+		if upgrade_button:
+			upgrade_button.visible = true
+			upgrade_button.text = "MAX LEVEL"
+			upgrade_button.disabled = true
+		if damage_path_button:
+			damage_path_button.visible = false
+		if range_path_button:
+			range_path_button.visible = false
+		print("✅ [TowerInfoMenu] Showing MAX LEVEL button (disabled)")
+
+	elif needs_path_choice:
 		print("🔧 [TowerInfoMenu] Tower needs path choice - showing path buttons!")
 		# HIDE normal upgrade button, SHOW path buttons
 		if upgrade_button:
@@ -228,6 +250,9 @@ func update_display():
 			damage_path_button.visible = true
 		if range_path_button:
 			range_path_button.visible = true
+
+		# Update button text based on tower type
+		_update_path_button_text()
 
 		# Update path button affordability
 		_update_path_button_states()
@@ -247,9 +272,8 @@ func update_display():
 				print("🔧 [TowerInfoMenu] Upgrade cost from tower: %d gold" % upgrade_cost)
 
 				if upgrade_cost > 0:
-					var level = tower.tower_level if "tower_level" in tower else 1
-					upgrade_button.text = "Upgrade (Lv%d)\n%dg" % [level + 1, upgrade_cost]
-					print("✅ [TowerInfoMenu] Button text: 'Upgrade (Lv%d) %dg'" % [level + 1, upgrade_cost])
+					upgrade_button.text = "Upgrade (Lv%d)\n%dg" % [tower_level + 1, upgrade_cost]
+					print("✅ [TowerInfoMenu] Button text: 'Upgrade (Lv%d) %dg'" % [tower_level + 1, upgrade_cost])
 				else:
 					upgrade_button.text = "MAX LEVEL"
 					upgrade_button.disabled = true
@@ -281,9 +305,19 @@ func _on_gold_changed(_new_amount):
 
 func update_button_states():
 	if upgrade_button:
-		var can_afford = GameStateManager.gold >= upgrade_cost
-		upgrade_button.disabled = not can_afford
-		print("💰 [TowerInfoMenu] Button state - Gold: %d, Cost: %d, Enabled: %s" % [GameStateManager.gold, upgrade_cost, str(can_afford)])
+		# Check if tower is at max level first
+		var tower_level = tower.tower_level if tower and "tower_level" in tower else 1
+		var is_max_level = (tower_level >= 5)  # Level 5+ = MAX LEVEL
+
+		if is_max_level:
+			# Keep button disabled at max level (don't check affordability)
+			upgrade_button.disabled = true
+			print("💰 [TowerInfoMenu] Tower at MAX LEVEL - button stays disabled")
+		else:
+			# Normal affordability check for upgradeable towers
+			var can_afford = GameStateManager.gold >= upgrade_cost
+			upgrade_button.disabled = not can_afford
+			print("💰 [TowerInfoMenu] Button state - Gold: %d, Cost: %d, Enabled: %s" % [GameStateManager.gold, upgrade_cost, str(can_afford)])
 	else:
 		print("❌ [TowerInfoMenu] Cannot update button state - upgrade_button is NULL!")
 
@@ -353,13 +387,16 @@ func _update_stats_with_preview():
 		return
 
 	var is_garrison = _is_garrison_tower()
-	if is_garrison:
-		# Garrison towers don't show preview yet (could add later)
-		return
 
 	# Use BBCode for colored text
 	stats_label.bbcode_enabled = true
 
+	if is_garrison:
+		# SOLDIER TOWER PREVIEW
+		_update_garrison_stats_with_preview()
+		return
+
+	# ARCHER TOWER PREVIEW
 	var damage = preview_stats.get("damage", tower.damage)
 	var damage_bonus = preview_stats.get("damage_bonus", 0)
 	var attack_speed = preview_stats.get("attack_speed", tower.attack_speed)
@@ -367,29 +404,35 @@ func _update_stats_with_preview():
 	var range_val = preview_stats.get("range", tower.range_radius)
 	var range_bonus = preview_stats.get("range_bonus", 0)
 
-	# Build stats text with green bonuses
+	# Build stats text with green bonuses (or red penalties)
 	var stats_text = ""
 
 	# Damage line
 	if damage_bonus > 0:
 		stats_text += "Damage: %d [color=green]+%d[/color]\n" % [damage, damage_bonus]
+	elif damage_bonus < 0:
+		stats_text += "Damage: %d [color=red]%d[/color]\n" % [damage, damage_bonus]
 	else:
 		stats_text += "Damage: %d\n" % damage
 
 	# Attack Speed line
 	if attack_speed_bonus > 0:
 		stats_text += "Attack Speed: %.1f/s [color=green]+%.1f/s[/color]\n" % [attack_speed, attack_speed_bonus]
+	elif attack_speed_bonus < 0:
+		stats_text += "Attack Speed: %.1f/s [color=red]%.1f/s[/color]\n" % [attack_speed, attack_speed_bonus]
 	else:
 		stats_text += "Attack Speed: %.1f/s\n" % attack_speed
 
 	# Range line
 	if range_bonus > 0:
 		stats_text += "Range: %d [color=green]+%d[/color]" % [range_val, range_bonus]
+	elif range_bonus < 0:
+		stats_text += "Range: %d [color=red]%d[/color]" % [range_val, range_bonus]
 	else:
 		stats_text += "Range: %d" % range_val
 
 	stats_label.text = stats_text
-	print("✅ [TowerInfoMenu] Stats updated with preview bonuses")
+	print("✅ [TowerInfoMenu] Stats updated with preview bonuses/penalties")
 
 func _confirm_upgrade():
 	"""Second click: Actually perform the upgrade"""
@@ -420,14 +463,11 @@ func _confirm_upgrade():
 
 		# Show brief visual confirmation
 		if tower_name_label:
-			var original_color = tower_name_label.modulate
-			print("🔧 [TowerInfoMenu] Showing '✓ UPGRADED!' confirmation")
+			print("🔧 [TowerInfoMenu] Showing \'✓ UPGRADED!\' confirmation")
 			tower_name_label.text = "✓ UPGRADED!"
 			tower_name_label.modulate = Color(0, 1, 0)  # Green
-			await get_tree().create_timer(0.4).timeout
-			tower_name_label.modulate = original_color
-			print("🔧 [TowerInfoMenu] Restoring original menu text")
-			update_display()
+			await get_tree().create_timer(0.3).timeout
+			print("🔧 [TowerInfoMenu] Confirmation shown, closing menu")
 
 		# Auto-close menu after upgrade
 		print("🔧 [TowerInfoMenu] Auto-closing menu after upgrade")
@@ -745,13 +785,64 @@ func _update_garrison_stats():
 	if info["respawning"] > 0:
 		next_respawn_text = "\nNext respawn: %.1fs" % info["next_respawn"]
 
-	stats_label.text = "Squad: %d/%d alive%s\nDamage: %.0f\nAttack Speed: %.1f/s" % [
+	# Show comprehensive soldier stats (matching archer tower detail level)
+	stats_label.text = "Squad: %d/%d alive%s\nHealth: %.0f\nDamage: %.0f\nAttack Speed: %.1f/s\nRespawn: %.1fs" % [
 		info["alive"],
 		info["squad_size"],
 		next_respawn_text,
-		tower.soldier_damage if "soldier_damage" in tower else 0,
-		tower.soldier_attack_speed if "soldier_attack_speed" in tower else 0
+		tower.soldier_health if "soldier_health" in tower else 100,
+		tower.soldier_damage if "soldier_damage" in tower else 10,
+		tower.soldier_attack_speed if "soldier_attack_speed" in tower else 1.0,
+		tower.respawn_delay if "respawn_delay" in tower else 5.0
 	]
+
+func _update_garrison_stats_with_preview():
+	"""Update garrison stats with upgrade preview (green bonuses)"""
+	if not tower or not tower.has_method("get_garrison_info"):
+		return
+
+	var info = tower.get_garrison_info()
+	var next_respawn_text = ""
+	if info["respawning"] > 0:
+		next_respawn_text = "\nNext respawn: %.1fs" % info["next_respawn"]
+
+	# Get preview stats from tower
+	var health = preview_stats.get("soldier_health", tower.soldier_health if "soldier_health" in tower else 100)
+	var health_bonus = health - (tower.soldier_health if "soldier_health" in tower else 100)
+
+	var damage = preview_stats.get("soldier_damage", tower.soldier_damage if "soldier_damage" in tower else 10)
+	var damage_bonus = damage - (tower.soldier_damage if "soldier_damage" in tower else 10)
+
+	var respawn = preview_stats.get("respawn_delay", tower.respawn_delay if "respawn_delay" in tower else 5.0)
+	var respawn_bonus = respawn - (tower.respawn_delay if "respawn_delay" in tower else 5.0)
+
+	var attack_speed = tower.soldier_attack_speed if "soldier_attack_speed" in tower else 1.0
+
+	# Build stats text with green bonuses
+	var stats_text = "Squad: %d/%d alive%s\n" % [info["alive"], info["squad_size"], next_respawn_text]
+
+	# Health line with bonus
+	if health_bonus > 0:
+		stats_text += "Health: %.0f [color=green]+%.0f[/color]\n" % [tower.soldier_health, health_bonus]
+	else:
+		stats_text += "Health: %.0f\n" % health
+
+	# Damage line with bonus
+	if damage_bonus > 0:
+		stats_text += "Damage: %.0f [color=green]+%.0f[/color]\n" % [tower.soldier_damage, damage_bonus]
+	else:
+		stats_text += "Damage: %.0f\n" % damage
+
+	# Attack Speed line (no change on upgrade)
+	stats_text += "Attack Speed: %.1f/s\n" % attack_speed
+
+	# Respawn line (faster = negative = green bonus!)
+	if respawn_bonus < 0:
+		stats_text += "Respawn: %.1fs [color=green]%.1fs[/color]" % [tower.respawn_delay, respawn_bonus]
+	else:
+		stats_text += "Respawn: %.1fs" % respawn
+
+	stats_label.text = stats_text
 
 func _update_tower_type_ui():
 	"""Show/hide UI elements based on tower type"""
@@ -815,6 +906,23 @@ func _on_rally_button_pressed():
 # PATH CHOICE SYSTEM (Kingdom Rush Style)
 # ============================================
 
+func _update_path_button_text():
+	"""Update path button text based on tower type"""
+	var is_garrison = _is_garrison_tower()
+
+	if is_garrison:
+		# Soldier tower: Defense and Offense paths
+		if damage_path_button:
+			damage_path_button.text = "🛡️ DEFENSE PATH\n150g - Tank Soldiers"
+		if range_path_button:
+			range_path_button.text = "⚔️ OFFENSE PATH\n150g - Damage Soldiers"
+	else:
+		# Archer tower: Damage and Range paths
+		if damage_path_button:
+			damage_path_button.text = "🔥 DAMAGE PATH\n150g - Glass Cannon"
+		if range_path_button:
+			range_path_button.text = "🎯 RANGE PATH\n150g - Long-range Sniper"
+
 func _update_path_button_states():
 	"""Update path button affordability based on current gold"""
 	var can_afford = GameStateManager.gold >= path_choice_cost
@@ -864,15 +972,19 @@ func _enter_damage_path_preview():
 	if range_path_button:
 		range_path_button.modulate = Color(0.7, 0.7, 0.7)  # Dim the other
 
-	# Calculate damage path stats preview (27→36 damage, 1.6→2.0 AS)
-	preview_stats = {
-		"damage": 27,
-		"damage_bonus": 9,  # 36 - 27
-		"attack_speed": 1.6,
-		"attack_speed_bonus": 0.4,  # 2.0 - 1.6
-		"range": 400,
-		"range_bonus": 0
-	}
+	# Get damage path stats preview from tower (single source of truth!)
+	if tower and tower.has_method("get_upgrade_stats"):
+		preview_stats = tower.get_upgrade_stats("damage")
+	else:
+		# Fallback (should never happen with archer towers)
+		preview_stats = {
+			"damage": tower.damage,
+			"damage_bonus": 9,
+			"attack_speed": tower.attack_speed,
+			"attack_speed_bonus": 0.4,
+			"range": tower.range_radius,
+			"range_bonus": 100
+		}
 
 	# Update main stats display with green bonuses
 	_update_stats_with_preview()
@@ -891,15 +1003,19 @@ func _enter_range_path_preview():
 	if damage_path_button:
 		damage_path_button.modulate = Color(0.7, 0.7, 0.7)  # Dim the other
 
-	# Calculate range path stats preview (400→800 range, damage/AS stay same)
-	preview_stats = {
-		"damage": 27,
-		"damage_bonus": 0,
-		"attack_speed": 1.6,
-		"attack_speed_bonus": 0.0,
-		"range": 400,
-		"range_bonus": 400  # 800 - 400
-	}
+	# Get range path stats preview from tower (single source of truth!)
+	if tower and tower.has_method("get_upgrade_stats"):
+		preview_stats = tower.get_upgrade_stats("range")
+	else:
+		# Fallback (should never happen with archer towers)
+		preview_stats = {
+			"damage": tower.damage,
+			"damage_bonus": 0,
+			"attack_speed": tower.attack_speed,
+			"attack_speed_bonus": 0.0,
+			"range": tower.range_radius,
+			"range_bonus": 100
+		}
 
 	# Update main stats display with green bonuses
 	_update_stats_with_preview()
@@ -935,14 +1051,11 @@ func _confirm_damage_path():
 
 		# Show brief visual confirmation
 		if tower_name_label:
-			var original_color = tower_name_label.modulate
-			print("🔥 [TowerInfoMenu] Showing '✓ DAMAGE PATH!' confirmation")
+			print("🔥 [TowerInfoMenu] Showing \'✓ DAMAGE PATH!\' confirmation")
 			tower_name_label.text = "✓ DAMAGE PATH!"
 			tower_name_label.modulate = Color(1.0, 0.6, 0.3)  # Orange
-			await get_tree().create_timer(0.4).timeout
-			tower_name_label.modulate = original_color
-			print("🔥 [TowerInfoMenu] Restoring original menu text")
-			update_display()
+			await get_tree().create_timer(0.3).timeout
+			print("🔥 [TowerInfoMenu] Confirmation shown, closing menu")
 
 		# Auto-close menu after path choice
 		print("🔥 [TowerInfoMenu] Auto-closing menu after damage path choice")
@@ -984,14 +1097,11 @@ func _confirm_range_path():
 
 		# Show brief visual confirmation
 		if tower_name_label:
-			var original_color = tower_name_label.modulate
-			print("🎯 [TowerInfoMenu] Showing '✓ RANGE PATH!' confirmation")
+			print("🎯 [TowerInfoMenu] Showing \'✓ RANGE PATH!\' confirmation")
 			tower_name_label.text = "✓ RANGE PATH!"
 			tower_name_label.modulate = Color(0.3, 0.8, 1.0)  # Blue
-			await get_tree().create_timer(0.4).timeout
-			tower_name_label.modulate = original_color
-			print("🎯 [TowerInfoMenu] Restoring original menu text")
-			update_display()
+			await get_tree().create_timer(0.3).timeout
+			print("🎯 [TowerInfoMenu] Confirmation shown, closing menu")
 
 		# Auto-close menu after path choice
 		print("🎯 [TowerInfoMenu] Auto-closing menu after range path choice")

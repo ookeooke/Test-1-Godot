@@ -127,19 +127,6 @@ func _unhandled_input(event):
 				get_viewport().set_input_as_handled()
 		return
 
-	# Right-click/two-finger to deselect
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-		if debug_input:
-			print("[HeroManager DEBUG] Right-click detected")
-		if current_hero and is_instance_valid(current_hero):
-			if debug_input:
-				print("[HeroManager DEBUG] Hero selected - deselecting and consuming input")
-			current_hero.deselect()
-			current_hero = null
-			if hero_button:
-				hero_button.set_selected(false)
-			get_viewport().set_input_as_handled()
-			return  # Only consume input if we actually deselected a hero
-		# If no hero selected, don't consume - let camera handle right-click for dragging
-		if debug_input:
-			print("[HeroManager DEBUG] No hero selected - passing input to camera")
+	# Right-click deselect REMOVED - use ESC key instead (via "deselect" action above)
+	# This allows right-click to always pass through to camera for panning
+	# Users can press ESC to deselect hero, then use right-drag for camera

@@ -68,6 +68,12 @@ var current_melee_targets = []
 var ranged_timer: Timer
 var melee_timer: Timer
 
+# REGENERATION SYSTEM (Kingdom Rush style - heroes)
+var time_since_last_damage: float = 0.0
+var is_regenerating: bool = false
+var regen_delay: float = 2.0  # 2 seconds delay for heroes (longer than soldiers)
+var regen_rate: float = 3.0   # 3 HP per second (slower than soldiers)
+
 # SELECTION
 var is_selected = false
 
@@ -409,7 +415,8 @@ func _on_area_input_event(_viewport, event, _shape_idx):
 			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			_on_right_clicked()
-			get_viewport().set_input_as_handled()
+			# DON'T consume right-click - let camera handle right-drag for panning
+			# get_viewport().set_input_as_handled()
 	# Handle touch input
 	elif event is InputEventScreenTouch and event.pressed:
 		_on_clicked()
@@ -442,6 +449,9 @@ func _on_mouse_exited() -> void:
 # ============================================
 
 func _physics_process(delta):
+	# Update regeneration FIRST (Kingdom Rush style)
+	update_regeneration(delta)
+
 	match current_state:
 		State.IDLE:
 			handle_idle_state()
@@ -741,8 +751,17 @@ func _play_attack_flash():
 
 func take_damage(amount: float):
 	current_health -= amount
+
+	# CRITICAL: Reset regeneration timer! (Kingdom Rush style)
+	time_since_last_damage = 0.0
+
+	# Stop regeneration visual
+	if is_regenerating:
+		is_regenerating = false
+		show_regen_visual(false)
+
 	update_health_bar()
-	
+
 	if current_health <= 0:
 		die()
 
@@ -794,6 +813,45 @@ func draw_range_circle():
 
 	# Set Kingdom Rush blue color with transparency
 	range_indicator.color = Color(0.3, 0.5, 1.0, 0.3)  # Blue, 30% opacity
+
+# ============================================
+# REGENERATION SYSTEM (Kingdom Rush)
+# ============================================
+
+func update_regeneration(delta):
+	"""Kingdom Rush style health regeneration - 3 HP/sec after 2s out of combat"""
+	# Count time since last hit
+	time_since_last_damage += delta
+
+	# Can only regen if not at full health
+	if current_health < max_health:
+		# Check if enough time passed (2 seconds out of combat for heroes)
+		if time_since_last_damage >= regen_delay:
+			# Start regenerating
+			if not is_regenerating:
+				is_regenerating = true
+				show_regen_visual(true)
+
+			# Heal over time
+			current_health += regen_rate * delta
+
+			# Cap at max health
+			if current_health > max_health:
+				current_health = max_health
+				is_regenerating = false
+				show_regen_visual(false)
+
+			update_health_bar()
+	else:
+		# Already at full health
+		if is_regenerating:
+			is_regenerating = false
+			show_regen_visual(false)
+
+func show_regen_visual(enabled: bool):
+	"""Show/hide green pulse on health bar during regeneration"""
+	if health_bar and health_bar.has_method("show_regeneration"):
+		health_bar.show_regeneration(enabled)
 
 # ============================================
 # HELPER FUNCTIONS

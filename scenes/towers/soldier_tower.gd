@@ -11,6 +11,12 @@ extends StaticBody2D
 # TOWER STATS
 var build_cost = 120  # Cost to build this tower (for sell calculation)
 
+# UPGRADE SYSTEM (following archer tower pattern)
+var tower_level = 1  # Current upgrade level (1-5)
+var upgrade_path = "" # "" = not chosen, "defense" = defense path, "offense" = offense path
+const MAX_LEVEL_BEFORE_CHOICE = 3  # At level 3, player must choose a path
+const MAX_LEVEL = 5  # Maximum tower level after all upgrades
+
 @export_group("Garrison Settings")
 @export var squad_size: int = 4  ## Number of soldiers in the squad
 @export var spawn_radius: float = 60.0  ## How far from tower center soldiers spawn
@@ -267,6 +273,203 @@ func _input(event):
 			is_placing_rally = false
 			print("Rally placement cancelled")
 			get_viewport().set_input_as_handled()
+
+# ============================================
+# UPGRADE SYSTEM (following archer tower pattern)
+# ============================================
+
+func upgrade_tower():
+	"""Apply standard upgrade (levels 1→2→3 and 4→5 after path choice)"""
+	print("🔧 [SoldierTower] upgrade_tower() called")
+	print("🔧 [SoldierTower] Current tower_level: %d" % tower_level)
+
+	# Check if at Level 3 (needs path choice) or at max level
+	if tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
+		push_warning("[SoldierTower] Cannot upgrade past level 3 - must choose path!")
+		return false
+
+	if tower_level >= MAX_LEVEL:
+		push_warning("[SoldierTower] Tower already at MAX LEVEL!")
+		return false
+
+	var old_level = tower_level
+	var upgrade_cost = get_upgrade_cost()
+	tower_level += 1
+	print("🔧 [SoldierTower] Level changed: %d → %d (Cost: %dg)" % [old_level, tower_level, upgrade_cost])
+
+	# Apply stat increases per level
+	match tower_level:
+		2:
+			soldier_health = 120.0  # 100 → 120 (+20%)
+			soldier_damage = 12.0   # 10 → 12 (+20%)
+			respawn_delay = 4.5     # 5.0 → 4.5 (-10% faster)
+			print("✅ [SoldierTower] Upgraded to Level 2: HP=120, DMG=12, Respawn=4.5s")
+		3:
+			soldier_health = 150.0  # 120 → 150 (+25%)
+			soldier_damage = 15.0   # 12 → 15 (+25%)
+			respawn_delay = 4.0     # 4.5 → 4.0 (-11% faster)
+			print("✅ [SoldierTower] Upgraded to Level 3: HP=150, DMG=15, Respawn=4.0s")
+		5:
+			# Level 4→5 upgrade (path-specific final upgrade)
+			if upgrade_path == "defense":
+				# DEFENSE PATH: Tankier soldiers, faster respawn
+				soldier_health = 220.0  # 180 → 220 (+22%)
+				soldier_damage = 18.0   # 18 → 18 (no change)
+				respawn_delay = 2.5     # 3.0 → 2.5 (-17% faster)
+				print("✅ [SoldierTower] Upgraded to Level 5 DEFENSE: HP=220, DMG=18, Respawn=2.5s")
+			elif upgrade_path == "offense":
+				# OFFENSE PATH: Higher damage, same tankiness
+				soldier_health = 200.0  # 180 → 200 (+11%)
+				soldier_damage = 25.0   # 20 → 25 (+25%)
+				respawn_delay = 3.0     # 3.0 → 3.0 (no change)
+				print("✅ [SoldierTower] Upgraded to Level 5 OFFENSE: HP=200, DMG=25, Respawn=3.0s")
+
+	# Update ALL existing soldiers with new stats
+	_update_existing_soldiers()
+
+	# Track upgrade in BalanceTracker
+	if BalanceTracker:
+		BalanceTracker.record_tower_upgrade(self, tower_level, upgrade_cost)
+
+	print("✅ [SoldierTower] upgrade_tower() completed successfully")
+	return true
+
+func choose_defense_path():
+	"""Choose defense specialization path (Level 3 → 4 Defense)"""
+	if tower_level != MAX_LEVEL_BEFORE_CHOICE:
+		push_warning("[SoldierTower] Can only choose path at level 3!")
+		return false
+
+	if upgrade_path != "":
+		push_warning("[SoldierTower] Path already chosen: %s" % upgrade_path)
+		return false
+
+	var path_cost = get_upgrade_cost()
+	tower_level += 1
+	upgrade_path = "defense"
+
+	# Level 4 DEFENSE stats: Tankier soldiers
+	soldier_health = 180.0  # 150 → 180 (+20%)
+	soldier_damage = 18.0   # 15 → 18 (+20%)
+	respawn_delay = 3.0     # 4.0 → 3.0 (-25% faster!)
+
+	_update_existing_soldiers()
+
+	if BalanceTracker:
+		BalanceTracker.record_tower_upgrade(self, tower_level, path_cost, "defense")
+
+	print("✅ [SoldierTower] Chose DEFENSE path - Level 4: HP=180, DMG=18, Respawn=3.0s")
+	return true
+
+func choose_offense_path():
+	"""Choose offense specialization path (Level 3 → 4 Offense)"""
+	if tower_level != MAX_LEVEL_BEFORE_CHOICE:
+		push_warning("[SoldierTower] Can only choose path at level 3!")
+		return false
+
+	if upgrade_path != "":
+		push_warning("[SoldierTower] Path already chosen: %s" % upgrade_path)
+		return false
+
+	var path_cost = get_upgrade_cost()
+	tower_level += 1
+	upgrade_path = "offense"
+
+	# Level 4 OFFENSE stats: Higher damage
+	soldier_health = 170.0  # 150 → 170 (+13%)
+	soldier_damage = 20.0   # 15 → 20 (+33%)
+	respawn_delay = 3.5     # 4.0 → 3.5 (-12.5% faster)
+
+	_update_existing_soldiers()
+
+	if BalanceTracker:
+		BalanceTracker.record_tower_upgrade(self, tower_level, path_cost, "offense")
+
+	print("✅ [SoldierTower] Chose OFFENSE path - Level 4: HP=170, DMG=20, Respawn=3.5s")
+	return true
+
+func _update_existing_soldiers():
+	"""Update all living soldiers with new stats after upgrade"""
+	for soldier in active_soldiers:
+		if is_instance_valid(soldier):
+			soldier.max_health = soldier_health
+			soldier.melee_damage = soldier_damage
+			soldier.melee_attack_speed = soldier_attack_speed
+			soldier.respawn_delay = respawn_delay
+
+			# Heal to new max health (generous upgrade bonus!)
+			soldier.current_health = soldier_health
+			soldier.update_health_bar()
+
+	print("✅ [SoldierTower] Updated %d existing soldiers with new stats" % active_soldiers.size())
+
+func get_upgrade_cost() -> int:
+	"""Get cost for next upgrade (matching archer tower pricing)"""
+	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
+		# Standard upgrades (Level 1→2, 2→3)
+		match tower_level:
+			1: return 60  # Level 1→2
+			2: return 90  # Level 2→3
+	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
+		# Path choice upgrade (Level 3→4)
+		return 150  # Level 3→4 path choice
+	elif tower_level == 4 and upgrade_path != "":
+		# Final upgrade after path choice (Level 4→5)
+		return 200  # Level 4→5 final upgrade
+
+	return 0  # Max level reached
+
+func get_upgrade_stats(preview_path: String = "") -> Dictionary:
+	"""Get preview of what stats will be after upgrade"""
+	var next_level = tower_level + 1
+
+	# Calculate preview stats
+	var preview_health = soldier_health
+	var preview_damage = soldier_damage
+	var preview_respawn = respawn_delay
+
+	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
+		# Standard upgrades
+		match next_level:
+			2:
+				preview_health = 120.0
+				preview_damage = 12.0
+				preview_respawn = 4.5
+			3:
+				preview_health = 150.0
+				preview_damage = 15.0
+				preview_respawn = 4.0
+	elif tower_level == MAX_LEVEL_BEFORE_CHOICE:
+		# Path choice preview
+		if preview_path == "defense":
+			preview_health = 180.0
+			preview_damage = 18.0
+			preview_respawn = 3.0
+		elif preview_path == "offense":
+			preview_health = 170.0
+			preview_damage = 20.0
+			preview_respawn = 3.5
+	elif tower_level == 4:
+		# Final upgrade
+		if upgrade_path == "defense":
+			preview_health = 220.0
+			preview_damage = 18.0
+			preview_respawn = 2.5
+		elif upgrade_path == "offense":
+			preview_health = 200.0
+			preview_damage = 25.0
+			preview_respawn = 3.0
+
+	return {
+		"soldier_health": preview_health,
+		"soldier_damage": preview_damage,
+		"respawn_delay": preview_respawn,
+		"squad_size": squad_size
+	}
+
+func needs_path_choice() -> bool:
+	"""Check if tower is at level 3 and needs path choice"""
+	return tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == ""
 
 # ============================================
 # CLEANUP

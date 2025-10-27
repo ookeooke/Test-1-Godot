@@ -1,14 +1,21 @@
-[gd_scene load_steps=4 format=3 uid="uid://world_map_node2d"]
+[gd_scene load_steps=7 format=3 uid="uid://cfsa2lfxmkrc5"]
 
-[ext_resource type="Script" path="res://scripts/ui/world_map_select_node2d.gd" id="1"]
-[ext_resource type="Resource" uid="uid://level_01_node_data" path="res://data/levels/level_01_data.tres" id="2"]
-[ext_resource type="Resource" uid="uid://level_02_node_data" path="res://data/levels/level_02_data.tres" id="3"]
+[ext_resource type="Script" uid="uid://vwyw3jdktv2" path="res://scripts/ui/world_map_select_node2d.gd" id="1"]
+[ext_resource type="Resource" path="res://data/levels/level_01_data.tres" id="2"]
+[ext_resource type="Script" uid="uid://dgpmoeljelfp2" path="res://scripts/resources/level_node_data.gd" id="2_0csuo"]
+[ext_resource type="Script" uid="uid://b1r6b3vwpnkst" path="res://scripts/camera/camera_controller_improved.gd" id="2_camera"]
+[ext_resource type="Resource" path="res://data/levels/level_02_data.tres" id="3"]
+[ext_resource type="Texture2D" uid="uid://1qibfu3gvxev" path="res://map1.png" id="4_map_texture"]
 
 [node name="WorldMapSelect" type="Node2D"]
 script = ExtResource("1")
-level_nodes_data = Array[Resource("res://scripts/resources/level_node_data.gd")]([ExtResource("2"), ExtResource("3")])
+level_nodes_data = Array[ExtResource("2_0csuo")]([ExtResource("2"), ExtResource("3")])
+map_texture = ExtResource("4_map_texture")
 
 [node name="MapBackground" type="Sprite2D" parent="."]
+position = Vector2(-1170, -991)
+scale = Vector2(1.8410716, 1.4491072)
+texture = ExtResource("4_map_texture")
 centered = false
 
 [node name="PathsLayer" type="Node2D" parent="."]
@@ -20,9 +27,10 @@ position = Vector2(960, 540)
 zoom = Vector2(0.8, 0.8)
 limit_smoothed = true
 position_smoothing_enabled = true
+script = ExtResource("2_camera")
+debug_input = false
 
 [node name="UILayer" type="CanvasLayer" parent="."]
-follow_viewport_enabled = false
 
 [node name="TopBar" type="HBoxContainer" parent="UILayer"]
 anchors_preset = 10

@@ -6,19 +6,19 @@
 [sub_resource type="Resource" id="EnemySpawnData_1"]
 script = ExtResource("2_enemy")
 enemy_type = "bat"
-count = 20
-spawn_delay = 1.8
+count = 15
+spawn_delay = 2.0
 
 [sub_resource type="Resource" id="EnemySpawnData_2"]
 script = ExtResource("2_enemy")
 enemy_type = "orc"
-count = 10
-spawn_delay = 2.5
+count = 8
+spawn_delay = 3.0
 
 [resource]
 script = ExtResource("1_wave")
 wave_number = 15
-break_time = 5.0
+break_time = 6.0
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1"), SubResource("EnemySpawnData_2")])
 wave_name = "Final Push"
-hp_multiplier = 7.5
+hp_multiplier = 6.0

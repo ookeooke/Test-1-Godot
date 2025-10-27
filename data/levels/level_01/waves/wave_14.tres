@@ -6,14 +6,14 @@
 [sub_resource type="Resource" id="EnemySpawnData_1"]
 script = ExtResource("2_enemy")
 enemy_type = "orc"
-count = 15
-spawn_delay = 2.5
+count = 12
+spawn_delay = 3.0
 
 [sub_resource type="Resource" id="EnemySpawnData_2"]
 script = ExtResource("2_enemy")
 enemy_type = "wolf"
-count = 15
-spawn_delay = 2.0
+count = 12
+spawn_delay = 2.5
 
 [resource]
 script = ExtResource("1_wave")
@@ -21,4 +21,4 @@ wave_number = 14
 break_time = 7.0
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1"), SubResource("EnemySpawnData_2")])
 wave_name = "Mixed Assault"
-hp_multiplier = 7.0
+hp_multiplier = 5.5

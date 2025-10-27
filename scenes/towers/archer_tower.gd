@@ -26,12 +26,13 @@ var damage = 12  # Reduced from 16 (-25%) for Kingdom Rush strategic pacing
 var attack_speed = 1.0  # Attacks per second
 var range_radius = 300  # Detection range
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
-var build_cost = 80  # Cost to build this tower (balanced for 2.5 towers at start with 200g)
+var build_cost = 100  # Cost to build this tower (matching UI - 2 towers at start with 200g)
 
 # UPGRADE SYSTEM
-var tower_level = 1  # Current upgrade level (1-3, then can choose path at level 4)
+var tower_level = 1  # Current upgrade level (1-5)
 var upgrade_path = "" # "" = not chosen, "damage" = damage path, "range" = range path
 const MAX_LEVEL_BEFORE_CHOICE = 3  # At level 3, player must choose a path
+const MAX_LEVEL = 5  # Maximum tower level after all upgrades
 
 # TARGET SELECTION TUNING
 const PROGRESS_EPSILON := 0.01
@@ -802,15 +803,22 @@ func deselect_tower():
 # ============================================
 
 func upgrade_tower():
-	"""Apply standard upgrade (levels 1→2→3)"""
+	"""Apply standard upgrade (levels 1→2→3 and 4→5 after path choice)"""
 	print("🔧 [DEBUG] upgrade_tower() called")
 	print("🔧 [DEBUG] Current tower_level: %d" % tower_level)
 	print("🔧 [DEBUG] MAX_LEVEL_BEFORE_CHOICE: %d" % MAX_LEVEL_BEFORE_CHOICE)
+	print("🔧 [DEBUG] MAX_LEVEL: %d" % MAX_LEVEL)
 	print("🔧 [DEBUG] Current stats - DMG:%d, AS:%.1f, Range:%d" % [damage, attack_speed, range_radius])
 
-	if tower_level >= MAX_LEVEL_BEFORE_CHOICE:
+	# Check if at Level 3 (needs path choice) or at max level
+	if tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
 		push_warning("[ArcherTower] Cannot upgrade past level 3 - must choose path!")
-		print("❌ [DEBUG] Upgrade BLOCKED - already at level %d" % tower_level)
+		print("❌ [DEBUG] Upgrade BLOCKED - need to choose path first")
+		return false
+
+	if tower_level >= MAX_LEVEL:
+		push_warning("[ArcherTower] Tower already at MAX LEVEL!")
+		print("❌ [DEBUG] Upgrade BLOCKED - already at max level %d" % tower_level)
 		return false
 
 	print("✅ [DEBUG] Upgrade check passed - proceeding with upgrade")
@@ -835,6 +843,25 @@ func upgrade_tower():
 			range_radius = 400  # 350 → 400 (+50 range)
 			# Result: 43.2 DPS (+66% from Level 2)
 			print("✅ [ArcherTower] Upgraded to Level 3: DMG=27, AS=1.6, Range=400, DPS=43.2")
+		5:
+			# Level 4→5 upgrade (path-specific final upgrade)
+			print("🔧 [DEBUG] Applying Level 5 stats (path: %s)..." % upgrade_path)
+			if upgrade_path == "damage":
+				# DAMAGE PATH Level 5: Ultimate glass cannon
+				damage = 45  # 36 → 45 (+25%)
+				attack_speed = 2.5  # 2.0 → 2.5 (+25%)
+				# Range stays 500
+				# Result: 112.5 DPS - ULTIMATE GLASS CANNON!
+				print("✅ [ArcherTower] Upgraded to Level 5 DAMAGE: DMG=45, AS=2.5, Range=500, DPS=112.5")
+			elif upgrade_path == "range":
+				# RANGE PATH Level 5: Balanced sniper with less range
+				damage = 35  # 27 → 35 (+30%)
+				attack_speed = 1.8  # 1.6 → 1.8 (+12.5%)
+				range_radius = 450  # 500 → 450 (reduced for balance)
+				# Result: 63 DPS - BALANCED SNIPER
+				print("✅ [ArcherTower] Upgraded to Level 5 RANGE: DMG=35, AS=1.8, Range=450, DPS=63")
+			else:
+				print("⚠️ [DEBUG] WARNING: Level 5 but no path chosen!")
 		_:
 			print("⚠️ [DEBUG] WARNING: Unexpected tower_level: %d" % tower_level)
 
@@ -876,16 +903,21 @@ func choose_damage_path():
 	tower_level += 1
 	upgrade_path = "damage"
 
-	# DAMAGE PATH: +33% damage, +25% attack speed
+	# DAMAGE PATH: +33% damage, +25% attack speed, +100 range
 	damage = 36  # 27 → 36 (+33%)
 	attack_speed = 2.0  # 1.6 → 2.0 (+25%)
+	range_radius = 500  # 400 → 500 (+25% range)
 	# Result: 72 DPS (+67% from Level 3) - GLASS CANNON!
 
-	print("[ArcherTower] DAMAGE PATH chosen: DMG=36, AS=2.0, DPS=72 - High DPS glass cannon!")
+	print("[ArcherTower] DAMAGE PATH chosen: DMG=36, AS=2.0, Range=500, DPS=72 - High DPS glass cannon!")
 
 	# Update shoot timer
 	if shoot_timer:
 		shoot_timer.wait_time = 1.0 / attack_speed
+
+	# Update detection range
+	_update_detection_range()
+	draw_range_circle()
 
 	# Track upgrade in BalanceTracker
 	if BalanceTracker:
@@ -907,11 +939,11 @@ func choose_range_path():
 	tower_level += 1
 	upgrade_path = "range"
 
-	# RANGE PATH: +100% range (doubles coverage area)
-	range_radius = 800  # 400 → 800 (+100%)
+	# RANGE PATH: +25% range for wide coverage
+	range_radius = 500  # 400 → 500 (+25%)
 	# Keeps Level 3 stats: DMG=27, AS=1.6, DPS=43.2
 
-	print("[ArcherTower] RANGE PATH chosen: Range=800, DMG=27, AS=1.6, DPS=43.2 - Long-range sniper!")
+	print("[ArcherTower] RANGE PATH chosen: Range=500, DMG=27, AS=1.6, DPS=43.2 - Long-range sniper!")
 
 	# Update detection range collision shape
 	_update_detection_range()
@@ -971,18 +1003,25 @@ func _revalidate_enemies_in_range():
 func get_upgrade_cost() -> int:
 	"""Get cost for next upgrade (REDUCED by 25% for better economy)"""
 	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
-		# Standard upgrades
+		# Standard upgrades (Level 1→2, 2→3)
 		match tower_level:
 			1: return 60  # Level 1→2 (Reduced from 80g -25%)
 			2: return 90  # Level 2→3 (Reduced from 120g -25%)
 	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
-		# Path choice upgrade
+		# Path choice upgrade (Level 3→4)
 		return 150  # Level 3→4 path choice (increased for economy balance)
+	elif tower_level == 4 and upgrade_path != "":
+		# Final upgrade after path choice (Level 4→5)
+		return 200  # Level 4→5 final upgrade (most expensive)
 
 	return 0  # Max level reached
 
-func get_upgrade_stats() -> Dictionary:
-	"""Get preview of what stats will be after upgrade (for two-click upgrade system)"""
+func get_upgrade_stats(preview_path: String = "") -> Dictionary:
+	"""Get preview of what stats will be after upgrade (for two-click upgrade system)
+
+	Args:
+		preview_path: For Level 3, specify "damage" or "range" to preview that path choice
+	"""
 	var current_damage = damage
 	var current_attack_speed = attack_speed
 	var current_range = range_radius
@@ -993,16 +1032,40 @@ func get_upgrade_stats() -> Dictionary:
 	var range_bonus = 0
 
 	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
-		# Standard upgrades
+		# Standard upgrades - MUST MATCH upgrade_tower() actual values!
 		match tower_level:
 			1:  # Level 1→2
-				damage_bonus = 26 - current_damage  # Will be 26
+				damage_bonus = 17 - current_damage  # Will be 17
 				attack_speed_bonus = 1.3 - current_attack_speed  # Will be 1.3
 				range_bonus = 350 - current_range  # Will be 350
 			2:  # Level 2→3
-				damage_bonus = 36 - current_damage  # Will be 36
+				damage_bonus = 27 - current_damage  # Will be 27
 				attack_speed_bonus = 1.6 - current_attack_speed  # Will be 1.6
 				range_bonus = 400 - current_range  # Will be 400
+	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
+		# Level 3→4 path choice preview - MUST MATCH choose_damage_path() / choose_range_path()
+		if preview_path == "damage":
+			# Damage path preview: 27→36 damage, 1.6→2.0 AS, 400→500 range
+			damage_bonus = 36 - current_damage  # +9 damage (+33%)
+			attack_speed_bonus = 2.0 - current_attack_speed  # +0.4 AS (+25%)
+			range_bonus = 500 - current_range  # +100 range (+25%)
+		elif preview_path == "range":
+			# Range path preview: damage/AS stay same, 400→500 range
+			damage_bonus = 0  # Stays 27
+			attack_speed_bonus = 0.0  # Stays 1.6
+			range_bonus = 500 - current_range  # +100 range (+25%)
+	elif tower_level == 4 and upgrade_path != "":
+		# Level 4→5 upgrade (path-specific) - MUST MATCH upgrade_tower() Level 5 values!
+		if upgrade_path == "damage":
+			# Damage path Level 5 preview
+			damage_bonus = 45 - current_damage  # 36 → 45
+			attack_speed_bonus = 2.5 - current_attack_speed  # 2.0 → 2.5
+			range_bonus = 0  # Range stays 500
+		elif upgrade_path == "range":
+			# Range path Level 5 preview
+			damage_bonus = 35 - current_damage  # 27 → 35
+			attack_speed_bonus = 1.8 - current_attack_speed  # 1.6 → 1.8
+			range_bonus = 450 - current_range  # 500 → 450 (reduced!)
 
 	return {
 		"damage": current_damage,
@@ -1016,10 +1079,12 @@ func get_upgrade_stats() -> Dictionary:
 func can_upgrade() -> bool:
 	"""Check if tower can be upgraded"""
 	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
-		return true  # Can do standard upgrade
+		return true  # Can do standard upgrade (Lv1→2, Lv2→3)
 	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
-		return true  # Can choose path
-	return false  # Already maxed
+		return true  # Can choose path (Lv3→4)
+	elif tower_level == 4 and upgrade_path != "":
+		return true  # Can do final upgrade (Lv4→5)
+	return false  # Level 5 = MAX LEVEL
 
 func needs_path_choice() -> bool:
 	"""Check if tower is at level 3 and needs to choose a path"""

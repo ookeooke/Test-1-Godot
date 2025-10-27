@@ -6,7 +6,7 @@
 [sub_resource type="Resource" id="EnemySpawnData_1"]
 script = ExtResource("2_enemy")
 enemy_type = "troll"
-spawn_delay = 8.0
+spawn_delay = 10.0
 
 [resource]
 script = ExtResource("1_wave")
@@ -14,7 +14,7 @@ wave_number = 16
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
 wave_name = "EPIC FINAL BOSS"
 is_boss_wave = true
-hp_multiplier = 10.0
+hp_multiplier = 7.0
 custom_hp_multipliers = {
-"troll": 10.0
+"troll": 7.0
 }

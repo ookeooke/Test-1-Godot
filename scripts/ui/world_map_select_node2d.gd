@@ -8,6 +8,7 @@ signal level_chosen(level_data: LevelNodeData, difficulty: String)
 
 # Export variables for easy configuration in editor
 @export var level_nodes_data: Array[LevelNodeData] = []  # All level configurations
+@export var map_texture: Texture2D  # Background map image
 
 # Camera bounds for world map (adjust to fit your map art)
 @export var map_bounds := Rect2(-200, -200, 2200, 1400)
@@ -19,6 +20,13 @@ const STAR_COLORS = {
 	1: Color("#CD7F32"),  # Bronze - 1 star
 	0: Color("#404040")   # Gray - Not completed
 }
+
+# Star display constants
+const STAR_EARNED_COLOR = Color("#FFD700")  # Gold for earned stars
+const STAR_UNEARNED_COLOR = Color(0.3, 0.3, 0.3, 0.5)  # Gray for unearned stars
+const STAR_SIZE = 10.0  # Size of star polygon (radius) - made bigger
+const STAR_SPACING = 25.0  # Horizontal spacing between stars
+const STAR_OFFSET_Y = 35.0  # Vertical offset BELOW button (outside the button rectangle)
 
 # References
 @onready var camera: Camera2D = $Camera2D
@@ -34,22 +42,16 @@ const STAR_COLORS = {
 # Buttons created programmatically
 var heroes_button: Button = null
 var gear_button: Button = null
-var arsenal_button: Button = null
+var towers_button: Button = null
 
-var level_buttons: Array[Button] = []
+var level_buttons: Array = []  # Stores visual nodes (Polygon2D) for each level
+var level_button_nodes: Array[Node2D] = []  # Store button Node2D containers for zoom compensation
 
 # Difficulty selection
 var selected_level_data: LevelNodeData = null
 var difficulty_dialog: AcceptDialog = null
 
-# Hero management panel
-var hero_management_panel: HeroManagementPanel = null
-
-# Dual panel screen (gear management)
-var dual_panel_screen: DualPanelScreen = null
-
-# Arsenal screen
-var arsenal_screen: ArsenalScreen = null
+# Panels removed - now using standalone scenes instead of overlays
 
 func _ready():
 	# Connect signals
@@ -68,29 +70,102 @@ func _ready():
 	else:
 		heroes_button.pressed.connect(_on_heroes_button_pressed)
 
-	# Create arsenal button if it doesn't exist
-	if not arsenal_button:
-		_create_arsenal_button()
+	# Create towers button if it doesn't exist
+	if not towers_button:
+		_create_towers_button()
 	else:
-		arsenal_button.pressed.connect(_on_arsenal_button_pressed)
+		towers_button.pressed.connect(_on_towers_button_pressed)
 
-	# Create hero management panel
-	_setup_hero_management_panel()
-
-	# Create dual panel screen
-	_setup_dual_panel_screen()
-
-	# Create arsenal screen
-	_setup_arsenal_screen()
+	# Panel setup removed - using standalone scenes now
 
 	# Setup camera bounds for world map
 	_setup_camera_bounds()
+
+	# Setup map background
+	_setup_map_background()
 
 	# Setup
 	_setup_level_nodes()
 	_update_profile_display()
 	_update_progress_display()
 	_draw_paths()
+
+func _process(_delta):
+	"""Update button scales to compensate for camera zoom - keeps buttons constant visual size"""
+	if camera and level_button_nodes.size() > 0:
+		var inverse_zoom = Vector2.ONE / camera.zoom
+		for button_node in level_button_nodes:
+			if is_instance_valid(button_node):
+				button_node.scale = inverse_zoom
+
+func _get_star_polygon() -> PackedVector2Array:
+	"""Create a 5-pointed star polygon shape"""
+	var points = PackedVector2Array()
+	var outer_radius = STAR_SIZE
+	var inner_radius = STAR_SIZE * 0.4  # Inner points are 40% of outer radius
+
+	# Create 5-pointed star (10 points total - 5 outer, 5 inner)
+	for i in range(10):
+		var angle = deg_to_rad(i * 36.0 - 90.0)  # Start at top (-90 degrees)
+		var radius = outer_radius if i % 2 == 0 else inner_radius
+		var x = cos(angle) * radius
+		var y = sin(angle) * radius
+		points.append(Vector2(x, y))
+
+	return points
+
+func _create_star_display(parent: Node2D, stars_earned: int) -> Node2D:
+	"""Create star display showing 3 stars (earned in gold, unearned in gray)
+
+	Args:
+		parent: The parent Node2D to attach stars to
+		stars_earned: Number of stars earned (0-3)
+
+	Returns:
+		The container Node2D holding all star polygons
+	"""
+	# Create container for stars
+	var star_container = Node2D.new()
+	star_container.name = "StarDisplay"
+	star_container.position = Vector2(0, STAR_OFFSET_Y)
+	star_container.z_index = 10  # Render on top of everything else
+
+	# Calculate starting X position to center 3 stars
+	var total_width = (3 - 1) * STAR_SPACING  # Width of 3 stars with spacing
+	var start_x = -total_width / 2.0
+
+	# Create 3 star polygons
+	for i in range(3):
+		var star = Polygon2D.new()
+		star.polygon = _get_star_polygon()
+		star.name = "Star%d" % i
+
+		# Color: gold if earned, gray if not
+		if i < stars_earned:
+			star.color = STAR_EARNED_COLOR
+		else:
+			star.color = STAR_UNEARNED_COLOR
+
+		# Position horizontally
+		star.position = Vector2(start_x + i * STAR_SPACING, 0)
+
+		star_container.add_child(star)
+
+	parent.add_child(star_container)
+
+	# Debug output
+	print("  └─ StarDisplay created at position: ", star_container.position, " with z_index: ", star_container.z_index)
+
+	return star_container
+
+func _setup_map_background():
+	"""Set the background texture for the world map"""
+	if map_background and map_texture:
+		map_background.texture = map_texture
+		print("[WorldMap] ✅ Background texture set: ", map_texture.resource_path)
+	else:
+		if not map_texture:
+			push_warning("[WorldMap] ⚠️ No map texture assigned - map will be blank")
 
 func _setup_camera_bounds():
 	"""Setup camera bounds for the world map"""
@@ -183,110 +258,45 @@ func _create_heroes_button():
 
 	print("✅ Created Heroes button")
 
-func _create_arsenal_button():
-	"""Create the Arsenal button programmatically"""
-	arsenal_button = Button.new()
-	arsenal_button.name = "ArsenalButton"
-	arsenal_button.text = "⚔ ARSENAL"
-	arsenal_button.custom_minimum_size = Vector2(140, 40)
+func _create_towers_button():
+	"""Create the Towers button programmatically for tower encyclopedia"""
+	towers_button = Button.new()
+	towers_button.name = "TowersButton"
+	towers_button.text = "🏹 TOWERS"
+	towers_button.custom_minimum_size = Vector2(140, 40)
 
 	# IMPORTANT: Ensure button can receive clicks
-	arsenal_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	towers_button.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	arsenal_button.pressed.connect(_on_arsenal_button_pressed)
+	towers_button.pressed.connect(_on_towers_button_pressed)
 
-	# Add tooltip
-	arsenal_button.tooltip_text = "Manage heroes, equipment, and loadouts"
-
-	# Add to top bar (before progress label)
+	# Add to top bar
 	if top_bar:
-		top_bar.add_child(arsenal_button)
-		top_bar.move_child(arsenal_button, top_bar.get_child_count() - 2)
+		# Insert before heroes button
+		top_bar.add_child(towers_button)
+		top_bar.move_child(towers_button, top_bar.get_child_count() - 3)
 
-	print("✅ Created Arsenal button")
+	print("✅ Created Towers button")
 
-func _setup_dual_panel_screen():
-	"""Create the dual panel screen for gear management"""
-	# Load the dual panel screen scene
-	var panel_scene = load("res://scenes/ui/dual_panel_screen.tscn")
-	if panel_scene:
-		dual_panel_screen = panel_scene.instantiate()
-		ui_layer.add_child(dual_panel_screen)
+# Arsenal button and screen removed - use Gear and Heroes buttons instead
 
-		# IMPORTANT: Ensure it's hidden on start
-		dual_panel_screen.visible = false
-		dual_panel_screen.hide()
-
-		# Set hero ID
-		dual_panel_screen.set_hero_id("ranger")
-
-		# Connect signals
-		dual_panel_screen.screen_closed.connect(_on_gear_screen_closed)
-
-		print("✅ Dual panel screen created (hidden)")
-	else:
-		push_error("Failed to load dual panel screen scene")
-
-
-func _setup_hero_management_panel():
-	"""Create the hero management panel"""
-	# Load the hero management panel scene
-	var panel_scene = load("res://scenes/ui/hero_management_panel.tscn")
-	if panel_scene:
-		hero_management_panel = panel_scene.instantiate()
-		ui_layer.add_child(hero_management_panel)
-		hero_management_panel.hide()
-
-		# Connect signals
-		hero_management_panel.closed.connect(_on_hero_panel_closed)
-		hero_management_panel.skill_purchased.connect(_on_skill_purchased)
-		hero_management_panel.skill_upgraded.connect(_on_skill_upgraded)
-
-		print("✅ Hero management panel created")
-	else:
-		push_error("Failed to load hero management panel scene")
+# Panel setup and overlay management functions removed - using standalone scenes now
 
 func _on_gear_button_pressed():
-	"""Open the gear management screen (dual panel)"""
-	print("🎮 GEAR BUTTON CLICKED!")
-
-	if not dual_panel_screen:
-		push_error("❌ Dual panel screen not initialized")
-		return
-
-	print("✅ Opening dual panel screen...")
-
-	# Button press animation
-	if gear_button:
-		var press_tween = create_tween()
-		press_tween.tween_property(gear_button, "scale", Vector2(0.95, 0.95), 0.05)
-		press_tween.tween_property(gear_button, "scale", Vector2.ONE, 0.1)
-
-	# Open the screen
-	dual_panel_screen.show_screen()
-
-
-func _on_gear_screen_closed():
-	"""Called when gear screen is closed"""
-	# Refresh display in case items were equipped
-	_update_progress_display()
+	"""Navigate to standalone Gear screen"""
+	print("⚙️ Opening Gear screen...")
+	get_tree().change_scene_to_file("res://scenes/ui/gear_screen_standalone.tscn")
 
 
 func _on_heroes_button_pressed():
-	"""Open the hero management panel"""
-	print("🎮 HEROES BUTTON CLICKED!")
+	"""Navigate to standalone Heroes screen"""
+	print("🦸 Opening Heroes screen...")
+	get_tree().change_scene_to_file("res://scenes/ui/hero_screen_standalone.tscn")
 
-	if not hero_management_panel:
-		push_error("❌ Hero management panel not initialized")
-		return
-
-	print("✅ Opening hero management panel...")
-
-	# Load ranger hero skills
-	var ranger_skills = _load_ranger_skills()
-
-	# Open panel
-	hero_management_panel.open_panel("ranger", ranger_skills)
+func _on_towers_button_pressed():
+	"""Navigate to standalone Tower Codex screen"""
+	print("🏹 Opening Tower Codex...")
+	get_tree().change_scene_to_file("res://scenes/ui/tower_codex_standalone.tscn")
 
 func _load_ranger_skills() -> Array[HeroSkillData]:
 	"""Load all available skills for the ranger hero"""
@@ -360,55 +370,8 @@ func _load_ranger_skills() -> Array[HeroSkillData]:
 
 	return skills
 
-func _on_hero_panel_closed():
-	"""Called when hero management panel is closed"""
-	# Refresh display in case skills were purchased
-	_update_progress_display()
-
-func _on_skill_purchased(hero_id: String, skill_id: String):
-	"""Called when a skill is purchased"""
-	print("💫 Skill purchased: ", skill_id, " for ", hero_id)
-
-func _on_skill_upgraded(hero_id: String, skill_id: String):
-	"""Called when a skill is upgraded"""
-	print("⬆️ Skill upgraded: ", skill_id, " for ", hero_id)
-
-func _setup_arsenal_screen():
-	"""Create and setup the arsenal screen"""
-	arsenal_screen = ArsenalScreen.new()
-	arsenal_screen.name = "ArsenalScreen"
-	ui_layer.add_child(arsenal_screen)
-
-	# Connect close signal to update displays
-	arsenal_screen.closed.connect(_on_arsenal_closed)
-
-	print("✅ Arsenal screen initialized")
-
-func _on_arsenal_button_pressed():
-	"""Open the arsenal screen"""
-	print("🎮 ARSENAL BUTTON CLICKED!")
-
-	if not arsenal_screen:
-		push_error("❌ Arsenal screen not initialized")
-		return
-
-	print("✅ Opening Arsenal screen...")
-
-	# Button press animation
-	if arsenal_button:
-		var press_tween = create_tween()
-		press_tween.tween_property(arsenal_button, "scale", Vector2(0.95, 0.95), 0.05)
-		press_tween.tween_property(arsenal_button, "scale", Vector2.ONE, 0.1)
-
-	# Open the screen
-	arsenal_screen.show_screen()
-
-func _on_arsenal_closed():
-	"""Handle arsenal screen closing"""
-	# Refresh displays in case equipment/heroes changed
-	_update_profile_display()
-	_update_progress_display()
-	print("✅ Arsenal closed, displays refreshed")
+# Panel closed handlers removed - no longer needed with standalone scenes
+# Arsenal screen removed - functionality consolidated into Gear and Heroes panels
 
 func _setup_level_nodes():
 	# Clear existing buttons
@@ -416,30 +379,76 @@ func _setup_level_nodes():
 		button.queue_free()
 	level_buttons.clear()
 
-	# Create simple buttons for each level
+	# Create world-space level buttons (ColorRect + Area2D for proper visibility and clicking)
 	for level_data in level_nodes_data:
-		# Create a simple Button control
-		var button = Button.new()
-		button.text = level_data.level_name
-		button.custom_minimum_size = Vector2(150, 50)
-		button.position = level_data.position
+		# Create container node for this level button
+		var button_node = Node2D.new()
+		button_node.position = level_data.position
+		button_node.name = "LevelButton_" + level_data.level_id
 
-		# IMPORTANT: Ensure button can receive clicks
-		button.mouse_filter = Control.MOUSE_FILTER_STOP
+		# Create visual representation using Polygon2D (works in Node2D hierarchy)
+		var visual = Polygon2D.new()
+
+		# Define rectangle shape centered at origin
+		var rect_points = PackedVector2Array([
+			Vector2(-75, -25),   # Top-left
+			Vector2(75, -25),    # Top-right
+			Vector2(75, 25),     # Bottom-right
+			Vector2(-75, 25)     # Bottom-left
+		])
+		visual.polygon = rect_points
 
 		# Check if level is unlocked
 		var is_unlocked = _check_unlock_status(level_data)
-		button.disabled = not is_unlocked
 
-		# Apply star-based color coding (Gold/Silver/Bronze/Gray)
-		_apply_star_color_to_button(button, level_data)
+		# Get star rating for color
+		var stars = SaveManager.get_level_stars(level_data.level_id)
+		visual.color = STAR_COLORS.get(stars, STAR_COLORS[0])
 
-		# Connect the pressed signal
-		button.pressed.connect(_on_level_button_pressed.bind(level_data))
+		if not is_unlocked:
+			visual.modulate = Color(0.3, 0.3, 0.3, 0.7)  # Darken locked levels
+
+		# Add label for level name
+		var label = Label.new()
+		label.text = level_data.level_name
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.size = Vector2(150, 50)
+		label.add_theme_color_override("font_color", Color.WHITE)
+		visual.add_child(label)
+
+		# Add star display (Kingdom Rush style)
+		var stars_earned = SaveManager.get_level_stars(level_data.level_id)
+		_create_star_display(button_node, stars_earned)
+		print("⭐ Created star display for %s: %d stars" % [level_data.level_name, stars_earned])
+
+		# Create clickable area
+		var area = Area2D.new()
+		var collision = CollisionShape2D.new()
+		var shape = RectangleShape2D.new()
+		shape.size = Vector2(150, 50)
+		collision.shape = shape
+		area.add_child(collision)
+
+		# Connect click signal
+		area.input_event.connect(_on_level_area_clicked.bind(level_data, is_unlocked))
+
+		# Assemble the button
+		button_node.add_child(visual)
+		button_node.add_child(area)
+		visual.z_index = 0  # Button background at default layer
+		area.z_index = 1  # Clickable area slightly above
+
+		# Store reference for zoom compensation
+		level_button_nodes.append(button_node)
+
+		# Apply initial zoom compensation
+		if camera:
+			button_node.scale = Vector2.ONE / camera.zoom
 
 		# Add to scene
-		level_nodes_container.add_child(button)
-		level_buttons.append(button)
+		level_nodes_container.add_child(button_node)
+		level_buttons.append(visual)  # Store visual for future updates
 
 		print("Created button for ", level_data.level_name, " at ", level_data.position, " | Unlocked: ", is_unlocked)
 
@@ -492,6 +501,14 @@ func _draw_path_between_levels(from_level: LevelNodeData, to_level: LevelNodeDat
 
 	path_line.points = points
 	paths_layer.add_child(path_line)
+
+func _on_level_area_clicked(_viewport: Node, event: InputEvent, _shape_idx: int, level_data: LevelNodeData, is_unlocked: bool):
+	"""Handle clicks on level button Area2D nodes"""
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if is_unlocked:
+			_on_level_button_pressed(level_data)
+		else:
+			print("🔒 Level locked: ", level_data.level_name)
 
 func _on_level_button_pressed(level_data: LevelNodeData):
 	print("🎮 LEVEL BUTTON CLICKED: ", level_data.level_name)

@@ -11,9 +11,9 @@ signal menu_closed()
 var archer_tower_scene = preload("res://scenes/towers/archer_tower.tscn")
 var barracks_tower_scene = preload("res://scenes/towers/soldier_tower.tscn")
 
-# Tower costs
-var archer_cost = 100
-var barracks_cost = 120
+# Tower costs (read from TowerData for consistency)
+var archer_cost = TowerData.get_build_cost("archer")  # Was: 100
+var barracks_cost = TowerData.get_build_cost("barracks")  # Was: 120
 
 # References
 @onready var archer_button = $PanelContainer/MarginContainer/HBoxContainer/ArcherButton

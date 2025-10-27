@@ -24,12 +24,14 @@ layout_mode = 2
 
 [node name="TowerNameLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 16
 text = "Archer Tower"
 horizontal_alignment = 1
 
 [node name="StatsLabel" type="RichTextLabel" parent="PanelContainer/MarginContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
+theme_override_font_sizes/normal_font_size = 14
 bbcode_enabled = true
 text = "Damage: 15
 Attack Speed: 1.2/s
@@ -42,6 +44,7 @@ layout_mode = 2
 
 [node name="TargetingLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 14
 text = "Targeting Mode:"
 horizontal_alignment = 1
 
@@ -52,11 +55,13 @@ alignment = 1
 [node name="FirstButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer/TargetingButtons"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
 text = "First"
 
 [node name="StrongButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer/TargetingButtons"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
 text = "Strong"
 
 [node name="HSeparator2" type="HSeparator" parent="PanelContainer/MarginContainer/VBoxContainer"]
@@ -65,10 +70,12 @@ layout_mode = 2
 [node name="EnemyListToggle" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer"]
 custom_minimum_size = Vector2(200, 30)
 layout_mode = 2
+theme_override_font_sizes/font_size = 12
 text = "Show Enemy List"
 
 [node name="EnemiesLabel" type="Label" parent="PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 13
 text = "Enemies in Range:"
 horizontal_alignment = 1
 
@@ -87,6 +94,7 @@ layout_mode = 2
 visible = false
 custom_minimum_size = Vector2(280, 60)
 layout_mode = 2
+theme_override_font_sizes/font_size = 14
 text = "🔥 DAMAGE PATH
 150g - Glass Cannon"
 
@@ -94,6 +102,7 @@ text = "🔥 DAMAGE PATH
 visible = false
 custom_minimum_size = Vector2(280, 60)
 layout_mode = 2
+theme_override_font_sizes/font_size = 14
 text = "🎯 RANGE PATH
 150g - Long-range Sniper"
 
@@ -106,11 +115,13 @@ layout_mode = 2
 [node name="UpgradeButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
 text = "Upgrade
 150g"
 
 [node name="SellButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
 text = "Sell
 70g"

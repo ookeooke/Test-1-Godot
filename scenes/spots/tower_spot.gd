@@ -99,55 +99,188 @@ func place_tower(tower_scene: PackedScene):
 	# CameraEffects.focus_on_tower(camera, tower)  # Disabled - no auto-focus
 
 func _play_build_animation(tower: Node2D):
-	"""Quick pop-in animation - tower works immediately but looks nice"""
-	const BUILD_DURATION = 0.2  # Very quick - doesn't affect gameplay
-
+	"""Kingdom Rush style multi-stage construction animation"""
 	# Tower is fully functional immediately (no construction time)
-	# This is just a visual effect
+	# This is just a visual effect - total duration ~0.85 seconds
 
-	# Create build particles
+	# STAGE 1: Initial Flash & Foundation (0.15s)
+	_play_construction_flash()
+	await _play_foundation_stage(tower)
+
+	# STAGE 2: Build-up with construction particles (0.5s)
+	await _play_construction_stage(tower)
+
+	# STAGE 3: Completion flash and bounce (0.2s)
+	await _play_completion_stage(tower)
+
+func _play_construction_flash():
+	"""Stage 1: Initial bright flash when construction starts"""
+	var flash = ColorRect.new()
+	add_child(flash)
+	flash.position = Vector2(-30, -30)
+	flash.size = Vector2(60, 60)
+	flash.color = Color(1.0, 1.0, 0.8, 0.8)  # Bright yellow-white
+	flash.modulate.a = 0.0
+
+	var tween = create_tween()
+	tween.tween_property(flash, "modulate:a", 0.8, 0.05)
+	tween.tween_property(flash, "modulate:a", 0.0, 0.1)
+
+	await tween.finished
+	flash.queue_free()
+
+func _play_foundation_stage(tower: Node2D):
+	"""Stage 2: Foundation appears with dust particles"""
+	# Create foundation dust burst
 	var particles = CPUParticles2D.new()
 	add_child(particles)
 	particles.position = Vector2.ZERO
 	particles.emitting = true
 	particles.one_shot = true
-	particles.amount = 8
-	particles.lifetime = 0.3
+	particles.amount = 12
+	particles.lifetime = 0.4
 	particles.explosiveness = 1.0
-	particles.randomness = 0.4
 
-	# Dust cloud effect
+	# Ground dust spreading outward
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
-	particles.emission_sphere_radius = 20.0
-	particles.direction = Vector2(0, -1)  # Upward
-	particles.spread = 90.0
-	particles.initial_velocity_min = 30.0
-	particles.initial_velocity_max = 60.0
-	particles.gravity = Vector2(0, 100)
-	particles.scale_amount_min = 2.0
-	particles.scale_amount_max = 4.0
-	particles.color = Color(0.7, 0.6, 0.5, 0.6)  # Dust/construction color
+	particles.emission_sphere_radius = 10.0
+	particles.direction = Vector2(0, 0)  # Radial
+	particles.spread = 180.0
+	particles.initial_velocity_min = 40.0
+	particles.initial_velocity_max = 80.0
+	particles.gravity = Vector2(0, 50)
+	particles.scale_amount_min = 3.0
+	particles.scale_amount_max = 5.0
+	particles.color = Color(0.6, 0.5, 0.4, 0.7)
 
-	# Fade out
 	var gradient = Gradient.new()
-	gradient.add_point(0.0, Color(0.8, 0.7, 0.6, 0.8))
+	gradient.add_point(0.0, Color(0.7, 0.6, 0.5, 0.8))
 	gradient.add_point(1.0, Color(0.5, 0.4, 0.3, 0.0))
 	particles.color_ramp = gradient
 
-	# Tween animation for tower
+	# Tower starts to appear (small scale)
+	tower.scale = Vector2(0.3, 0.3)
+	tower.modulate.a = 0.5
+	tower.modulate = Color(0.8, 0.8, 0.8, 0.5)  # Desaturated during construction
+
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(tower, "scale", Vector2(0.5, 0.5), 0.15).set_ease(Tween.EASE_OUT)
+	tween.tween_property(tower, "modulate:a", 0.7, 0.15)
+
+	await tween.finished
+
+	# Cleanup particles after they finish
+	get_tree().create_timer(particles.lifetime + 0.1).timeout.connect(func():
+		if is_instance_valid(particles):
+			particles.queue_free()
+	)
+
+func _play_construction_stage(tower: Node2D):
+	"""Stage 3: Tower builds upward with rising particles (Kingdom Rush style)"""
+	# Create rising construction sparkles
+	var particles = CPUParticles2D.new()
+	add_child(particles)
+	particles.position = Vector2(0, 20)  # Start at base
+	particles.emitting = true
+	particles.amount = 20
+	particles.lifetime = 0.6
+	particles.preprocess = 0.0
+
+	# Rising sparkles and dust
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 15.0
+	particles.direction = Vector2(0, -1)  # Upward
+	particles.spread = 30.0
+	particles.initial_velocity_min = 20.0
+	particles.initial_velocity_max = 50.0
+	particles.gravity = Vector2(0, -20)  # Slight upward float
+	particles.scale_amount_min = 1.5
+	particles.scale_amount_max = 3.0
+	particles.color = Color(1.0, 0.9, 0.6, 0.8)  # Golden sparkles
+
+	# Sparkle gradient
+	var gradient = Gradient.new()
+	gradient.add_point(0.0, Color(1.0, 0.9, 0.6, 1.0))
+	gradient.add_point(0.5, Color(0.9, 0.8, 0.5, 0.6))
+	gradient.add_point(1.0, Color(0.7, 0.6, 0.4, 0.0))
+	particles.color_ramp = gradient
+
+	# Tower grows to full size with construction tint
 	var tween = create_tween()
 	tween.set_parallel(true)
 
-	# Pop-in: scale from 0 to 1 with bounce
-	tween.tween_property(tower, "scale", Vector2.ONE, BUILD_DURATION).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	# Scale up smoothly (building upward effect)
+	tween.tween_property(tower, "scale", Vector2.ONE, 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 
-	# Fade in
-	tween.tween_property(tower, "modulate:a", 1.0, BUILD_DURATION * 0.7).set_ease(Tween.EASE_OUT)
+	# Fade to full opacity and color
+	tween.tween_property(tower, "modulate:a", 1.0, 0.5)
+	tween.tween_property(tower, "modulate", Color(1, 1, 1, 1), 0.5)  # Full color
 
-	# Cleanup particles
-	await get_tree().create_timer(particles.lifetime + 0.1).timeout
-	if is_instance_valid(particles):
-		particles.queue_free()
+	await tween.finished
+
+	# Stop particle emission but let existing particles finish
+	particles.emitting = false
+	get_tree().create_timer(particles.lifetime).timeout.connect(func():
+		if is_instance_valid(particles):
+			particles.queue_free()
+	)
+
+func _play_completion_stage(tower: Node2D):
+	"""Stage 4: Completion flash, bounce, and celebration particles"""
+	# Golden completion flash
+	var flash = ColorRect.new()
+	add_child(flash)
+	flash.position = Vector2(-40, -40)
+	flash.size = Vector2(80, 80)
+	flash.color = Color(1.0, 0.9, 0.4, 0.0)  # Golden
+
+	var flash_tween = create_tween()
+	flash_tween.tween_property(flash, "modulate:a", 0.6, 0.1)
+	flash_tween.tween_property(flash, "modulate:a", 0.0, 0.15)
+
+	# Victory sparkles burst
+	var particles = CPUParticles2D.new()
+	add_child(particles)
+	particles.position = Vector2(0, -20)
+	particles.emitting = true
+	particles.one_shot = true
+	particles.amount = 15
+	particles.lifetime = 0.5
+	particles.explosiveness = 1.0
+
+	# Upward celebration burst
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	particles.emission_sphere_radius = 15.0
+	particles.direction = Vector2(0, -1)
+	particles.spread = 45.0
+	particles.initial_velocity_min = 60.0
+	particles.initial_velocity_max = 100.0
+	particles.gravity = Vector2(0, 150)
+	particles.scale_amount_min = 2.0
+	particles.scale_amount_max = 4.0
+	particles.color = Color(1.0, 0.95, 0.6, 1.0)  # Bright golden
+
+	var gradient = Gradient.new()
+	gradient.add_point(0.0, Color(1.0, 0.95, 0.6, 1.0))
+	gradient.add_point(0.7, Color(1.0, 0.9, 0.5, 0.5))
+	gradient.add_point(1.0, Color(0.9, 0.8, 0.4, 0.0))
+	particles.color_ramp = gradient
+
+	# Satisfying bounce effect (Kingdom Rush style)
+	var bounce_tween = create_tween()
+	bounce_tween.tween_property(tower, "scale", Vector2(1.15, 1.15), 0.08).set_ease(Tween.EASE_OUT)
+	bounce_tween.tween_property(tower, "scale", Vector2(0.95, 0.95), 0.08).set_ease(Tween.EASE_IN_OUT)
+	bounce_tween.tween_property(tower, "scale", Vector2.ONE, 0.08).set_ease(Tween.EASE_OUT)
+
+	await bounce_tween.finished
+
+	# Cleanup
+	flash.queue_free()
+	get_tree().create_timer(particles.lifetime + 0.1).timeout.connect(func():
+		if is_instance_valid(particles):
+			particles.queue_free()
+	)
 
 func remove_tower():
 	"""Called when tower is sold"""

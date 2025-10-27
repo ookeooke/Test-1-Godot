@@ -75,7 +75,7 @@ var current_platform: Platform
 @export var mobile_drag_threshold = 8.0  # Higher to avoid accidental drags
 
 # Edge scrolling (PC only)
-@export var edge_scroll_enabled = true  # Can disable in settings
+@export var edge_scroll_enabled = false  # Disabled - use right-click drag instead
 @export var edge_scroll_margin = 50
 @export var edge_scroll_speed = 400.0
 
@@ -157,7 +157,7 @@ var base_position = Vector2.ZERO  # Position without shake
 # USER PREFERENCES (will be saved/loaded)
 # ============================================
 var user_prefs = {
-	"edge_scroll_enabled": true,
+	"edge_scroll_enabled": false,
 	"inertia_enabled": true,
 	"shake_enabled": false,
 	"keyboard_pan_enabled": true,

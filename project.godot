@@ -37,6 +37,7 @@ BalanceExporter="*res://scripts/debug/balance_exporter.gd"
 BalanceAnalyzer="*res://scripts/debug/balance_analyzer.gd"
 BossDebugHUD="*res://scripts/debug/boss_debug_hud.gd"
 GameSpeedController="*res://scripts/autoloads/game_speed_controller.gd"
+TowerData="*res://scripts/autoloads/tower_data.gd"
 EnemyManager="*res://scripts/managers/enemy_manager.gd"
 WebFullscreenManager="*res://scripts/autoloads/web_fullscreen_manager.gd"
 

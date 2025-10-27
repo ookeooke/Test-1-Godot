@@ -11,6 +11,10 @@ extends Control
 const BAR_WIDTH = 50
 const BAR_HEIGHT = 6
 
+# Regeneration visual system
+var is_showing_regen: bool = false
+var regen_tween: Tween = null
+
 func _ready():
 	# Start hidden (full health)
 	visible = false
@@ -40,3 +44,27 @@ func update_health(current: float, maximum: float):
 		visible = false
 	else:
 		visible = true
+
+func show_regeneration(enabled: bool):
+	"""Show green pulse animation during health regeneration (Kingdom Rush style)"""
+	is_showing_regen = enabled
+
+	if enabled:
+		# Start green pulse animation
+		if regen_tween:
+			regen_tween.kill()
+
+		regen_tween = create_tween()
+		regen_tween.set_loops()
+
+		# Pulse between green and white (soft, subtle effect)
+		regen_tween.tween_property(fill, "modulate", Color(0.5, 1.0, 0.5), 0.5)  # Fade to green
+		regen_tween.tween_property(fill, "modulate", Color(1.0, 1.0, 1.0), 0.5)  # Fade to white
+	else:
+		# Stop pulse, return to normal red color
+		if regen_tween:
+			regen_tween.kill()
+			regen_tween = null
+
+		if fill:
+			fill.modulate = Color(1, 1, 1)  # White (normal)
