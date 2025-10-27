@@ -1,10 +1,11 @@
-[gd_scene load_steps=23 format=3 uid="uid://b1dcv31ty4qix"]
+[gd_scene load_steps=24 format=3 uid="uid://b1dcv31ty4qix"]
 
 [ext_resource type="Script" uid="uid://mxt3ckx3n6mu" path="res://scripts/managers/wave_manager.gd" id="1_0e48y"]
 [ext_resource type="PackedScene" uid="uid://b6yn3cxqs75wl" path="res://scenes/debug/balance_debug_hud.tscn" id="1_balance_hud"]
 [ext_resource type="Script" uid="uid://idfvb3maml47" path="res://scripts/level_controller.gd" id="1_level_controller"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://scenes/enemies/goblin_scout.tscn" id="1_wtcfe"]
 [ext_resource type="Script" uid="uid://b1r6b3vwpnkst" path="res://scripts/camera/camera_controller_improved.gd" id="2_camera"]
+[ext_resource type="Resource" uid="uid://bam2alcte4wjx" path="res://data/level_configs/level_01_config.tres" id="2_cywot"]
 [ext_resource type="PackedScene" uid="uid://crirequ6fnstj" path="res://scenes/enemies/orc_warrior.tscn" id="3_epypp"]
 [ext_resource type="PackedScene" uid="uid://dwolf7k3xp2n" path="res://scenes/enemies/wolf_runner.tscn" id="3_wolf"]
 [ext_resource type="Script" uid="uid://btigmbll42353" path="res://scripts/ui/path_visualizer.gd" id="4_path_vis"]
@@ -36,6 +37,7 @@ colors = PackedColorArray(0.5, 0.35, 0.2, 0.7, 0.6, 0.4, 0.25, 0.85, 0.55, 0.38,
 
 [node name="TestLevel" type="Node2D"]
 script = ExtResource("1_level_controller")
+level_config = ExtResource("2_cywot")
 
 [node name="WaveManager" type="Node2D" parent="." node_paths=PackedStringArray("enemy_path", "wave_label")]
 script = ExtResource("1_0e48y")

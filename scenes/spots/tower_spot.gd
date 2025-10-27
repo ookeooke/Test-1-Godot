@@ -23,14 +23,13 @@ func _ready():
 
 func _on_area_input_event(_viewport, event, _shape_idx):
 	# Support both mouse and touch input
-	var is_interact = false
-
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		is_interact = true
+	# ONLY consume LEFT-CLICK for tower building - let RIGHT/MIDDLE-CLICK pass through to camera
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_on_clicked()
+			get_viewport().set_input_as_handled()
+		# Right/middle click - don't consume, let camera handle it
 	elif event is InputEventScreenTouch and event.pressed:
-		is_interact = true
-
-	if is_interact:
 		_on_clicked()
 		get_viewport().set_input_as_handled()
 

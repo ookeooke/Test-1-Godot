@@ -55,14 +55,15 @@ func auto_spawn_hero():
 func _on_click_area_input_event(_viewport, event, _shape_idx):
 	"""Optional: Allow clicking to spawn hero manually"""
 	# Support both mouse and touch input
-	var is_interact = false
-
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		is_interact = true
+	# ONLY consume LEFT-CLICK for hero interaction - let RIGHT/MIDDLE-CLICK pass through to camera
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if not has_hero and not is_respawning:
+				print("!!! HERO SPOT CLICKED (via Area2D) !!!")
+				spot_clicked.emit(self)
+				get_viewport().set_input_as_handled()
+		# Right/middle click - don't consume, let camera handle it
 	elif event is InputEventScreenTouch and event.pressed:
-		is_interact = true
-
-	if is_interact:
 		if not has_hero and not is_respawning:
 			print("!!! HERO SPOT CLICKED (via Area2D) !!!")
 			spot_clicked.emit(self)

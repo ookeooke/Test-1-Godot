@@ -1,38 +1,31 @@
-[gd_resource type="Resource" script_class="LevelConfig" load_steps=18 format=3 uid="uid://config_level_01"]
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=19 format=3 uid="uid://bam2alcte4wjx"]
 
-[ext_resource type="Script" path="res://scripts/resources/level_config.gd" id="1_config"]
+[ext_resource type="Script" uid="uid://tkrhowp0yebt" path="res://scripts/resources/level_config.gd" id="1_config"]
+[ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="2_7psdc"]
 [ext_resource type="Resource" uid="uid://cew3vj76fgf52" path="res://data/levels/level_01/waves/wave_01.tres" id="3_w01"]
 [ext_resource type="Resource" uid="uid://efkt5o3e53ax" path="res://data/levels/level_01/waves/wave_02.tres" id="4_w02"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_03.tres" id="5_w03"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_04.tres" id="6_w04"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_05.tres" id="7_w05"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_06.tres" id="8_w06"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_07.tres" id="9_w07"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_08.tres" id="10_w08"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_09.tres" id="11_w09"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_10.tres" id="12_w10"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_11.tres" id="13_w11"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_12.tres" id="14_w12"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_13.tres" id="15_w13"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_14.tres" id="16_w14"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_15.tres" id="17_w15"]
-[ext_resource type="Resource" path="res://data/levels/level_01/waves/wave_16.tres" id="18_w16"]
+[ext_resource type="Resource" uid="uid://dysnkvjcmhmjc" path="res://data/levels/level_01/waves/wave_03.tres" id="5_w03"]
+[ext_resource type="Resource" uid="uid://dqg3kbr3rndat" path="res://data/levels/level_01/waves/wave_04.tres" id="6_w04"]
+[ext_resource type="Resource" uid="uid://d2745vi4fsyp7" path="res://data/levels/level_01/waves/wave_05.tres" id="7_w05"]
+[ext_resource type="Resource" uid="uid://dl5yjjxryjf6p" path="res://data/levels/level_01/waves/wave_06.tres" id="8_w06"]
+[ext_resource type="Resource" uid="uid://efh56h6pps2b" path="res://data/levels/level_01/waves/wave_07.tres" id="9_w07"]
+[ext_resource type="Resource" uid="uid://b1tc3w5nmcx8w" path="res://data/levels/level_01/waves/wave_08.tres" id="10_w08"]
+[ext_resource type="Resource" uid="uid://dqynsaug13apf" path="res://data/levels/level_01/waves/wave_09.tres" id="11_w09"]
+[ext_resource type="Resource" uid="uid://c56kt27sh5ush" path="res://data/levels/level_01/waves/wave_10.tres" id="12_w10"]
+[ext_resource type="Resource" uid="uid://4q423qlxa8p3" path="res://data/levels/level_01/waves/wave_11.tres" id="13_w11"]
+[ext_resource type="Resource" uid="uid://ciwdoi4ke8yvh" path="res://data/levels/level_01/waves/wave_12.tres" id="14_w12"]
+[ext_resource type="Resource" uid="uid://bw10wxlrmmijd" path="res://data/levels/level_01/waves/wave_13.tres" id="15_w13"]
+[ext_resource type="Resource" uid="uid://bxbdbi06fkox3" path="res://data/levels/level_01/waves/wave_14.tres" id="16_w14"]
+[ext_resource type="Resource" uid="uid://dots2abf7uahd" path="res://data/levels/level_01/waves/wave_15.tres" id="17_w15"]
+[ext_resource type="Resource" uid="uid://dtta12x6d77sc" path="res://data/levels/level_01/waves/wave_16.tres" id="18_w16"]
 
 [resource]
 script = ExtResource("1_config")
-level_id = "level_01"
 level_name = "Forest Path"
 level_description = "A simple path through the forest. Perfect for beginners!"
 starting_gold = 200
 starting_lives = 15
-waves = Array[Resource("res://scripts/resources/wave_data.gd")]([ExtResource("3_w01"), ExtResource("4_w02"), ExtResource("5_w03"), ExtResource("6_w04"), ExtResource("7_w05"), ExtResource("8_w06"), ExtResource("9_w07"), ExtResource("10_w08"), ExtResource("11_w09"), ExtResource("12_w10"), ExtResource("13_w11"), ExtResource("14_w12"), ExtResource("15_w13"), ExtResource("16_w14"), ExtResource("17_w15"), ExtResource("18_w16")])
-difficulty = 1
-required_stars = 0
-campaign_id = "main"
-level_index = 1
-camera_bounds = Rect2(0, 0, 0, 0)
-auto_calculate_bounds = true
-bounds_padding = 200.0
-three_star_gold_bonus = 50
-two_star_gold_bonus = 30
-one_star_gold_bonus = 10
+waves = Array[ExtResource("2_7psdc")]([ExtResource("3_w01"), ExtResource("4_w02"), ExtResource("5_w03"), ExtResource("6_w04"), ExtResource("7_w05"), ExtResource("8_w06"), ExtResource("9_w07"), ExtResource("10_w08"), ExtResource("11_w09"), ExtResource("12_w10"), ExtResource("13_w11"), ExtResource("14_w12"), ExtResource("15_w13"), ExtResource("16_w14"), ExtResource("17_w15"), ExtResource("18_w16")])
+camera_bounds = Rect2(-2000, -1000, 6000, 4000)
+auto_calculate_bounds = false
+bounds_padding = 300.0

@@ -88,7 +88,6 @@ visible = false
 custom_minimum_size = Vector2(280, 60)
 layout_mode = 2
 text = "🔥 DAMAGE PATH
-DMG: 36 | AS: 2.0 | DPS: 72
 150g - Glass Cannon"
 
 [node name="RangePathButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer"]
@@ -96,7 +95,6 @@ visible = false
 custom_minimum_size = Vector2(280, 60)
 layout_mode = 2
 text = "🎯 RANGE PATH
-Range: 800 (2x coverage)
 150g - Long-range Sniper"
 
 [node name="HSeparator4" type="HSeparator" parent="PanelContainer/MarginContainer/VBoxContainer"]

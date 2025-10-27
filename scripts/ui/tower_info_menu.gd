@@ -428,6 +428,12 @@ func _confirm_upgrade():
 			tower_name_label.modulate = original_color
 			print("🔧 [TowerInfoMenu] Restoring original menu text")
 			update_display()
+
+		# Auto-close menu after upgrade
+		print("🔧 [TowerInfoMenu] Auto-closing menu after upgrade")
+		menu_closed.emit()
+		call_deferred("queue_free")
+
 		print("=== ✅ UPGRADE COMPLETE ===\n")
 	else:
 		print("❌ [TowerInfoMenu] Not enough gold for upgrade!")
@@ -452,7 +458,8 @@ func _on_sell_button_pressed():
 	GameStateManager.add_gold(sell_value)
 	print("Tower sold for ", sell_value, " gold")
 	sell_selected.emit(tower)
-	queue_free()
+	# Defer queue_free() to allow signal handlers to complete
+	call_deferred("queue_free")
 
 func _calculate_sell_value() -> int:
 	"""Calculate sell value as 70% of tower's build cost"""
@@ -559,7 +566,11 @@ func _unhandled_input(event):
 			print("✅ [TowerInfoMenu] Closing menu - clicked outside")
 			menu_closed.emit()
 			get_viewport().set_input_as_handled()
-			queue_free()
+
+			# CRITICAL FIX: Defer queue_free() to next frame to ensure signal handlers complete
+			# This allows PlacementManager's _on_menu_closed() to deselect the tower before menu is destroyed
+			call_deferred("queue_free")
+			print("🔧 [TowerInfoMenu] Menu destruction deferred to allow signal handlers to complete")
 
 func _on_update_timer_timeout():
 	"""Update enemy list periodically"""
@@ -797,7 +808,8 @@ func _on_rally_button_pressed():
 
 		# Close the menu so player can click the map
 		menu_closed.emit()
-		queue_free()
+		# Defer queue_free() to allow signal handlers to complete
+		call_deferred("queue_free")
 
 # ============================================
 # PATH CHOICE SYSTEM (Kingdom Rush Style)
@@ -848,11 +860,24 @@ func _enter_damage_path_preview():
 	# Visual feedback - highlight selected button (Kingdom Rush orange)
 	if damage_path_button:
 		damage_path_button.modulate = Color(1.2, 1.0, 0.8)  # Orange tint
-		damage_path_button.text = "🔥 DAMAGE PATH (Click to Confirm)\nDMG: 36 | AS: 2.0 | DPS: 72\n150g - Glass Cannon"
+		damage_path_button.text = "🔥 DAMAGE PATH\n(Click to Confirm)\n150g - Glass Cannon"
 	if range_path_button:
 		range_path_button.modulate = Color(0.7, 0.7, 0.7)  # Dim the other
 
-	print("✅ [TowerInfoMenu] Damage path preview mode active")
+	# Calculate damage path stats preview (27→36 damage, 1.6→2.0 AS)
+	preview_stats = {
+		"damage": 27,
+		"damage_bonus": 9,  # 36 - 27
+		"attack_speed": 1.6,
+		"attack_speed_bonus": 0.4,  # 2.0 - 1.6
+		"range": 400,
+		"range_bonus": 0
+	}
+
+	# Update main stats display with green bonuses
+	_update_stats_with_preview()
+
+	print("✅ [TowerInfoMenu] Damage path preview mode active - stats preview shown")
 
 func _enter_range_path_preview():
 	"""First click on Range Path: Show preview with visual feedback"""
@@ -862,11 +887,24 @@ func _enter_range_path_preview():
 	# Visual feedback - highlight selected button (Kingdom Rush blue)
 	if range_path_button:
 		range_path_button.modulate = Color(0.8, 1.0, 1.2)  # Blue tint
-		range_path_button.text = "🎯 RANGE PATH (Click to Confirm)\nRange: 800 (2x coverage)\n150g - Long-range Sniper"
+		range_path_button.text = "🎯 RANGE PATH\n(Click to Confirm)\n150g - Long-range Sniper"
 	if damage_path_button:
 		damage_path_button.modulate = Color(0.7, 0.7, 0.7)  # Dim the other
 
-	print("✅ [TowerInfoMenu] Range path preview mode active")
+	# Calculate range path stats preview (400→800 range, damage/AS stay same)
+	preview_stats = {
+		"damage": 27,
+		"damage_bonus": 0,
+		"attack_speed": 1.6,
+		"attack_speed_bonus": 0.0,
+		"range": 400,
+		"range_bonus": 400  # 800 - 400
+	}
+
+	# Update main stats display with green bonuses
+	_update_stats_with_preview()
+
+	print("✅ [TowerInfoMenu] Range path preview mode active - stats preview shown")
 
 func _confirm_damage_path():
 	"""Second click: Actually choose Damage Path"""
@@ -905,6 +943,11 @@ func _confirm_damage_path():
 			tower_name_label.modulate = original_color
 			print("🔥 [TowerInfoMenu] Restoring original menu text")
 			update_display()
+
+		# Auto-close menu after path choice
+		print("🔥 [TowerInfoMenu] Auto-closing menu after damage path choice")
+		menu_closed.emit()
+		call_deferred("queue_free")
 
 		print("=== ✅ DAMAGE PATH CHOSEN ===\n")
 	else:
@@ -950,6 +993,11 @@ func _confirm_range_path():
 			print("🎯 [TowerInfoMenu] Restoring original menu text")
 			update_display()
 
+		# Auto-close menu after path choice
+		print("🎯 [TowerInfoMenu] Auto-closing menu after range path choice")
+		menu_closed.emit()
+		call_deferred("queue_free")
+
 		print("=== ✅ RANGE PATH CHOSEN ===\n")
 	else:
 		print("❌ [TowerInfoMenu] Not enough gold for range path!")
@@ -962,12 +1010,25 @@ func _cancel_path_preview():
 	is_damage_path_preview = false
 	is_range_path_preview = false
 
+	# Clear preview stats
+	preview_stats = {}
+
+	# Reset stats label to normal (no BBCode)
+	if stats_label:
+		stats_label.bbcode_enabled = false
+		# Restore normal stats display
+		if tower:
+			var damage = tower.damage if "damage" in tower else 0
+			var attack_speed = tower.attack_speed if "attack_speed" in tower else 0
+			var range_val = tower.range_radius if "range_radius" in tower else 0
+			stats_label.text = "Damage: %d\nAttack Speed: %.1f/s\nRange: %d" % [damage, attack_speed, range_val]
+
 	# Reset button colors and text
 	if damage_path_button:
 		damage_path_button.modulate = Color(1.0, 1.0, 1.0)
-		damage_path_button.text = "🔥 DAMAGE PATH\nDMG: 36 | AS: 2.0 | DPS: 72\n150g - Glass Cannon"
+		damage_path_button.text = "🔥 DAMAGE PATH\n150g - Glass Cannon"
 	if range_path_button:
 		range_path_button.modulate = Color(1.0, 1.0, 1.0)
-		range_path_button.text = "🎯 RANGE PATH\nRange: 800 (2x coverage)\n150g - Long-range Sniper"
+		range_path_button.text = "🎯 RANGE PATH\n150g - Long-range Sniper"
 
-	print("✅ [TowerInfoMenu] Path preview canceled")
+	print("✅ [TowerInfoMenu] Path preview canceled - stats restored to normal")

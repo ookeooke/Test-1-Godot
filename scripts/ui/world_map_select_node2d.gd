@@ -9,6 +9,9 @@ signal level_chosen(level_data: LevelNodeData, difficulty: String)
 # Export variables for easy configuration in editor
 @export var level_nodes_data: Array[LevelNodeData] = []  # All level configurations
 
+# Camera bounds for world map (adjust to fit your map art)
+@export var map_bounds := Rect2(-200, -200, 2200, 1400)
+
 # STAR COLOR CONSTANTS (Kingdom Rush style)
 const STAR_COLORS = {
 	3: Color("#FFD700"),  # Gold - 3 stars
@@ -80,11 +83,22 @@ func _ready():
 	# Create arsenal screen
 	_setup_arsenal_screen()
 
+	# Setup camera bounds for world map
+	_setup_camera_bounds()
+
 	# Setup
 	_setup_level_nodes()
 	_update_profile_display()
 	_update_progress_display()
 	_draw_paths()
+
+func _setup_camera_bounds():
+	"""Setup camera bounds for the world map"""
+	if camera and camera.has_method("set_level_bounds"):
+		camera.set_level_bounds(map_bounds)
+		print("[WorldMap] ✅ Camera bounds set to:", map_bounds)
+	else:
+		print("[WorldMap] ⚠️ WARNING: Camera not found or doesn't support set_level_bounds()")
 
 func _create_gear_button():
 	"""Create the Gear button programmatically - prominently placed in top-middle"""

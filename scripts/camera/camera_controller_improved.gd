@@ -360,16 +360,28 @@ func _unhandled_input(event):
 func handle_pc_input(event) -> void:
 	"""PC-specific input (mouse + keyboard)"""
 	if event is InputEventMouseButton:
-		# Don't interact with camera when mouse is over GUI
+		# Only block camera input when mouse is over INTERACTIVE GUI elements
+		# (labels, containers, and other non-interactive elements should not block camera)
 		var gui_element = get_viewport().gui_get_hovered_control()
 		if debug_input:
 			print("[Camera DEBUG] handle_pc_input - MouseButton")
 			print("  GUI element hovered: ", gui_element)
 
 		if gui_element:
+			# Check if it's an interactive element that should block camera input
+			var is_interactive = gui_element is Button or gui_element is TextureButton or gui_element is LineEdit or gui_element is TextEdit or gui_element is SpinBox or gui_element is Slider
+
 			if debug_input:
-				print("[Camera DEBUG] GUI element detected - ignoring input")
-			return  # Let GUI handle the input
+				print("[Camera DEBUG] GUI element type: ", gui_element.get_class())
+				print("  Is interactive: ", is_interactive)
+
+			if is_interactive:
+				if debug_input:
+					print("[Camera DEBUG] Interactive GUI detected - ignoring camera input")
+				return  # Let GUI handle the input
+			else:
+				if debug_input:
+					print("[Camera DEBUG] Non-interactive GUI (Label/Container) - allowing camera input")
 
 		# Mouse wheel zoom
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -732,6 +744,17 @@ func update_camera_limits() -> void:
 	if limit_top >= limit_bottom:
 		limit_top = int(level_rect.position.y)
 		limit_bottom = int(level_rect.end.y)
+
+	# DEBUG: Print detailed camera limit info
+	print("[Camera] 📐 LIMITS CALCULATED:")
+	print("  Viewport size: ", viewport_size)
+	print("  Zoom: ", zoom)
+	print("  Half view: ", half_view)
+	print("  Level rect: ", level_rect)
+	print("  Camera limits:")
+	print("    Left: ", limit_left, " → Right: ", limit_right, " (Range: ", limit_right - limit_left, " pixels)")
+	print("    Top: ", limit_top, " → Bottom: ", limit_bottom, " (Range: ", limit_bottom - limit_top, " pixels)")
+	print("  Current camera position: ", position)
 
 func set_level_bounds(rect: Rect2) -> void:
 	"""Update level bounds at runtime (can be called from level_controller)"""

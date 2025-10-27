@@ -88,6 +88,13 @@ func _validate_bounds_configuration():
 		warnings.append("Using camera's default fallback bounds (no LevelConfig assigned)")
 		warnings.append("→ This works but is NOT recommended for multi-level games")
 
+	# Check 4: Manual bounds mode with zero-sized rect (INVALID STATE)
+	if level_config and not level_config.auto_calculate_bounds:
+		if level_config.camera_bounds.size == Vector2.ZERO:
+			issues.append("❌ Manual bounds mode enabled but camera_bounds is empty (0,0,0,0)")
+			issues.append("→ Either enable auto_calculate_bounds OR set valid camera_bounds")
+			issues.append("→ Current state will result in broken camera limits!")
+
 	# Print validation results
 	if issues.size() > 0:
 		print("[LevelController] ❌ CONFIGURATION ERRORS:")
@@ -124,10 +131,13 @@ func _calculate_bounds_from_content() -> Rect2:
 					max_pos.y = max(max_pos.y, pos.y)
 					found_content = true
 
-	# If no content found, return default bounds
+	# If no content found, use camera's current bounds as fallback (more intelligent than hardcoded)
 	if not found_content:
-		print("[LevelController] WARNING: No content found for auto-calculation, using default bounds")
-		return Rect2(-500, -500, 2000, 1500)
+		var fallback = camera.level_rect if camera else Rect2(-500, -500, 2000, 1500)
+		print("[LevelController] ⚠️ WARNING: No content found for auto-calculation")
+		print("[LevelController] → Using fallback bounds:", fallback)
+		print("[LevelController] → Tip: Check that TowerSpots, Path, Spawners, or Goals nodes exist")
+		return fallback
 
 	# Add padding
 	var padding = level_config.bounds_padding if level_config else 200.0

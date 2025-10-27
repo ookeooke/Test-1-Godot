@@ -86,6 +86,12 @@ func _on_tower_clicked(spot, tower):
 
 func close_current_menu():
 	"""Close any open menu"""
+	# Deselect tower before closing menu
+	if current_selected_tower and is_instance_valid(current_selected_tower):
+		if current_selected_tower.has_method("deselect_tower"):
+			current_selected_tower.deselect_tower()
+			print("🔧 [PlacementManager] Tower deselected in close_current_menu()")
+
 	if current_menu:
 		current_menu.queue_free()
 		current_menu = null
@@ -93,6 +99,8 @@ func close_current_menu():
 	# Unlock camera input
 	if camera and camera.has_method("unlock_input"):
 		camera.unlock_input()
+
+	current_selected_tower = null
 
 func show_build_menu(spot):
 	"""Show the tower build menu"""
@@ -412,10 +420,21 @@ func _on_tower_sold(tower):
 
 func _on_menu_closed():
 	"""Handle menu close (when clicking outside or pressing ESC)"""
+	print("🔧 [PlacementManager] _on_menu_closed() called")
+
 	# Deselect tower when menu closes
 	if current_selected_tower and is_instance_valid(current_selected_tower):
 		if current_selected_tower.has_method("deselect_tower"):
+			print("🔧 [PlacementManager] Deselecting tower: %s" % current_selected_tower.name)
 			current_selected_tower.deselect_tower()
+			print("✅ [PlacementManager] Tower deselected successfully")
+		else:
+			print("⚠️ [PlacementManager] Tower doesn't have deselect_tower() method")
+	else:
+		if not current_selected_tower:
+			print("⚠️ [PlacementManager] No current_selected_tower to deselect")
+		else:
+			print("⚠️ [PlacementManager] current_selected_tower is invalid")
 
 	# Unlock camera input
 	if camera and camera.has_method("unlock_input"):
@@ -423,3 +442,4 @@ func _on_menu_closed():
 
 	current_spot = null
 	current_selected_tower = null
+	print("🔧 [PlacementManager] Menu closed and cleanup complete")
