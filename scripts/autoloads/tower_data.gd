@@ -16,7 +16,7 @@ const TOWERS = {
 	"archer": {
 		"name": "Archer Tower",
 		"icon": "🏹",
-		"build_cost": 100,
+		"build_cost": 70,  # BALANCE FIX: Was 100g (50% of start gold), now 70g (28% - matches KR1's 26%)
 		"type": "ranged_single",
 		"description": "Fast-attacking ranged tower. Choose Damage path for glass cannon DPS or Range path for extended coverage.",
 
@@ -31,14 +31,14 @@ const TOWERS = {
 			2: {
 				"damage": 17,
 				"attack_speed": 1.3,
-				"range": 350,
+				"range": 300,  # STRATEGIC BALANCE: No range scaling - forces precise placement
 				"dps": 22.1,
 				"cost_to_next": 90
 			},
 			3: {
 				"damage": 27,
 				"attack_speed": 1.6,
-				"range": 400,
+				"range": 300,  # STRATEGIC BALANCE: No range scaling - forces precise placement
 				"dps": 43.2,
 				"cost_to_next": 150  # Path choice cost
 			},
@@ -47,7 +47,7 @@ const TOWERS = {
 				"damage_path": {
 					"damage": 36,
 					"attack_speed": 2.0,
-					"range": 500,
+					"range": 300,  # STRATEGIC BALANCE: No range scaling - forces precise placement
 					"dps": 72.0,
 					"cost_to_next": 200,
 					"path_name": "Glass Cannon"
@@ -55,7 +55,7 @@ const TOWERS = {
 				"range_path": {
 					"damage": 27,
 					"attack_speed": 1.6,
-					"range": 500,
+					"range": 300,  # STRATEGIC BALANCE: No range scaling - forces precise placement
 					"dps": 43.2,
 					"cost_to_next": 200,
 					"path_name": "Long-range Sniper"
@@ -64,17 +64,17 @@ const TOWERS = {
 			# Level 5 - Max level
 			5: {
 				"damage_path": {
-					"damage": 45,
+					"damage": 40,  # BALANCE FIX: Was 45 (112.5 DPS), now 40 (100 DPS - smoother scaling)
 					"attack_speed": 2.5,
-					"range": 500,
-					"dps": 112.5,
+					"range": 300,  # STRATEGIC BALANCE: No range scaling - forces precise placement
+					"dps": 100.0,
 					"cost_to_next": 0,  # Max level
 					"path_name": "Ultimate Glass Cannon"
 				},
 				"range_path": {
 					"damage": 35,
 					"attack_speed": 1.8,
-					"range": 450,
+					"range": 300,  # STRATEGIC BALANCE: No range scaling - forces precise placement
 					"dps": 63.0,
 					"cost_to_next": 0,  # Max level
 					"path_name": "Balanced Sniper"
@@ -92,7 +92,7 @@ const TOWERS = {
 	"barracks": {
 		"name": "Barracks",
 		"icon": "🛡️",
-		"build_cost": 120,
+		"build_cost": 70,  # BALANCE FIX: Was 120g, now 70g (matches archer tower cost)
 		"type": "garrison",
 		"description": "Spawns melee soldiers that block and fight enemies on the path. Soldiers respawn after death.",
 

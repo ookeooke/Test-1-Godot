@@ -5,8 +5,8 @@ extends "res://scripts/enemies/base_enemy.gd"
 
 func _init():
 	# Set orc-specific stats
-	speed = 41.0  # Reduced from 55 (-25% Kingdom Rush pacing)
-	max_health = 200.0
+	speed = 33.0  # PACING FIX: Reduced from 55 (-40% total: -25% KR pacing, -20% strategic slowdown)
+	max_health = 150.0  # BALANCE FIX: Was 200 (16.7s TTK), now 150 (12.5s TTK - smoother difficulty curve)
 	melee_damage = 10.0
 	attack_cooldown = 1.0
 	gold_reward = 20  # Increased from 16 (+25% gold rewards)

@@ -42,24 +42,22 @@ var current_platform: Platform
 @export var editor_border_width = 4.0  # Border line width in pixels
 
 # ============================================
-# ZOOM SETTINGS - Slight zoom enabled for detail viewing
+# ZOOM SETTINGS - Set dynamically by platform defaults
 # ============================================
+# Zoom ranges are configured at runtime by apply_platform_defaults():
+# - PC/Steam: 1.0x (baseline) to 1.25x (25% closer for detail viewing)
+# - Mobile: 1.0x (baseline) to 1.2x (20% closer)
+# - Baseline is calculated from viewport size to maintain consistent framing
+
 @export_group("Zoom Settings")
-@export var min_zoom = 1.0  # Baseline (furthest out)
-@export var max_zoom = 1.0  # Will be set to 1.25 by platform defaults (25% closer)
-@export var default_zoom = 1.0  # Start at baseline
-@export var zoom_speed = 0.1  # Smooth zoom speed
+@export var zoom_speed = 0.1  # Smooth zoom speed (PC default, mobile uses slower)
 @export var zoom_smoothing = 0.15  # Smooth interpolation
 
-# Mobile-specific zoom
-@export var mobile_min_zoom = 1.0  # Baseline
-@export var mobile_max_zoom = 1.0  # Will be set to 1.2 (20% closer for mobile)
-@export var mobile_zoom_speed = 0.08  # Slightly slower for mobile
-
-# Double-tap zoom (mobile) - Keep disabled for now
-@export var double_tap_zoom_in = 1.0  # DISABLED
-@export var double_tap_zoom_out = 1.0  # DISABLED
-@export var double_tap_time_threshold = 0.3  # DISABLED
+# Runtime zoom values (set by apply_platform_defaults)
+var min_zoom: float  # Set at runtime based on platform
+var max_zoom: float  # Set at runtime based on platform
+var default_zoom: float  # Set at runtime based on platform
+var mobile_zoom_speed = 0.08  # Slower zoom for mobile
 
 # ============================================
 # PAN SETTINGS
@@ -136,13 +134,6 @@ var drag_speed = 1.0
 
 # Touch state
 var touch_points = {}
-var last_pinch_distance = 0.0
-var pinch_center = Vector2.ZERO
-
-# Double-tap detection (mobile)
-var last_tap_time = 0.0
-var last_tap_position = Vector2.ZERO
-var is_double_tap_zoomed = false
 
 # Inertia state
 var velocity = Vector2.ZERO
@@ -152,6 +143,7 @@ var inertia_friction = 0.9
 # Zoom state
 var target_zoom = Vector2.ONE
 var base_position = Vector2.ZERO  # Position without shake
+var target_position = Vector2.ZERO  # Target position for smooth zoom-to-cursor
 
 # ============================================
 # USER PREFERENCES (will be saved/loaded)
@@ -199,6 +191,7 @@ func _ready():
 	target_zoom = Vector2(baseline_zoom, baseline_zoom)
 	zoom = target_zoom
 	base_position = position
+	target_position = position  # Initialize target to current position
 
 	# Validate that bounds have been set by LevelController
 	if level_rect.size == Vector2.ZERO:
@@ -251,9 +244,9 @@ func apply_platform_defaults() -> void:
 	"""Set platform-appropriate defaults as ratios of baseline"""
 	match current_platform:
 		Platform.MOBILE:
-			# Mobile: Slight zoom-in capability (20% closer for detail viewing)
+			# Mobile: Moderate zoom-in capability (40% closer for detail viewing)
 			min_zoom = baseline_zoom  # Baseline is furthest out
-			max_zoom = baseline_zoom * 1.2  # 20% closer to see details
+			max_zoom = baseline_zoom * 1.4  # 40% closer to see details
 			default_zoom = baseline_zoom  # Start at baseline
 			zoom_speed = mobile_zoom_speed
 
@@ -264,9 +257,9 @@ func apply_platform_defaults() -> void:
 			edge_scroll_enabled = false
 
 		Platform.PC:
-			# PC: Slight zoom-in capability (25% closer for detail viewing)
+			# PC: Moderate zoom-in capability (50% closer for detail viewing)
 			min_zoom = baseline_zoom  # Baseline is furthest out
-			max_zoom = baseline_zoom * 1.25  # 25% closer to see details
+			max_zoom = baseline_zoom * 1.5  # 50% closer to see details
 			default_zoom = baseline_zoom  # Start at baseline
 			zoom_speed = zoom_speed  # Use default zoom_speed
 
@@ -277,9 +270,9 @@ func apply_platform_defaults() -> void:
 			edge_scroll_enabled = true
 
 		Platform.CONSOLE:
-			# Console: Similar to PC zoom range
+			# Console: Similar to PC zoom range (50% closer for detail viewing)
 			min_zoom = baseline_zoom
-			max_zoom = baseline_zoom * 1.25
+			max_zoom = baseline_zoom * 1.5
 			default_zoom = baseline_zoom
 			zoom_speed = zoom_speed
 
@@ -355,24 +348,6 @@ func unlock_input() -> void:
 # INPUT HANDLING
 # ============================================
 
-func _input(event):
-	"""DEBUG ONLY - Verify input reaches camera node (runs BEFORE _unhandled_input)"""
-	if debug_input:
-		# Print for EVERY mouse event to ensure we see SOMETHING
-		if event is InputEventMouseButton:
-			print("🔵🔵🔵 [Camera _input()] MOUSE BUTTON EVENT RECEIVED!")
-			print("  Button: ", event.button_index, " (",
-				  "LEFT" if event.button_index == MOUSE_BUTTON_LEFT else
-				  "RIGHT" if event.button_index == MOUSE_BUTTON_RIGHT else
-				  "MIDDLE" if event.button_index == MOUSE_BUTTON_MIDDLE else "OTHER", ")")
-			print("  Pressed: ", event.pressed)
-			print("  Position: ", event.position)
-			print("  ✅ This PROVES input is reaching the camera node!")
-		elif event is InputEventMouseMotion:
-			# Only print motion during drag to avoid spam
-			if is_dragging:
-				print("🟢 [Camera _input()] Mouse motion while dragging")
-
 func _unhandled_input(event):
 	# Skip in editor mode (camera script does NOT work in editor 2D view)
 	if Engine.is_editor_hint():
@@ -398,10 +373,8 @@ func _unhandled_input(event):
 	match current_platform:
 		Platform.MOBILE:
 			handle_mobile_input(event)
-		Platform.PC:
+		_:  # PC, Console, Web all use same input
 			handle_pc_input(event)
-		Platform.CONSOLE:
-			handle_console_input(event)
 
 func handle_pc_input(event) -> void:
 	"""PC-specific input (mouse + keyboard)"""
@@ -474,10 +447,6 @@ func handle_mobile_input(event) -> void:
 	elif event is InputEventScreenDrag:
 		handle_touch_drag(event)
 
-func handle_console_input(event) -> void:
-	"""Console-specific input (gamepad)"""
-	# TODO: Add gamepad camera control
-	handle_pc_input(event)  # For now, fallback to PC
 
 # ============================================
 # TOUCH HANDLING (MOBILE)
@@ -556,6 +525,7 @@ func update_drag(screen_pos: Vector2):
 
 	# Move camera (opposite direction of drag)
 	base_position -= delta
+	target_position = base_position  # Keep target in sync during drag
 
 	# Store velocity for inertia (frame-independent)
 	velocity = -delta / get_physics_process_delta_time()
@@ -597,8 +567,9 @@ func zoom_at_point(screen_point: Vector2, zoom_delta: float):
 	var cursor_offset_after = (screen_point - viewport_size / 2) / target_zoom
 	var world_pos_after = base_position + cursor_offset_after
 
-	# Move camera to compensate
-	base_position += world_pos_before - world_pos_after
+	# Set TARGET position to move smoothly (instead of instant jump)
+	# This prevents screen shake when scrolling
+	target_position = base_position + (world_pos_before - world_pos_after)
 
 func set_zoom_instant(new_zoom: float) -> void:
 	"""Set zoom without smoothing"""
@@ -666,12 +637,14 @@ func update_snap(delta: float) -> void:
 
 	if snap_progress >= 1.0:
 		base_position = snap_target_pos
+		target_position = snap_target_pos  # Keep target in sync
 		is_snapping = false
 		snap_progress = 0.0
 	else:
 		# Smooth ease-out curve
 		var t = ease_out_cubic(snap_progress)
 		base_position = snap_start_pos.lerp(snap_target_pos, t)
+		target_position = base_position  # Keep target in sync during snap
 
 func ease_out_cubic(t: float) -> float:
 	"""Smooth easing function"""
@@ -708,6 +681,14 @@ func _physics_process(delta):
 		# Snap to target if very close
 		if abs(zoom.x - target_zoom.x) < 0.001:
 			zoom = target_zoom
+
+	# Smooth position interpolation (for zoom-to-cursor)
+	# Matches zoom smoothing to prevent screen shake when scrolling
+	if base_position.distance_to(target_position) > 0.1:
+		base_position = base_position.lerp(target_position, zoom_smoothing)
+		# Snap to target if very close
+		if base_position.distance_to(target_position) < 0.1:
+			base_position = target_position
 
 	# Update camera shake
 	if shake_enabled:
@@ -754,6 +735,7 @@ func handle_keyboard_pan(delta):
 	if direction != Vector2.ZERO:
 		direction = direction.normalized()
 		base_position += direction * keyboard_pan_speed * delta / zoom.x
+		target_position = base_position  # Keep target in sync during keyboard pan
 
 		# Cancel inertia if manually moving
 		is_inertia_moving = false
@@ -783,6 +765,7 @@ func handle_edge_scroll(delta):
 		direction = direction.normalized()
 		var speed = edge_scroll_speed * user_prefs["edge_scroll_speed_multiplier"]
 		base_position += direction * speed * delta / zoom.x
+		target_position = base_position  # Keep target in sync during edge scroll
 
 func update_inertia(delta):
 	"""Update inertia-based movement (frame-independent)"""
@@ -793,6 +776,7 @@ func update_inertia(delta):
 
 	# Apply velocity (frame-independent)
 	base_position += velocity * delta
+	target_position = base_position  # Keep target in sync during inertia
 
 	# Apply friction (frame-independent)
 	var friction = pow(inertia_friction, delta * 60.0)  # Normalized to 60fps
@@ -803,29 +787,14 @@ func update_inertia(delta):
 # ============================================
 
 func update_camera_limits() -> void:
-	"""Disable Godot's automatic limit clamping - camera uses custom boundary logic"""
-	var viewport_size = get_viewport_rect().size
-
-	# Calculate visible area at current zoom (for reference/debugging)
-	var half_view = (viewport_size / zoom) / 2.0
-
-	# DISABLE Godot's built-in limit clamping by setting to very large values
-	# This allows the camera's custom movement logic to work without interference
-	# The camera script will handle boundary constraints manually in _physics_process()
+	"""Disable Godot's built-in limit clamping - camera uses custom boundary logic in _physics_process()"""
+	# Set Godot's limits to infinite so they don't interfere with custom clamping
 	limit_left = -100000
 	limit_right = 100000
 	limit_top = -100000
 	limit_bottom = 100000
 
-	# DEBUG: Print camera configuration
-	print("[Camera] 📐 LIMITS DISABLED (Using custom boundary logic):")
-	print("  Viewport size: ", viewport_size)
-	print("  Zoom: ", zoom)
-	print("  Half view: ", half_view)
-	print("  Level rect: ", level_rect)
-	print("  Godot limits: INFINITE (", limit_left, " to ", limit_right, ")")
-	print("  Custom boundaries will constrain movement to level_rect")
-	print("  Current camera position: ", position)
+	print("[Camera] Boundary system: Custom manual clamping (Godot limits disabled)")
 
 func set_level_bounds(rect: Rect2) -> void:
 	"""Update level bounds at runtime (can be called from level_controller)"""
@@ -863,6 +832,7 @@ func reset_to_center():
 	var center_x = (limit_left + limit_right) / 2.0
 	var center_y = (limit_top + limit_bottom) / 2.0
 	base_position = Vector2(center_x, center_y)
+	target_position = base_position  # Keep target in sync
 	position = base_position
 	target_zoom = Vector2(default_zoom, default_zoom)
 	zoom = target_zoom
@@ -883,6 +853,7 @@ func set_camera_state(state: Dictionary) -> void:
 	"""Restore camera state (for save/load)"""
 	if state.has("position"):
 		base_position = state["position"]
+		target_position = base_position  # Keep target in sync
 		position = base_position
 	if state.has("zoom"):
 		var z = state["zoom"]

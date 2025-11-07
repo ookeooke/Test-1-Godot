@@ -11,11 +11,11 @@ count = 1
 [resource]
 script = ExtResource("1_wave")
 wave_number = 5
-break_time = 4.0
+break_time = 8.0
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
 wave_name = "First Boss"
 is_boss_wave = true
 hp_multiplier = 1.75
 custom_hp_multipliers = {
-"troll": 2.5
+"troll": 2.0
 }

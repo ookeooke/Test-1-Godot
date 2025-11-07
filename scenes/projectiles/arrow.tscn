@@ -7,6 +7,9 @@ radius = 8.0
 
 [node name="Arrow" type="Area2D"]
 collision_layer = 4
+collision_mask = 0
+monitoring = false
+monitorable = false
 script = ExtResource("1_l5ahi")
 
 [node name="Shadow" type="ColorRect" parent="."]

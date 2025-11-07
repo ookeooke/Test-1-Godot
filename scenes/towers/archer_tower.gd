@@ -26,7 +26,7 @@ var damage = 12  # Reduced from 16 (-25%) for Kingdom Rush strategic pacing
 var attack_speed = 1.0  # Attacks per second
 var range_radius = 300  # Detection range
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
-var build_cost = 100  # Cost to build this tower (matching UI - 2 towers at start with 200g)
+var build_cost = 70  # BALANCE FIX: Was 100g, now 70g (28% of 250g start gold - matches KR1's 26%)
 
 # UPGRADE SYSTEM
 var tower_level = 1  # Current upgrade level (1-5)
@@ -848,11 +848,11 @@ func upgrade_tower():
 			print("🔧 [DEBUG] Applying Level 5 stats (path: %s)..." % upgrade_path)
 			if upgrade_path == "damage":
 				# DAMAGE PATH Level 5: Ultimate glass cannon
-				damage = 45  # 36 → 45 (+25%)
+				damage = 40  # BALANCE FIX: Was 45 (112.5 DPS), now 40 (100 DPS - smoother scaling)
 				attack_speed = 2.5  # 2.0 → 2.5 (+25%)
 				# Range stays 500
-				# Result: 112.5 DPS - ULTIMATE GLASS CANNON!
-				print("✅ [ArcherTower] Upgraded to Level 5 DAMAGE: DMG=45, AS=2.5, Range=500, DPS=112.5")
+				# Result: 100 DPS - ULTIMATE GLASS CANNON!
+				print("✅ [ArcherTower] Upgraded to Level 5 DAMAGE: DMG=40, AS=2.5, Range=500, DPS=100.0")
 			elif upgrade_path == "range":
 				# RANGE PATH Level 5: Balanced sniper with less range
 				damage = 35  # 27 → 35 (+30%)
@@ -1058,7 +1058,7 @@ func get_upgrade_stats(preview_path: String = "") -> Dictionary:
 		# Level 4→5 upgrade (path-specific) - MUST MATCH upgrade_tower() Level 5 values!
 		if upgrade_path == "damage":
 			# Damage path Level 5 preview
-			damage_bonus = 45 - current_damage  # 36 → 45
+			damage_bonus = 40 - current_damage  # BALANCE FIX: 36 → 40 (was 45)
 			attack_speed_bonus = 2.5 - current_attack_speed  # 2.0 → 2.5
 			range_bonus = 0  # Range stays 500
 		elif upgrade_path == "range":

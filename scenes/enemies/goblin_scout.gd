@@ -5,8 +5,8 @@ extends "res://scripts/enemies/base_enemy.gd"
 
 func _init():
 	# Set goblin-specific stats
-	speed = 56.0  # Reduced from 75 (-25% Kingdom Rush pacing)
-	max_health = 50.0
+	speed = 45.0  # PACING FIX: Reduced from 75 (-40% total: -25% KR pacing, -20% strategic slowdown)
+	max_health = 35.0  # BALANCE FIX: Was 50 (4.2s TTK), now 35 (2.9s TTK - matches KR1's 3.2s)
 	melee_damage = 5.0
 	attack_cooldown = 1.0
 	gold_reward = 5  # Increased from 4 (+25% gold rewards)

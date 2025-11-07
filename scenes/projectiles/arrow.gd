@@ -37,9 +37,6 @@ var previous_position: Vector2  # For continuous collision detection
 var visual_z_velocity: float = 0.0  # Initial upward velocity
 var visual_gravity: float = 980.0   # Gravity strength (980 = Earth gravity)
 
-# HIT MARKER EFFECT
-var hit_marker_scene = preload("res://scenes/effects/hit_marker.tscn")
-
 # ============================================
 # SETUP
 # ============================================
@@ -351,34 +348,13 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 
 func _hit_enemy(enemy):
 	"""Deal damage to enemy"""
-	# Calculate the ACTUAL VISUAL position where arrow appears on screen
-	var visual_offset = Vector2(0, 0)
-
-	# Account for visual arc height (sprite is offset upward during flight)
-	if has_node("ColorRect"):
-		var arrow_sprite = get_node("ColorRect")
-		visual_offset.y = arrow_sprite.position.y  # This is -visual_height (negative = up)
-
-	# CRITICAL: Rotate collision offset to match arrow's current orientation!
-	# CollisionShape2D is at (10, 0) in LOCAL space - must transform to world space
-	var local_offset = Vector2(10, 0)  # Tip offset in arrow's local space
-	var rotated_collision_offset = local_offset.rotated(rotation)  # Transform to world space
-
-	# Final hit position = base position + visual offset + rotated collision offset
-	var hit_position = global_position + visual_offset + rotated_collision_offset
-
-	# Spawn red X hit marker at VISUAL impact point (where arrow appears)
-	# IMPORTANT: Attach to enemy as child so it follows the moving enemy!
-	if hit_marker_scene and enemy and is_instance_valid(enemy):
-		var hit_marker = hit_marker_scene.instantiate()
-
-		# Calculate hit position in enemy's LOCAL coordinate space
-		# This way the marker moves with the enemy automatically
-		var local_hit_position = hit_position - enemy.global_position
-
-		# Attach marker as child of enemy (like health bar)
-		enemy.add_child(hit_marker)
-		hit_marker.position = local_hit_position  # Use local position, not global
+	# Enemy's own feedback systems provide excellent hit feedback:
+	# - White flash (instant, 0.1s)
+	# - Color-coded damage numbers (red/orange/yellow)
+	# - HitParticles blood burst
+	# - Health bar update
+	# - Hit animation
+	# No need for additional hit marker - would only add visual clutter
 
 	# Track damage dealt (before applying, to capture who shot it)
 	var source_type = "tower"

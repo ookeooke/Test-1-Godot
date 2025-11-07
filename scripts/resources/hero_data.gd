@@ -30,6 +30,8 @@ enum HeroClass {
 @export var base_range: int = 300
 @export var base_attack_speed: float = 0.6  # Seconds between attacks
 @export var base_movement_speed: float = 150.0
+@export var base_crit_chance: float = 0.0  # Critical hit chance (0.0 to 1.0, display as 0% to 100%)
+@export var base_defense: int = 0  # Defense/armor value (reduces incoming damage)
 
 # Progression
 @export_group("Progression")

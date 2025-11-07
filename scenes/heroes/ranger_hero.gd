@@ -21,16 +21,18 @@ var stat_melee_damage: Stat
 var stat_ranged_range: Stat
 var stat_ranged_attack_speed: Stat
 var stat_movement_speed: Stat
+var stat_crit_chance: Stat
+var stat_defense: Stat
 
 # Current health (not a Stat, just a runtime value)
-var current_health = 200.0
+var current_health = 300.0  # BALANCE FIX: Updated to match new BASE_MAX_HEALTH
 
 # Base stats (for reference and reset)
-const BASE_MAX_HEALTH = 200.0
-const BASE_RANGED_DAMAGE = 12.0  # Buffed from 10.0 (+20%) to hit 1.82x tower DPS ratio
+const BASE_MAX_HEALTH = 300.0  # BALANCE FIX: Was 200 (40 hits), now 300 (60 hits - matches KR1 durability)
+const BASE_RANGED_DAMAGE = 14.0  # BALANCE FIX: Was 12.0 (1.82x ratio), now 14.0 (2.13x ratio - closer to KR1's 2.77x)
 const BASE_MELEE_DAMAGE = 5.0  # Reduced from 6 (-17%) - melee is for blocking
-const BASE_RANGED_RANGE = 300.0
-const BASE_RANGED_ATTACK_SPEED = 0.55  # 21.8 DPS ranged (lower = faster, buffed from 0.6s)
+const BASE_RANGED_RANGE = 240.0  # BALANCE FIX: Was 300 (same as tower), now 240 (80% of tower - requires positioning risk)
+const BASE_RANGED_ATTACK_SPEED = 0.55  # 25.5 DPS ranged (lower = faster)
 const BASE_MOVEMENT_SPEED = 150.0
 
 # Fixed stats (not affected by modifiers)
@@ -56,6 +58,10 @@ var ranged_attack_speed: float:
 	get: return stat_ranged_attack_speed.get_value() if stat_ranged_attack_speed else BASE_RANGED_ATTACK_SPEED
 var movement_speed: float:
 	get: return stat_movement_speed.get_value() if stat_movement_speed else BASE_MOVEMENT_SPEED
+var crit_chance: float:
+	get: return stat_crit_chance.get_value() if stat_crit_chance else 0.0
+var defense: float:
+	get: return stat_defense.get_value() if stat_defense else 0.0
 
 # ENEMY MANAGEMENT
 var max_melee_enemies = 2  # HEROES ARE STRONGER: Block 2 enemies at once (soldiers = 1)
@@ -87,6 +93,9 @@ var click_area: Area2D  # For clicking the hero
 
 # PROJECTILE
 @export var arrow_scene: PackedScene
+
+# VISUAL
+@export var hero_texture: Texture2D  # Inspector-selectable sprite texture
 
 # SKILL SYSTEM
 @export var available_skills: Array[HeroSkillData] = []  # All skills this hero can learn
@@ -151,6 +160,19 @@ func _ready():
 	draw_range_circle()
 	range_indicator.visible = false
 	update_health_bar()
+
+	# Apply texture if provided (Kingdom Rush style sprite support)
+	if sprite is Sprite2D:
+		if hero_texture:
+			sprite.texture = hero_texture
+			# Hide fallback ColorRect if it exists
+			if sprite.has_node("FallbackRect"):
+				sprite.get_node("FallbackRect").visible = false
+		else:
+			# No texture provided - show fallback ColorRect placeholder
+			if sprite.has_node("FallbackRect"):
+				sprite.get_node("FallbackRect").visible = true
+			push_warning("[RangerHero] No hero_texture assigned - using fallback ColorRect")
 
 	# Register with BalanceTracker
 	if BalanceTracker:
@@ -466,8 +488,26 @@ func _physics_process(delta):
 
 	clean_enemy_lists()
 
-	# Keep health bar horizontal (enemy-style health bar handles its own rotation)
-	# No need to counter-rotate - the health_bar.gd script handles positioning
+# ============================================
+# VISUAL - KINGDOM RUSH STYLE SPRITE FLIPPING
+# ============================================
+
+func update_sprite_direction(target_position: Vector2):
+	"""Kingdom Rush style: Flip sprite left/right only (no 360° rotation)
+
+	This keeps the character always upright and readable, matching the
+	isometric 2D tower defense style of Kingdom Rush.
+	"""
+	if not sprite:
+		return
+
+	# Calculate direction to target
+	var direction_to_target = target_position - global_position
+
+	# Flip sprite horizontally based on X direction
+	# flip_h = true means sprite faces LEFT
+	# flip_h = false means sprite faces RIGHT (default)
+	sprite.flip_h = direction_to_target.x < 0
 
 # ============================================
 # STATE HANDLERS
@@ -486,14 +526,15 @@ func handle_ranged_combat_state():
 	if not enemies_in_melee_range.is_empty():
 		enter_melee_combat()
 		return
-	
+
 	if enemies_in_ranged_range.is_empty():
 		enter_returning_state()
 		return
-	
+
 	current_ranged_target = get_closest_ranged_enemy()
 	if current_ranged_target and is_instance_valid(current_ranged_target):
-		look_at(current_ranged_target.global_position)
+		# Kingdom Rush style: Just flip sprite left/right (no rotation)
+		update_sprite_direction(current_ranged_target.global_position)
 
 func handle_melee_combat_state():
 	current_melee_targets = get_melee_targets()
@@ -531,12 +572,12 @@ func handle_melee_combat_state():
 			# In position - stop moving
 			velocity = Vector2.ZERO
 
-		# Look at center point between targets if fighting 2
+		# Kingdom Rush style: Flip sprite to face enemies (not 360° rotation)
 		if current_melee_targets.size() > 1:
 			var center = (current_melee_targets[0].global_position + current_melee_targets[1].global_position) / 2
-			look_at(center)
+			update_sprite_direction(center)
 		else:
-			look_at(closest.global_position)
+			update_sprite_direction(closest.global_position)
 
 		for enemy in current_melee_targets:
 			if enemy.has_method("set_blocked_by_hero"):

@@ -378,66 +378,60 @@ func _setup_level_nodes():
 	for button in level_buttons:
 		button.queue_free()
 	level_buttons.clear()
+	level_button_nodes.clear()  # Clear zoom compensation array too
 
-	# Create world-space level buttons (ColorRect + Area2D for proper visibility and clicking)
+	# Create world-space level buttons with professional styling
 	for level_data in level_nodes_data:
 		# Create container node for this level button
 		var button_node = Node2D.new()
 		button_node.position = level_data.position
 		button_node.name = "LevelButton_" + level_data.level_id
 
-		# Create visual representation using Polygon2D (works in Node2D hierarchy)
-		var visual = Polygon2D.new()
-
-		# Define rectangle shape centered at origin
-		var rect_points = PackedVector2Array([
-			Vector2(-75, -25),   # Top-left
-			Vector2(75, -25),    # Top-right
-			Vector2(75, 25),     # Bottom-right
-			Vector2(-75, 25)     # Bottom-left
-		])
-		visual.polygon = rect_points
-
 		# Check if level is unlocked
 		var is_unlocked = _check_unlock_status(level_data)
 
-		# Get star rating for color
+		# Get star rating
 		var stars = SaveManager.get_level_stars(level_data.level_id)
-		visual.color = STAR_COLORS.get(stars, STAR_COLORS[0])
 
-		if not is_unlocked:
-			visual.modulate = Color(0.3, 0.3, 0.3, 0.7)  # Darken locked levels
+		# Create styled Button (UI element in world space)
+		var button = Button.new()
+		button.custom_minimum_size = Vector2(150, 50)
+		button.text = level_data.level_name
+		button.position = Vector2(-75, -25)  # Center in parent Node2D
+		button.disabled = not is_unlocked  # Disable if locked
 
-		# Add label for level name
-		var label = Label.new()
-		label.text = level_data.level_name
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.size = Vector2(150, 50)
-		label.add_theme_color_override("font_color", Color.WHITE)
-		visual.add_child(label)
+		# Apply professional styling based on stars
+		var style_normal = _create_level_button_style(stars, is_unlocked, "normal")
+		var style_hover = _create_level_button_style(stars, is_unlocked, "hover")
+		var style_pressed = _create_level_button_style(stars, is_unlocked, "pressed")
+		var style_disabled = _create_level_button_style(stars, is_unlocked, "disabled")
+
+		button.add_theme_stylebox_override("normal", style_normal)
+		button.add_theme_stylebox_override("hover", style_hover)
+		button.add_theme_stylebox_override("pressed", style_pressed)
+		button.add_theme_stylebox_override("disabled", style_disabled)
+
+		# Font styling
+		button.add_theme_font_size_override("font_size", 16)
+		button.add_theme_color_override("font_color", Color.WHITE)
+		button.add_theme_constant_override("outline_size", 2)
+		button.add_theme_color_override("font_outline_color", Color.BLACK)
+
+		# Connect click signal
+		if is_unlocked:
+			button.pressed.connect(_on_level_button_pressed.bind(level_data))
+
+		# Add glow effect for unlocked levels (optional)
+		if is_unlocked and stars > 0:
+			button.material = _create_glow_material(STAR_COLORS.get(stars))
+
+		# Add button to container
+		button_node.add_child(button)
 
 		# Add star display (Kingdom Rush style)
 		var stars_earned = SaveManager.get_level_stars(level_data.level_id)
 		_create_star_display(button_node, stars_earned)
 		print("⭐ Created star display for %s: %d stars" % [level_data.level_name, stars_earned])
-
-		# Create clickable area
-		var area = Area2D.new()
-		var collision = CollisionShape2D.new()
-		var shape = RectangleShape2D.new()
-		shape.size = Vector2(150, 50)
-		collision.shape = shape
-		area.add_child(collision)
-
-		# Connect click signal
-		area.input_event.connect(_on_level_area_clicked.bind(level_data, is_unlocked))
-
-		# Assemble the button
-		button_node.add_child(visual)
-		button_node.add_child(area)
-		visual.z_index = 0  # Button background at default layer
-		area.z_index = 1  # Clickable area slightly above
 
 		# Store reference for zoom compensation
 		level_button_nodes.append(button_node)
@@ -448,9 +442,111 @@ func _setup_level_nodes():
 
 		# Add to scene
 		level_nodes_container.add_child(button_node)
-		level_buttons.append(visual)  # Store visual for future updates
+		level_buttons.append(button)  # Store button for future updates
 
-		print("Created button for ", level_data.level_name, " at ", level_data.position, " | Unlocked: ", is_unlocked)
+		print("Created button for ", level_data.level_name, " at ", level_data.position, " | Unlocked: ", is_unlocked, " | Stars: ", stars)
+
+func _create_level_button_style(stars: int, is_unlocked: bool, state: String) -> StyleBoxFlat:
+	"""Create a professional StyleBoxFlat for level buttons with shadows, borders, and colors"""
+	var style = StyleBoxFlat.new()
+	var base_color = STAR_COLORS.get(stars, STAR_COLORS[0])
+
+	# Background - dark with subtle tint of star color
+	var bg_color = Color(0.08, 0.08, 0.12, 0.95)
+	if is_unlocked:
+		bg_color = bg_color.lerp(base_color, 0.08)  # Subtle tint for unlocked levels
+	style.bg_color = bg_color
+
+	# Border - thicker and colored by stars
+	style.border_width_left = 4
+	style.border_width_top = 4
+	style.border_width_right = 4
+	style.border_width_bottom = 6  # Thicker bottom for 3D effect
+
+	# Apply state-specific styling
+	match state:
+		"normal":
+			style.border_color = base_color
+		"hover":
+			style.border_color = base_color.lightened(0.3)
+			style.border_width_left = 5
+			style.border_width_top = 5
+			style.border_width_right = 5
+			style.border_width_bottom = 7
+			style.bg_color = bg_color.lightened(0.1)
+		"pressed":
+			style.border_color = base_color.darkened(0.2)
+			style.bg_color = bg_color.darkened(0.15)
+			# Pressed appears "pushed in" - thinner bottom border
+			style.border_width_bottom = 4
+		"disabled":
+			# Locked levels - gray and darkened
+			style.bg_color = Color(0.1, 0.1, 0.1, 0.7)
+			style.border_color = Color(0.3, 0.3, 0.3, 0.8)
+			style.border_width_left = 3
+			style.border_width_top = 3
+			style.border_width_right = 3
+			style.border_width_bottom = 5
+
+	# Rounded corners for modern look
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+
+	# Shadow effect (adds depth)
+	if is_unlocked:
+		style.shadow_size = 4
+		style.shadow_color = Color(0, 0, 0, 0.7)
+		style.shadow_offset = Vector2(2, 3)
+	else:
+		# Locked levels have minimal shadow
+		style.shadow_size = 2
+		style.shadow_color = Color(0, 0, 0, 0.5)
+		style.shadow_offset = Vector2(1, 2)
+
+	# Padding for text
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+
+	return style
+
+func _create_glow_material(glow_color: Color) -> ShaderMaterial:
+	"""Create a subtle glow shader effect for unlocked level buttons"""
+	var shader = Shader.new()
+	shader.code = """
+shader_type canvas_item;
+
+uniform vec4 glow_color : source_color = vec4(1.0, 0.84, 0.0, 1.0);
+uniform float glow_intensity : hint_range(0.0, 2.0) = 0.5;
+uniform float glow_size : hint_range(0.0, 0.1) = 0.02;
+
+void fragment() {
+	vec4 color = texture(TEXTURE, UV);
+
+	// Sample nearby pixels for glow
+	float glow = 0.0;
+	for(float x = -glow_size; x <= glow_size; x += glow_size/3.0) {
+		for(float y = -glow_size; y <= glow_size; y += glow_size/3.0) {
+			glow += texture(TEXTURE, UV + vec2(x, y)).a;
+		}
+	}
+	glow = smoothstep(0.0, 1.0, glow * 0.05) * glow_intensity;
+
+	COLOR = mix(color, vec4(glow_color.rgb, 1.0), glow * (1.0 - color.a));
+	COLOR.a = max(color.a, glow);
+}
+"""
+
+	var material = ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("glow_color", glow_color)
+	material.set_shader_parameter("glow_intensity", 0.4)  # Subtle glow
+	material.set_shader_parameter("glow_size", 0.012)
+
+	return material
 
 func _draw_paths():
 	if not paths_layer:
@@ -501,14 +597,6 @@ func _draw_path_between_levels(from_level: LevelNodeData, to_level: LevelNodeDat
 
 	path_line.points = points
 	paths_layer.add_child(path_line)
-
-func _on_level_area_clicked(_viewport: Node, event: InputEvent, _shape_idx: int, level_data: LevelNodeData, is_unlocked: bool):
-	"""Handle clicks on level button Area2D nodes"""
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if is_unlocked:
-			_on_level_button_pressed(level_data)
-		else:
-			print("🔒 Level locked: ", level_data.level_name)
 
 func _on_level_button_pressed(level_data: LevelNodeData):
 	print("🎮 LEVEL BUTTON CLICKED: ", level_data.level_name)

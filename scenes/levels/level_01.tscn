@@ -53,7 +53,6 @@ wave_label = NodePath("../UI/TopBar/HBoxContainer/WaveLabel")
 position = Vector2(900, 450)
 editor_draw_limits = true
 script = ExtResource("2_camera")
-debug_input = false
 
 [node name="EnemyPath" type="Path2D" parent="."]
 position = Vector2(5, -2)
@@ -157,7 +156,7 @@ script = ExtResource("5_kdubu")
 [node name="TowerSpots" type="Node2D" parent="."]
 
 [node name="TowerSpot1" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(430, 521)
+position = Vector2(451, 514)
 
 [node name="TowerSpot2" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
 position = Vector2(1002, 228)
@@ -175,7 +174,7 @@ position = Vector2(663, 329)
 position = Vector2(751, 525)
 
 [node name="TowerSpot7" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(205, 399)
+position = Vector2(232, 415)
 
 [node name="TowerSpot8" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
 position = Vector2(-948, 1937)
