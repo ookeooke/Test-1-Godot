@@ -5,7 +5,7 @@ extends "res://scripts/enemies/base_enemy.gd"
 
 func _init():
 	# Set bat-specific stats
-	speed = 60.0  # Reduced from 80 (-25% Kingdom Rush pacing)
+	speed = 48.0  # PACING FIX: Reduced from 80 (-40% total: -25% KR pacing, -20% strategic slowdown)
 	max_health = 120.0
 	melee_damage = 0.0  # Bats don't attack heroes
 	attack_cooldown = 1.0

@@ -76,138 +76,93 @@ func _update_hero_header():
 
 
 func _update_stats_breakdown():
-	"""Show detailed stat breakdown"""
+	"""Show detailed stat breakdown using NEW unified Stat system"""
 	if not stats_text:
 		return
 
 	var text = "[center][b]DETAILED STATISTICS[/b][/center]\n\n"
 
-	# Get base stats (hardcoded for now, should come from hero data)
-	var base_stats = _get_base_stats()
+	# Try to find hero in scene to read actual stats
+	var hero = _find_hero()
 
-	# Get equipment bonuses
-	var equipment_bonuses = _get_equipment_bonuses()
+	if hero:
+		# HERO FOUND: Display actual stats from hero's Stat objects
+		text += "[b]RANGED DAMAGE[/b]\n"
+		text += "  Base: %.1f\n" % hero.BASE_RANGED_DAMAGE
+		text += "  [b]Total: %.1f[/b]\n\n" % hero.ranged_damage
 
-	# Get skill bonuses (TODO: implement when skill system ready)
-	var skill_bonuses = _get_skill_bonuses()
+		text += "[b]HEALTH[/b]\n"
+		text += "  Base: %.0f\n" % hero.BASE_MAX_HEALTH
+		text += "  [b]Total: %.0f[/b]\n" % hero.max_health
+		text += "  Current: %.0f\n\n" % hero.current_health
 
-	# Damage
-	text += "[b]DAMAGE[/b]\n"
-	text += "  Base: %d\n" % base_stats.damage
-	if equipment_bonuses.damage > 0:
-		text += "  Equipment: [color=green]+%d[/color]\n" % equipment_bonuses.damage
-	if skill_bonuses.damage > 0:
-		text += "  Skills: [color=cyan]+%d[/color]\n" % skill_bonuses.damage
-	var total_damage = base_stats.damage + equipment_bonuses.damage + skill_bonuses.damage
-	text += "  [b]Total: %d[/b]\n\n" % total_damage
+		text += "[b]ATTACK SPEED[/b]\n"
+		text += "  Base: %.2f cooldown\n" % hero.BASE_RANGED_ATTACK_SPEED
+		text += "  [b]Total: %.2f cooldown[/b]\n" % hero.ranged_attack_speed
+		text += "  (%.1f attacks/sec)\n\n" % (1.0 / hero.ranged_attack_speed)
 
-	# Health
-	text += "[b]HEALTH[/b]\n"
-	text += "  Base: %d\n" % base_stats.health
-	if equipment_bonuses.health > 0:
-		text += "  Equipment: [color=green]+%d[/color]\n" % equipment_bonuses.health
-	if skill_bonuses.health > 0:
-		text += "  Skills: [color=cyan]+%d[/color]\n" % skill_bonuses.health
-	var total_health = base_stats.health + equipment_bonuses.health + skill_bonuses.health
-	text += "  [b]Total: %d[/b]\n\n" % total_health
+		text += "[b]RANGE[/b]\n"
+		text += "  Base: %.0f\n" % hero.BASE_RANGED_RANGE
+		text += "  [b]Total: %.0f[/b]\n\n" % hero.ranged_range
 
-	# Attack Speed
-	text += "[b]ATTACK SPEED[/b]\n"
-	text += "  Base: %.2f/sec\n" % base_stats.attack_speed
-	if equipment_bonuses.attack_speed_mult > 1.0:
-		text += "  Equipment: [color=green]x%.2f[/color]\n" % equipment_bonuses.attack_speed_mult
-	if skill_bonuses.attack_speed_mult > 1.0:
-		text += "  Skills: [color=cyan]x%.2f[/color]\n" % skill_bonuses.attack_speed_mult
-	var total_attack_speed = base_stats.attack_speed * equipment_bonuses.attack_speed_mult * skill_bonuses.attack_speed_mult
-	text += "  [b]Total: %.2f/sec[/b]\n\n" % total_attack_speed
+		text += "[b]MELEE DAMAGE[/b]\n"
+		text += "  Base: %.1f\n" % hero.BASE_MELEE_DAMAGE
+		text += "  [b]Total: %.1f[/b]\n\n" % hero.melee_damage
 
-	# Range
-	text += "[b]RANGE[/b]\n"
-	text += "  Base: %d\n" % base_stats.range
-	if equipment_bonuses.range > 0:
-		text += "  Equipment: [color=green]+%d[/color]\n" % equipment_bonuses.range
-	if skill_bonuses.range > 0:
-		text += "  Skills: [color=cyan]+%d[/color]\n" % skill_bonuses.range
-	var total_range = base_stats.range + equipment_bonuses.range + skill_bonuses.range
-	text += "  [b]Total: %d[/b]\n\n" % total_range
+		text += "[b]MOVEMENT SPEED[/b]\n"
+		text += "  Base: %.0f\n" % hero.BASE_MOVEMENT_SPEED
+		text += "  [b]Total: %.0f[/b]\n\n" % hero.movement_speed
 
-	# Defense
-	if equipment_bonuses.defense > 0 or skill_bonuses.defense > 0:
-		text += "[b]DEFENSE[/b]\n"
-		text += "  Base: 0\n"
-		if equipment_bonuses.defense > 0:
-			text += "  Equipment: [color=green]+%d[/color]\n" % equipment_bonuses.defense
-		if skill_bonuses.defense > 0:
-			text += "  Skills: [color=cyan]+%d[/color]\n" % skill_bonuses.defense
-		var total_defense = equipment_bonuses.defense + skill_bonuses.defense
-		text += "  [b]Total: %d[/b]\n\n" % total_defense
+		# Show equipment modifiers
+		if equipment_manager:
+			var modifiers = equipment_manager.get_all_stat_modifiers()
+			if not modifiers.is_empty():
+				text += "[color=green][b]EQUIPMENT MODIFIERS[/b][/color]\n"
+				for mod in modifiers:
+					text += "  • %s\n" % _format_modifier(mod)
+				text += "\n"
 
-	# Critical Chance
-	if equipment_bonuses.crit_chance > 0 or skill_bonuses.crit_chance > 0:
-		text += "[b]CRITICAL CHANCE[/b]\n"
-		text += "  Base: 0%\n"
-		if equipment_bonuses.crit_chance > 0:
-			text += "  Equipment: [color=green]+%.1f%%[/color]\n" % (equipment_bonuses.crit_chance * 100)
-		if skill_bonuses.crit_chance > 0:
-			text += "  Skills: [color=cyan]+%.1f%%[/color]\n" % (skill_bonuses.crit_chance * 100)
-		var total_crit = equipment_bonuses.crit_chance + skill_bonuses.crit_chance
-		text += "  [b]Total: %.1f%%[/b]\n\n" % (total_crit * 100)
+		# Show skill modifiers (if skill manager exists)
+		if hero.has_node("SkillManager"):
+			var skill_manager = hero.get_node("SkillManager")
+			var skill_mods = skill_manager.get_passive_skill_modifiers()
+			if not skill_mods.is_empty():
+				text += "[color=cyan][b]SKILL MODIFIERS[/b][/color]\n"
+				for mod in skill_mods:
+					text += "  • %s\n" % _format_modifier(mod)
+				text += "\n"
+
+	else:
+		# HERO NOT IN SCENE: Display placeholder message
+		text += "[color=gray]Hero not currently deployed[/color]\n\n"
+		text += "Equipment bonuses will apply when hero is deployed.\n\n"
+
+		if equipment_manager:
+			var modifiers = equipment_manager.get_all_stat_modifiers()
+			if not modifiers.is_empty():
+				text += "[color=green][b]EQUIPPED MODIFIERS[/b][/color]\n"
+				for mod in modifiers:
+					text += "  • %s\n" % _format_modifier(mod)
 
 	stats_text.text = text
 
 
-func _get_base_stats() -> Dictionary:
-	"""Get hero's base stats (should come from hero data resource)"""
-	# TODO: Load from HeroData resource
-	match hero_id:
-		"ranger":
-			return {
-				"damage": 25,
-				"health": 200,
-				"attack_speed": 1.5,  # attacks per second
-				"range": 300,
-				"defense": 0
-			}
-		_:
-			return {
-				"damage": 20,
-				"health": 150,
-				"attack_speed": 1.0,
-				"range": 250,
-				"defense": 0
-			}
+func _find_hero():
+	"""Find the hero in the scene tree"""
+	var heroes = get_tree().get_nodes_in_group("hero")
+	for hero in heroes:
+		if hero.has_method("get_hero_id") and hero.get_hero_id() == hero_id:
+			return hero
+	return null
 
 
-func _get_equipment_bonuses() -> Dictionary:
-	"""Get bonuses from equipped items"""
-	if not equipment_manager:
-		return {
-			"damage": 0,
-			"health": 0,
-			"attack_speed_mult": 1.0,
-			"range": 0,
-			"defense": 0,
-			"crit_chance": 0.0
-		}
-
-	return {
-		"damage": equipment_manager.get_damage_bonus(),
-		"health": equipment_manager.get_health_bonus(),
-		"attack_speed_mult": equipment_manager.get_attack_speed_multiplier(),
-		"range": equipment_manager.get_range_bonus(),
-		"defense": equipment_manager.get_defense_bonus(),
-		"crit_chance": equipment_manager.get_crit_chance_bonus()
-	}
-
-
-func _get_skill_bonuses() -> Dictionary:
-	"""Get bonuses from hero skills"""
-	# TODO: Implement when skill system is integrated
-	return {
-		"damage": 0,
-		"health": 0,
-		"attack_speed_mult": 1.0,
-		"range": 0,
-		"defense": 0,
-		"crit_chance": 0.0
-	}
+func _format_modifier(mod: StatModifier) -> String:
+	"""Format a modifier for display"""
+	match mod.type:
+		StatModifier.ModifierType.FLAT:
+			return "+%.0f %s" % [mod.value, mod.description]
+		StatModifier.ModifierType.ADDITIVE:
+			return "+%.0f%% %s" % [mod.value * 100, mod.description]
+		StatModifier.ModifierType.MULTIPLICATIVE:
+			return "×%.2f %s" % [mod.value, mod.description]
+	return mod.description

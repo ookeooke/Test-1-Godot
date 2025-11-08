@@ -21,10 +21,26 @@ enum TargetingMode {
 	WEAK     # Lowest current health
 }
 
-# TOWER STATS (Kingdom Rush pacing: -25% to match slower enemies)
-var damage = 12  # Reduced from 16 (-25%) for Kingdom Rush strategic pacing
-var attack_speed = 1.0  # Attacks per second
-var range_radius = 300  # Detection range
+# BASE STATS (constants for reference)
+const BASE_DAMAGE = 12.0
+const BASE_ATTACK_SPEED = 1.0
+const BASE_RANGE = 300.0
+
+# TOWER STATS - Unified Stat System (Kingdom Rush pacing: -25% to match slower enemies)
+var stat_damage: Stat
+var stat_attack_speed: Stat
+var stat_range: Stat
+
+# Computed properties for backwards compatibility
+var damage: float:
+	get: return stat_damage.get_value() if stat_damage else BASE_DAMAGE
+
+var attack_speed: float:
+	get: return stat_attack_speed.get_value() if stat_attack_speed else BASE_ATTACK_SPEED
+
+var range_radius: float:
+	get: return stat_range.get_value() if stat_range else BASE_RANGE
+
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
 var build_cost = 70  # BALANCE FIX: Was 100g, now 70g (28% of 250g start gold - matches KR1's 26%)
 
@@ -66,10 +82,25 @@ var current_target = null  # Enemy we're currently aiming at
 var parent_spot = null
 
 # ============================================
+# STAT INITIALIZATION
+# ============================================
+
+func _initialize_stats():
+	"""Initialize all Stat objects with base values"""
+	stat_damage = Stat.new(BASE_DAMAGE)
+	stat_attack_speed = Stat.new(BASE_ATTACK_SPEED)
+	stat_range = Stat.new(BASE_RANGE)
+
+	print("[ArcherTower] Stats initialized - DMG: %.1f, AS: %.1f, Range: %.1f" % [stat_damage.get_value(), stat_attack_speed.get_value(), stat_range.get_value()])
+
+# ============================================
 # BUILT-IN FUNCTIONS
 # ============================================
 
 func _ready():
+	# Initialize stat system FIRST
+	_initialize_stats()
+
 	# Get references to child nodes
 	detection_range = $DetectionRange
 	range_indicator = $RangeIndicator
@@ -827,39 +858,57 @@ func upgrade_tower():
 	tower_level += 1
 	print("🔧 [DEBUG] Level changed: %d → %d (Cost: %dg)" % [old_level, tower_level, upgrade_cost])
 
-	# Apply stat increases per level (Kingdom Rush -25% damage scaling)
+	# Remove old level modifiers (clean slate for new level)
+	var old_source = "upgrade_level_%d" % old_level
+	stat_damage.remove_modifiers_from_source(old_source)
+	stat_attack_speed.remove_modifiers_from_source(old_source)
+	stat_range.remove_modifiers_from_source(old_source)
+
+	# Apply stat increases per level using MODIFIER SYSTEM (Kingdom Rush -25% damage scaling)
+	var mod_source = "upgrade_level_%d" % tower_level
 	match tower_level:
 		2:
 			print("🔧 [DEBUG] Applying Level 2 stats...")
-			damage = 17  # 12 → 17 (+42% damage, reduced from 20 for balance)
-			attack_speed = 1.3  # 1.0 → 1.3 (+30% speed)
-			range_radius = 350  # 300 → 350 (+50 range)
+			# 12 → 17 (+5 flat damage)
+			stat_damage.add_modifier(StatModifier.create_flat(5.0, mod_source, "Tower Upgrade Level 2"))
+			# 1.0 → 1.3 (+0.3 flat attack speed)
+			stat_attack_speed.add_modifier(StatModifier.create_flat(0.3, mod_source, "Tower Upgrade Level 2"))
+			# 300 → 350 (+50 flat range)
+			stat_range.add_modifier(StatModifier.create_flat(50.0, mod_source, "Tower Upgrade Level 2"))
 			# Result: 22.1 DPS (+84% from Level 1, efficiency 1.84x vs 2.17x before)
-			print("✅ [ArcherTower] Upgraded to Level 2: DMG=17, AS=1.3, Range=350, DPS=22.1")
+			print("✅ [ArcherTower] Upgraded to Level 2: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f" % [damage, attack_speed, range_radius, damage * attack_speed])
 		3:
 			print("🔧 [DEBUG] Applying Level 3 stats...")
-			damage = 27  # 20 → 27 (+35% damage)
-			attack_speed = 1.6  # 1.3 → 1.6 (+23% speed)
-			range_radius = 400  # 350 → 400 (+50 range)
+			# 12 → 27 (+15 flat damage from base)
+			stat_damage.add_modifier(StatModifier.create_flat(15.0, mod_source, "Tower Upgrade Level 3"))
+			# 1.0 → 1.6 (+0.6 flat attack speed from base)
+			stat_attack_speed.add_modifier(StatModifier.create_flat(0.6, mod_source, "Tower Upgrade Level 3"))
+			# 300 → 400 (+100 flat range from base)
+			stat_range.add_modifier(StatModifier.create_flat(100.0, mod_source, "Tower Upgrade Level 3"))
 			# Result: 43.2 DPS (+66% from Level 2)
-			print("✅ [ArcherTower] Upgraded to Level 3: DMG=27, AS=1.6, Range=400, DPS=43.2")
+			print("✅ [ArcherTower] Upgraded to Level 3: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f" % [damage, attack_speed, range_radius, damage * attack_speed])
 		5:
 			# Level 4→5 upgrade (path-specific final upgrade)
 			print("🔧 [DEBUG] Applying Level 5 stats (path: %s)..." % upgrade_path)
 			if upgrade_path == "damage":
 				# DAMAGE PATH Level 5: Ultimate glass cannon
-				damage = 40  # BALANCE FIX: Was 45 (112.5 DPS), now 40 (100 DPS - smoother scaling)
-				attack_speed = 2.5  # 2.0 → 2.5 (+25%)
-				# Range stays 500
+				# 12 → 40 (+28 flat damage from base)
+				stat_damage.add_modifier(StatModifier.create_flat(28.0, mod_source, "Tower Upgrade Level 5 Damage"))
+				# 1.0 → 2.5 (+1.5 flat attack speed from base)
+				stat_attack_speed.add_modifier(StatModifier.create_flat(1.5, mod_source, "Tower Upgrade Level 5 Damage"))
+				# Range stays at path level 4 (500)
 				# Result: 100 DPS - ULTIMATE GLASS CANNON!
-				print("✅ [ArcherTower] Upgraded to Level 5 DAMAGE: DMG=40, AS=2.5, Range=500, DPS=100.0")
+				print("✅ [ArcherTower] Upgraded to Level 5 DAMAGE: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f" % [damage, attack_speed, range_radius, damage * attack_speed])
 			elif upgrade_path == "range":
 				# RANGE PATH Level 5: Balanced sniper with less range
-				damage = 35  # 27 → 35 (+30%)
-				attack_speed = 1.8  # 1.6 → 1.8 (+12.5%)
-				range_radius = 450  # 500 → 450 (reduced for balance)
+				# 12 → 35 (+23 flat damage from base)
+				stat_damage.add_modifier(StatModifier.create_flat(23.0, mod_source, "Tower Upgrade Level 5 Range"))
+				# 1.0 → 1.8 (+0.8 flat attack speed from base)
+				stat_attack_speed.add_modifier(StatModifier.create_flat(0.8, mod_source, "Tower Upgrade Level 5 Range"))
+				# 300 → 450 (+150 flat range from base)
+				stat_range.add_modifier(StatModifier.create_flat(150.0, mod_source, "Tower Upgrade Level 5 Range"))
 				# Result: 63 DPS - BALANCED SNIPER
-				print("✅ [ArcherTower] Upgraded to Level 5 RANGE: DMG=35, AS=1.8, Range=450, DPS=63")
+				print("✅ [ArcherTower] Upgraded to Level 5 RANGE: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f" % [damage, attack_speed, range_radius, damage * attack_speed])
 			else:
 				print("⚠️ [DEBUG] WARNING: Level 5 but no path chosen!")
 		_:
@@ -900,16 +949,27 @@ func choose_damage_path():
 		return false
 
 	var path_cost = get_upgrade_cost()  # Get cost before upgrading
+	var old_level = tower_level
 	tower_level += 1
 	upgrade_path = "damage"
 
-	# DAMAGE PATH: +33% damage, +25% attack speed, +100 range
-	damage = 36  # 27 → 36 (+33%)
-	attack_speed = 2.0  # 1.6 → 2.0 (+25%)
-	range_radius = 500  # 400 → 500 (+25% range)
+	# Remove old level modifiers
+	var old_source = "upgrade_level_%d" % old_level
+	stat_damage.remove_modifiers_from_source(old_source)
+	stat_attack_speed.remove_modifiers_from_source(old_source)
+	stat_range.remove_modifiers_from_source(old_source)
+
+	# DAMAGE PATH: Using modifiers instead of direct assignment
+	var mod_source = "upgrade_path_damage"
+	# 12 → 36 (+24 flat damage from base)
+	stat_damage.add_modifier(StatModifier.create_flat(24.0, mod_source, "Damage Path Level 4"))
+	# 1.0 → 2.0 (+1.0 flat attack speed from base)
+	stat_attack_speed.add_modifier(StatModifier.create_flat(1.0, mod_source, "Damage Path Level 4"))
+	# 300 → 500 (+200 flat range from base)
+	stat_range.add_modifier(StatModifier.create_flat(200.0, mod_source, "Damage Path Level 4"))
 	# Result: 72 DPS (+67% from Level 3) - GLASS CANNON!
 
-	print("[ArcherTower] DAMAGE PATH chosen: DMG=36, AS=2.0, Range=500, DPS=72 - High DPS glass cannon!")
+	print("[ArcherTower] DAMAGE PATH chosen: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f - High DPS glass cannon!" % [damage, attack_speed, range_radius, damage * attack_speed])
 
 	# Update shoot timer
 	if shoot_timer:
@@ -936,14 +996,27 @@ func choose_range_path():
 		return false
 
 	var path_cost = get_upgrade_cost()  # Get cost before upgrading
+	var old_level = tower_level
 	tower_level += 1
 	upgrade_path = "range"
 
-	# RANGE PATH: +25% range for wide coverage
-	range_radius = 500  # 400 → 500 (+25%)
-	# Keeps Level 3 stats: DMG=27, AS=1.6, DPS=43.2
+	# Remove old level modifiers
+	var old_source = "upgrade_level_%d" % old_level
+	stat_damage.remove_modifiers_from_source(old_source)
+	stat_attack_speed.remove_modifiers_from_source(old_source)
+	stat_range.remove_modifiers_from_source(old_source)
 
-	print("[ArcherTower] RANGE PATH chosen: Range=500, DMG=27, AS=1.6, DPS=43.2 - Long-range sniper!")
+	# RANGE PATH: Using modifiers - keeps Level 3 damage/AS, increases range
+	var mod_source = "upgrade_path_range"
+	# Damage: 12 → 27 (keep level 3 stats)
+	stat_damage.add_modifier(StatModifier.create_flat(15.0, mod_source, "Range Path Level 4"))
+	# Attack speed: 1.0 → 1.6 (keep level 3 stats)
+	stat_attack_speed.add_modifier(StatModifier.create_flat(0.6, mod_source, "Range Path Level 4"))
+	# Range: 300 → 500 (+200 flat range from base)
+	stat_range.add_modifier(StatModifier.create_flat(200.0, mod_source, "Range Path Level 4"))
+	# Result: 43.2 DPS - Long-range sniper
+
+	print("[ArcherTower] RANGE PATH chosen: Range=%.1f, DMG=%.1f, AS=%.1f, DPS=%.1f - Long-range sniper!" % [range_radius, damage, attack_speed, damage * attack_speed])
 
 	# Update detection range collision shape
 	_update_detection_range()

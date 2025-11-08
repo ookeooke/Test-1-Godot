@@ -10,51 +10,52 @@ signal gold_spawned(amount: int, position: Vector2)
 const ITEM_PICKUP_SCENE = preload("res://scenes/items/item_pickup.tscn")
 
 # Loot tables per enemy tier
-# Based on research: Common 70%, Uncommon 25%, Rare 10%, Epic 4%, Legendary 1%
+# Diablo 2 style: 1-3 items/level, steep rarity curve, bosses drop best loot
+# Common items = vendor trash, Legendary = very rare jackpots
 var loot_tables: Dictionary = {
 	"tier1": {
-		"drop_chance": 0.15,  # 15% chance to drop item
+		"drop_chance": 0.015,  # 1.5% - Very rare drops
 		"gold_range": [5, 15],
 		"rarity_weights": {
-			ItemData.Rarity.COMMON: 0.70,
-			ItemData.Rarity.UNCOMMON: 0.25,
-			ItemData.Rarity.RARE: 0.05,
+			ItemData.Rarity.COMMON: 0.85,
+			ItemData.Rarity.UNCOMMON: 0.14,
+			ItemData.Rarity.RARE: 0.01,
 			ItemData.Rarity.EPIC: 0.0,
 			ItemData.Rarity.LEGENDARY: 0.0
 		}
 	},
 	"tier2": {
-		"drop_chance": 0.30,  # 30% chance to drop item
+		"drop_chance": 0.04,  # 4% - Rare drops
 		"gold_range": [15, 40],
 		"rarity_weights": {
-			ItemData.Rarity.COMMON: 0.50,
-			ItemData.Rarity.UNCOMMON: 0.30,
-			ItemData.Rarity.RARE: 0.15,
-			ItemData.Rarity.EPIC: 0.05,
+			ItemData.Rarity.COMMON: 0.70,
+			ItemData.Rarity.UNCOMMON: 0.20,
+			ItemData.Rarity.RARE: 0.08,
+			ItemData.Rarity.EPIC: 0.02,
 			ItemData.Rarity.LEGENDARY: 0.0
 		}
 	},
 	"tier3": {
-		"drop_chance": 0.50,  # 50% chance to drop item
+		"drop_chance": 0.10,  # 10% - Uncommon drops
 		"gold_range": [40, 80],
 		"rarity_weights": {
-			ItemData.Rarity.COMMON: 0.40,
+			ItemData.Rarity.COMMON: 0.50,
 			ItemData.Rarity.UNCOMMON: 0.30,
-			ItemData.Rarity.RARE: 0.20,
-			ItemData.Rarity.EPIC: 0.09,
+			ItemData.Rarity.RARE: 0.15,
+			ItemData.Rarity.EPIC: 0.04,
 			ItemData.Rarity.LEGENDARY: 0.01
 		}
 	},
 	"boss": {
 		"drop_chance": 1.0,  # 100% guaranteed drop
 		"gold_range": [100, 200],
-		"item_count": 3,  # Drop 3 items
+		"item_count": 1,  # 1 item per boss
 		"rarity_weights": {
-			ItemData.Rarity.COMMON: 0.20,
-			ItemData.Rarity.UNCOMMON: 0.30,
-			ItemData.Rarity.RARE: 0.30,
-			ItemData.Rarity.EPIC: 0.15,
-			ItemData.Rarity.LEGENDARY: 0.05
+			ItemData.Rarity.COMMON: 0.0,       # Bosses never drop common
+			ItemData.Rarity.UNCOMMON: 0.05,    # 5% uncommon
+			ItemData.Rarity.RARE: 0.20,        # 20% rare
+			ItemData.Rarity.EPIC: 0.50,        # 50% epic (HIGH CHANCE!)
+			ItemData.Rarity.LEGENDARY: 0.25    # 25% legendary (HIGH CHANCE!)
 		}
 	}
 }
@@ -121,7 +122,8 @@ func _roll_rarity(weights: Dictionary) -> ItemData.Rarity:
 func _get_random_item_of_rarity(rarity: ItemData.Rarity) -> ItemData:
 	var items_of_rarity = ItemDatabase.get_items_by_rarity(rarity)
 
-	# Filter out currency items (we spawn gold separately)
+	# Filter out only currency items (we spawn gold separately)
+	# Allow consumables and equipment to drop
 	var valid_items: Array[ItemData] = []
 	for item in items_of_rarity:
 		if item.item_type != ItemData.ItemType.CURRENCY:

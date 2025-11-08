@@ -28,26 +28,23 @@ layout_mode = 2
 theme_override_constants/separation = 10
 
 [node name="HeaderContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_constants/separation = 10
 
 [node name="HeroPortrait" type="ColorRect" parent="MarginContainer/VBoxContainer/HeaderContainer"]
-custom_minimum_size = Vector2(80, 80)
+custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 color = Color(0.5, 0.5, 0.5, 1)
 
-[node name="HeroInfoVBox" type="VBoxContainer" parent="MarginContainer/VBoxContainer/HeaderContainer"]
+[node name="HeroNameLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 5
-
-[node name="HeroNameLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox"]
-layout_mode = 2
 text = "Hero Name"
 vertical_alignment = 1
 
-[node name="SwitchHeroButton" type="Button" parent="MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox"]
-custom_minimum_size = Vector2(0, 48)
+[node name="SwitchHeroButton" type="Button" parent="MarginContainer/VBoxContainer/HeaderContainer"]
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 text = "Switch Hero"
 
@@ -61,50 +58,66 @@ columns = 2
 [node name="WeaponSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot"]
-layout_mode = 2
-text = "WEAPON"
-horizontal_alignment = 1
-
 [node name="WeaponContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot/WeaponContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 20
+text = "⚔️"
+horizontal_alignment = 0
+vertical_alignment = 0
+
 [node name="ArmorSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid"]
 layout_mode = 2
-
-[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/ArmorSlot"]
-layout_mode = 2
-text = "ARMOR"
-horizontal_alignment = 1
 
 [node name="ArmorContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/ArmorSlot"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/ArmorSlot/ArmorContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 20
+text = "🛡️"
+horizontal_alignment = 0
+vertical_alignment = 0
+
 [node name="Accessory1Slot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid"]
 layout_mode = 2
-
-[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot"]
-layout_mode = 2
-text = "ACCESSORY 1"
-horizontal_alignment = 1
 
 [node name="Accessory1Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot/Accessory1Container"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 20
+text = "💎"
+horizontal_alignment = 0
+vertical_alignment = 0
+
 [node name="Accessory2Slot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid"]
 layout_mode = 2
-
-[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot"]
-layout_mode = 2
-text = "ACCESSORY 2"
-horizontal_alignment = 1
 
 [node name="Accessory2Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
+
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot/Accessory2Container"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 20
+text = "💎"
+horizontal_alignment = 0
+vertical_alignment = 0
 
 [node name="StatsContainer" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2

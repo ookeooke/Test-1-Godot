@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://c7vqy8qk5xm3p"]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_epic_crossbow"]
+
+[resource]
+script = ExtResource("1_epic_crossbow")
+item_id = "epic_crossbow"
+item_name = "Dragonbone Crossbow"
+description = "A powerful crossbow crafted from ancient dragon bones. Fires devastating bolts that pierce through enemies."
+item_type = 0
+rarity = 3
+icon_texture = null
+base_gold_value = 1200
+max_stack_size = 1
+is_consumable = false
+is_stackable = false
+stat_bonuses = {
+"attack_damage": 28.0,
+"attack_range": 140.0,
+"attack_speed_multiplier": 1.35,
+"critical_chance": 0.12
+}
+equipment_slot = 0
+required_hero_class = 1
+required_level = 1
+special_effects = ["pierce_1", "critical_damage_150"]
+inventory_width = 2
+inventory_height = 3

@@ -5,10 +5,14 @@ extends CanvasLayer
 @onready var wave_label = $TopBar/HBoxContainer/WaveLabel
 @onready var lives_label = $TopBar/HBoxContainer/LivesLabel
 @onready var speed_button = $TopBar/HBoxContainer/SpeedButton
+@onready var pause_button = $TopBar/HBoxContainer/PauseButton
 @onready var debug_hud_button = $TopBar/HBoxContainer/DebugHudButton
 
 # SPEED CONTROL
 var current_speed: int = 1  # Current game speed (1, 2, 4, or 8)
+
+# PAUSE STATE
+var is_paused: bool = false
 
 func _ready():
 	# Connect to GameStateManager signals
@@ -17,6 +21,9 @@ func _ready():
 
 	# Connect speed button
 	speed_button.pressed.connect(_on_speed_button_pressed)
+
+	# Connect pause button
+	pause_button.pressed.connect(_on_pause_button_pressed)
 
 	# Connect debug HUD button
 	debug_hud_button.pressed.connect(_on_debug_hud_button_pressed)
@@ -61,6 +68,18 @@ func _on_speed_button_pressed():
 
 func _update_speed_display():
 	speed_button.text = str(current_speed) + "x"
+
+# PAUSE CONTROL FUNCTIONS
+func _on_pause_button_pressed():
+	# Toggle pause state
+	is_paused = !is_paused
+	get_tree().paused = is_paused
+
+	# Update button display
+	if is_paused:
+		pause_button.text = "▶"  # Play icon when paused
+	else:
+		pause_button.text = "⏸"  # Pause icon when playing
 
 # DEBUG HUD CONTROL FUNCTIONS
 func _on_debug_hud_button_pressed():

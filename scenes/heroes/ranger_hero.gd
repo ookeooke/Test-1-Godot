@@ -25,7 +25,7 @@ var stat_crit_chance: Stat
 var stat_defense: Stat
 
 # Current health (not a Stat, just a runtime value)
-var current_health = 300.0  # BALANCE FIX: Updated to match new BASE_MAX_HEALTH
+var current_health = BASE_MAX_HEALTH  # Will be properly set after stat initialization
 
 # Base stats (for reference and reset)
 const BASE_MAX_HEALTH = 300.0  # BALANCE FIX: Was 200 (40 hits), now 300 (60 hits - matches KR1 durability)
@@ -109,17 +109,29 @@ var equipment_manager: EquipmentManager = null
 # ============================================
 
 func _ready():
+	print("\n🎯 === RANGER HERO INITIALIZATION START ===")
+
 	# Initialize stat system FIRST (before equipment/skills)
+	print("1️⃣ Initializing stats...")
 	_initialize_stats()
 
 	# Initialize equipment system
+	print("2️⃣ Setting up equipment system...")
 	_setup_equipment_system()
 
 	# Initialize skill system
+	print("3️⃣ Setting up skill system...")
 	_setup_skill_system()
 
 	# Apply all modifiers from equipment and skills
+	print("4️⃣ Final stat recalculation...")
 	_recalculate_all_stats()
+
+	# Set hero to full health after all stat bonuses are applied
+	current_health = max_health
+	print("5️⃣ Health set to max: %.0f" % current_health)
+
+	print("✅ === RANGER HERO INITIALIZATION COMPLETE ===\n")
 
 	# Set collision layers
 	collision_layer = 2
@@ -193,6 +205,10 @@ func _initialize_stats():
 	stat_ranged_attack_speed = Stat.new(BASE_RANGED_ATTACK_SPEED)
 	stat_movement_speed = Stat.new(BASE_MOVEMENT_SPEED)
 
+	# Optional stats (start at 0, only increased by equipment/skills)
+	stat_crit_chance = Stat.new(0.0)
+	stat_defense = Stat.new(0.0)
+
 	# Set initial health to max
 	current_health = BASE_MAX_HEALTH
 
@@ -212,18 +228,27 @@ func _recalculate_all_stats():
 	stat_ranged_range.clear_modifiers()
 	stat_ranged_attack_speed.clear_modifiers()
 	stat_movement_speed.clear_modifiers()
+	stat_crit_chance.clear_modifiers()
+	stat_defense.clear_modifiers()
+
+	var equipment_mod_count = 0
+	var skill_mod_count = 0
 
 	# Gather modifiers from equipment
 	if equipment_manager:
 		var equipment_modifiers = equipment_manager.get_all_stat_modifiers()
+		equipment_mod_count = equipment_modifiers.size()
 		for modifier in equipment_modifiers:
 			_apply_modifier_to_appropriate_stat(modifier)
 
 	# Gather modifiers from skills
 	if skill_manager:
 		var skill_modifiers = skill_manager.get_passive_skill_modifiers()
+		skill_mod_count = skill_modifiers.size()
 		for modifier in skill_modifiers:
 			_apply_modifier_to_appropriate_stat(modifier)
+
+	print("   Applied %d equipment modifiers + %d skill modifiers" % [equipment_mod_count, skill_mod_count])
 
 	# Update timer with new attack speed
 	if ranged_timer:
@@ -286,6 +311,10 @@ func _setup_equipment_system():
 	# Connect to equipment change signal
 	equipment_manager.equipment_changed.connect(_on_equipment_changed)
 
+	# CRITICAL: Load equipment from save BEFORE first stat calculation
+	# This ensures stats include equipment bonuses on first spawn
+	equipment_manager.load_from_save()
+
 	print("✅ Equipment system initialized for ranger")
 
 
@@ -321,6 +350,17 @@ func _setup_skill_system():
 
 	# Connect to skill activation signal
 	skill_manager.skill_activated.connect(_on_skill_activated)
+
+	# FOR TESTING: Auto-unlock multishot skill
+	if not skill_manager.is_skill_owned("ranger_multishot"):
+		var multishot_data = null
+		for skill_data in available_skills:
+			if skill_data.skill_id == "ranger_multishot":
+				multishot_data = skill_data
+				break
+		if multishot_data:
+			skill_manager.unlock_skill("ranger_multishot", multishot_data)
+			print("🎯 Auto-unlocked Multishot for testing")
 
 	print("✅ Skill system initialized for ranger")
 

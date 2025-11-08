@@ -163,6 +163,9 @@ var user_prefs = {
 # ============================================
 
 func _ready():
+	# Allow camera to work during pause (zoom/pan while game is frozen)
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
 	# STARTUP DEBUG - Verify camera script loads
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	print("🎥 [CAMERA] _ready() called!")

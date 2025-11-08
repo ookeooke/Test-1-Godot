@@ -5,7 +5,7 @@ extends "res://scripts/enemies/base_enemy.gd"
 
 func _init():
 	# Set wolf-specific stats
-	speed = 101.0  # Reduced from 135 (-25% Kingdom Rush pacing)
+	speed = 81.0  # PACING FIX: Reduced from 135 (-40% total: -25% KR pacing, -20% strategic slowdown)
 	max_health = 80.0
 	melee_damage = 5.0
 	attack_cooldown = 0.7

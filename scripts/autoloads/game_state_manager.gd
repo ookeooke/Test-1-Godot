@@ -57,8 +57,12 @@ var _tower_cost_modifiers: Dictionary = {}
 ## Global modifiers that affect all tower costs
 var _global_tower_cost_modifiers: Array[StatModifier] = []
 
-## Modifiers for hero stats (hero_id → stat_name → Array[StatModifier])
-var _hero_stat_modifiers: Dictionary = {}
+## ============================================
+## HERO STAT MODIFIERS REMOVED
+## ============================================
+## Old hero stat modifier system has been removed.
+## Heroes now manage their own stats via Stat objects and EquipmentManager.
+## See ranger_hero.gd for the new implementation.
 
 # ============================================
 # INITIALIZATION
@@ -142,20 +146,7 @@ func remove_modifiers_from_source(source_id: String):
 		if _tower_cost_modifiers[tower_id].is_empty():
 			_tower_cost_modifiers.erase(tower_id)
 
-	# Remove from hero stats
-	for hero_id in _hero_stat_modifiers.keys():
-		for stat_name in _hero_stat_modifiers[hero_id].keys():
-			old_size = _hero_stat_modifiers[hero_id][stat_name].size()
-			_hero_stat_modifiers[hero_id][stat_name] = _hero_stat_modifiers[hero_id][stat_name].filter(func(m): return m.source_id != source_id)
-			removed_count += old_size - _hero_stat_modifiers[hero_id][stat_name].size()
-
-			# Clean up empty arrays
-			if _hero_stat_modifiers[hero_id][stat_name].is_empty():
-				_hero_stat_modifiers[hero_id].erase(stat_name)
-
-		# Clean up empty hero dictionaries
-		if _hero_stat_modifiers[hero_id].is_empty():
-			_hero_stat_modifiers.erase(hero_id)
+	# Hero stat modifiers removed - heroes manage their own stats now
 
 	if removed_count > 0:
 		modifiers_changed.emit()
@@ -207,31 +198,14 @@ func get_tower_cost(tower_id: String, base_cost: int) -> int:
 	return final_cost
 
 # ============================================
-# MODIFIER MANAGEMENT - HERO STATS
+# HERO STAT MODIFIERS - REMOVED
 # ============================================
-
-## Add a modifier for a hero stat
-func add_hero_stat_modifier(hero_id: String, stat_name: String, modifier: StatModifier):
-	if not _hero_stat_modifiers.has(hero_id):
-		_hero_stat_modifiers[hero_id] = {}
-
-	if not _hero_stat_modifiers[hero_id].has(stat_name):
-		_hero_stat_modifiers[hero_id][stat_name] = []
-
-	_hero_stat_modifiers[hero_id][stat_name].append(modifier)
-	modifiers_changed.emit()
-	print("[GameStateManager] Added hero stat modifier for %s.%s: %s" % [hero_id, stat_name, modifier.get_debug_string()])
-
-## Calculate final hero stat value
-func get_hero_stat(hero_id: String, stat_name: String, base_value: float) -> float:
-	if not _hero_stat_modifiers.has(hero_id):
-		return base_value
-
-	if not _hero_stat_modifiers[hero_id].has(stat_name):
-		return base_value
-
-	var modifiers = _hero_stat_modifiers[hero_id][stat_name]
-	return _calculate_final_value(base_value, modifiers)
+# The hero stat modifier system has been removed from GameStateManager.
+# Heroes now manage their own stats via:
+#   - Stat objects (stat_ranged_damage, stat_max_health, etc.)
+#   - EquipmentManager.get_all_stat_modifiers()
+#   - SkillManager.get_passive_skill_modifiers()
+# See ranger_hero.gd:_recalculate_all_stats() for the new implementation.
 
 # ============================================
 # CORE CALCULATION ENGINE

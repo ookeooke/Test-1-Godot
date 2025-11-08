@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="HeroSkillData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/hero_skill_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+skill_id = "ranger_multishot"
+skill_name = "Multishot"
+description = "Fire 3 arrows in rapid succession at the current target.\nCooldown: {cooldown}s"
+skill_type = 1
+category = 0
+unlock_cost = 150
+max_upgrade_level = 3
+upgrade_costs = [200, 300]
+required_hero_level = 1
+required_skills = []
+cooldown = 15.0
+duration = 0.0
+mana_cost = 0
+cast_range = 0.0
+damage_multiplier = 1.0
+melee_damage_multiplier = 1.0
+attack_speed_multiplier = 1.0
+movement_speed_multiplier = 1.0
+cooldown_reduction = 0.0
+max_health_bonus = 0.0
+range_bonus = 0.0
+armor_bonus = 0.0
+crit_chance = 0.0
+lifesteal_percent = 0.0
+dodge_chance = 0.0
+damage_multiplier_per_level = [1.0, 1.2, 1.5]
+cooldown_per_level = [15.0, 12.0, 10.0]
+duration_per_level = []
+animation_name = "attack"

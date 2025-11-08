@@ -18,23 +18,14 @@ var equipped_items: Dictionary = {
 	"accessory_2": ""
 }
 
-# DEPRECATED: Old cached stat system
-# These are kept for backward compatibility during migration
-# Use get_all_stat_modifiers() for new unified system
-var cached_damage_bonus: int = 0
-var cached_health_bonus: int = 0
-var cached_defense_bonus: int = 0
-var cached_attack_speed_multiplier: float = 1.0
-var cached_range_bonus: int = 0
-var cached_crit_chance_bonus: float = 0.0
+# Internal flag to prevent duplicate loading
+var _has_loaded_from_save: bool = false
 
 
 func _ready():
-	# Load equipped items from SaveManager
-	load_from_save()
-
-	# Initial stat calculation
-	_recalculate_stats()
+	# Load equipped items from SaveManager (if not already loaded by parent)
+	if not _has_loaded_from_save:
+		load_from_save()
 
 
 ## Equip an item in a specific slot
@@ -64,7 +55,6 @@ func equip_item(slot: String, item_id: String) -> bool:
 
 	# Equip the item
 	equipped_items[slot] = item_id
-	_recalculate_stats()
 
 	item_equipped.emit(slot, item_id)
 	equipment_changed.emit()
@@ -92,7 +82,6 @@ func unequip_item(slot: String) -> bool:
 
 	# Unequip
 	equipped_items[slot] = ""
-	_recalculate_stats()
 
 	item_unequipped.emit(slot, item_id)
 	equipment_changed.emit()
@@ -151,78 +140,11 @@ func get_all_stat_modifiers() -> Array[StatModifier]:
 	return all_modifiers
 
 ## ============================================
-## OLD CACHED STAT SYSTEM (DEPRECATED)
+## DEPRECATED METHODS REMOVED
 ## ============================================
-## Kept for backward compatibility during migration
-## Will be removed once all heroes use new Stat system
-
-## Recalculate total stat bonuses from all equipped items
-func _recalculate_stats():
-	cached_damage_bonus = 0
-	cached_health_bonus = 0
-	cached_defense_bonus = 0
-	cached_attack_speed_multiplier = 1.0
-	cached_range_bonus = 0
-	cached_crit_chance_bonus = 0.0
-
-	for item_id in equipped_items.values():
-		if item_id == "":
-			continue
-
-		var item_data = ItemDatabase.get_item(item_id)
-		if item_data == null:
-			continue
-
-		# Get upgrade level if item is upgraded
-		var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
-
-		# Apply base stats
-		cached_damage_bonus += item_data.damage_bonus
-		cached_health_bonus += item_data.health_bonus
-		cached_defense_bonus += item_data.defense_bonus
-		cached_range_bonus += item_data.range_bonus
-		cached_crit_chance_bonus += item_data.crit_chance_bonus
-
-		# Attack speed is multiplicative
-		cached_attack_speed_multiplier *= item_data.attack_speed_multiplier
-
-		# Apply upgrade bonuses
-		if item_data.can_upgrade and upgrade_level > 0:
-			cached_damage_bonus += int(item_data.damage_bonus * item_data.stat_increase_per_level * upgrade_level)
-			cached_health_bonus += int(item_data.health_bonus * item_data.stat_increase_per_level * upgrade_level)
-			cached_defense_bonus += int(item_data.defense_bonus * item_data.stat_increase_per_level * upgrade_level)
-
-	print("[EquipmentManager] Stats recalculated - Damage: +%d, Health: +%d, Attack Speed: %.2fx" % [cached_damage_bonus, cached_health_bonus, cached_attack_speed_multiplier])
-
-
-## Get total damage bonus from equipped items
-func get_damage_bonus() -> int:
-	return cached_damage_bonus
-
-
-## Get total health bonus from equipped items
-func get_health_bonus() -> int:
-	return cached_health_bonus
-
-
-## Get total defense bonus from equipped items
-func get_defense_bonus() -> int:
-	return cached_defense_bonus
-
-
-## Get total attack speed multiplier from equipped items
-func get_attack_speed_multiplier() -> float:
-	return cached_attack_speed_multiplier
-
-
-## Get total range bonus from equipped items
-func get_range_bonus() -> int:
-	return cached_range_bonus
-
-
-## Get total crit chance bonus from equipped items
-func get_crit_chance_bonus() -> float:
-	return cached_crit_chance_bonus
+## Old cached stat system has been removed.
+## Use get_all_stat_modifiers() for the unified stat system.
+## Heroes recalculate stats automatically via equipment_changed signal.
 
 
 ## Get item ID equipped in a slot
@@ -277,9 +199,11 @@ func load_from_save():
 		var saved_equipment = SaveManager.get_hero_equipment(hero_id)
 		if not saved_equipment.is_empty():
 			equipped_items = saved_equipment.duplicate()
-			_recalculate_stats()
 			equipment_changed.emit()
 			print("[EquipmentManager] Loaded equipment for hero: ", hero_id)
+
+	# Mark as loaded to prevent duplicate loads
+	_has_loaded_from_save = true
 
 
 ## Clear all equipment (unequip everything)

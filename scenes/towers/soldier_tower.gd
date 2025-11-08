@@ -8,7 +8,31 @@ extends StaticBody2D
 # - Rally flag allows player to position the squad
 # - Plugs into existing tower placement system
 
-# TOWER STATS
+# BASE STATS (constants for reference)
+const BASE_SOLDIER_HEALTH = 100.0
+const BASE_SOLDIER_DAMAGE = 10.0
+const BASE_SOLDIER_ATTACK_SPEED = 1.0
+const BASE_RESPAWN_DELAY = 5.0
+
+# TOWER STATS - Unified Stat System
+var stat_soldier_health: Stat
+var stat_soldier_damage: Stat
+var stat_soldier_attack_speed: Stat
+var stat_respawn_delay: Stat
+
+# Computed properties for backwards compatibility
+var soldier_health: float:
+	get: return stat_soldier_health.get_value() if stat_soldier_health else BASE_SOLDIER_HEALTH
+
+var soldier_damage: float:
+	get: return stat_soldier_damage.get_value() if stat_soldier_damage else BASE_SOLDIER_DAMAGE
+
+var soldier_attack_speed: float:
+	get: return stat_soldier_attack_speed.get_value() if stat_soldier_attack_speed else BASE_SOLDIER_ATTACK_SPEED
+
+var respawn_delay: float:
+	get: return stat_respawn_delay.get_value() if stat_respawn_delay else BASE_RESPAWN_DELAY
+
 var build_cost = 120  # Cost to build this tower (for sell calculation)
 
 # UPGRADE SYSTEM (following archer tower pattern)
@@ -20,14 +44,10 @@ const MAX_LEVEL = 5  # Maximum tower level after all upgrades
 @export_group("Garrison Settings")
 @export var squad_size: int = 4  ## Number of soldiers in the squad
 @export var spawn_radius: float = 60.0  ## How far from tower center soldiers spawn
-@export var respawn_delay: float = 5.0  ## Seconds before dead soldier respawns
 @export var rally_flag_default_offset: Vector2 = Vector2(150, 0)  ## Default flag position
 
 @export_group("Soldier Stats")
 @export var soldier_scene: PackedScene  ## Soldier unit scene to spawn
-@export var soldier_health: float = 100.0
-@export var soldier_damage: float = 10.0
-@export var soldier_attack_speed: float = 1.0
 
 # REFERENCES
 var click_area: Area2D  # For clicking the tower
@@ -49,10 +69,26 @@ var parent_spot = null
 var is_placing_rally = false  # True when player clicked "Rally" button in UI
 
 # ============================================
+# STAT INITIALIZATION
+# ============================================
+
+func _initialize_stats():
+	"""Initialize all Stat objects with base values"""
+	stat_soldier_health = Stat.new(BASE_SOLDIER_HEALTH)
+	stat_soldier_damage = Stat.new(BASE_SOLDIER_DAMAGE)
+	stat_soldier_attack_speed = Stat.new(BASE_SOLDIER_ATTACK_SPEED)
+	stat_respawn_delay = Stat.new(BASE_RESPAWN_DELAY)
+
+	print("[SoldierTower] Stats initialized - HP: %.1f, DMG: %.1f, AS: %.1f, Respawn: %.1fs" % [stat_soldier_health.get_value(), stat_soldier_damage.get_value(), stat_soldier_attack_speed.get_value(), stat_respawn_delay.get_value()])
+
+# ============================================
 # BUILT-IN FUNCTIONS
 # ============================================
 
 func _ready():
+	# Initialize stat system FIRST
+	_initialize_stats()
+
 	# Setup click detection (if ClickArea node exists in scene)
 	if has_node("ClickArea"):
 		click_area = $ClickArea
@@ -297,32 +333,51 @@ func upgrade_tower():
 	tower_level += 1
 	print("🔧 [SoldierTower] Level changed: %d → %d (Cost: %dg)" % [old_level, tower_level, upgrade_cost])
 
-	# Apply stat increases per level
+	# Remove old level modifiers (clean slate for new level)
+	var old_source = "upgrade_level_%d" % old_level
+	stat_soldier_health.remove_modifiers_from_source(old_source)
+	stat_soldier_damage.remove_modifiers_from_source(old_source)
+	stat_respawn_delay.remove_modifiers_from_source(old_source)
+
+	# Apply stat increases per level using MODIFIER SYSTEM
+	var mod_source = "upgrade_level_%d" % tower_level
 	match tower_level:
 		2:
-			soldier_health = 120.0  # 100 → 120 (+20%)
-			soldier_damage = 12.0   # 10 → 12 (+20%)
-			respawn_delay = 4.5     # 5.0 → 4.5 (-10% faster)
-			print("✅ [SoldierTower] Upgraded to Level 2: HP=120, DMG=12, Respawn=4.5s")
+			# 100 → 120 (+20 flat health)
+			stat_soldier_health.add_modifier(StatModifier.create_flat(20.0, mod_source, "Soldier Upgrade Level 2"))
+			# 10 → 12 (+2 flat damage)
+			stat_soldier_damage.add_modifier(StatModifier.create_flat(2.0, mod_source, "Soldier Upgrade Level 2"))
+			# 5.0 → 4.5 (-0.5 flat respawn time - NEGATIVE is faster!)
+			stat_respawn_delay.add_modifier(StatModifier.create_flat(-0.5, mod_source, "Soldier Upgrade Level 2"))
+			print("✅ [SoldierTower] Upgraded to Level 2: HP=%.1f, DMG=%.1f, Respawn=%.1fs" % [soldier_health, soldier_damage, respawn_delay])
 		3:
-			soldier_health = 150.0  # 120 → 150 (+25%)
-			soldier_damage = 15.0   # 12 → 15 (+25%)
-			respawn_delay = 4.0     # 4.5 → 4.0 (-11% faster)
-			print("✅ [SoldierTower] Upgraded to Level 3: HP=150, DMG=15, Respawn=4.0s")
+			# 100 → 150 (+50 flat health from base)
+			stat_soldier_health.add_modifier(StatModifier.create_flat(50.0, mod_source, "Soldier Upgrade Level 3"))
+			# 10 → 15 (+5 flat damage from base)
+			stat_soldier_damage.add_modifier(StatModifier.create_flat(5.0, mod_source, "Soldier Upgrade Level 3"))
+			# 5.0 → 4.0 (-1.0 flat respawn time from base)
+			stat_respawn_delay.add_modifier(StatModifier.create_flat(-1.0, mod_source, "Soldier Upgrade Level 3"))
+			print("✅ [SoldierTower] Upgraded to Level 3: HP=%.1f, DMG=%.1f, Respawn=%.1fs" % [soldier_health, soldier_damage, respawn_delay])
 		5:
 			# Level 4→5 upgrade (path-specific final upgrade)
 			if upgrade_path == "defense":
 				# DEFENSE PATH: Tankier soldiers, faster respawn
-				soldier_health = 220.0  # 180 → 220 (+22%)
-				soldier_damage = 18.0   # 18 → 18 (no change)
-				respawn_delay = 2.5     # 3.0 → 2.5 (-17% faster)
-				print("✅ [SoldierTower] Upgraded to Level 5 DEFENSE: HP=220, DMG=18, Respawn=2.5s")
+				# 100 → 220 (+120 flat health from base)
+				stat_soldier_health.add_modifier(StatModifier.create_flat(120.0, mod_source, "Soldier Upgrade Level 5 Defense"))
+				# 10 → 18 (+8 flat damage from base)
+				stat_soldier_damage.add_modifier(StatModifier.create_flat(8.0, mod_source, "Soldier Upgrade Level 5 Defense"))
+				# 5.0 → 2.5 (-2.5 flat respawn time from base)
+				stat_respawn_delay.add_modifier(StatModifier.create_flat(-2.5, mod_source, "Soldier Upgrade Level 5 Defense"))
+				print("✅ [SoldierTower] Upgraded to Level 5 DEFENSE: HP=%.1f, DMG=%.1f, Respawn=%.1fs" % [soldier_health, soldier_damage, respawn_delay])
 			elif upgrade_path == "offense":
 				# OFFENSE PATH: Higher damage, same tankiness
-				soldier_health = 200.0  # 180 → 200 (+11%)
-				soldier_damage = 25.0   # 20 → 25 (+25%)
-				respawn_delay = 3.0     # 3.0 → 3.0 (no change)
-				print("✅ [SoldierTower] Upgraded to Level 5 OFFENSE: HP=200, DMG=25, Respawn=3.0s")
+				# 100 → 200 (+100 flat health from base)
+				stat_soldier_health.add_modifier(StatModifier.create_flat(100.0, mod_source, "Soldier Upgrade Level 5 Offense"))
+				# 10 → 25 (+15 flat damage from base)
+				stat_soldier_damage.add_modifier(StatModifier.create_flat(15.0, mod_source, "Soldier Upgrade Level 5 Offense"))
+				# 5.0 → 3.0 (-2.0 flat respawn time from base)
+				stat_respawn_delay.add_modifier(StatModifier.create_flat(-2.0, mod_source, "Soldier Upgrade Level 5 Offense"))
+				print("✅ [SoldierTower] Upgraded to Level 5 OFFENSE: HP=%.1f, DMG=%.1f, Respawn=%.1fs" % [soldier_health, soldier_damage, respawn_delay])
 
 	# Update ALL existing soldiers with new stats
 	_update_existing_soldiers()
@@ -345,20 +400,31 @@ func choose_defense_path():
 		return false
 
 	var path_cost = get_upgrade_cost()
+	var old_level = tower_level
 	tower_level += 1
 	upgrade_path = "defense"
 
+	# Remove old level modifiers
+	var old_source = "upgrade_level_%d" % old_level
+	stat_soldier_health.remove_modifiers_from_source(old_source)
+	stat_soldier_damage.remove_modifiers_from_source(old_source)
+	stat_respawn_delay.remove_modifiers_from_source(old_source)
+
 	# Level 4 DEFENSE stats: Tankier soldiers
-	soldier_health = 180.0  # 150 → 180 (+20%)
-	soldier_damage = 18.0   # 15 → 18 (+20%)
-	respawn_delay = 3.0     # 4.0 → 3.0 (-25% faster!)
+	var mod_source = "upgrade_path_defense"
+	# 100 → 180 (+80 flat health from base)
+	stat_soldier_health.add_modifier(StatModifier.create_flat(80.0, mod_source, "Defense Path Level 4"))
+	# 10 → 18 (+8 flat damage from base)
+	stat_soldier_damage.add_modifier(StatModifier.create_flat(8.0, mod_source, "Defense Path Level 4"))
+	# 5.0 → 3.0 (-2.0 flat respawn time from base)
+	stat_respawn_delay.add_modifier(StatModifier.create_flat(-2.0, mod_source, "Defense Path Level 4"))
 
 	_update_existing_soldiers()
 
 	if BalanceTracker:
 		BalanceTracker.record_tower_upgrade(self, tower_level, path_cost, "defense")
 
-	print("✅ [SoldierTower] Chose DEFENSE path - Level 4: HP=180, DMG=18, Respawn=3.0s")
+	print("✅ [SoldierTower] Chose DEFENSE path - Level 4: HP=%.1f, DMG=%.1f, Respawn=%.1fs" % [soldier_health, soldier_damage, respawn_delay])
 	return true
 
 func choose_offense_path():
@@ -372,20 +438,31 @@ func choose_offense_path():
 		return false
 
 	var path_cost = get_upgrade_cost()
+	var old_level = tower_level
 	tower_level += 1
 	upgrade_path = "offense"
 
+	# Remove old level modifiers
+	var old_source = "upgrade_level_%d" % old_level
+	stat_soldier_health.remove_modifiers_from_source(old_source)
+	stat_soldier_damage.remove_modifiers_from_source(old_source)
+	stat_respawn_delay.remove_modifiers_from_source(old_source)
+
 	# Level 4 OFFENSE stats: Higher damage
-	soldier_health = 170.0  # 150 → 170 (+13%)
-	soldier_damage = 20.0   # 15 → 20 (+33%)
-	respawn_delay = 3.5     # 4.0 → 3.5 (-12.5% faster)
+	var mod_source = "upgrade_path_offense"
+	# 100 → 170 (+70 flat health from base)
+	stat_soldier_health.add_modifier(StatModifier.create_flat(70.0, mod_source, "Offense Path Level 4"))
+	# 10 → 20 (+10 flat damage from base)
+	stat_soldier_damage.add_modifier(StatModifier.create_flat(10.0, mod_source, "Offense Path Level 4"))
+	# 5.0 → 3.5 (-1.5 flat respawn time from base)
+	stat_respawn_delay.add_modifier(StatModifier.create_flat(-1.5, mod_source, "Offense Path Level 4"))
 
 	_update_existing_soldiers()
 
 	if BalanceTracker:
 		BalanceTracker.record_tower_upgrade(self, tower_level, path_cost, "offense")
 
-	print("✅ [SoldierTower] Chose OFFENSE path - Level 4: HP=170, DMG=20, Respawn=3.5s")
+	print("✅ [SoldierTower] Chose OFFENSE path - Level 4: HP=%.1f, DMG=%.1f, Respawn=%.1fs" % [soldier_health, soldier_damage, respawn_delay])
 	return true
 
 func _update_existing_soldiers():

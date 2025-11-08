@@ -60,6 +60,11 @@ enum EquipSlot {
 @export var buff_duration: float = 0.0
 @export var buff_type: String = ""  ## e.g. "damage_boost", "speed_boost"
 
+# Inventory Display (Multi-Slot Support - Diablo 2 Style)
+@export_group("Inventory Display")
+@export_range(1, 3) var inventory_width: int = 1  ## Width in inventory grid slots (1-3)
+@export_range(1, 3) var inventory_height: int = 1  ## Height in inventory grid slots (1-3)
+
 # Upgrade System
 @export_group("Upgrade System")
 @export var can_upgrade: bool = true
@@ -158,7 +163,7 @@ func is_stackable() -> bool:
 ## upgrade_level: Current upgrade level of the item (0 = base level)
 func get_stat_modifiers(upgrade_level: int = 0) -> Array[StatModifier]:
 	var modifiers: Array[StatModifier] = []
-	var source_id = "item_" + item_id
+	var source_id = "equipment:" + item_id  # Namespaced to prevent collision with skills
 
 	# Only generate modifiers for equippable items
 	if not is_equippable():

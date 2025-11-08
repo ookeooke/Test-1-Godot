@@ -1,23 +1,24 @@
-extends Control
+extends Button
 
 ## ============================================
-## HERO BUTTON - Kingdom Rush Style
+## HERO BUTTON - Kingdom Rush Style (Simplified Single Layer)
 ## ============================================
 ##
 ## Displays hero portrait, health bar, and name in bottom-left corner.
 ## Click to select hero, then click world to move hero.
 ## Always same size regardless of camera zoom (CanvasLayer).
+## Single Button node handles both visuals and interaction!
 
 # REFERENCES
-@onready var portrait = $Panel/VBoxContainer/Portrait
-@onready var health_bar = $Panel/VBoxContainer/HealthBarContainer/HealthBar
-@onready var hero_name_label = $Panel/VBoxContainer/HeroName
-@onready var button = $Button
-@onready var panel = $Panel
+@onready var portrait = $Portrait
+@onready var health_bar = $HealthBar
 
 # Ability buttons container
 var abilities_container: HBoxContainer = null
 var ability_buttons: Array[AbilityButton] = []
+
+# Stats popup
+var stats_popup: HeroStatsPopup = null
 
 # STATE
 var hero_reference = null  # Reference to the actual hero in the game world
@@ -33,15 +34,14 @@ func _ready():
 	# Create abilities container
 	_setup_abilities_container()
 
+	# Create stats popup
+	_setup_stats_popup()
+
 	# Apply scale-aware sizing
 	_apply_ui_scale()
 
 	# Visual feedback setup
 	_update_selection_visual()
-
-	# Button node should exist and be ready to use
-	if not button:
-		push_error("HeroButton: Button node not found!")
 
 	# Listen for scale changes
 	if UIScaleManager:
@@ -59,6 +59,17 @@ func _setup_abilities_container():
 	abilities_container.position = Vector2(0, 125)  # Just below the hero panel
 
 	print("✅ Abilities container created")
+
+func _setup_stats_popup():
+	"""Create stats popup panel"""
+	stats_popup = HeroStatsPopup.new()
+	stats_popup.name = "StatsPopup"
+	add_child(stats_popup)
+
+	# Position to the right of the hero button
+	stats_popup.position = Vector2(100, 0)  # To the right
+
+	print("✅ Stats popup created")
 
 func _apply_ui_scale():
 	"""Apply UI scale factor to ensure proper touch target size"""
@@ -104,6 +115,10 @@ func set_hero(hero):
 		# Setup ability buttons
 		_setup_ability_buttons()
 
+		# Set hero for stats popup
+		if stats_popup:
+			stats_popup.set_hero(hero_reference)
+
 		# Connect to health changes (if signal exists, otherwise poll)
 		# Note: We'll update health every frame in _process for now
 		print("HeroButton connected to hero: ", hero_reference.name)
@@ -117,12 +132,6 @@ func _update_hero_info():
 	if "current_health" in hero_reference and "max_health" in hero_reference:
 		var health_percent = (hero_reference.current_health / hero_reference.max_health) * 100.0
 		health_bar.value = health_percent
-
-	# Update name
-	if hero_reference.has_method("get_hero_name"):
-		hero_name_label.text = hero_reference.get_hero_name()
-	else:
-		hero_name_label.text = hero_reference.name.to_upper()
 
 	# Update portrait color (could be sprite later)
 	# For now, use a color that represents the hero type
@@ -178,14 +187,21 @@ func set_selected(selected: bool):
 	is_selected = selected
 	_update_selection_visual()
 
+	# Show/hide stats popup based on selection
+	if stats_popup:
+		if is_selected:
+			stats_popup.show_stats()
+		else:
+			stats_popup.hide_stats()
+
 func _update_selection_visual():
 	"""Update visual appearance based on selection state"""
 	if is_selected:
 		# Highlighted border or glow
-		panel.modulate = Color(1.3, 1.3, 1.0)  # Yellow tint
+		modulate = Color(1.3, 1.3, 1.0)  # Yellow tint
 	else:
 		# Normal appearance
-		panel.modulate = Color(1.0, 1.0, 1.0)
+		modulate = Color(1.0, 1.0, 1.0)
 
 ## ============================================
 ## CALLBACKS

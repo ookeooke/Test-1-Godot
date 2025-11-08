@@ -24,9 +24,9 @@ var accessory2_slot: ItemSlot
 @onready var accessory2_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot/Accessory2Container if has_node("MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot/Accessory2Container") else null
 
 @onready var stats_label: RichTextLabel = $MarginContainer/VBoxContainer/StatsContainer/StatsLabel if has_node("MarginContainer/VBoxContainer/StatsContainer/StatsLabel") else null
-@onready var hero_name_label: Label = $MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox/HeroNameLabel if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox/HeroNameLabel") else null
+@onready var hero_name_label: Label = $MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel") else null
 @onready var hero_portrait: ColorRect = $MarginContainer/VBoxContainer/HeaderContainer/HeroPortrait if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroPortrait") else null
-@onready var switch_hero_button: Button = $MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox/SwitchHeroButton if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroInfoVBox/SwitchHeroButton") else null
+@onready var switch_hero_button: Button = $MarginContainer/VBoxContainer/HeaderContainer/SwitchHeroButton if has_node("MarginContainer/VBoxContainer/HeaderContainer/SwitchHeroButton") else null
 
 var equipment_manager: EquipmentManager = null
 
@@ -34,6 +34,11 @@ var equipment_manager: EquipmentManager = null
 func _ready():
 	super._ready()
 	view_name = "Equipment"
+
+	# Make stats text 30% smaller
+	if stats_label:
+		stats_label.add_theme_font_size_override("normal_font_size", 11)
+		stats_label.add_theme_font_size_override("bold_font_size", 12)
 
 	# Create equipment slots
 	_create_equipment_slots()
@@ -44,6 +49,10 @@ func _ready():
 	# Connect switch hero button
 	if switch_hero_button:
 		switch_hero_button.pressed.connect(_on_switch_hero_button_pressed)
+
+	# Setup responsive slot sizing
+	get_viewport().size_changed.connect(_on_viewport_resized)
+	_on_viewport_resized()  # Initial sizing
 
 
 func on_view_shown():
@@ -196,47 +205,124 @@ func _update_hero_info():
 
 
 func _update_stats_display():
-	"""Update the stats text display"""
+	"""Update the stats text display - Professional stats comparison (Base vs Equipped)"""
 	if not stats_label or not equipment_manager:
 		return
 
-	var stats_text = "[center][b]EQUIPMENT STATS[/b][/center]\n\n"
+	# Get hero data
+	var hero_data = HeroDatabase.get_hero(hero_id)
+	if not hero_data:
+		stats_label.text = "[center][color=red]Hero data not found[/color][/center]"
+		return
 
-	# Get bonuses from equipment
-	var damage_bonus = equipment_manager.get_damage_bonus()
-	var health_bonus = equipment_manager.get_health_bonus()
-	var defense_bonus = equipment_manager.get_defense_bonus()
-	var attack_speed_mult = equipment_manager.get_attack_speed_multiplier()
-	var range_bonus = equipment_manager.get_range_bonus()
-	var crit_bonus = equipment_manager.get_crit_chance_bonus()
+	var stats_text = "[center][b]HERO STATS[/b][/center]\n\n"
 
-	# Display stats with bonuses highlighted
-	if damage_bonus > 0:
-		stats_text += "Damage: [color=green]+%d[/color]\n" % damage_bonus
-	else:
-		stats_text += "Damage: Base\n"
+	# Calculate total stats with equipment bonuses
+	var modifiers = equipment_manager.get_all_stat_modifiers()
 
-	if health_bonus > 0:
-		stats_text += "Health: [color=green]+%d[/color]\n" % health_bonus
-	else:
-		stats_text += "Health: Base\n"
+	# Calculate bonuses by stat type
+	var damage_bonus: float = 0.0
+	var health_bonus: float = 0.0
+	var defense_bonus: float = 0.0
+	var range_bonus: float = 0.0
+	var attack_speed_bonus: float = 0.0
+	var crit_bonus: float = 0.0
 
-	if defense_bonus > 0:
-		stats_text += "Defense: [color=green]+%d[/color]\n" % defense_bonus
+	for mod in modifiers:
+		var desc_lower = mod.description.to_lower()
 
-	if attack_speed_mult > 1.0:
-		stats_text += "Attack Speed: [color=green]%.1fx[/color]\n" % attack_speed_mult
+		# Parse stat modifiers (simplified - you may need to adjust based on your modifier system)
+		if "damage" in desc_lower:
+			if mod.type == StatModifier.ModifierType.FLAT:
+				damage_bonus += mod.value
+			elif mod.type == StatModifier.ModifierType.ADDITIVE:
+				damage_bonus += hero_data.base_damage * mod.value
 
-	if range_bonus > 0:
-		stats_text += "Range: [color=green]+%d[/color]\n" % range_bonus
+		elif "health" in desc_lower or "max_health" in desc_lower:
+			if mod.type == StatModifier.ModifierType.FLAT:
+				health_bonus += mod.value
+			elif mod.type == StatModifier.ModifierType.ADDITIVE:
+				health_bonus += hero_data.base_health * mod.value
 
-	if crit_bonus > 0:
-		stats_text += "Crit Chance: [color=green]+%.1f%%[/color]\n" % (crit_bonus * 100)
+		elif "defense" in desc_lower or "armor" in desc_lower:
+			if mod.type == StatModifier.ModifierType.FLAT:
+				defense_bonus += mod.value
+			elif mod.type == StatModifier.ModifierType.ADDITIVE:
+				defense_bonus += hero_data.base_defense * mod.value
 
-	if not equipment_manager.has_equipment():
-		stats_text += "\n[color=gray]No equipment equipped[/color]"
+		elif "range" in desc_lower:
+			if mod.type == StatModifier.ModifierType.FLAT:
+				range_bonus += mod.value
+			elif mod.type == StatModifier.ModifierType.ADDITIVE:
+				range_bonus += hero_data.base_range * mod.value
+
+		elif "attack_speed" in desc_lower or "attack speed" in desc_lower:
+			if mod.type == StatModifier.ModifierType.ADDITIVE:
+				attack_speed_bonus += mod.value
+			elif mod.type == StatModifier.ModifierType.MULTIPLICATIVE:
+				attack_speed_bonus += (mod.value - 1.0)
+
+		elif "crit" in desc_lower:
+			if mod.type == StatModifier.ModifierType.FLAT:
+				crit_bonus += mod.value
+			elif mod.type == StatModifier.ModifierType.ADDITIVE:
+				crit_bonus += mod.value
+
+	# Calculate final stats
+	var final_damage = hero_data.base_damage + damage_bonus
+	var final_health = hero_data.base_health + health_bonus
+	var final_defense = hero_data.base_defense + defense_bonus
+	var final_range = hero_data.base_range + range_bonus
+	var final_attack_speed = hero_data.base_attack_speed * (1.0 + attack_speed_bonus)
+	var final_crit = hero_data.base_crit_chance + crit_bonus
+
+	# Display stats in professional format: "Stat Name: Base → Final (+Bonus)"
+	stats_text += _format_stat_line("Damage", hero_data.base_damage, final_damage, damage_bonus)
+	stats_text += _format_stat_line("Health", hero_data.base_health, final_health, health_bonus)
+	stats_text += _format_stat_line("Defense", hero_data.base_defense, final_defense, defense_bonus)
+	stats_text += _format_stat_line("Range", hero_data.base_range, final_range, range_bonus)
+	stats_text += _format_stat_line_float("Attack Speed", hero_data.base_attack_speed, final_attack_speed, attack_speed_bonus, true)
+	stats_text += _format_stat_line_float("Crit Chance", hero_data.base_crit_chance * 100, final_crit * 100, crit_bonus * 100, false, "%")
 
 	stats_label.text = stats_text
+
+
+func _format_modifier(mod: StatModifier) -> String:
+	"""Format a modifier for display"""
+	match mod.type:
+		StatModifier.ModifierType.FLAT:
+			return "+%.0f %s" % [mod.value, mod.description]
+		StatModifier.ModifierType.ADDITIVE:
+			return "+%.0f%% %s" % [mod.value * 100, mod.description]
+		StatModifier.ModifierType.MULTIPLICATIVE:
+			return "×%.2f %s" % [mod.value, mod.description]
+	return mod.description
+
+
+func _format_stat_line(stat_name: String, base_value: float, final_value: float, bonus: float) -> String:
+	"""Format a stat line: 'Stat: Base → Final (+Bonus)' or just 'Stat: Base' if no bonus"""
+	if abs(bonus) < 0.01:
+		# No bonus - show only base value
+		return "[b]%s:[/b] %.0f\n" % [stat_name, base_value]
+	else:
+		# Has bonus - show base → final (+bonus) in green
+		return "[b]%s:[/b] %.0f → [color=green]%.0f[/color] [color=gray](+%.0f)[/color]\n" % [stat_name, base_value, final_value, bonus]
+
+
+func _format_stat_line_float(stat_name: String, base_value: float, final_value: float, bonus: float, is_speed: bool = false, suffix: String = "") -> String:
+	"""Format a stat line for float values (attack speed, crit chance, etc.)"""
+	if abs(bonus) < 0.001:
+		# No bonus - show only base value
+		if is_speed:
+			return "[b]%s:[/b] %.2fs%s\n" % [stat_name, base_value, suffix]
+		else:
+			return "[b]%s:[/b] %.1f%s\n" % [stat_name, base_value, suffix]
+	else:
+		# Has bonus - show base → final (+bonus) in green
+		if is_speed:
+			return "[b]%s:[/b] %.2fs → [color=green]%.2fs[/color] [color=gray](%.0f%%)[/color]\n" % [stat_name, base_value, final_value, bonus * 100]
+		else:
+			return "[b]%s:[/b] %.1f%s → [color=green]%.1f%s[/color] [color=gray](+%.1f%s)[/color]\n" % [stat_name, base_value, suffix, final_value, suffix, bonus, suffix]
 
 
 func _on_equipment_changed():
@@ -255,3 +341,48 @@ func _on_switch_hero_button_pressed():
 	"""Called when Switch Hero button is pressed"""
 	switch_hero_requested.emit()
 	print("[EquipmentView] Switch hero requested")
+
+
+## ============================================
+## RESPONSIVE SLOT SIZING (New Smart Layout)
+## ============================================
+
+func _on_viewport_resized():
+	"""Adjust equipment slot sizes based on panel width"""
+	# Calculate available width for equipment grid
+	var panel_width = _get_parent_panel().size.x if _get_parent_panel() else 600.0
+
+	# Account for margins (10px each side = 20px total)
+	var available_width = panel_width - 20.0
+
+	# Calculate slot size for 2×2 grid
+	# Formula: (available_width - gap_between_columns) / 2
+	var gap = 20.0  # Space between columns
+	var slot_size = (available_width - gap) / 2.0
+
+	# Clamp to reasonable min/max
+	slot_size = clampf(slot_size, 120.0, 300.0)
+
+	# Apply size to all equipment slot containers
+	_resize_slot_container(weapon_container, slot_size)
+	_resize_slot_container(armor_container, slot_size)
+	_resize_slot_container(accessory1_container, slot_size)
+	_resize_slot_container(accessory2_container, slot_size)
+
+	print("[EquipmentView] Resized equipment slots to %.0fpx (panel: %.0fpx)" % [slot_size, panel_width])
+
+
+func _resize_slot_container(container: Control, size: float):
+	"""Resize an equipment slot container"""
+	if container:
+		container.custom_minimum_size = Vector2(size, size)
+
+
+func _get_parent_panel() -> Control:
+	"""Get the parent FlexiblePanel to determine available width"""
+	var node = get_parent()
+	while node != null:
+		if node is Panel or node is PanelContainer:
+			return node
+		node = node.get_parent()
+	return null

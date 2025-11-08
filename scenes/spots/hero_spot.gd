@@ -137,11 +137,20 @@ func spawn_hero(hero_scene_to_spawn: PackedScene):
 			print("  ✓ Connected to HeroManager")
 		else:
 			print("  WARNING: HeroManager not found!")
-	
+
+	# Connect hero to HeroButton UI
+	print("  Connecting hero to HeroButton...")
+	var hero_button = get_tree().get_first_node_in_group("hero_button")
+	if hero_button and hero_button.has_method("set_hero"):
+		hero_button.set_hero(hero)
+		print("  ✓ Connected to HeroButton")
+	else:
+		print("  WARNING: HeroButton not found!")
+
 	current_hero = hero
 	has_hero = true
 	sprite.visible = false
-	
+
 	print("✓ HERO SPAWNED SUCCESSFULLY!")
 	print("========================================")
 

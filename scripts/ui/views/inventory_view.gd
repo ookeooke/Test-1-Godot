@@ -70,50 +70,97 @@ func _create_item_slots():
 	# Set grid columns (will be adjusted by responsive system)
 	inventory_grid.columns = 8
 
-	# Create all inventory slots
-	for i in total_slots:
-		var slot = item_slot_scene.instantiate() as ItemSlot
-		slot.slot_index = i
-		slot.slot_type = "inventory"
+	# Create all inventory slots with grid coordinates
+	var grid_width = InventoryManager.GRID_WIDTH
+	var grid_height = InventoryManager.GRID_HEIGHT
 
-		# Connect signals
-		slot.item_clicked.connect(_on_item_slot_clicked)
-		slot.item_right_clicked.connect(_on_item_slot_right_clicked)
-		slot.mouse_entered.connect(_on_item_slot_hovered.bind(slot))
-		slot.mouse_exited.connect(_on_item_slot_unhovered)
+	for y in grid_height:
+		for x in grid_width:
+			var slot = item_slot_scene.instantiate() as ItemSlot
+			var i = y * grid_width + x
+			slot.slot_index = i
+			slot.slot_type = "inventory"
+			slot.grid_x = x
+			slot.grid_y = y
 
-		inventory_grid.add_child(slot)
-		item_slots.append(slot)
+			# Connect signals
+			slot.item_clicked.connect(_on_item_slot_clicked)
+			slot.item_right_clicked.connect(_on_item_slot_right_clicked)
+			slot.mouse_entered.connect(_on_item_slot_hovered.bind(slot))
+			slot.mouse_exited.connect(_on_item_slot_unhovered)
+
+			inventory_grid.add_child(slot)
+			item_slots.append(slot)
 
 
 func _refresh_inventory():
-	"""Refresh all inventory slots from InventoryManager"""
+	"""Refresh all inventory slots from InventoryManager (spatial grid mode)"""
 	if not InventoryManager:
 		return
 
-	# Clear all slots first
+	# Clear all slots first and reset occupation states
 	for slot in item_slots:
 		slot.clear_slot()
+		slot.is_root_slot = true
+		slot.occupied_by_item_id = ""
 
 	# Get ALL items from inventory (all categories combined)
 	var all_items = InventoryManager.get_all_items()
 
-	# Fill slots with items
-	var slot_index = 0
+	# Place items using spatial grid positions
 	for item_info in all_items:
-		if slot_index >= item_slots.size():
-			break
+		var item_id = item_info.item_id
+		var item_data = item_info.item_data
 
-		var slot = item_slots[slot_index]
-		slot.set_item(
-			item_info.item_id,
-			item_info.quantity,
-			item_info.upgrade_level
-		)
-		slot_index += 1
+		# Get item's grid position from InventoryManager
+		var pos = InventoryManager.get_item_position(item_id)
+		if pos.x == -1 or pos.y == -1:
+			# Item not yet placed in grid - auto-place it
+			if InventoryManager.auto_place_item(item_id):
+				pos = InventoryManager.get_item_position(item_id)
+			else:
+				print("[InventoryView] Warning: Could not place item in grid: ", item_id)
+				continue
+
+		# Find the root slot for this item
+		var root_slot = _get_slot_at_position(pos.x, pos.y)
+		if root_slot == null:
+			print("[InventoryView] Warning: No slot found at position (%d, %d)" % [pos.x, pos.y])
+			continue
+
+		# Set the root slot
+		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level)
+		root_slot.is_root_slot = true
+
+		# Mark occupied cells for multi-slot items
+		for dy in range(item_data.inventory_height):
+			for dx in range(item_data.inventory_width):
+				if dx == 0 and dy == 0:
+					continue  # Skip root cell
+
+				var occupied_slot = _get_slot_at_position(pos.x + dx, pos.y + dy)
+				if occupied_slot:
+					occupied_slot.is_root_slot = false
+					occupied_slot.occupied_by_item_id = item_id
+					occupied_slot.update_display()
+
+	# Update all slot displays
+	for slot in item_slots:
+		slot.update_display()
 
 	# Update labels
 	_update_labels()
+
+
+## Get slot at specific grid coordinates
+func _get_slot_at_position(x: int, y: int) -> ItemSlot:
+	var grid_width = InventoryManager.GRID_WIDTH
+	var index = y * grid_width + x
+
+	if index >= 0 and index < item_slots.size():
+		return item_slots[index]
+
+	return null
 
 
 func _update_labels():

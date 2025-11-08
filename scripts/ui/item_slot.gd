@@ -19,6 +19,12 @@ var item_data: ItemData = null
 var quantity: int = 0
 var upgrade_level: int = 0
 
+# Multi-slot grid support (Diablo 2 style)
+var grid_x: int = -1  ## Grid X coordinate (column)
+var grid_y: int = -1  ## Grid Y coordinate (row)
+var is_root_slot: bool = true  ## True if this is the top-left cell of a multi-slot item
+var occupied_by_item_id: String = ""  ## If not root, stores the item_id occupying this cell
+
 # UI References
 @onready var icon: TextureRect = $MarginContainer/VBoxContainer/Icon if has_node("MarginContainer/VBoxContainer/Icon") else null
 @onready var quantity_label: Label = $MarginContainer/VBoxContainer/QuantityLabel if has_node("MarginContainer/VBoxContainer/QuantityLabel") else null
@@ -86,6 +92,25 @@ func clear_slot():
 func update_display():
 	# ALWAYS clear old emoji labels first to prevent visual bugs
 	_clear_emoji_label()
+
+	# Handle occupied (non-root) slots
+	if not is_root_slot and occupied_by_item_id != "":
+		# This slot is occupied by a multi-slot item
+		if icon:
+			icon.texture = null
+		if quantity_label:
+			quantity_label.text = ""
+		if upgrade_label:
+			upgrade_label.text = ""
+		if rarity_border:
+			rarity_border.modulate = Color(0.5, 0.5, 0.5, 0.3)  # Dimmed gray border
+		modulate = Color(0.7, 0.7, 0.7, 0.5)  # Dimmed to show it's reserved
+		tooltip_text = "Occupied by item"
+		mouse_filter = Control.MOUSE_FILTER_IGNORE  # Can't interact with occupied slots
+		return
+
+	# Re-enable mouse input for non-occupied slots
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	if is_empty or item_data == null:
 		# Empty slot
@@ -175,6 +200,16 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 	if data.get("source_slot") == self:
 		return false
 
+	# Can't drop on occupied (non-root) slots
+	if not is_root_slot and occupied_by_item_id != "":
+		return false
+
+	# For inventory slots, use spatial grid validation
+	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
+		# Check if item can be placed at this grid position
+		if not InventoryManager.can_place_item(data.item_id, grid_x, grid_y):
+			return false
+
 	# Check equipment slot filter
 	if slot_type == "equipment" and equipment_filter != ItemData.EquipSlot.NONE:
 		var dragged_item = ItemDatabase.get_item(data.item_id)
@@ -202,7 +237,16 @@ func _drop_data(at_position: Vector2, data):
 		_handle_equipment_drop(data, source_slot)
 		return
 
-	# Normal inventory swap
+	# For inventory slots with grid coordinates, use spatial placement
+	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
+		# Move item in InventoryManager's spatial grid
+		if InventoryManager.move_item(data.item_id, grid_x, grid_y):
+			print("[ItemSlot] Moved item to grid position (%d, %d)" % [grid_x, grid_y])
+			# Trigger refresh of inventory view
+			InventoryManager.inventory_changed.emit()
+		return
+
+	# Fallback: Normal inventory swap (for non-spatial inventory modes)
 	var temp_item_id = item_id
 	var temp_quantity = quantity
 	var temp_upgrade_level = upgrade_level

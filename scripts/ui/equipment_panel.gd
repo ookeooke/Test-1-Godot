@@ -144,41 +144,87 @@ func _update_stats_display():
 
 	var stats_text = "[b]HERO STATS[/b]\n\n"
 
-	# Get bonuses from equipment
-	var damage_bonus = equipment_manager.get_damage_bonus()
-	var health_bonus = equipment_manager.get_health_bonus()
-	var defense_bonus = equipment_manager.get_defense_bonus()
-	var attack_speed_mult = equipment_manager.get_attack_speed_multiplier()
-	var range_bonus = equipment_manager.get_range_bonus()
-	var crit_bonus = equipment_manager.get_crit_chance_bonus()
+	# Get modifiers from equipment using NEW unified system
+	var modifiers = equipment_manager.get_all_stat_modifiers()
 
-	# Display stats with bonuses highlighted
-	if damage_bonus > 0:
-		stats_text += "Damage: [color=green]+%d[/color]\n" % damage_bonus
-	else:
-		stats_text += "Damage: Base\n"
-
-	if health_bonus > 0:
-		stats_text += "Health: [color=green]+%d[/color]\n" % health_bonus
-	else:
-		stats_text += "Health: Base\n"
-
-	if defense_bonus > 0:
-		stats_text += "Defense: [color=green]+%d[/color]\n" % defense_bonus
-
-	if attack_speed_mult > 1.0:
-		stats_text += "Attack Speed: [color=green]%.1fx[/color]\n" % attack_speed_mult
-
-	if range_bonus > 0:
-		stats_text += "Range: [color=green]+%d[/color]\n" % range_bonus
-
-	if crit_bonus > 0:
-		stats_text += "Crit Chance: [color=green]+%.1f%%[/color]\n" % (crit_bonus * 100)
-
-	if not equipment_manager.has_equipment():
+	if modifiers.is_empty():
 		stats_text += "\n[color=gray]No equipment equipped[/color]"
+	else:
+		stats_text += "[b]Active Modifiers:[/b]\n\n"
+
+		# Group modifiers by stat type for cleaner display
+		var damage_mods = []
+		var health_mods = []
+		var defense_mods = []
+		var range_mods = []
+		var attack_speed_mods = []
+		var crit_mods = []
+
+		for mod in modifiers:
+			var desc_lower = mod.description.to_lower()
+			if "damage" in desc_lower and "melee" not in desc_lower:
+				damage_mods.append(mod)
+			elif "health" in desc_lower:
+				health_mods.append(mod)
+			elif "defense" in desc_lower:
+				defense_mods.append(mod)
+			elif "range" in desc_lower:
+				range_mods.append(mod)
+			elif "attack speed" in desc_lower:
+				attack_speed_mods.append(mod)
+			elif "crit" in desc_lower:
+				crit_mods.append(mod)
+
+		# Display grouped modifiers
+		if not damage_mods.is_empty():
+			stats_text += "[color=green]Damage Bonuses:[/color]\n"
+			for mod in damage_mods:
+				stats_text += "  %s\n" % _format_modifier(mod)
+			stats_text += "\n"
+
+		if not health_mods.is_empty():
+			stats_text += "[color=green]Health Bonuses:[/color]\n"
+			for mod in health_mods:
+				stats_text += "  %s\n" % _format_modifier(mod)
+			stats_text += "\n"
+
+		if not range_mods.is_empty():
+			stats_text += "[color=green]Range Bonuses:[/color]\n"
+			for mod in range_mods:
+				stats_text += "  %s\n" % _format_modifier(mod)
+			stats_text += "\n"
+
+		if not attack_speed_mods.is_empty():
+			stats_text += "[color=green]Attack Speed Bonuses:[/color]\n"
+			for mod in attack_speed_mods:
+				stats_text += "  %s\n" % _format_modifier(mod)
+			stats_text += "\n"
+
+		if not defense_mods.is_empty():
+			stats_text += "[color=green]Defense Bonuses:[/color]\n"
+			for mod in defense_mods:
+				stats_text += "  %s\n" % _format_modifier(mod)
+			stats_text += "\n"
+
+		if not crit_mods.is_empty():
+			stats_text += "[color=green]Critical Bonuses:[/color]\n"
+			for mod in crit_mods:
+				stats_text += "  %s\n" % _format_modifier(mod)
+			stats_text += "\n"
 
 	stats_label.text = stats_text
+
+
+func _format_modifier(mod: StatModifier) -> String:
+	"""Format a modifier for display"""
+	match mod.type:
+		StatModifier.ModifierType.FLAT:
+			return "+%.0f %s" % [mod.value, mod.description]
+		StatModifier.ModifierType.ADDITIVE:
+			return "+%.0f%% %s" % [mod.value * 100, mod.description]
+		StatModifier.ModifierType.MULTIPLICATIVE:
+			return "×%.2f %s" % [mod.value, mod.description]
+	return mod.description
 
 
 func _on_equipment_changed():
