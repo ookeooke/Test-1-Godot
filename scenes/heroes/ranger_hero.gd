@@ -91,6 +91,12 @@ var click_area: Area2D  # For clicking the hero
 @onready var health_bar = $HealthBar
 @onready var sprite = $Sprite2D
 
+# TOWER BUFF SYSTEM (Phase 2B)
+# Phase 2B: Area2D for detecting nearby towers (add TowerAura node manually to scene)
+var tower_aura: Area2D = null
+var towers_in_aura = []  # List of towers currently being buffed
+const AURA_RADIUS = 200.0  # How close hero must be to buff towers
+
 # PROJECTILE
 @export var arrow_scene: PackedScene
 
@@ -156,6 +162,15 @@ func _ready():
 	ranged_detection.body_exited.connect(_on_ranged_enemy_exited)
 	melee_detection.body_entered.connect(_on_melee_enemy_entered)
 	melee_detection.body_exited.connect(_on_melee_enemy_exited)
+
+	# Phase 2B: Setup tower buff aura
+	if has_node("TowerAura"):
+		tower_aura = $TowerAura
+		tower_aura.collision_layer = 0  # Don't create collisions
+		tower_aura.collision_mask = 8  # Detect towers on layer 4 (bit 3, value 8)
+		tower_aura.body_entered.connect(_on_tower_entered_aura)
+		tower_aura.body_exited.connect(_on_tower_exited_aura)
+		print("✅ [RangerHero] Tower buff aura initialized (radius: %.0f)" % AURA_RADIUS)
 
 	# Create timers
 	ranged_timer = Timer.new()
@@ -847,6 +862,9 @@ func take_damage(amount: float):
 		die()
 
 func die():
+	# Phase 2B: Remove all tower buffs before dying
+	_cleanup_all_tower_buffs()
+
 	# Track hero death
 	if BalanceTracker:
 		BalanceTracker.record_hero_death(self)
@@ -956,9 +974,86 @@ func _set_combat_state_visual(in_combat: bool):
 			sprite.modulate = Color(1, 1, 1)
 
 # ============================================
+# TOWER BUFF SYSTEM (Phase 2B)
+# ============================================
+
+func _on_tower_entered_aura(body: Node2D):
+	"""Called when a tower enters hero's buff aura"""
+	if not body.has_method("get"): # Basic validation
+		return
+
+	# Check if it's a tower (has tower_id export)
+	if not ("tower_id" in body):
+		return
+
+	print("[RangerHero] Tower entered aura: %s" % body.tower_id)
+	towers_in_aura.append(body)
+	_apply_tower_buff(body)
+
+func _on_tower_exited_aura(body: Node2D):
+	"""Called when a tower exits hero's buff aura"""
+	if body in towers_in_aura:
+		print("[RangerHero] Tower exited aura: %s" % body.tower_id)
+		towers_in_aura.erase(body)
+		_remove_tower_buff(body)
+
+func _apply_tower_buff(tower: Node2D):
+	"""Apply hero aura buff to a tower (additive stacking)"""
+	# Phase 2B: Hero proximity grants +20% damage (additive)
+	# Future: Will read from hero's equipped items
+	var damage_bonus = 0.20  # 20% additive bonus
+
+	var mod_source = "hero_aura_%s" % get_instance_id()
+	var mod_description = "Hero Aura (+20% DMG)"
+
+	# Apply to appropriate stat based on tower type
+	if tower.has("stat_damage"):
+		# Archer tower: boost damage
+		tower.stat_damage.add_modifier(
+			StatModifier.create_additive(damage_bonus, mod_source, mod_description)
+		)
+		print("  ✅ Applied +%.0f%% damage buff to %s (New DMG: %.1f)" % [damage_bonus * 100, tower.tower_id, tower.damage])
+	elif tower.has("stat_soldier_damage"):
+		# Barracks: boost soldier damage
+		tower.stat_soldier_damage.add_modifier(
+			StatModifier.create_additive(damage_bonus, mod_source, mod_description)
+		)
+		print("  ✅ Applied +%.0f%% soldier damage buff to %s (New DMG: %.1f)" % [damage_bonus * 100, tower.tower_id, tower.soldier_damage])
+
+	# Visual indicator: add a subtle glow/tint to buffed tower
+	if tower.has("sprite"):
+		tower.sprite.modulate = Color(1.2, 1.2, 1.0)  # Slight yellow tint
+
+func _remove_tower_buff(tower: Node2D):
+	"""Remove hero aura buff from a tower"""
+	if not is_instance_valid(tower):
+		return
+
+	var mod_source = "hero_aura_%s" % get_instance_id()
+
+	# Remove modifiers
+	if tower.has("stat_damage"):
+		tower.stat_damage.remove_modifiers_from_source(mod_source)
+		print("  🔻 Removed damage buff from %s (DMG: %.1f)" % [tower.tower_id, tower.damage])
+	elif tower.has("stat_soldier_damage"):
+		tower.stat_soldier_damage.remove_modifiers_from_source(mod_source)
+		print("  🔻 Removed soldier damage buff from %s (DMG: %.1f)" % [tower.tower_id, tower.soldier_damage])
+
+	# Remove visual indicator
+	if tower.has("sprite"):
+		tower.sprite.modulate = Color(1.0, 1.0, 1.0)  # Reset to normal
+
+func _cleanup_all_tower_buffs():
+	"""Remove all tower buffs (called on hero death/removal)"""
+	for tower in towers_in_aura.duplicate():
+		_remove_tower_buff(tower)
+	towers_in_aura.clear()
+
+# ============================================
 # CLEANUP
 # ============================================
 
 func _exit_tree():
-	# Cleanup (Area2D will auto-cleanup its signals)
-	pass
+	# Phase 2B: Remove all tower buffs when hero is removed/dies
+	_cleanup_all_tower_buffs()
+	# Area2D will auto-cleanup its signals

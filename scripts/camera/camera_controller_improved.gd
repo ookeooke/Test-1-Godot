@@ -134,6 +134,8 @@ var drag_speed = 1.0
 
 # Touch state
 var touch_points = {}
+var last_pinch_distance = 0.0  # For pinch-zoom tracking
+var is_pinch_zooming = false
 
 # Inertia state
 var velocity = Vector2.ZERO
@@ -456,7 +458,7 @@ func handle_mobile_input(event) -> void:
 # ============================================
 
 func handle_touch(event: InputEventScreenTouch):
-	"""Touch handling for mobile - single finger drag"""
+	"""Touch handling for mobile - single finger drag, two finger pinch-zoom"""
 	if event.pressed:
 		# Register touch point
 		touch_points[event.index] = event.position
@@ -464,25 +466,40 @@ func handle_touch(event: InputEventScreenTouch):
 		# Single finger - start drag
 		if touch_points.size() == 1:
 			start_drag(event.position)
-		# Two fingers - end drag (zoom disabled)
+			is_pinch_zooming = false
+		# Two fingers - start pinch-zoom
 		elif touch_points.size() == 2:
 			is_dragging = false
+			is_pinch_zooming = true
+			# Calculate initial pinch distance
+			var points = touch_points.values()
+			last_pinch_distance = points[0].distance_to(points[1])
+			if debug_input:
+				print("[Camera PINCH] Started - initial distance: ", last_pinch_distance)
 
 	else:
 		touch_points.erase(event.index)
 
 		if touch_points.is_empty():
 			end_drag()
+			is_pinch_zooming = false
+			last_pinch_distance = 0.0
 		elif touch_points.size() == 1:
+			# One finger remains - switch back to drag mode
 			start_drag(touch_points.values()[0])
+			is_pinch_zooming = false
+			last_pinch_distance = 0.0
 
 func handle_touch_drag(event: InputEventScreenDrag):
-	"""Handle touch drag motion"""
+	"""Handle touch drag motion - single finger drag or two finger pinch-zoom"""
 	touch_points[event.index] = event.position
 
 	# Single finger drag
 	if touch_points.size() == 1 and is_dragging:
 		update_drag(event.position)
+	# Two finger pinch-zoom
+	elif touch_points.size() == 2 and is_pinch_zooming:
+		update_pinch_zoom()
 
 # ============================================
 # DRAG FUNCTIONS
@@ -547,18 +564,77 @@ func end_drag():
 	drag_button_pressed = false  # Button released
 	is_dragging = false
 
+func update_pinch_zoom():
+	"""Update zoom based on pinch gesture (two-finger distance change)"""
+	if touch_points.size() != 2:
+		return
+
+	# Get current touch positions
+	var points = touch_points.values()
+	var current_distance = points[0].distance_to(points[1])
+
+	# Prevent zero/invalid distance
+	if current_distance < 10.0 or last_pinch_distance < 10.0:
+		return
+
+	# Calculate pinch center (world position to keep centered during zoom)
+	var pinch_center_screen = (points[0] + points[1]) / 2.0
+
+	# WEB FIX: Correct canvas coordinates for web exports
+	var corrected_center = get_canvas_corrected_position(pinch_center_screen)
+
+	# Calculate zoom delta based on distance change
+	# Scale factor: larger distance change = more zoom
+	var distance_ratio = current_distance / last_pinch_distance
+	var zoom_factor = distance_ratio - 1.0  # Convert to delta (-0.1 to +0.1)
+	var zoom_delta = zoom_factor * zoom_speed * 2.0  # Multiply by 2 for more responsive pinch
+
+	if debug_input:
+		print("[Camera PINCH] Distance: ", last_pinch_distance, " -> ", current_distance, " | Zoom delta: ", zoom_delta)
+
+	# Apply zoom at pinch center point
+	zoom_at_point(corrected_center, zoom_delta)
+
+	# Update last distance for next frame
+	last_pinch_distance = current_distance
+
 # ============================================
 # ZOOM FUNCTIONS
 # ============================================
 
+func get_canvas_corrected_position(screen_point: Vector2) -> Vector2:
+	"""
+	Convert canvas-space coordinates to viewport-space coordinates for web exports.
+	On web, the canvas may be scaled to fit the browser window, causing a mismatch
+	between mouse event positions and actual viewport coordinates.
+	"""
+	if OS.has_feature("web") or OS.get_name() == "Web":
+		# Get the canvas transform which handles scaling
+		var canvas_transform = get_viewport().get_canvas_transform()
+
+		# For mouse wheel events, we need to transform from canvas space to viewport space
+		# The canvas transform maps viewport -> canvas, so we need the inverse
+		var corrected_pos = canvas_transform.affine_inverse() * screen_point
+
+		if debug_input:
+			print("[Camera WEB] Canvas correction: ", screen_point, " -> ", corrected_pos)
+
+		return corrected_pos
+	else:
+		# On native platforms, no correction needed
+		return screen_point
+
 func zoom_at_point(screen_point: Vector2, zoom_delta: float):
-	"""Zoom toward a specific screen point"""
+	"""Zoom toward a specific screen point (with web canvas correction)"""
 	if is_snapping:
 		cancel_snap()
 
+	# WEB FIX: Correct canvas coordinates for web exports
+	var corrected_point = get_canvas_corrected_position(screen_point)
+
 	# Get world position under cursor before zoom
 	var viewport_size = get_viewport_rect().size
-	var cursor_offset = (screen_point - viewport_size / 2) / zoom
+	var cursor_offset = (corrected_point - viewport_size / 2) / zoom
 	var world_pos_before = base_position + cursor_offset
 
 	# Calculate new zoom
@@ -567,7 +643,7 @@ func zoom_at_point(screen_point: Vector2, zoom_delta: float):
 	target_zoom = Vector2(new_zoom_value, new_zoom_value)
 
 	# Adjust position to keep world position under cursor
-	var cursor_offset_after = (screen_point - viewport_size / 2) / target_zoom
+	var cursor_offset_after = (corrected_point - viewport_size / 2) / target_zoom
 	var world_pos_after = base_position + cursor_offset_after
 
 	# Set TARGET position to move smoothly (instead of instant jump)

@@ -908,20 +908,47 @@ func _on_rally_button_pressed():
 
 func _update_path_button_text():
 	"""Update path button text based on tower type"""
-	var is_garrison = _is_garrison_tower()
+	if not tower:
+		return
 
-	if is_garrison:
-		# Soldier tower: Defense and Offense paths
-		if damage_path_button:
-			damage_path_button.text = "🛡️ DEFENSE PATH\n150g - Tank Soldiers"
-		if range_path_button:
-			range_path_button.text = "⚔️ OFFENSE PATH\n150g - Damage Soldiers"
-	else:
-		# Archer tower: Damage and Range paths
-		if damage_path_button:
-			damage_path_button.text = "🔥 DAMAGE PATH\n150g - Glass Cannon"
-		if range_path_button:
-			range_path_button.text = "🎯 RANGE PATH\n150g - Long-range Sniper"
+	# Get tower ID to determine tower type
+	var tower_id = tower.tower_id if "tower_id" in tower else ""
+
+	match tower_id:
+		"archer":
+			# Archer tower: Damage and Range paths
+			if damage_path_button:
+				damage_path_button.text = "🔥 DAMAGE PATH\n150g - Glass Cannon"
+			if range_path_button:
+				range_path_button.text = "🎯 RANGE PATH\n150g - Long-range Sniper"
+
+		"barracks":
+			# Soldier tower: Defense and Offense paths
+			if damage_path_button:
+				damage_path_button.text = "🛡️ DEFENSE PATH\n150g - Tank Soldiers"
+			if range_path_button:
+				range_path_button.text = "⚔️ OFFENSE PATH\n150g - Damage Soldiers"
+
+		"mage":
+			# Mage tower: Inferno and Frost paths
+			if damage_path_button:
+				damage_path_button.text = "🔥 INFERNO PATH\n150g - AOE Damage"
+			if range_path_button:
+				range_path_button.text = "❄️ FROST PATH\n150g - Slow Enemies"
+
+		"artillery":
+			# Artillery tower: Cannon and Mortar paths
+			if damage_path_button:
+				damage_path_button.text = "💥 CANNON PATH\n150g - Knockback"
+			if range_path_button:
+				range_path_button.text = "💣 MORTAR PATH\n150g - Huge AOE"
+
+		_:
+			# Fallback for unknown towers
+			if damage_path_button:
+				damage_path_button.text = "PATH 1\n150g"
+			if range_path_button:
+				range_path_button.text = "PATH 2\n150g"
 
 func _update_path_button_states():
 	"""Update path button affordability based on current gold"""

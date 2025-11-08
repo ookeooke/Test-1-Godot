@@ -1,0 +1,59 @@
+[gd_scene load_steps=3 format=3 uid="uid://magic_bolt_scene"]
+
+[ext_resource type="Script" path="res://scenes/projectiles/magic_bolt.gd" id="1_magic"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_magic"]
+radius = 10.0
+
+[node name="MagicBolt" type="Area2D"]
+collision_layer = 4
+collision_mask = 0
+monitoring = false
+monitorable = false
+script = ExtResource("1_magic")
+
+[node name="Shadow" type="ColorRect" parent="."]
+modulate = Color(0, 0, 0, 0.3)
+offset_left = -4.0
+offset_top = -4.0
+offset_right = 4.0
+offset_bottom = 4.0
+color = Color(0, 0, 0, 1)
+
+[node name="Orb" type="ColorRect" parent="."]
+offset_left = -6.0
+offset_top = -6.0
+offset_right = 6.0
+offset_bottom = 6.0
+color = Color(0.4, 0.6, 1.0, 1)
+
+[node name="InnerGlow" type="ColorRect" parent="Orb"]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 10.0
+offset_bottom = 10.0
+color = Color(0.8, 0.9, 1.0, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+visible = false
+shape = SubResource("CircleShape2D_magic")
+
+[node name="Trail" type="CPUParticles2D" parent="."]
+amount = 10
+lifetime = 0.35
+preprocess = 0.1
+explosiveness = 0.3
+randomness = 0.3
+emission_shape = 1
+emission_sphere_radius = 4.0
+direction = Vector2(-1, 0)
+spread = 8.0
+gravity = Vector2(0, 20)
+initial_velocity_min = 40.0
+initial_velocity_max = 80.0
+angular_velocity_min = -60.0
+angular_velocity_max = 60.0
+scale_amount_min = 2.0
+scale_amount_max = 4.0
+color = Color(0.5, 0.7, 1.0, 0.9)

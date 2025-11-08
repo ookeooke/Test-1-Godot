@@ -294,9 +294,9 @@ func _on_heroes_button_pressed():
 	get_tree().change_scene_to_file("res://scenes/ui/hero_screen_standalone.tscn")
 
 func _on_towers_button_pressed():
-	"""Navigate to standalone Tower Codex screen"""
-	print("🏹 Opening Tower Codex...")
-	get_tree().change_scene_to_file("res://scenes/ui/tower_codex_standalone.tscn")
+	"""Navigate to standalone Towers screen (Codex + Loadout)"""
+	print("🏹 Opening Towers screen...")
+	get_tree().change_scene_to_file("res://scenes/ui/towers_screen_standalone.tscn")
 
 func _load_ranger_skills() -> Array[HeroSkillData]:
 	"""Load all available skills for the ranger hero"""

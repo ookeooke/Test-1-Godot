@@ -6,9 +6,13 @@ extends Node2D
 
 var build_menu_scene = preload("res://scenes/ui/build_menu.tscn")
 var tower_info_menu_scene = preload("res://scenes/ui/tower_info_menu.tscn")
+var ring_menu_script = preload("res://scripts/ui/ring_menu.gd")  # Phase 3B: Ring menu
 var current_menu = null
 var current_spot = null
 var current_selected_tower = null  # Track selected tower for deselection
+
+# RING MENU TOGGLE (Phase 3B)
+@export var use_ring_menu: bool = true  # Set to false to use old build_menu
 
 # MENU LAYER - CanvasLayer for zoom-independent UI
 var menu_layer: Control  # Reference to MenuContainer in CanvasLayer
@@ -102,7 +106,13 @@ func close_current_menu():
 	current_selected_tower = null
 
 func show_build_menu(spot):
-	"""Show the tower build menu"""
+	"""Show the tower build menu (or ring menu if enabled)"""
+	# Phase 3B: Use ring menu if enabled
+	if use_ring_menu:
+		show_ring_menu(spot)
+		return
+
+	# Original build menu code
 	current_menu = build_menu_scene.instantiate()
 
 	# ADD TO CANVAS LAYER (screen space), not root (world space)
@@ -122,6 +132,38 @@ func show_build_menu(spot):
 	if camera and camera.has_method("lock_input"):
 		camera.lock_input()
 
+	current_menu.tower_selected.connect(_on_tower_selected)
+	current_menu.menu_closed.connect(_on_menu_closed)
+
+func show_ring_menu(spot):
+	"""Show the ring menu for tower selection (Phase 3B)"""
+	# Create ring menu programmatically
+	current_menu = Control.new()
+	current_menu.set_script(ring_menu_script)
+
+	# ADD TO CANVAS LAYER (screen space), not root (world space)
+	menu_layer.add_child(current_menu)
+
+	# Wait for ring menu to initialize
+	await get_tree().process_frame
+
+	# Get player's tower loadout from SaveManager
+	var loadout = SaveManager.get_tower_loadout()
+	print("[PlacementManager] Opening ring menu with loadout: %s" % str(loadout))
+
+	# Get screen position of tower spot
+	# Convert world position to screen space using canvas transform (same as build_menu)
+	var world_pos = spot.global_position
+	var screen_pos = get_viewport().get_canvas_transform() * world_pos
+
+	# Open ring menu at tower spot position
+	current_menu.open_at_position(screen_pos, loadout)
+
+	# Lock camera input (Kingdom Rush style)
+	if camera and camera.has_method("lock_input"):
+		camera.lock_input()
+
+	# Connect signals
 	current_menu.tower_selected.connect(_on_tower_selected)
 	current_menu.menu_closed.connect(_on_menu_closed)
 
@@ -238,9 +280,30 @@ func position_menu_in_screen_space(spot):
 	print("  Final menu bounds: ", Rect2(current_menu.position, menu_size))
 	print("  ✅ Menu positioned and guaranteed visible!")
 
-func _on_tower_selected(tower_scene):
-	"""Handle tower build selection"""
+func _on_tower_selected(tower_scene_or_id):
+	"""Handle tower build selection
+
+	Args:
+		tower_scene_or_id: Either a PackedScene (old build_menu) or String tower_id (ring_menu)
+	"""
 	if current_spot:
+		var tower_scene: PackedScene
+
+		# Phase 3B: Handle both PackedScene and tower_id string
+		if tower_scene_or_id is String:
+			# Ring menu sends tower_id string - load scene dynamically
+			var tower_id = tower_scene_or_id
+			tower_scene = TowerData.get_tower_scene(tower_id)
+
+			if tower_scene == null:
+				push_error("[PlacementManager] Failed to load tower scene for: %s" % tower_id)
+				close_current_menu()
+				current_spot = null
+				return
+		else:
+			# Old build_menu sends PackedScene directly
+			tower_scene = tower_scene_or_id
+
 		# Check if this is a soldier tower and validate placement
 		if _is_soldier_tower(tower_scene):
 			if not _can_place_soldier_tower_here(current_spot.global_position):
@@ -337,12 +400,10 @@ func _on_tower_sold(tower):
 		tower.deselect_tower()
 
 	if current_spot:
-		current_spot.has_tower = false
-		current_spot.current_tower = null
-		current_spot.sprite.visible = true
-
-		if tower and is_instance_valid(tower):
-			tower.queue_free()
+		# Use the tower spot's built-in cleanup method
+		# This properly resets has_tower, current_tower, sprite visibility,
+		# AND re-enables click_area.input_pickable (critical for re-building)
+		current_spot.remove_tower()
 
 		current_spot = null
 		current_selected_tower = null
@@ -374,7 +435,7 @@ func _on_menu_closed():
 	print("🔧 [PlacementManager] Menu closed and cleanup complete")
 
 func _on_damage_path_chosen(tower):
-	"""Handle damage path choice - Archer: Damage, Soldier: Defense"""
+	"""Handle damage path choice - LEFT BUTTON for all towers"""
 	print("\n=== 🔥 PATH CHOICE HANDLER (LEFT BUTTON) ===")
 	print("🔥 [PlacementManager] _on_damage_path_chosen() called")
 	print("🔥 [PlacementManager] Tower valid: %s" % str(is_instance_valid(tower)))
@@ -384,41 +445,40 @@ func _on_damage_path_chosen(tower):
 		print("=== ❌ PATH CHOICE ABORTED ===\n")
 		return
 
-	# Check tower type - soldier towers use defense path for left button
-	var is_garrison = "soldier_scene" in tower or tower.is_in_group("garrison")
+	# Determine tower type and call appropriate path method
+	var tower_id = tower.tower_id if "tower_id" in tower else ""
+	var result = false
 
-	if is_garrison and tower.has_method("choose_defense_path"):
-		# Soldier tower: Defense path
-		print("🛡️ [PlacementManager] Calling soldier tower.choose_defense_path()...")
-		var result = tower.choose_defense_path()
-		print("🛡️ [PlacementManager] choose_defense_path() returned: %s" % str(result))
+	match tower_id:
+		"archer":
+			if tower.has_method("choose_damage_path"):
+				print("🔥 [PlacementManager] Archer: Calling choose_damage_path()...")
+				result = tower.choose_damage_path()
+		"barracks":
+			if tower.has_method("choose_defense_path"):
+				print("🛡️ [PlacementManager] Barracks: Calling choose_defense_path()...")
+				result = tower.choose_defense_path()
+		"mage":
+			if tower.has_method("choose_inferno_path"):
+				print("🔥 [PlacementManager] Mage: Calling choose_inferno_path()...")
+				result = tower.choose_inferno_path()
+		"artillery":
+			if tower.has_method("choose_cannon_path"):
+				print("💥 [PlacementManager] Artillery: Calling choose_cannon_path()...")
+				result = tower.choose_cannon_path()
+		_:
+			print("❌ [PlacementManager] Unknown tower type: %s" % tower_id)
 
-		if result:
-			print("✅ [PlacementManager] Defense path chosen successfully!")
-			print("✅ [PlacementManager] Tower is now Level %d with path: %s" % [tower.tower_level, tower.upgrade_path])
-			print("=== ✅ DEFENSE PATH SUCCESS ===\n")
-		else:
-			print("❌ [PlacementManager] Defense path choice failed!")
-			print("=== ❌ DEFENSE PATH FAILED ===\n")
-	elif tower.has_method("choose_damage_path"):
-		# Archer tower: Damage path
-		print("🔥 [PlacementManager] Calling archer tower.choose_damage_path()...")
-		var result = tower.choose_damage_path()
-		print("🔥 [PlacementManager] choose_damage_path() returned: %s" % str(result))
-
-		if result:
-			print("✅ [PlacementManager] Damage path chosen successfully!")
-			print("✅ [PlacementManager] Tower is now Level %d with path: %s" % [tower.tower_level, tower.upgrade_path])
-			print("=== ✅ DAMAGE PATH SUCCESS ===\n")
-		else:
-			print("❌ [PlacementManager] Damage path choice failed!")
-			print("=== ❌ DAMAGE PATH FAILED ===\n")
+	if result:
+		print("✅ [PlacementManager] Path chosen successfully!")
+		print("✅ [PlacementManager] Tower is now Level %d with path: %s" % [tower.tower_level, tower.upgrade_path])
+		print("=== ✅ PATH CHOICE SUCCESS ===\n")
 	else:
-		print("❌ [PlacementManager] Tower does NOT have path choice method!")
-		print("=== ❌ PATH CHOICE IMPOSSIBLE ===\n")
+		print("❌ [PlacementManager] Path choice failed!")
+		print("=== ❌ PATH CHOICE FAILED ===\n")
 
 func _on_range_path_chosen(tower):
-	"""Handle range path choice - Archer: Range, Soldier: Offense"""
+	"""Handle range path choice - RIGHT BUTTON for all towers"""
 	print("\n=== 🎯 PATH CHOICE HANDLER (RIGHT BUTTON) ===")
 	print("🎯 [PlacementManager] _on_range_path_chosen() called")
 	print("🎯 [PlacementManager] Tower valid: %s" % str(is_instance_valid(tower)))
@@ -428,35 +488,34 @@ func _on_range_path_chosen(tower):
 		print("=== ❌ PATH CHOICE ABORTED ===\n")
 		return
 
-	# Check tower type - soldier towers use offense path for right button
-	var is_garrison = "soldier_scene" in tower or tower.is_in_group("garrison")
+	# Determine tower type and call appropriate path method
+	var tower_id = tower.tower_id if "tower_id" in tower else ""
+	var result = false
 
-	if is_garrison and tower.has_method("choose_offense_path"):
-		# Soldier tower: Offense path
-		print("⚔️ [PlacementManager] Calling soldier tower.choose_offense_path()...")
-		var result = tower.choose_offense_path()
-		print("⚔️ [PlacementManager] choose_offense_path() returned: %s" % str(result))
+	match tower_id:
+		"archer":
+			if tower.has_method("choose_range_path"):
+				print("🎯 [PlacementManager] Archer: Calling choose_range_path()...")
+				result = tower.choose_range_path()
+		"barracks":
+			if tower.has_method("choose_offense_path"):
+				print("⚔️ [PlacementManager] Barracks: Calling choose_offense_path()...")
+				result = tower.choose_offense_path()
+		"mage":
+			if tower.has_method("choose_frost_path"):
+				print("❄️ [PlacementManager] Mage: Calling choose_frost_path()...")
+				result = tower.choose_frost_path()
+		"artillery":
+			if tower.has_method("choose_mortar_path"):
+				print("💣 [PlacementManager] Artillery: Calling choose_mortar_path()...")
+				result = tower.choose_mortar_path()
+		_:
+			print("❌ [PlacementManager] Unknown tower type: %s" % tower_id)
 
-		if result:
-			print("✅ [PlacementManager] Offense path chosen successfully!")
-			print("✅ [PlacementManager] Tower is now Level %d with path: %s" % [tower.tower_level, tower.upgrade_path])
-			print("=== ✅ OFFENSE PATH SUCCESS ===\n")
-		else:
-			print("❌ [PlacementManager] Offense path choice failed!")
-			print("=== ❌ OFFENSE PATH FAILED ===\n")
-	elif tower.has_method("choose_range_path"):
-		# Archer tower: Range path
-		print("🎯 [PlacementManager] Calling archer tower.choose_range_path()...")
-		var result = tower.choose_range_path()
-		print("🎯 [PlacementManager] choose_range_path() returned: %s" % str(result))
-
-		if result:
-			print("✅ [PlacementManager] Range path chosen successfully!")
-			print("✅ [PlacementManager] Tower is now Level %d with path: %s" % [tower.tower_level, tower.upgrade_path])
-			print("=== ✅ RANGE PATH SUCCESS ===\n")
-		else:
-			print("❌ [PlacementManager] Range path choice failed!")
-			print("=== ❌ RANGE PATH FAILED ===\n")
+	if result:
+		print("✅ [PlacementManager] Path chosen successfully!")
+		print("✅ [PlacementManager] Tower is now Level %d with path: %s" % [tower.tower_level, tower.upgrade_path])
+		print("=== ✅ PATH CHOICE SUCCESS ===\n")
 	else:
-		print("❌ [PlacementManager] Tower does NOT have choose_range_path() method!")
-		print("=== ❌ PATH CHOICE IMPOSSIBLE ===\n")
+		print("❌ [PlacementManager] Path choice failed!")
+		print("=== ❌ PATH CHOICE FAILED ===\n")

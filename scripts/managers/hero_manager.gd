@@ -114,7 +114,17 @@ func _unhandled_input(event):
 			var camera = get_viewport().get_camera_2d()
 			if camera:
 				var click_pos = get_viewport().get_mouse_position()
-				var click_world_pos = camera.get_screen_center_position() + (click_pos - get_viewport().get_visible_rect().size / 2) / camera.zoom
+
+				# WEB FIX: Correct canvas coordinates for web exports
+				var corrected_pos = click_pos
+				if OS.has_feature("web") or OS.get_name() == "Web":
+					# Apply canvas transform correction
+					var canvas_transform = get_viewport().get_canvas_transform()
+					corrected_pos = canvas_transform.affine_inverse() * click_pos
+					if debug_input:
+						print("[HeroManager WEB] Canvas correction: ", click_pos, " -> ", corrected_pos)
+
+				var click_world_pos = camera.get_screen_center_position() + (corrected_pos - get_viewport().get_visible_rect().size / 2) / camera.zoom
 
 				# Command hero to move to clicked position
 				current_hero.move_to_position(click_world_pos)

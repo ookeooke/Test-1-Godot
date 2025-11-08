@@ -326,6 +326,17 @@ func _find_equipment_manager() -> EquipmentManager:
 			return node.equipment_manager
 		node = node.get_parent()
 
+	# Try to find via DualPanelScreen (for cross-panel drag-and-drop)
+	if get_tree():
+		var dual_panels = get_tree().get_nodes_in_group("dual_panel_screen")
+		for panel in dual_panels:
+			if panel.has_method("get_left_panel"):
+				var left_panel = panel.get_left_panel()
+				if left_panel and left_panel.has_method("get_current_view"):
+					var equipment_view = left_panel.get_current_view()
+					if equipment_view and "equipment_manager" in equipment_view:
+						return equipment_view.equipment_manager
+
 	# Fallback: search for hero in scene (for in-battle UI)
 	if get_tree():
 		var heroes = get_tree().get_nodes_in_group("hero")

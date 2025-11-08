@@ -731,6 +731,56 @@ func _set_combat_state_visual(in_combat: bool):
 			sprite_node.modulate = Color(1, 1, 1)
 
 # ============================================
+# STATUS EFFECTS (Slow & Knockback)
+# ============================================
+
+var current_slow: float = 0.0  # 0.0-1.0 (speed reduction percentage)
+var slow_timer: Timer = null
+
+func apply_slow(slow_percent: float, duration: float):
+	"""Apply speed reduction effect from frost mage"""
+	# Use strongest slow if multiple slows applied
+	current_slow = max(current_slow, slow_percent)
+
+	# Create or restart slow timer
+	if slow_timer == null:
+		slow_timer = Timer.new()
+		add_child(slow_timer)
+		slow_timer.timeout.connect(_on_slow_expired)
+
+	slow_timer.start(duration)
+
+	# Visual feedback (blue tint)
+	modulate = Color(0.6, 0.6, 1.0)
+
+func _on_slow_expired():
+	"""Remove slow effect"""
+	current_slow = 0.0
+	modulate = Color.WHITE
+
+func get_effective_speed() -> float:
+	"""Get current speed with slow applied"""
+	return speed * (1.0 - current_slow)
+
+func apply_knockback(force: float, explosion_pos: Vector2):
+	"""Push enemy backward from explosion (artillery cannon path)"""
+	# Get direction away from explosion
+	var knockback_dir = (global_position - explosion_pos).normalized()
+	var knockback_distance = force / 10.0  # Scale force to pixels
+
+	# Apply knockback by moving enemy backward
+	if use_waypoint_navigation:
+		# Waypoint system: just offset position
+		global_position += knockback_dir * knockback_distance
+	else:
+		# PathFollow2D system: reduce progress
+		var parent = get_parent()
+		if parent is PathFollow2D:
+			parent.progress -= knockback_distance
+			# Clamp to prevent negative progress
+			parent.progress = max(0, parent.progress)
+
+# ============================================
 # CLEANUP
 # ============================================
 

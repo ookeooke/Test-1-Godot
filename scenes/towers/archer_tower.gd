@@ -12,6 +12,9 @@ extends StaticBody2D
 # - Player can change mode via tower upgrade menu
 # ============================================
 
+# TOWER IDENTITY (for dynamic loading system)
+@export var tower_id: String = "archer"
+
 # TARGETING MODES
 enum TargetingMode {
 	FIRST,   # Furthest on path (default)
@@ -21,25 +24,20 @@ enum TargetingMode {
 	WEAK     # Lowest current health
 }
 
-# BASE STATS (constants for reference)
-const BASE_DAMAGE = 12.0
-const BASE_ATTACK_SPEED = 1.0
-const BASE_RANGE = 300.0
-
-# TOWER STATS - Unified Stat System (Kingdom Rush pacing: -25% to match slower enemies)
+# TOWER STATS - Unified Stat System (Phase 2A: Stats now loaded from TowerData)
 var stat_damage: Stat
 var stat_attack_speed: Stat
 var stat_range: Stat
 
 # Computed properties for backwards compatibility
 var damage: float:
-	get: return stat_damage.get_value() if stat_damage else BASE_DAMAGE
+	get: return stat_damage.get_value() if stat_damage else 0.0
 
 var attack_speed: float:
-	get: return stat_attack_speed.get_value() if stat_attack_speed else BASE_ATTACK_SPEED
+	get: return stat_attack_speed.get_value() if stat_attack_speed else 0.0
 
 var range_radius: float:
-	get: return stat_range.get_value() if stat_range else BASE_RANGE
+	get: return stat_range.get_value() if stat_range else 0.0
 
 var targeting_mode = TargetingMode.FIRST  # Default targeting mode
 var build_cost = 70  # BALANCE FIX: Was 100g, now 70g (28% of 250g start gold - matches KR1's 26%)
@@ -86,10 +84,20 @@ var parent_spot = null
 # ============================================
 
 func _initialize_stats():
-	"""Initialize all Stat objects with base values"""
-	stat_damage = Stat.new(BASE_DAMAGE)
-	stat_attack_speed = Stat.new(BASE_ATTACK_SPEED)
-	stat_range = Stat.new(BASE_RANGE)
+	"""Initialize all Stat objects with base values from TowerData"""
+	# Phase 2A: Read stats from centralized TowerData instead of hardcoded constants
+	var level_1_stats = TowerData.get_tower_stats(tower_id, 1)
+
+	if level_1_stats.is_empty():
+		push_error("[ArcherTower] CRITICAL: Failed to load stats from TowerData for tower_id: %s - Tower will not function!" % tower_id)
+		# Initialize with zero values - tower will be non-functional until data is fixed
+		stat_damage = Stat.new(0.0)
+		stat_attack_speed = Stat.new(0.0)
+		stat_range = Stat.new(0.0)
+	else:
+		stat_damage = Stat.new(level_1_stats.damage)
+		stat_attack_speed = Stat.new(level_1_stats.attack_speed)
+		stat_range = Stat.new(level_1_stats.range)
 
 	print("[ArcherTower] Stats initialized - DMG: %.1f, AS: %.1f, Range: %.1f" % [stat_damage.get_value(), stat_attack_speed.get_value(), stat_range.get_value()])
 
@@ -835,28 +843,19 @@ func deselect_tower():
 
 func upgrade_tower():
 	"""Apply standard upgrade (levels 1→2→3 and 4→5 after path choice)"""
-	print("🔧 [DEBUG] upgrade_tower() called")
-	print("🔧 [DEBUG] Current tower_level: %d" % tower_level)
-	print("🔧 [DEBUG] MAX_LEVEL_BEFORE_CHOICE: %d" % MAX_LEVEL_BEFORE_CHOICE)
-	print("🔧 [DEBUG] MAX_LEVEL: %d" % MAX_LEVEL)
-	print("🔧 [DEBUG] Current stats - DMG:%d, AS:%.1f, Range:%d" % [damage, attack_speed, range_radius])
-
 	# Check if at Level 3 (needs path choice) or at max level
 	if tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
 		push_warning("[ArcherTower] Cannot upgrade past level 3 - must choose path!")
-		print("❌ [DEBUG] Upgrade BLOCKED - need to choose path first")
 		return false
 
 	if tower_level >= MAX_LEVEL:
 		push_warning("[ArcherTower] Tower already at MAX LEVEL!")
-		print("❌ [DEBUG] Upgrade BLOCKED - already at max level %d" % tower_level)
 		return false
 
-	print("✅ [DEBUG] Upgrade check passed - proceeding with upgrade")
 	var old_level = tower_level
 	var upgrade_cost = get_upgrade_cost()  # Get cost BEFORE upgrading
 	tower_level += 1
-	print("🔧 [DEBUG] Level changed: %d → %d (Cost: %dg)" % [old_level, tower_level, upgrade_cost])
+	build_cost += upgrade_cost  # Track total investment for sell refunds
 
 	# Remove old level modifiers (clean slate for new level)
 	var old_source = "upgrade_level_%d" % old_level
@@ -864,78 +863,53 @@ func upgrade_tower():
 	stat_attack_speed.remove_modifiers_from_source(old_source)
 	stat_range.remove_modifiers_from_source(old_source)
 
-	# Apply stat increases per level using MODIFIER SYSTEM (Kingdom Rush -25% damage scaling)
+	# Phase 2A: Apply stat increases per level using data from TowerData
 	var mod_source = "upgrade_level_%d" % tower_level
-	match tower_level:
-		2:
-			print("🔧 [DEBUG] Applying Level 2 stats...")
-			# 12 → 17 (+5 flat damage)
-			stat_damage.add_modifier(StatModifier.create_flat(5.0, mod_source, "Tower Upgrade Level 2"))
-			# 1.0 → 1.3 (+0.3 flat attack speed)
-			stat_attack_speed.add_modifier(StatModifier.create_flat(0.3, mod_source, "Tower Upgrade Level 2"))
-			# 300 → 350 (+50 flat range)
-			stat_range.add_modifier(StatModifier.create_flat(50.0, mod_source, "Tower Upgrade Level 2"))
-			# Result: 22.1 DPS (+84% from Level 1, efficiency 1.84x vs 2.17x before)
-			print("✅ [ArcherTower] Upgraded to Level 2: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f" % [damage, attack_speed, range_radius, damage * attack_speed])
-		3:
-			print("🔧 [DEBUG] Applying Level 3 stats...")
-			# 12 → 27 (+15 flat damage from base)
-			stat_damage.add_modifier(StatModifier.create_flat(15.0, mod_source, "Tower Upgrade Level 3"))
-			# 1.0 → 1.6 (+0.6 flat attack speed from base)
-			stat_attack_speed.add_modifier(StatModifier.create_flat(0.6, mod_source, "Tower Upgrade Level 3"))
-			# 300 → 400 (+100 flat range from base)
-			stat_range.add_modifier(StatModifier.create_flat(100.0, mod_source, "Tower Upgrade Level 3"))
-			# Result: 43.2 DPS (+66% from Level 2)
-			print("✅ [ArcherTower] Upgraded to Level 3: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f" % [damage, attack_speed, range_radius, damage * attack_speed])
-		5:
-			# Level 4→5 upgrade (path-specific final upgrade)
-			print("🔧 [DEBUG] Applying Level 5 stats (path: %s)..." % upgrade_path)
-			if upgrade_path == "damage":
-				# DAMAGE PATH Level 5: Ultimate glass cannon
-				# 12 → 40 (+28 flat damage from base)
-				stat_damage.add_modifier(StatModifier.create_flat(28.0, mod_source, "Tower Upgrade Level 5 Damage"))
-				# 1.0 → 2.5 (+1.5 flat attack speed from base)
-				stat_attack_speed.add_modifier(StatModifier.create_flat(1.5, mod_source, "Tower Upgrade Level 5 Damage"))
-				# Range stays at path level 4 (500)
-				# Result: 100 DPS - ULTIMATE GLASS CANNON!
-				print("✅ [ArcherTower] Upgraded to Level 5 DAMAGE: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f" % [damage, attack_speed, range_radius, damage * attack_speed])
-			elif upgrade_path == "range":
-				# RANGE PATH Level 5: Balanced sniper with less range
-				# 12 → 35 (+23 flat damage from base)
-				stat_damage.add_modifier(StatModifier.create_flat(23.0, mod_source, "Tower Upgrade Level 5 Range"))
-				# 1.0 → 1.8 (+0.8 flat attack speed from base)
-				stat_attack_speed.add_modifier(StatModifier.create_flat(0.8, mod_source, "Tower Upgrade Level 5 Range"))
-				# 300 → 450 (+150 flat range from base)
-				stat_range.add_modifier(StatModifier.create_flat(150.0, mod_source, "Tower Upgrade Level 5 Range"))
-				# Result: 63 DPS - BALANCED SNIPER
-				print("✅ [ArcherTower] Upgraded to Level 5 RANGE: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f" % [damage, attack_speed, range_radius, damage * attack_speed])
-			else:
-				print("⚠️ [DEBUG] WARNING: Level 5 but no path chosen!")
-		_:
-			print("⚠️ [DEBUG] WARNING: Unexpected tower_level: %d" % tower_level)
 
-	print("🔧 [DEBUG] New stats - DMG:%d, AS:%.1f, Range:%d" % [damage, attack_speed, range_radius])
+	# Get target stats for new level from TowerData
+	var target_stats: Dictionary
+	var level_1_stats = TowerData.get_tower_stats(tower_id, 1)
+
+	if tower_level <= MAX_LEVEL_BEFORE_CHOICE:
+		# Levels 2-3: No path choice
+		target_stats = TowerData.get_tower_stats(tower_id, tower_level)
+	else:
+		# Levels 4-5: Path-specific stats
+		var path_key = upgrade_path + "_path"
+		target_stats = TowerData.get_tower_stats(tower_id, tower_level, path_key)
+
+	if target_stats.is_empty():
+		push_error("[ArcherTower] Failed to load upgrade stats from TowerData for level %d" % tower_level)
+		return false
+
+	# Calculate deltas from base stats (Level 1)
+	var damage_delta = target_stats.damage - level_1_stats.damage
+	var attack_speed_delta = target_stats.attack_speed - level_1_stats.attack_speed
+	var range_delta = target_stats.range - level_1_stats.range
+
+	# Apply modifiers
+	if damage_delta != 0:
+		stat_damage.add_modifier(StatModifier.create_flat(damage_delta, mod_source, "Tower Upgrade Level %d" % tower_level))
+	if attack_speed_delta != 0:
+		stat_attack_speed.add_modifier(StatModifier.create_flat(attack_speed_delta, mod_source, "Tower Upgrade Level %d" % tower_level))
+	if range_delta != 0:
+		stat_range.add_modifier(StatModifier.create_flat(range_delta, mod_source, "Tower Upgrade Level %d" % tower_level))
+
+	print("✅ [ArcherTower] Upgraded to Level %d: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f" % [tower_level, damage, attack_speed, range_radius, damage * attack_speed])
 
 	# Update detection range collision shape
-	print("🔧 [DEBUG] Updating detection range...")
 	_update_detection_range()
 
 	# Redraw range indicator with new radius
-	print("🔧 [DEBUG] Redrawing range circle...")
 	draw_range_circle()
 
 	# Update shoot timer with new attack speed
 	if shoot_timer:
-		print("🔧 [DEBUG] Updating shoot timer: %.3fs" % (1.0 / attack_speed))
 		shoot_timer.wait_time = 1.0 / attack_speed
-	else:
-		print("⚠️ [DEBUG] WARNING: shoot_timer is null!")
 
 	# Track upgrade in BalanceTracker
 	if BalanceTracker:
 		BalanceTracker.record_tower_upgrade(self, tower_level, upgrade_cost)
-
-	print("✅ [DEBUG] upgrade_tower() completed successfully")
 	return true
 
 func choose_damage_path():
@@ -952,6 +926,7 @@ func choose_damage_path():
 	var old_level = tower_level
 	tower_level += 1
 	upgrade_path = "damage"
+	build_cost += path_cost  # Track total investment for sell refunds
 
 	# Remove old level modifiers
 	var old_source = "upgrade_level_%d" % old_level
@@ -959,15 +934,27 @@ func choose_damage_path():
 	stat_attack_speed.remove_modifiers_from_source(old_source)
 	stat_range.remove_modifiers_from_source(old_source)
 
-	# DAMAGE PATH: Using modifiers instead of direct assignment
+	# Phase 2A: Load damage path stats from TowerData
+	var level_1_stats = TowerData.get_tower_stats(tower_id, 1)
+	var target_stats = TowerData.get_tower_stats(tower_id, 4, "damage_path")
+
+	if target_stats.is_empty():
+		push_error("[ArcherTower] Failed to load damage path stats from TowerData")
+		return false
+
+	# Calculate deltas from base stats (Level 1)
+	var damage_delta = target_stats.damage - level_1_stats.damage
+	var attack_speed_delta = target_stats.attack_speed - level_1_stats.attack_speed
+	var range_delta = target_stats.range - level_1_stats.range
+
+	# Apply modifiers
 	var mod_source = "upgrade_path_damage"
-	# 12 → 36 (+24 flat damage from base)
-	stat_damage.add_modifier(StatModifier.create_flat(24.0, mod_source, "Damage Path Level 4"))
-	# 1.0 → 2.0 (+1.0 flat attack speed from base)
-	stat_attack_speed.add_modifier(StatModifier.create_flat(1.0, mod_source, "Damage Path Level 4"))
-	# 300 → 500 (+200 flat range from base)
-	stat_range.add_modifier(StatModifier.create_flat(200.0, mod_source, "Damage Path Level 4"))
-	# Result: 72 DPS (+67% from Level 3) - GLASS CANNON!
+	if damage_delta != 0:
+		stat_damage.add_modifier(StatModifier.create_flat(damage_delta, mod_source, "Damage Path Level 4"))
+	if attack_speed_delta != 0:
+		stat_attack_speed.add_modifier(StatModifier.create_flat(attack_speed_delta, mod_source, "Damage Path Level 4"))
+	if range_delta != 0:
+		stat_range.add_modifier(StatModifier.create_flat(range_delta, mod_source, "Damage Path Level 4"))
 
 	print("[ArcherTower] DAMAGE PATH chosen: DMG=%.1f, AS=%.1f, Range=%.1f, DPS=%.1f - High DPS glass cannon!" % [damage, attack_speed, range_radius, damage * attack_speed])
 
@@ -999,6 +986,7 @@ func choose_range_path():
 	var old_level = tower_level
 	tower_level += 1
 	upgrade_path = "range"
+	build_cost += path_cost  # Track total investment for sell refunds
 
 	# Remove old level modifiers
 	var old_source = "upgrade_level_%d" % old_level
@@ -1006,15 +994,27 @@ func choose_range_path():
 	stat_attack_speed.remove_modifiers_from_source(old_source)
 	stat_range.remove_modifiers_from_source(old_source)
 
-	# RANGE PATH: Using modifiers - keeps Level 3 damage/AS, increases range
+	# Phase 2A: Load range path stats from TowerData
+	var level_1_stats = TowerData.get_tower_stats(tower_id, 1)
+	var target_stats = TowerData.get_tower_stats(tower_id, 4, "range_path")
+
+	if target_stats.is_empty():
+		push_error("[ArcherTower] Failed to load range path stats from TowerData")
+		return false
+
+	# Calculate deltas from base stats (Level 1)
+	var damage_delta = target_stats.damage - level_1_stats.damage
+	var attack_speed_delta = target_stats.attack_speed - level_1_stats.attack_speed
+	var range_delta = target_stats.range - level_1_stats.range
+
+	# Apply modifiers
 	var mod_source = "upgrade_path_range"
-	# Damage: 12 → 27 (keep level 3 stats)
-	stat_damage.add_modifier(StatModifier.create_flat(15.0, mod_source, "Range Path Level 4"))
-	# Attack speed: 1.0 → 1.6 (keep level 3 stats)
-	stat_attack_speed.add_modifier(StatModifier.create_flat(0.6, mod_source, "Range Path Level 4"))
-	# Range: 300 → 500 (+200 flat range from base)
-	stat_range.add_modifier(StatModifier.create_flat(200.0, mod_source, "Range Path Level 4"))
-	# Result: 43.2 DPS - Long-range sniper
+	if damage_delta != 0:
+		stat_damage.add_modifier(StatModifier.create_flat(damage_delta, mod_source, "Range Path Level 4"))
+	if attack_speed_delta != 0:
+		stat_attack_speed.add_modifier(StatModifier.create_flat(attack_speed_delta, mod_source, "Range Path Level 4"))
+	if range_delta != 0:
+		stat_range.add_modifier(StatModifier.create_flat(range_delta, mod_source, "Range Path Level 4"))
 
 	print("[ArcherTower] RANGE PATH chosen: Range=%.1f, DMG=%.1f, AS=%.1f, DPS=%.1f - Long-range sniper!" % [range_radius, damage, attack_speed, damage * attack_speed])
 
@@ -1090,7 +1090,7 @@ func get_upgrade_cost() -> int:
 	return 0  # Max level reached
 
 func get_upgrade_stats(preview_path: String = "") -> Dictionary:
-	"""Get preview of what stats will be after upgrade (for two-click upgrade system)
+	"""Get preview of what stats will be after upgrade (for two-click upgrade system) - Phase 2A: Uses TowerData
 
 	Args:
 		preview_path: For Level 3, specify "damage" or "range" to preview that path choice
@@ -1104,41 +1104,28 @@ func get_upgrade_stats(preview_path: String = "") -> Dictionary:
 	var attack_speed_bonus = 0.0
 	var range_bonus = 0
 
-	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
-		# Standard upgrades - MUST MATCH upgrade_tower() actual values!
-		match tower_level:
-			1:  # Level 1→2
-				damage_bonus = 17 - current_damage  # Will be 17
-				attack_speed_bonus = 1.3 - current_attack_speed  # Will be 1.3
-				range_bonus = 350 - current_range  # Will be 350
-			2:  # Level 2→3
-				damage_bonus = 27 - current_damage  # Will be 27
-				attack_speed_bonus = 1.6 - current_attack_speed  # Will be 1.6
-				range_bonus = 400 - current_range  # Will be 400
-	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
-		# Level 3→4 path choice preview - MUST MATCH choose_damage_path() / choose_range_path()
-		if preview_path == "damage":
-			# Damage path preview: 27→36 damage, 1.6→2.0 AS, 400→500 range
-			damage_bonus = 36 - current_damage  # +9 damage (+33%)
-			attack_speed_bonus = 2.0 - current_attack_speed  # +0.4 AS (+25%)
-			range_bonus = 500 - current_range  # +100 range (+25%)
-		elif preview_path == "range":
-			# Range path preview: damage/AS stay same, 400→500 range
-			damage_bonus = 0  # Stays 27
-			attack_speed_bonus = 0.0  # Stays 1.6
-			range_bonus = 500 - current_range  # +100 range (+25%)
-	elif tower_level == 4 and upgrade_path != "":
-		# Level 4→5 upgrade (path-specific) - MUST MATCH upgrade_tower() Level 5 values!
-		if upgrade_path == "damage":
-			# Damage path Level 5 preview
-			damage_bonus = 40 - current_damage  # BALANCE FIX: 36 → 40 (was 45)
-			attack_speed_bonus = 2.5 - current_attack_speed  # 2.0 → 2.5
-			range_bonus = 0  # Range stays 500
-		elif upgrade_path == "range":
-			# Range path Level 5 preview
-			damage_bonus = 35 - current_damage  # 27 → 35
-			attack_speed_bonus = 1.8 - current_attack_speed  # 1.6 → 1.8
-			range_bonus = 450 - current_range  # 500 → 450 (reduced!)
+	# Determine the preview level and path
+	var preview_level = tower_level + 1
+	var preview_path_key = ""
+
+	if preview_level == 4 and preview_path != "":
+		# Level 3→4 path choice
+		preview_path_key = preview_path + "_path"
+	elif preview_level == 5 and upgrade_path != "":
+		# Level 4→5 with already chosen path
+		preview_path_key = upgrade_path + "_path"
+
+	# Load next level stats from TowerData
+	var next_level_stats: Dictionary
+	if preview_path_key != "":
+		next_level_stats = TowerData.get_tower_stats(tower_id, preview_level, preview_path_key)
+	else:
+		next_level_stats = TowerData.get_tower_stats(tower_id, preview_level)
+
+	if not next_level_stats.is_empty():
+		damage_bonus = next_level_stats.damage - current_damage
+		attack_speed_bonus = next_level_stats.attack_speed - current_attack_speed
+		range_bonus = next_level_stats.range - current_range
 
 	return {
 		"damage": current_damage,

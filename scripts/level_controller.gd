@@ -208,10 +208,12 @@ func _input(event):
 		get_viewport().set_input_as_handled()
 
 	# ESC key to pause (highest priority - runs before other UI handlers)
-	# Only trigger if game is not already paused to avoid conflicts with pause_menu
-	if event.is_action_pressed("ui_cancel") and not get_tree().paused:
-		_show_pause_menu()
-		get_viewport().set_input_as_handled()  # Consume to prevent other handlers
+	# Check if pause menu already exists to avoid conflicts
+	if event.is_action_pressed("ui_cancel"):
+		var root = get_tree().root
+		if not root.has_node("PauseMenu"):
+			_show_pause_menu()
+			get_viewport().set_input_as_handled()  # Consume to prevent other handlers
 
 func _show_pause_menu():
 	"""Show the pause menu"""

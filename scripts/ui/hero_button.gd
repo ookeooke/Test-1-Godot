@@ -55,8 +55,8 @@ func _setup_abilities_container():
 	abilities_container.add_theme_constant_override("separation", 4)
 	add_child(abilities_container)
 
-	# Position below the hero button panel
-	abilities_container.position = Vector2(0, 125)  # Just below the hero panel
+	# Position above the hero button panel
+	abilities_container.position = Vector2(0, -70)  # Above the hero panel
 
 	print("✅ Abilities container created")
 

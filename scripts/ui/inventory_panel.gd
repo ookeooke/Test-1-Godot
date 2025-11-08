@@ -222,13 +222,9 @@ func _show_item_context_menu(item_id: String, slot: ItemSlot):
 	if item_data == null:
 		return
 
-	# For now, just sell the item
-	var confirm = "Sell %s for %d gold?" % [item_data.item_name, item_data.sell_value]
-	print(confirm)
-
-	# TODO: Create proper context menu UI
-	# For now, auto-sell on right-click (temporary)
-	InventoryManager.sell_item(item_id, 1)
+	# TODO: Create proper context menu UI (Equip/Unequip/Drop/Split/Info)
+	# For now, right-click does nothing to prevent accidental item loss
+	print("[InventoryPanel] Right-click context menu not yet implemented for: ", item_data.item_name)
 
 
 func _on_item_slot_hovered(slot: ItemSlot):

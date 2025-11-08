@@ -182,7 +182,7 @@ func _on_inventory_changed():
 
 
 func _on_item_slot_clicked(item_id: String, slot: ItemSlot):
-	"""Called when an item slot is left-clicked - auto-equip for mobile"""
+	"""Called when an item slot is left-clicked - auto-equip for mobile, Ctrl+click for PC"""
 	print("[InventoryView] Item clicked: ", item_id)
 
 	# Get item data
@@ -190,9 +190,19 @@ func _on_item_slot_clicked(item_id: String, slot: ItemSlot):
 	if not item_data:
 		return
 
+	# PC: Only equip with Ctrl+Click (drag-and-drop is primary)
+	# Mobile: Auto-equip on tap (drag is difficult on touch)
+	var is_pc = OS.has_feature("pc") or OS.get_name() in ["Windows", "Linux", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "BSD"]
+	var ctrl_held = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)  # Meta for Mac Command key
+
 	# Auto-equip logic for equipment items
 	if item_data.item_type == ItemData.ItemType.WEAPON or item_data.item_type == ItemData.ItemType.ARMOR:
-		_try_auto_equip_item(item_id, item_data)
+		# PC: Only equip if Ctrl is held (otherwise rely on drag-and-drop)
+		# Mobile: Always equip on tap
+		if not is_pc or ctrl_held:
+			_try_auto_equip_item(item_id, item_data)
+		else:
+			print("[InventoryView] PC: Use drag-and-drop or Ctrl+Click to equip")
 	elif item_data.item_type == ItemData.ItemType.CONSUMABLE:
 		# TODO: Use consumable
 		print("[InventoryView] Consumable clicked - use not yet implemented")
@@ -214,13 +224,9 @@ func _show_item_context_menu(item_id: String, slot: ItemSlot):
 	if item_data == null:
 		return
 
-	# For now, just sell the item
-	var confirm = "Sell %s for %d gold?" % [item_data.item_name, item_data.sell_value]
-	print(confirm)
-
-	# TODO: Create proper context menu UI
-	# For now, auto-sell on right-click (temporary)
-	InventoryManager.sell_item(item_id, 1)
+	# TODO: Create proper context menu UI (Equip/Unequip/Drop/Split/Info)
+	# For now, right-click does nothing to prevent accidental item loss
+	print("[InventoryView] Right-click context menu not yet implemented for: ", item_data.item_name)
 
 
 func _on_item_slot_hovered(slot: ItemSlot):

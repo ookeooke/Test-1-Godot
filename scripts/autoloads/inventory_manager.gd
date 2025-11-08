@@ -53,14 +53,22 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 
 	# Add to inventory
 	if global_inventory.has(item_id):
-		# Stack existing item
+		# Stack existing item (grid position already exists)
 		global_inventory[item_id].quantity += quantity
 	else:
-		# New item entry
+		# New item entry - add to dictionary AND place in grid atomically
 		global_inventory[item_id] = {
 			"quantity": quantity,
 			"upgrade_level": 0
 		}
+
+		# ATOMIC PLACEMENT: Auto-place in grid immediately
+		if not auto_place_item(item_id):
+			# Rollback dictionary addition if grid placement fails
+			global_inventory.erase(item_id)
+			inventory_full.emit(item_id)
+			print("[InventoryManager] Inventory grid full - could not place item: ", item_data.item_name)
+			return false
 
 	item_added.emit(item_id, quantity)
 	inventory_changed.emit()

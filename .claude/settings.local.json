@@ -1,14 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat:*)",
-      "Read(//c/Users/ollil/AppData/Roaming/Godot/app_userdata/Test 1/balance_debug/exports/**)",
-      "Bash(rm:*)",
-      "Bash(dir:*)",
-      "Bash(git log:*)",
-      "Bash(powershell:*)",
-      "Bash(python:*)",
-      "Bash(del ARCHITECTURE_FIXES.md BALANCE_IMPLEMENTATION_COMPLETE.md BALANCE_OVERHAUL_SUMMARY.md CHANGELOG_2025-10-24.md CLEANUP_SUMMARY.md COLLISION_ISSUES_FOUND.md CURRENT_STATE_REPORT.md DEEP_ANALYSIS.md FINAL_COLLISION_FIX.md FINAL_VERIFICATION.md HITBOX_COLLISION_INVESTIGATION.md HITBOX_VERIFICATION.md IMPLEMENTATION_SUMMARY.md MULTI_HITBOX_IMPLEMENTATION.md PURE_COLLISION_SYSTEM.md STRUCTURE_ANALYSIS_DEEP.md VISUAL_ACCURATE_HITBOXES.md WAVE_ARCHITECTURE_ANALYSIS.md)"
+      "Bash(godot:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

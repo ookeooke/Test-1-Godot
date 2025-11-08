@@ -52,6 +52,8 @@ func create_new_profile(profile_name: String) -> bool:
 			}
 		},
 		"hero_equipment": {},  # New: Per-hero equipment slots
+		"tower_loadout": ["archer", "barracks"],  # Phase 1: Global tower loadout (3-4 tower IDs)
+		"unlocked_towers": ["archer", "barracks"],  # Phase 1: All unlocked towers
 		"user_preferences": {},  # UI preferences (panel tabs, etc.)
 		"settings": {
 			"master_volume": 1.0,
@@ -643,3 +645,130 @@ func is_hero_unlocked(hero_id: String) -> bool:
 		return false
 
 	return current_profile["unlocked_heroes"].has(hero_id)
+
+# ============================================
+# TOWER LOADOUT SYSTEM (Phase 3A)
+# ============================================
+
+func get_tower_loadout() -> Array:
+	"""Get the current tower loadout (3-4 tower IDs)
+
+	Returns:
+		Array of tower_id strings, or default ["archer", "barracks"] if none set
+	"""
+	if not has_current_profile():
+		return ["archer", "barracks"]
+
+	if not current_profile.has("tower_loadout"):
+		return ["archer", "barracks"]
+
+	return current_profile["tower_loadout"]
+
+func set_tower_loadout(loadout: Array) -> bool:
+	"""Set the tower loadout (3-4 tower IDs)
+
+	Args:
+		loadout: Array of 3-4 tower_id strings
+
+	Returns:
+		true if successful, false otherwise
+	"""
+	if not has_current_profile():
+		push_error("SaveManager: Cannot set tower loadout - no profile loaded")
+		return false
+
+	if loadout.size() < 3 or loadout.size() > 4:
+		push_error("SaveManager: Tower loadout must have 3-4 towers, got %d" % loadout.size())
+		return false
+
+	# Validate all tower IDs exist in TowerData
+	for tower_id in loadout:
+		if not TowerData.get_tower_data(tower_id).has("name"):
+			push_error("SaveManager: Invalid tower_id in loadout: %s" % tower_id)
+			return false
+
+	current_profile["tower_loadout"] = loadout
+	save_current_profile()
+	print("✅ Tower loadout updated: %s" % str(loadout))
+	return true
+
+func get_unlocked_towers() -> Array:
+	"""Get list of all unlocked towers
+
+	Returns:
+		Array of tower_id strings
+	"""
+	if not has_current_profile():
+		return ["archer", "barracks", "mage", "artillery"]
+
+	if not current_profile.has("unlocked_towers"):
+		current_profile["unlocked_towers"] = ["archer", "barracks", "mage", "artillery"]
+		save_current_profile()
+		return current_profile["unlocked_towers"]
+
+	# Auto-migrate old profiles: add new towers if missing
+	var unlocked = current_profile["unlocked_towers"]
+	var all_towers = ["archer", "barracks", "mage", "artillery"]
+	var needs_save = false
+
+	for tower_id in all_towers:
+		if not tower_id in unlocked:
+			unlocked.append(tower_id)
+			needs_save = true
+			print("[SaveManager] Auto-unlocked new tower: %s" % tower_id)
+
+	if needs_save:
+		current_profile["unlocked_towers"] = unlocked
+		save_current_profile()
+
+	return current_profile["unlocked_towers"]
+
+func unlock_tower(tower_id: String) -> bool:
+	"""Unlock a tower for use
+
+	Args:
+		tower_id: Tower to unlock
+
+	Returns:
+		true if newly unlocked, false if already unlocked or error
+	"""
+	if not has_current_profile():
+		push_error("SaveManager: Cannot unlock tower - no profile loaded")
+		return false
+
+	# Validate tower exists
+	if not TowerData.get_tower_data(tower_id).has("name"):
+		push_error("SaveManager: Invalid tower_id: %s" % tower_id)
+		return false
+
+	# Ensure unlocked_towers array exists
+	if not current_profile.has("unlocked_towers"):
+		current_profile["unlocked_towers"] = ["archer", "barracks", "mage", "artillery"]
+
+	# Check if already unlocked
+	if current_profile["unlocked_towers"].has(tower_id):
+		print("⚠️ Tower already unlocked: %s" % tower_id)
+		return false
+
+	# Unlock
+	current_profile["unlocked_towers"].append(tower_id)
+	save_current_profile()
+	print("✅ Unlocked tower: %s" % tower_id)
+	return true
+
+func is_tower_unlocked(tower_id: String) -> bool:
+	"""Check if a tower is unlocked
+
+	Args:
+		tower_id: Tower to check
+
+	Returns:
+		true if unlocked, false otherwise
+	"""
+	if not has_current_profile():
+		return false
+
+	if not current_profile.has("unlocked_towers"):
+		return false
+
+	return current_profile["unlocked_towers"].has(tower_id)
