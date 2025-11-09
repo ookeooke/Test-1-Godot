@@ -24,7 +24,7 @@ var accessory2_slot: ItemSlot
 @onready var stats_label: RichTextLabel = $MarginContainer/VBoxContainer/StatsContainer/StatsLabel if has_node("MarginContainer/VBoxContainer/StatsContainer/StatsLabel") else null
 @onready var hero_name_label: Label = $MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel") else null
 
-var equipment_manager: EquipmentManager = null
+# equipment_manager removed - now using HeroEquipmentRegistry
 
 
 func _ready():
@@ -44,6 +44,8 @@ func _create_equipment_slots():
 	weapon_slot = item_slot_scene.instantiate() as ItemSlot
 	weapon_slot.slot_type = "equipment"
 	weapon_slot.equipment_filter = ItemData.EquipSlot.WEAPON
+	weapon_slot.equipment_slot_name = "weapon"
+	weapon_slot.hero_id = hero_id
 	weapon_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("weapon"))
 	if weapon_container:
 		weapon_container.add_child(weapon_slot)
@@ -52,6 +54,8 @@ func _create_equipment_slots():
 	armor_slot = item_slot_scene.instantiate() as ItemSlot
 	armor_slot.slot_type = "equipment"
 	armor_slot.equipment_filter = ItemData.EquipSlot.ARMOR
+	armor_slot.equipment_slot_name = "armor"
+	armor_slot.hero_id = hero_id
 	armor_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("armor"))
 	if armor_container:
 		armor_container.add_child(armor_slot)
@@ -60,6 +64,8 @@ func _create_equipment_slots():
 	accessory1_slot = item_slot_scene.instantiate() as ItemSlot
 	accessory1_slot.slot_type = "equipment"
 	accessory1_slot.equipment_filter = ItemData.EquipSlot.ACCESSORY
+	accessory1_slot.equipment_slot_name = "accessory_1"
+	accessory1_slot.hero_id = hero_id
 	accessory1_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("accessory_1"))
 	if accessory1_container:
 		accessory1_container.add_child(accessory1_slot)
@@ -68,66 +74,54 @@ func _create_equipment_slots():
 	accessory2_slot = item_slot_scene.instantiate() as ItemSlot
 	accessory2_slot.slot_type = "equipment"
 	accessory2_slot.equipment_filter = ItemData.EquipSlot.ACCESSORY
+	accessory2_slot.equipment_slot_name = "accessory_2"
+	accessory2_slot.hero_id = hero_id
 	accessory2_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("accessory_2"))
 	if accessory2_container:
 		accessory2_container.add_child(accessory2_slot)
 
 
 func _find_equipment_manager():
-	"""Find the hero's equipment manager in the scene"""
-	# Try to find hero in scene
-	var heroes = get_tree().get_nodes_in_group("hero")
-	for hero in heroes:
-		if hero.has_method("get_hero_id") and hero.get_hero_id() == hero_id:
-			if hero.has_node("EquipmentManager"):
-				equipment_manager = hero.get_node("EquipmentManager")
-				equipment_manager.equipment_changed.connect(_on_equipment_changed)
-				print("[EquipmentPanel] Found equipment manager for hero: ", hero_id)
-				return
+	"""Setup equipment registry integration"""
+	# Register hero if not already registered
+	if not HeroEquipmentRegistry.is_hero_registered(hero_id):
+		HeroEquipmentRegistry.register_hero(hero_id)
+		print("[EquipmentPanel] Registered hero in registry: ", hero_id)
 
-	print("[EquipmentPanel] Warning: Could not find equipment manager for hero: ", hero_id)
+	# Connect to registry batch update signal
+	if not HeroEquipmentRegistry.batch_update_completed.is_connected(_on_batch_update):
+		HeroEquipmentRegistry.batch_update_completed.connect(_on_batch_update)
 
-
-func set_equipment_manager(manager: EquipmentManager):
-	"""Manually set the equipment manager"""
-	if equipment_manager and equipment_manager.equipment_changed.is_connected(_on_equipment_changed):
-		equipment_manager.equipment_changed.disconnect(_on_equipment_changed)
-
-	equipment_manager = manager
-
-	if equipment_manager:
-		equipment_manager.equipment_changed.connect(_on_equipment_changed)
-		refresh_equipment()
+	print("[EquipmentPanel] Setup complete for hero: ", hero_id)
 
 
 func refresh_equipment():
-	"""Refresh all equipment slots from equipment manager"""
-	if not equipment_manager:
-		return
+	"""Refresh all equipment slots from HeroEquipmentRegistry"""
+	var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
 
 	# Update weapon slot
-	var weapon_id = equipment_manager.get_equipped_item("weapon")
+	var weapon_id = equipped_items.get("weapon", "")
 	if weapon_id != "":
 		weapon_slot.set_item(weapon_id, 1, 0)
 	else:
 		weapon_slot.clear_slot()
 
 	# Update armor slot
-	var armor_id = equipment_manager.get_equipped_item("armor")
+	var armor_id = equipped_items.get("armor", "")
 	if armor_id != "":
 		armor_slot.set_item(armor_id, 1, 0)
 	else:
 		armor_slot.clear_slot()
 
 	# Update accessory 1 slot
-	var acc1_id = equipment_manager.get_equipped_item("accessory_1")
+	var acc1_id = equipped_items.get("accessory_1", "")
 	if acc1_id != "":
 		accessory1_slot.set_item(acc1_id, 1, 0)
 	else:
 		accessory1_slot.clear_slot()
 
 	# Update accessory 2 slot
-	var acc2_id = equipment_manager.get_equipped_item("accessory_2")
+	var acc2_id = equipped_items.get("accessory_2", "")
 	if acc2_id != "":
 		accessory2_slot.set_item(acc2_id, 1, 0)
 	else:
@@ -139,13 +133,21 @@ func refresh_equipment():
 
 func _update_stats_display():
 	"""Update the stats text display"""
-	if not stats_label or not equipment_manager:
+	if not stats_label:
 		return
 
 	var stats_text = "[b]HERO STATS[/b]\n\n"
 
-	# Get modifiers from equipment using NEW unified system
-	var modifiers = equipment_manager.get_all_stat_modifiers()
+	# Get modifiers from equipment via registry
+	var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
+	var modifiers: Array[StatModifier] = []
+	for item_id in equipped_items.values():
+		if item_id == "":
+			continue
+		var item_data = ItemDatabase.get_item(item_id)
+		if item_data:
+			var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
+			modifiers.append_array(item_data.get_stat_modifiers(upgrade_level))
 
 	if modifiers.is_empty():
 		stats_text += "\n[color=gray]No equipment equipped[/color]"
@@ -227,13 +229,17 @@ func _format_modifier(mod: StatModifier) -> String:
 	return mod.description
 
 
-func _on_equipment_changed():
-	"""Called when equipment changes"""
+func _on_batch_update(dirty_hero_ids: Array[String]) -> void:
+	"""Handle batched equipment update from registry"""
+	if hero_id not in dirty_hero_ids:
+		return
 	refresh_equipment()
+	print("[EquipmentPanel] Refreshed for ", hero_id)
 
 
 func _on_equipment_slot_right_clicked(item_id: String, slot: ItemSlot, slot_name: String):
 	"""Called when an equipment slot is right-clicked (unequip)"""
-	if equipment_manager:
-		equipment_manager.unequip_item(slot_name)
+	if InventoryManager.unequip_item_atomic(hero_id, slot_name):
 		print("[EquipmentPanel] Unequipped item from: ", slot_name)
+	else:
+		print("[EquipmentPanel] Failed to unequip item from: ", slot_name)

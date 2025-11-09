@@ -173,23 +173,17 @@ func _show_instructions():
 
 
 func _on_equip_button_pressed():
-	"""Equip the right item"""
+	"""Equip the right item using atomic transaction"""
 	if not right_item or comparison_slot == "":
 		return
 
-	# Find equipment manager
-	var heroes = get_tree().get_nodes_in_group("hero")
-	for hero in heroes:
-		if hero.has_method("get_hero_id") and hero.get_hero_id() == hero_id:
-			if hero.has_node("EquipmentManager"):
-				var equipment_manager = hero.get_node("EquipmentManager")
-				equipment_manager.equip_item(comparison_slot, right_item.item_id)
-				print("[ComparisonView] Equipped: ", right_item.item_name)
+	# Use atomic equip method from InventoryManager
+	if InventoryManager.equip_item_atomic(hero_id, comparison_slot, right_item.item_id):
+		print("[ComparisonView] Equipped: ", right_item.item_name)
 
-				# Clear comparison
-				left_item = null
-				right_item = null
-				_show_instructions()
-				return
-
-	print("[ComparisonView] Error: Could not find equipment manager")
+		# Clear comparison
+		left_item = null
+		right_item = null
+		_show_instructions()
+	else:
+		print("[ComparisonView] Failed to equip item")

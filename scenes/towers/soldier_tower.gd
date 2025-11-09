@@ -82,10 +82,10 @@ func _initialize_stats():
 		stat_soldier_attack_speed = Stat.new(0.0)
 		stat_respawn_delay = Stat.new(0.0)
 	else:
-		stat_soldier_health = Stat.new(level_1_stats.soldier_health)
-		stat_soldier_damage = Stat.new(level_1_stats.soldier_damage)
-		stat_soldier_attack_speed = Stat.new(level_1_stats.soldier_attack_speed)
-		stat_respawn_delay = Stat.new(level_1_stats.respawn_time)
+		stat_soldier_health = Stat.new(level_1_stats["soldier_health"])
+		stat_soldier_damage = Stat.new(level_1_stats["soldier_damage"])
+		stat_soldier_attack_speed = Stat.new(level_1_stats["soldier_attack_speed"])
+		stat_respawn_delay = Stat.new(level_1_stats["respawn_time"])
 
 	print("[SoldierTower] Stats initialized - HP: %.1f, DMG: %.1f, AS: %.1f, Respawn: %.1fs" % [stat_soldier_health.get_value(), stat_soldier_damage.get_value(), stat_soldier_attack_speed.get_value(), stat_respawn_delay.get_value()])
 
@@ -523,72 +523,70 @@ func _update_existing_soldiers():
 	print("✅ [SoldierTower] Updated %d existing soldiers with new stats" % active_soldiers.size())
 
 func get_upgrade_cost() -> int:
-	"""Get cost for next upgrade (matching archer tower pricing)"""
-	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
-		# Standard upgrades (Level 1→2, 2→3)
-		match tower_level:
-			1: return 60  # Level 1→2
-			2: return 90  # Level 2→3
-	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
-		# Path choice upgrade (Level 3→4)
-		return 150  # Level 3→4 path choice
-	elif tower_level == 4 and upgrade_path != "":
-		# Final upgrade after path choice (Level 4→5)
-		return 200  # Level 4→5 final upgrade
+	"""Get cost for next upgrade from TowerData (data-driven)"""
+	if tower_level >= 5:
+		return 0  # Max level reached
 
-	return 0  # Max level reached
+	# Query TowerData for current level's cost_to_next
+	var current_stats = TowerData.get_tower_stats(tower_id, tower_level, upgrade_path)
+
+	if current_stats and "cost_to_next" in current_stats:
+		return current_stats["cost_to_next"]
+
+	# Fallback: should never happen if TowerData is configured correctly
+	print("⚠️ [Barracks] WARNING: No cost_to_next found for level %d, path '%s'" % [tower_level, upgrade_path])
+	return 0
 
 func get_upgrade_stats(preview_path: String = "") -> Dictionary:
-	"""Get preview of what stats will be after upgrade"""
-	var next_level = tower_level + 1
+	"""Get preview of what stats will be after upgrade - Phase 2A: Uses TowerData
 
-	# Calculate preview stats
-	var preview_health = soldier_health
-	var preview_damage = soldier_damage
-	var preview_respawn = respawn_delay
+	Args:
+		preview_path: For Level 3, specify "defense" or "offense" to preview that path choice
+	"""
+	# Determine the preview level and path
+	var preview_level = tower_level + 1
+	var preview_path_key = ""
 
-	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
-		# Standard upgrades
-		match next_level:
-			2:
-				preview_health = 120.0
-				preview_damage = 12.0
-				preview_respawn = 4.5
-			3:
-				preview_health = 150.0
-				preview_damage = 15.0
-				preview_respawn = 4.0
-	elif tower_level == MAX_LEVEL_BEFORE_CHOICE:
-		# Path choice preview
-		if preview_path == "defense":
-			preview_health = 180.0
-			preview_damage = 18.0
-			preview_respawn = 3.0
-		elif preview_path == "offense":
-			preview_health = 170.0
-			preview_damage = 20.0
-			preview_respawn = 3.5
-	elif tower_level == 4:
-		# Final upgrade
-		if upgrade_path == "defense":
-			preview_health = 220.0
-			preview_damage = 18.0
-			preview_respawn = 2.5
-		elif upgrade_path == "offense":
-			preview_health = 200.0
-			preview_damage = 25.0
-			preview_respawn = 3.0
+	if preview_level == 4 and preview_path != "":
+		# Level 3→4 path choice
+		preview_path_key = preview_path + "_path"
+	elif preview_level == 5 and upgrade_path != "":
+		# Level 4→5 with already chosen path
+		preview_path_key = upgrade_path + "_path"
+
+	# Load next level stats from TowerData
+	var next_level_stats: Dictionary
+	if preview_path_key != "":
+		next_level_stats = TowerData.get_tower_stats(tower_id, preview_level, preview_path_key)
+	else:
+		next_level_stats = TowerData.get_tower_stats(tower_id, preview_level)
+
+	# Use next level stats if available, otherwise use current values
+	var preview_health = next_level_stats.get("soldier_health", soldier_health)
+	var preview_damage = next_level_stats.get("soldier_damage", soldier_damage)
+	var preview_respawn = next_level_stats.get("respawn_time", respawn_delay)
+	var preview_squad = next_level_stats.get("squad_size", squad_size)
 
 	return {
 		"soldier_health": preview_health,
 		"soldier_damage": preview_damage,
 		"respawn_delay": preview_respawn,
-		"squad_size": squad_size
+		"squad_size": preview_squad
 	}
 
 func needs_path_choice() -> bool:
 	"""Check if tower is at level 3 and needs path choice"""
 	return tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == ""
+
+func can_upgrade() -> bool:
+	"""Check if tower can be upgraded"""
+	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
+		return true  # Can do standard upgrade (Lv1→2, Lv2→3)
+	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
+		return true  # Can choose path (Lv3→4)
+	elif tower_level == 4 and upgrade_path != "":
+		return true  # Can do final upgrade (Lv4→5)
+	return false  # Level 5 = MAX LEVEL
 
 # ============================================
 # CLEANUP

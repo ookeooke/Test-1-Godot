@@ -59,7 +59,7 @@ columns = 2
 layout_mode = 2
 
 [node name="WeaponContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot"]
-custom_minimum_size = Vector2(100, 100)
+custom_minimum_size = Vector2(100, 150)
 layout_mode = 2
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot/WeaponContainer"]
@@ -91,7 +91,7 @@ vertical_alignment = 0
 layout_mode = 2
 
 [node name="Accessory1Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot"]
-custom_minimum_size = Vector2(100, 100)
+custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot/Accessory1Container"]
@@ -107,7 +107,7 @@ vertical_alignment = 0
 layout_mode = 2
 
 [node name="Accessory2Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot"]
-custom_minimum_size = Vector2(100, 100)
+custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot/Accessory2Container"]

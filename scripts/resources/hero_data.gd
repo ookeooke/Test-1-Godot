@@ -26,7 +26,7 @@ enum HeroClass {
 # Base Stats
 @export_group("Base Stats")
 @export var base_health: int = 200
-@export var base_damage: int = 25
+@export var base_damage: int = 0  ## All damage comes from equipment
 @export var base_range: int = 300
 @export var base_attack_speed: float = 0.6  # Seconds between attacks
 @export var base_movement_speed: float = 150.0

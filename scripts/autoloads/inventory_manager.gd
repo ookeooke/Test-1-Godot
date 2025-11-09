@@ -18,9 +18,7 @@ var item_upgrades: Dictionary = {}
 
 ## Maximum slots per category (expandable)
 var max_slots: Dictionary = {
-	"equipment": 20,
-	"consumables": 15,
-	"materials": 30
+	"equipment": 20
 }
 
 ## Slot upgrade costs
@@ -218,15 +216,8 @@ func get_all_items() -> Array:
 
 ## Get category string for an item type
 func _get_category_for_item_type(item_type: ItemData.ItemType) -> String:
-	match item_type:
-		ItemData.ItemType.WEAPON, ItemData.ItemType.ARMOR:
-			return "equipment"
-		ItemData.ItemType.CONSUMABLE:
-			return "consumables"
-		ItemData.ItemType.MATERIAL:
-			return "materials"
-		_:
-			return "materials"
+	# All items are equipment now
+	return "equipment"
 
 
 ## Upgrade inventory slots for a category
@@ -254,6 +245,11 @@ func sell_item(item_id: String, quantity: int = 1) -> bool:
 	if item_data == null:
 		return false
 
+	# Prevent selling account-bound items (starter equipment)
+	if item_data.is_account_bound:
+		print("[InventoryManager] ⚠️ Cannot sell account-bound item: ", item_id)
+		return false
+
 	if !remove_item(item_id, quantity):
 		return false
 
@@ -261,20 +257,6 @@ func sell_item(item_id: String, quantity: int = 1) -> bool:
 	SaveManager.add_gems(sell_value)
 
 	print("[InventoryManager] Sold %d x %s for %d gems" % [quantity, item_data.item_name, sell_value])
-	return true
-
-
-## Use a consumable item
-func use_consumable(item_id: String) -> bool:
-	var item_data = ItemDatabase.get_item(item_id)
-	if item_data == null or item_data.item_type != ItemData.ItemType.CONSUMABLE:
-		return false
-
-	if !remove_item(item_id, 1):
-		return false
-
-	# The actual effect would be applied by the hero/game manager
-	print("[InventoryManager] Used consumable: ", item_data.item_name)
 	return true
 
 
@@ -286,6 +268,93 @@ func has_item(item_id: String, quantity: int = 1) -> bool:
 ## Get total number of unique items
 func get_unique_item_count() -> int:
 	return global_inventory.size()
+
+
+## ============================================
+## EQUIPMENT TRANSACTION WRAPPERS (NEW - Option A Refactor)
+## ============================================
+
+func equip_item_atomic(hero_id: String, slot: String, item_id: String) -> bool:
+	"""Atomically equip item with inventory/equipment coordination"""
+	if not global_inventory.has(item_id):
+		print("[InventoryManager] Cannot equip - item not in inventory: ", item_id)
+		return false
+	if not HeroEquipmentRegistry.begin_transaction(hero_id, "equip"):
+		return false
+	var old_item = HeroEquipmentRegistry.get_equipped_item(hero_id, slot)
+	if not remove_from_grid(item_id):
+		HeroEquipmentRegistry.rollback_transaction()
+		print("[InventoryManager] Failed to remove item from grid")
+		return false
+	if old_item != "":
+		if not auto_place_item(old_item):
+			auto_place_item(item_id)
+			HeroEquipmentRegistry.rollback_transaction()
+			print("[InventoryManager] Failed to place old item in inventory")
+			return false
+	if not HeroEquipmentRegistry.equip_item_in_transaction(slot, item_id):
+		if old_item != "":
+			remove_from_grid(old_item)
+		auto_place_item(item_id)
+		HeroEquipmentRegistry.rollback_transaction()
+		return false
+	if not HeroEquipmentRegistry.commit_transaction():
+		if old_item != "":
+			remove_from_grid(old_item)
+		auto_place_item(item_id)
+		HeroEquipmentRegistry.rollback_transaction()
+		return false
+	inventory_changed.emit()
+	print("[InventoryManager] Successfully equipped ", item_id, " to ", hero_id, ":", slot)
+	return true
+
+func unequip_item_atomic(hero_id: String, slot: String) -> bool:
+	"""Atomically unequip item with inventory coordination"""
+	var item_id = HeroEquipmentRegistry.get_equipped_item(hero_id, slot)
+	if item_id == "":
+		print("[InventoryManager] Slot already empty: ", slot)
+		return true
+
+	# Prevent unequipping starter equipment to empty slot (can only replace)
+	var item_data = ItemDatabase.get_item(item_id)
+	if item_data and item_data.is_starter_equipment:
+		print("[InventoryManager] ⚠️ Cannot unequip starter equipment: ", item_id)
+		return false
+
+	if not HeroEquipmentRegistry.begin_transaction(hero_id, "unequip"):
+		return false
+	if not HeroEquipmentRegistry.equip_item_in_transaction(slot, ""):
+		HeroEquipmentRegistry.rollback_transaction()
+		return false
+	if not auto_place_item(item_id):
+		HeroEquipmentRegistry.rollback_transaction()
+		inventory_full.emit(item_id)
+		print("[InventoryManager] Inventory full - cannot unequip")
+		return false
+	if not HeroEquipmentRegistry.commit_transaction():
+		remove_from_grid(item_id)
+		HeroEquipmentRegistry.rollback_transaction()
+		return false
+	inventory_changed.emit()
+	print("[InventoryManager] Successfully unequipped ", item_id, " from ", hero_id, ":", slot)
+	return true
+
+func remove_from_grid(item_id: String) -> bool:
+	"""Remove item from grid (for equipping)"""
+	if not item_positions.has(item_id):
+		return false
+	var pos = item_positions[item_id]
+	var item_data = ItemDatabase.get_item(item_id)
+	if not item_data:
+		return false
+	for x in range(item_data.inventory_width):
+		for y in range(item_data.inventory_height):
+			var grid_x = pos.x + x
+			var grid_y = pos.y + y
+			if is_valid_position(grid_x, grid_y):
+				grid[grid_y][grid_x] = ""
+	item_positions.erase(item_id)
+	return true
 
 
 ## Clear entire inventory (for testing/reset)

@@ -95,9 +95,9 @@ func _initialize_stats():
 		stat_attack_speed = Stat.new(0.0)
 		stat_range = Stat.new(0.0)
 	else:
-		stat_damage = Stat.new(level_1_stats.damage)
-		stat_attack_speed = Stat.new(level_1_stats.attack_speed)
-		stat_range = Stat.new(level_1_stats.range)
+		stat_damage = Stat.new(level_1_stats["damage"])
+		stat_attack_speed = Stat.new(level_1_stats["attack_speed"])
+		stat_range = Stat.new(level_1_stats["range"])
 
 	print("[ArcherTower] Stats initialized - DMG: %.1f, AS: %.1f, Range: %.1f" % [stat_damage.get_value(), stat_attack_speed.get_value(), stat_range.get_value()])
 
@@ -883,9 +883,9 @@ func upgrade_tower():
 		return false
 
 	# Calculate deltas from base stats (Level 1)
-	var damage_delta = target_stats.damage - level_1_stats.damage
-	var attack_speed_delta = target_stats.attack_speed - level_1_stats.attack_speed
-	var range_delta = target_stats.range - level_1_stats.range
+	var damage_delta = target_stats["damage"] - level_1_stats["damage"]
+	var attack_speed_delta = target_stats["attack_speed"] - level_1_stats["attack_speed"]
+	var range_delta = target_stats["range"] - level_1_stats["range"]
 
 	# Apply modifiers
 	if damage_delta != 0:
@@ -943,9 +943,9 @@ func choose_damage_path():
 		return false
 
 	# Calculate deltas from base stats (Level 1)
-	var damage_delta = target_stats.damage - level_1_stats.damage
-	var attack_speed_delta = target_stats.attack_speed - level_1_stats.attack_speed
-	var range_delta = target_stats.range - level_1_stats.range
+	var damage_delta = target_stats["damage"] - level_1_stats["damage"]
+	var attack_speed_delta = target_stats["attack_speed"] - level_1_stats["attack_speed"]
+	var range_delta = target_stats["range"] - level_1_stats["range"]
 
 	# Apply modifiers
 	var mod_source = "upgrade_path_damage"
@@ -1003,9 +1003,9 @@ func choose_range_path():
 		return false
 
 	# Calculate deltas from base stats (Level 1)
-	var damage_delta = target_stats.damage - level_1_stats.damage
-	var attack_speed_delta = target_stats.attack_speed - level_1_stats.attack_speed
-	var range_delta = target_stats.range - level_1_stats.range
+	var damage_delta = target_stats["damage"] - level_1_stats["damage"]
+	var attack_speed_delta = target_stats["attack_speed"] - level_1_stats["attack_speed"]
+	var range_delta = target_stats["range"] - level_1_stats["range"]
 
 	# Apply modifiers
 	var mod_source = "upgrade_path_range"
@@ -1074,20 +1074,19 @@ func _revalidate_enemies_in_range():
 			_record_target_change_time()
 
 func get_upgrade_cost() -> int:
-	"""Get cost for next upgrade (REDUCED by 25% for better economy)"""
-	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
-		# Standard upgrades (Level 1→2, 2→3)
-		match tower_level:
-			1: return 60  # Level 1→2 (Reduced from 80g -25%)
-			2: return 90  # Level 2→3 (Reduced from 120g -25%)
-	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
-		# Path choice upgrade (Level 3→4)
-		return 150  # Level 3→4 path choice (increased for economy balance)
-	elif tower_level == 4 and upgrade_path != "":
-		# Final upgrade after path choice (Level 4→5)
-		return 200  # Level 4→5 final upgrade (most expensive)
+	"""Get cost for next upgrade from TowerData (data-driven)"""
+	if tower_level >= 5:
+		return 0  # Max level reached
 
-	return 0  # Max level reached
+	# Query TowerData for current level's cost_to_next
+	var current_stats = TowerData.get_tower_stats(tower_id, tower_level, upgrade_path)
+
+	if current_stats and "cost_to_next" in current_stats:
+		return current_stats["cost_to_next"]
+
+	# Fallback: should never happen if TowerData is configured correctly
+	print("⚠️ [Archer] WARNING: No cost_to_next found for level %d, path '%s'" % [tower_level, upgrade_path])
+	return 0
 
 func get_upgrade_stats(preview_path: String = "") -> Dictionary:
 	"""Get preview of what stats will be after upgrade (for two-click upgrade system) - Phase 2A: Uses TowerData
@@ -1123,9 +1122,9 @@ func get_upgrade_stats(preview_path: String = "") -> Dictionary:
 		next_level_stats = TowerData.get_tower_stats(tower_id, preview_level)
 
 	if not next_level_stats.is_empty():
-		damage_bonus = next_level_stats.damage - current_damage
-		attack_speed_bonus = next_level_stats.attack_speed - current_attack_speed
-		range_bonus = next_level_stats.range - current_range
+		damage_bonus = next_level_stats.get("damage", 0) - current_damage
+		attack_speed_bonus = next_level_stats.get("attack_speed", 0.0) - current_attack_speed
+		range_bonus = next_level_stats.get("range", 0) - current_range
 
 	return {
 		"damage": current_damage,

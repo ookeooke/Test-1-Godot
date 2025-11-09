@@ -63,6 +63,14 @@ func cleanup_for_restart() -> void:
 	else:
 		push_warning("[RestartManager] ⚠️ GameSpeedController not found")
 
+	# Clear all enemy references (fixes bug: stale enemy refs persist)
+	if EnemyManager:
+		var enemy_count = EnemyManager.get_enemy_count()
+		EnemyManager.clear_all_enemies()
+		print("[RestartManager] ✓ EnemyManager cleared (%d enemies)" % enemy_count)
+	else:
+		push_warning("[RestartManager] ⚠️ EnemyManager not found")
+
 	# Verify pause state
 	var pause_state = "paused" if get_tree().paused else "running"
 	print("[RestartManager] ℹ️ Game state: %s" % pause_state)

@@ -1,18 +1,22 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_basic_bow"]
+[ext_resource type="Texture2D" path="res://assets/icons/items/weapons/bows/basic_bow.png" id="2_icon"]
 
 [resource]
 script = ExtResource("1_basic_bow")
 item_id = "basic_bow"
 item_name = "Basic Bow"
 description = "A simple wooden bow. Good for beginners."
+icon = ExtResource("2_icon")
 emoji = "🏹"
 item_type = 0
 rarity = 0
 equip_slot = 1
 max_stack = 1
 sell_value = 20
+is_starter_equipment = true
+is_account_bound = true
 damage_bonus = 5
 attack_speed_multiplier = 1.1
 health_bonus = 0
@@ -20,9 +24,6 @@ defense_bonus = 0
 range_bonus = 50
 crit_chance_bonus = 0.0
 special_effects = []
-heal_amount = 0
-buff_duration = 0.0
-buff_type = ""
 inventory_width = 1
 inventory_height = 2
 can_upgrade = true

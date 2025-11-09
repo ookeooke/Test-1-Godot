@@ -10,6 +10,7 @@ signal hero_selected(hero)
 # STATES
 enum State { IDLE, RANGED_COMBAT, MELEE_COMBAT, RETURNING, WALKING }
 var current_state = State.IDLE
+var hero_id: String
 
 # STATS - NEW UNIFIED SYSTEM
 var hero_level = 1
@@ -29,8 +30,8 @@ var current_health = BASE_MAX_HEALTH  # Will be properly set after stat initiali
 
 # Base stats (for reference and reset)
 const BASE_MAX_HEALTH = 300.0  # BALANCE FIX: Was 200 (40 hits), now 300 (60 hits - matches KR1 durability)
-const BASE_RANGED_DAMAGE = 14.0  # BALANCE FIX: Was 12.0 (1.82x ratio), now 14.0 (2.13x ratio - closer to KR1's 2.77x)
-const BASE_MELEE_DAMAGE = 5.0  # Reduced from 6 (-17%) - melee is for blocking
+const BASE_RANGED_DAMAGE = 0.0  # All damage comes from equipment (requires weapon equipped)
+const BASE_MELEE_DAMAGE = 0.0  # All damage comes from equipment
 const BASE_RANGED_RANGE = 240.0  # BALANCE FIX: Was 300 (same as tower), now 240 (80% of tower - requires positioning risk)
 const BASE_RANGED_ATTACK_SPEED = 0.55  # 25.5 DPS ranged (lower = faster)
 const BASE_MOVEMENT_SPEED = 150.0
@@ -108,7 +109,7 @@ const AURA_RADIUS = 200.0  # How close hero must be to buff towers
 var skill_manager: SkillManager = null
 
 # EQUIPMENT SYSTEM
-var equipment_manager: EquipmentManager = null
+# Now managed by HeroEquipmentRegistry singleton
 
 # ============================================
 # INITIALIZATION
@@ -249,12 +250,20 @@ func _recalculate_all_stats():
 	var equipment_mod_count = 0
 	var skill_mod_count = 0
 
-	# Gather modifiers from equipment
-	if equipment_manager:
-		var equipment_modifiers = equipment_manager.get_all_stat_modifiers()
-		equipment_mod_count = equipment_modifiers.size()
-		for modifier in equipment_modifiers:
+	# Gather modifiers from equipment (via HeroEquipmentRegistry)
+	var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
+	for slot in equipped_items.keys():
+		var item_id = equipped_items[slot]
+		if item_id == "":
+			continue
+		var item_data = ItemDatabase.get_item(item_id)
+		if not item_data:
+			continue
+		var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
+		var modifiers = item_data.get_stat_modifiers(upgrade_level)
+		for modifier in modifiers:
 			_apply_modifier_to_appropriate_stat(modifier)
+			equipment_mod_count += 1
 
 	# Gather modifiers from skills
 	if skill_manager:
@@ -280,15 +289,15 @@ func _recalculate_all_stats():
 	print("📊 Stats recalculated: HP=%.0f, Damage=%.1f, Range=%.0f, AttackSpeed=%.2f" % [max_health, ranged_damage, ranged_range, ranged_attack_speed])
 
 	# Track equipment in BalanceTracker
-	if BalanceTracker and equipment_manager:
-		var equipped_items = equipment_manager.get_all_equipped()
+	if BalanceTracker:
+		var equipped_for_tracking = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
 		var bonuses = {
 			"damage": ranged_damage - BASE_RANGED_DAMAGE,
 			"health": max_health - BASE_MAX_HEALTH,
 			"attack_speed_mult": BASE_RANGED_ATTACK_SPEED / ranged_attack_speed,
 			"range": ranged_range - BASE_RANGED_RANGE
 		}
-		BalanceTracker.record_hero_equipment(self, equipped_items, bonuses)
+		BalanceTracker.record_hero_equipment(self, equipped_for_tracking, bonuses)
 
 
 func _apply_modifier_to_appropriate_stat(modifier: StatModifier):
@@ -316,27 +325,76 @@ func _apply_modifier_to_appropriate_stat(modifier: StatModifier):
 # ============================================
 
 func _setup_equipment_system():
-	"""Initialize the equipment manager and load equipped items"""
-	# Create equipment manager
-	equipment_manager = EquipmentManager.new()
-	equipment_manager.name = "EquipmentManager"
-	equipment_manager.hero_id = "ranger"
-	add_child(equipment_manager)
+	"""Initialize the equipment registry integration"""
+	# Generate unique hero ID
+	var unique_hero_id = _generate_unique_hero_id()
+	hero_id = unique_hero_id
 
-	# Connect to equipment change signal
-	equipment_manager.equipment_changed.connect(_on_equipment_changed)
+	# Register hero in equipment registry
+	if not HeroEquipmentRegistry.is_hero_registered(hero_id):
+		HeroEquipmentRegistry.register_hero(hero_id)
+		print("[RangerHero] Registered in equipment registry: ", hero_id)
 
-	# CRITICAL: Load equipment from save BEFORE first stat calculation
-	# This ensures stats include equipment bonuses on first spawn
-	equipment_manager.load_from_save()
+	# Connect to registry signals
+	HeroEquipmentRegistry.equipment_transaction_completed.connect(_on_equipment_transaction)
+	HeroEquipmentRegistry.batch_update_completed.connect(_on_batch_update)
+
+	# Ensure starter equipment is equipped FIRST (before loading save)
+	_equip_starter_gear()
+
+	# Load equipment from save (this will override starter gear if player has better equipment)
+	_load_equipment_from_save()
 
 	print("✅ Equipment system initialized for ranger")
 
+func _generate_unique_hero_id() -> String:
+	"""Generate static hero class ID for equipment persistence"""
+	# Use static ID so equipment persists across game sessions
+	return "ranger"
 
-func _on_equipment_changed():
-	"""Called when equipment changes - recalculate stats"""
+func _load_equipment_from_save() -> void:
+	"""Verify equipment is loaded from save manager"""
+	# Equipment is automatically loaded by SaveManager.load_profile()
+	# which calls HeroEquipmentRegistry.load_from_dict()
+	# Just verify hero is registered
+	if not HeroEquipmentRegistry.is_hero_registered(hero_id):
+		HeroEquipmentRegistry.register_hero(hero_id)
+		print("[RangerHero] Hero registered during load: ", hero_id)
+
+func _equip_starter_gear() -> void:
+	"""Ensure ranger has Basic Bow equipped (auto-equipped on first spawn)"""
+	var equipped_weapon = HeroEquipmentRegistry.get_equipped_item(hero_id, "weapon")
+
+	if equipped_weapon == "":  # No weapon equipped
+		print("[RangerHero] No weapon equipped - equipping starter Basic Bow")
+
+		# Add Basic Bow to inventory if not exists
+		if not InventoryManager.has_item("basic_bow"):
+			InventoryManager.add_item("basic_bow", 1)
+			print("[RangerHero] Added Basic Bow to inventory")
+
+		# Auto-equip it
+		if InventoryManager.equip_item_atomic(hero_id, "weapon", "basic_bow"):
+			print("[RangerHero] ✅ Starter weapon equipped: Basic Bow")
+		else:
+			print("[RangerHero] ⚠️ Failed to equip starter weapon")
+	else:
+		print("[RangerHero] Weapon already equipped: ", equipped_weapon)
+
+func _on_equipment_transaction(transaction_hero_id: String, transaction_type: String, details: Dictionary) -> void:
+	"""Handle equipment transaction for this hero"""
+	if transaction_hero_id != hero_id:
+		return
+	print("[RangerHero] Equipment transaction: ", transaction_type)
+
+func _on_batch_update(dirty_hero_ids: Array[String]) -> void:
+	"""Handle batched equipment update"""
+	if hero_id not in dirty_hero_ids:
+		return
 	_recalculate_all_stats()
-	print("⚡ Equipment changed - stats updated")
+	print("[RangerHero] Stats recalculated after equipment batch update")
+
+
 
 
 # ============================================
@@ -1057,3 +1115,7 @@ func _exit_tree():
 	# Phase 2B: Remove all tower buffs when hero is removed/dies
 	_cleanup_all_tower_buffs()
 	# Area2D will auto-cleanup its signals
+
+	# Note: We do NOT unregister from HeroEquipmentRegistry here
+	# because equipment should persist across hero respawns
+	# Registry cleanup happens on profile change/logout only

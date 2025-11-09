@@ -10,13 +10,9 @@ signal inventory_closed
 
 # Tab buttons
 @onready var equipment_tab: Button = $Panel/MarginContainer/VBoxContainer/TabContainer/EquipmentTab if has_node("Panel/MarginContainer/VBoxContainer/TabContainer/EquipmentTab") else null
-@onready var consumables_tab: Button = $Panel/MarginContainer/VBoxContainer/TabContainer/ConsumablesTab if has_node("Panel/MarginContainer/VBoxContainer/TabContainer/ConsumablesTab") else null
-@onready var materials_tab: Button = $Panel/MarginContainer/VBoxContainer/TabContainer/MaterialsTab if has_node("Panel/MarginContainer/VBoxContainer/TabContainer/MaterialsTab") else null
 
 # Grid containers for each category
 @onready var equipment_grid: GridContainer = $Panel/MarginContainer/VBoxContainer/ContentContainer/EquipmentGrid if has_node("Panel/MarginContainer/VBoxContainer/ContentContainer/EquipmentGrid") else null
-@onready var consumables_grid: GridContainer = $Panel/MarginContainer/VBoxContainer/ContentContainer/ConsumablesGrid if has_node("Panel/MarginContainer/VBoxContainer/ContentContainer/ConsumablesGrid") else null
-@onready var materials_grid: GridContainer = $Panel/MarginContainer/VBoxContainer/ContentContainer/MaterialsGrid if has_node("Panel/MarginContainer/VBoxContainer/ContentContainer/MaterialsGrid") else null
 
 # Info labels
 @onready var category_label: Label = $Panel/MarginContainer/VBoxContainer/HeaderContainer/CategoryLabel if has_node("Panel/MarginContainer/VBoxContainer/HeaderContainer/CategoryLabel") else null
@@ -39,8 +35,6 @@ func _ready():
 
 	# Initialize item slot arrays
 	item_slots["equipment"] = []
-	item_slots["consumables"] = []
-	item_slots["materials"] = []
 
 	# Create item slots for each category
 	_create_item_slots()
@@ -55,10 +49,6 @@ func _ready():
 	# Set up tab buttons
 	if equipment_tab:
 		equipment_tab.pressed.connect(_on_equipment_tab_pressed)
-	if consumables_tab:
-		consumables_tab.pressed.connect(_on_consumables_tab_pressed)
-	if materials_tab:
-		materials_tab.pressed.connect(_on_materials_tab_pressed)
 
 	# Hide tooltip initially
 	if tooltip_panel:
@@ -76,14 +66,6 @@ func _create_item_slots():
 	# Equipment slots
 	var equipment_count = InventoryManager.max_slots.get("equipment", 20)
 	_create_slots_for_category("equipment", equipment_grid, equipment_count, 5)
-
-	# Consumables slots
-	var consumables_count = InventoryManager.max_slots.get("consumables", 15)
-	_create_slots_for_category("consumables", consumables_grid, consumables_count, 5)
-
-	# Materials slots
-	var materials_count = InventoryManager.max_slots.get("materials", 30)
-	_create_slots_for_category("materials", materials_grid, materials_count, 6)
 
 
 func _create_slots_for_category(category: String, grid: GridContainer, count: int, columns: int):
@@ -122,14 +104,6 @@ func refresh_inventory():
 	var equipment_items = InventoryManager.get_items_by_category("equipment")
 	_fill_category_slots("equipment", equipment_items)
 
-	# Fill consumables slots
-	var consumables_items = InventoryManager.get_items_by_category("consumables")
-	_fill_category_slots("consumables", consumables_items)
-
-	# Fill materials slots
-	var materials_items = InventoryManager.get_items_by_category("materials")
-	_fill_category_slots("materials", materials_items)
-
 	# Update labels
 	_update_labels()
 
@@ -156,13 +130,9 @@ func _switch_to_category(category: String):
 	"""Switch visible category"""
 	current_category = category
 
-	# Hide all grids
+	# Show equipment grid
 	if equipment_grid:
 		equipment_grid.visible = (category == "equipment")
-	if consumables_grid:
-		consumables_grid.visible = (category == "consumables")
-	if materials_grid:
-		materials_grid.visible = (category == "materials")
 
 	# Update category label
 	if category_label:
@@ -193,14 +163,6 @@ func _on_inventory_changed():
 
 func _on_equipment_tab_pressed():
 	_switch_to_category("equipment")
-
-
-func _on_consumables_tab_pressed():
-	_switch_to_category("consumables")
-
-
-func _on_materials_tab_pressed():
-	_switch_to_category("materials")
 
 
 func _on_item_slot_clicked(item_id: String, slot: ItemSlot):

@@ -3,7 +3,7 @@ class_name InventoryView
 
 ## InventoryView - Unified single inventory for all items
 ## Mobile-first Diablo Immortal style - no category tabs
-## All equipment, consumables, and materials in one grid
+## All equipment in one grid
 ## Extends BasePanelView for use in FlexiblePanel
 
 @export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
@@ -203,9 +203,6 @@ func _on_item_slot_clicked(item_id: String, slot: ItemSlot):
 			_try_auto_equip_item(item_id, item_data)
 		else:
 			print("[InventoryView] PC: Use drag-and-drop or Ctrl+Click to equip")
-	elif item_data.item_type == ItemData.ItemType.CONSUMABLE:
-		# TODO: Use consumable
-		print("[InventoryView] Consumable clicked - use not yet implemented")
 	else:
 		# Just show info for other items
 		print("[InventoryView] Item clicked - showing info only")
@@ -270,10 +267,10 @@ func _on_item_slot_unhovered():
 
 func _try_auto_equip_item(item_id: String, item_data: ItemData):
 	"""Try to auto-equip an item when tapped (mobile-friendly)"""
-	# Find equipment manager
-	var equipment_manager = _find_equipment_manager()
-	if not equipment_manager:
-		print("[InventoryView] Error: Could not find EquipmentManager")
+	# Get hero_id from associated EquipmentView
+	var hero_id_val = _get_hero_id_from_equipment_view()
+	if hero_id_val == "":
+		print("[InventoryView] Error: Could not find associated hero ID")
 		return
 
 	# Determine which slot to equip to
@@ -283,15 +280,17 @@ func _try_auto_equip_item(item_id: String, item_data: ItemData):
 		return
 
 	# Check if there's already an item equipped in this slot
-	var equipped_item_id = equipment_manager.get_equipped_item(slot_name)
+	var equipped_item_id = HeroEquipmentRegistry.get_equipped_item(hero_id_val, slot_name)
 
 	if equipped_item_id != "":
 		# Item already equipped in this slot - show swap confirmation
-		_show_swap_confirmation(item_id, item_data, equipped_item_id, slot_name, equipment_manager)
+		_show_swap_confirmation(item_id, item_data, equipped_item_id, slot_name, hero_id_val)
 	else:
-		# No item equipped - just equip directly
-		equipment_manager.equip_item(slot_name, item_id)
-		print("[InventoryView] Auto-equipped %s to %s" % [item_data.item_name, slot_name])
+		# No item equipped - use atomic equip
+		if InventoryManager.equip_item_atomic(hero_id_val, slot_name, item_id):
+			print("[InventoryView] Auto-equipped %s to %s" % [item_data.item_name, slot_name])
+		else:
+			print("[InventoryView] Failed to auto-equip %s" % item_data.item_name)
 
 
 func _get_slot_name_for_item(item_data: ItemData) -> String:
@@ -303,9 +302,9 @@ func _get_slot_name_for_item(item_data: ItemData) -> String:
 			return "armor"
 		ItemData.EquipSlot.ACCESSORY:
 			# For accessories, find first empty slot or use slot 1
-			var equipment_manager = _find_equipment_manager()
-			if equipment_manager:
-				var acc1 = equipment_manager.get_equipped_item("accessory_1")
+			var hero_id_val = _get_hero_id_from_equipment_view()
+			if hero_id_val != "":
+				var acc1 = HeroEquipmentRegistry.get_equipped_item(hero_id_val, "accessory_1")
 				if acc1 == "":
 					return "accessory_1"
 				else:
@@ -335,12 +334,12 @@ func _setup_swap_dialog():
 	print("[InventoryView] Swap dialog created and ready")
 
 
-func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_item_id: String, slot_name: String, equipment_manager: EquipmentManager):
+func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_item_id: String, slot_name: String, hero_id_val: String):
 	"""Show confirmation dialog for swapping equipped item"""
 	var old_item_data = ItemDatabase.get_item(old_item_id)
 	if not old_item_data:
 		# If can't load old item, just equip new one
-		equipment_manager.equip_item(slot_name, new_item_id)
+		InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id)
 		return
 
 	# Show swap confirmation dialog
@@ -349,15 +348,17 @@ func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_i
 	else:
 		# Fallback: auto-swap if dialog not available
 		print("[InventoryView] Warning: Swap dialog not available, auto-swapping")
-		equipment_manager.equip_item(slot_name, new_item_id)
+		InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id)
 
 
 func _on_swap_confirmed(new_item_id: String, slot_name: String):
 	"""Handle confirmed swap from dialog"""
-	var equipment_manager = _find_equipment_manager()
-	if equipment_manager:
-		equipment_manager.equip_item(slot_name, new_item_id)
-		print("[InventoryView] Item swapped successfully: %s to %s" % [new_item_id, slot_name])
+	var hero_id_val = _get_hero_id_from_equipment_view()
+	if hero_id_val != "":
+		if InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id):
+			print("[InventoryView] Item swapped successfully: %s to %s" % [new_item_id, slot_name])
+		else:
+			print("[InventoryView] Failed to swap item")
 
 
 func _on_swap_cancelled():
@@ -365,35 +366,18 @@ func _on_swap_cancelled():
 	print("[InventoryView] Swap cancelled by user")
 
 
-func _find_equipment_manager() -> EquipmentManager:
-	"""Find equipment manager in the scene tree"""
-	# Try to find from parent views/panels
-	var node = get_parent()
-	while node != null:
-		if node is EquipmentView:
-			return node.equipment_manager
-		if node.has_method("get_current_view"):
-			# This is likely a FlexiblePanel, check its views
-			var panel = node
-			var left_panel = _find_flexible_panel_with_equipment()
-			if left_panel:
-				var equipment_view = left_panel.get_current_view()
-				if equipment_view and equipment_view.has_node_and_resource("equipment_manager"):
-					return equipment_view.equipment_manager
-		node = node.get_parent()
-
-	# Search in scene tree for DualPanelScreen
+func _get_hero_id_from_equipment_view() -> String:
+	"""Get hero_id from associated EquipmentView (via DualPanelScreen)"""
 	if get_tree():
 		var dual_panels = get_tree().get_nodes_in_group("dual_panel_screen")
 		for panel in dual_panels:
 			if panel.has_method("get_left_panel"):
 				var left_panel = panel.get_left_panel()
-				if left_panel:
+				if left_panel and left_panel.has_method("get_current_view"):
 					var equipment_view = left_panel.get_current_view()
-					if equipment_view and "equipment_manager" in equipment_view:
-						return equipment_view.equipment_manager
-
-	return null
+					if equipment_view and "hero_id" in equipment_view:
+						return equipment_view.hero_id
+	return ""
 
 
 func _find_flexible_panel_with_equipment() -> FlexiblePanel:

@@ -13,7 +13,10 @@ signal item_right_clicked(item_id: String, slot: ItemSlot)
 @export var slot_index: int = 0
 @export var slot_type: String = "inventory"  # "inventory", "equipment", "storage"
 @export var equipment_filter: ItemData.EquipSlot = ItemData.EquipSlot.NONE  # For equipment slots
+@export var equipment_slot_name: String = ""  # For equipment slots: "weapon", "armor", etc.
 
+
+var hero_id: String = ""  # Set by EquipmentView for equipment slots
 var item_id: String = ""
 var item_data: ItemData = null
 var quantity: int = 0
@@ -264,37 +267,46 @@ func _drop_data(at_position: Vector2, data):
 
 
 func _handle_equipment_drop(data: Dictionary, source_slot: ItemSlot):
-	"""Handle dropping to/from equipment slots"""
-	# Find equipment manager (from parent EquipmentPanel)
-	var equipment_manager: EquipmentManager = _find_equipment_manager()
-	if not equipment_manager:
-		print("[ItemSlot] Error: Could not find EquipmentManager")
+	"""Handle dropping to/from equipment slots using atomic transactions"""
+	# Get hero_id from equipment slot (set by EquipmentView)
+	var target_hero_id = hero_id if slot_type == "equipment" else source_slot.hero_id
+	
+	if target_hero_id == "":
+		print("[ItemSlot] Error: No hero_id set for equipment operation")
 		return
 
-	# Dragging FROM inventory TO equipment
+	# Dragging FROM inventory TO equipment (EQUIP)
 	if source_slot.slot_type == "inventory" and slot_type == "equipment":
-		var slot_name = _get_equipment_slot_name()
+		var slot_name = equipment_slot_name if equipment_slot_name != "" else _get_equipment_slot_name()
 		if slot_name != "":
-			equipment_manager.equip_item(slot_name, data.item_id)
-			print("[ItemSlot] Equipped item to %s" % slot_name)
+			if InventoryManager.equip_item_atomic(target_hero_id, slot_name, data.item_id):
+				print("[ItemSlot] Successfully equipped %s to %s" % [data.item_id, slot_name])
+			else:
+				print("[ItemSlot] Failed to equip item")
 
-	# Dragging FROM equipment TO inventory
+	# Dragging FROM equipment TO inventory (UNEQUIP)
 	elif source_slot.slot_type == "equipment" and slot_type == "inventory":
-		var slot_name = source_slot._get_equipment_slot_name()
+		var slot_name = source_slot.equipment_slot_name if source_slot.equipment_slot_name != "" else source_slot._get_equipment_slot_name()
 		if slot_name != "":
-			equipment_manager.unequip_item(slot_name)
-			print("[ItemSlot] Unequipped item from %s" % slot_name)
+			if InventoryManager.unequip_item_atomic(target_hero_id, slot_name):
+				print("[ItemSlot] Successfully unequipped from %s" % slot_name)
+			else:
+				print("[ItemSlot] Failed to unequip item")
 
-	# Dragging between equipment slots (swap)
+	# Dragging between equipment slots (SWAP)
 	elif source_slot.slot_type == "equipment" and slot_type == "equipment":
-		var source_slot_name = source_slot._get_equipment_slot_name()
-		var target_slot_name = _get_equipment_slot_name()
+		var source_slot_name = source_slot.equipment_slot_name if source_slot.equipment_slot_name != "" else source_slot._get_equipment_slot_name()
+		var target_slot_name = equipment_slot_name if equipment_slot_name != "" else _get_equipment_slot_name()
 
 		if source_slot_name != "" and target_slot_name != "":
-			# Unequip from source, equip to target
-			equipment_manager.unequip_item(source_slot_name)
-			equipment_manager.equip_item(target_slot_name, data.item_id)
-			print("[ItemSlot] Swapped equipment between slots")
+			# Atomic swap: unequip from source, equip to target
+			if InventoryManager.unequip_item_atomic(target_hero_id, source_slot_name):
+				if InventoryManager.equip_item_atomic(target_hero_id, target_slot_name, data.item_id):
+					print("[ItemSlot] Successfully swapped equipment")
+				else:
+					print("[ItemSlot] Swap failed: could not equip to target slot")
+			else:
+				print("[ItemSlot] Swap failed: could not unequip from source slot")
 
 
 func _get_equipment_slot_name() -> String:
@@ -313,38 +325,6 @@ func _get_equipment_slot_name() -> String:
 				return "accessory_2"
 			return "accessory_1"
 	return ""
-
-
-func _find_equipment_manager() -> EquipmentManager:
-	"""Find equipment manager in the scene tree"""
-	# Try to find from parent EquipmentView (for world map UI)
-	var node = get_parent()
-	while node != null:
-		if node is EquipmentView:
-			return node.equipment_manager
-		if node is EquipmentPanel:
-			return node.equipment_manager
-		node = node.get_parent()
-
-	# Try to find via DualPanelScreen (for cross-panel drag-and-drop)
-	if get_tree():
-		var dual_panels = get_tree().get_nodes_in_group("dual_panel_screen")
-		for panel in dual_panels:
-			if panel.has_method("get_left_panel"):
-				var left_panel = panel.get_left_panel()
-				if left_panel and left_panel.has_method("get_current_view"):
-					var equipment_view = left_panel.get_current_view()
-					if equipment_view and "equipment_manager" in equipment_view:
-						return equipment_view.equipment_manager
-
-	# Fallback: search for hero in scene (for in-battle UI)
-	if get_tree():
-		var heroes = get_tree().get_nodes_in_group("hero")
-		for hero in heroes:
-			if hero.has_node("EquipmentManager"):
-				return hero.get_node("EquipmentManager")
-
-	return null
 
 
 ## Handle mouse enter
@@ -464,13 +444,22 @@ func _generate_comparison() -> String:
 	if not item_data or not _is_equipment_type(item_data.item_type):
 		return ""
 
-	# Find equipment manager
-	var equipment_manager = _find_equipment_manager()
-	if not equipment_manager:
-		return ""
+	# Get hero_id from parent view (if available)
+	if not hero_id or hero_id == "":
+		return ""  # Can't compare without knowing which hero
 
-	# Get equipped item in same slot
-	var equipped_item_id = equipment_manager.get_equipped_item_by_type(item_data.equip_slot)
+	# Convert equip slot enum to string slot name
+	var slot_name = ""
+	match item_data.equip_slot:
+		ItemData.EquipSlot.WEAPON:
+			slot_name = "weapon"
+		ItemData.EquipSlot.ARMOR:
+			slot_name = "armor"
+		ItemData.EquipSlot.ACCESSORY:
+			slot_name = "accessory_1"  # Default to first accessory slot for comparison
+
+	# Get equipped item from registry
+	var equipped_item_id = HeroEquipmentRegistry.get_equipped_item(hero_id, slot_name)
 	if equipped_item_id == "":
 		return "\n───────────\nNo item equipped\n"
 
@@ -525,10 +514,6 @@ func _get_item_type_name(type: ItemData.ItemType) -> String:
 			return "Weapon"
 		ItemData.ItemType.ARMOR:
 			return "Armor"
-		ItemData.ItemType.CONSUMABLE:
-			return "Consumable"
-		ItemData.ItemType.MATERIAL:
-			return "Material"
 		ItemData.ItemType.CURRENCY:
 			return "Currency"
 	return "Unknown"

@@ -313,6 +313,10 @@ func update_button_states():
 			# Keep button disabled at max level (don't check affordability)
 			upgrade_button.disabled = true
 			print("💰 [TowerInfoMenu] Tower at MAX LEVEL - button stays disabled")
+		elif tower and "can_upgrade" in tower and not tower.can_upgrade():
+			# Tower has validation logic that says it can't upgrade
+			upgrade_button.disabled = true
+			print("💰 [TowerInfoMenu] Tower validation prevents upgrade - button disabled")
 		else:
 			# Normal affordability check for upgradeable towers
 			var can_afford = GameStateManager.gold >= upgrade_cost

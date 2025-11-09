@@ -96,10 +96,10 @@ func _initialize_stats():
 		stat_range = Stat.new(0.0)
 		stat_splash_radius = Stat.new(0.0)
 	else:
-		stat_damage = Stat.new(level_1_stats.damage)
-		stat_attack_speed = Stat.new(level_1_stats.attack_speed)
-		stat_range = Stat.new(level_1_stats.range)
-		stat_splash_radius = Stat.new(level_1_stats.splash_radius)
+		stat_damage = Stat.new(level_1_stats["damage"])
+		stat_attack_speed = Stat.new(level_1_stats["attack_speed"])
+		stat_range = Stat.new(level_1_stats["range"])
+		stat_splash_radius = Stat.new(level_1_stats["splash_radius"])
 
 	print("[MageTower] Stats initialized - DMG: %.1f, AS: %.1f, Range: %.1f, Splash: %.1f" %
 		[stat_damage.get_value(), stat_attack_speed.get_value(), stat_range.get_value(), stat_splash_radius.get_value()])
@@ -380,8 +380,8 @@ func shoot_at(target):
 	projectile.target = target
 	projectile.splash_radius = splash_radius  # AOE damage
 
-	# Add frost slow effect if on frost path
-	if upgrade_path == "frost":
+	# Add frost slow effect if on frost path (only at levels 4-5)
+	if upgrade_path == "frost" and tower_level >= 4:
 		var frost_stats = TowerData.get_tower_stats(tower_id, tower_level, "frost_path")
 		if not frost_stats.is_empty():
 			projectile.slow_amount = frost_stats.get("slow_amount", 0.5)
@@ -495,10 +495,10 @@ func upgrade_tower():
 		return false
 
 	# Calculate deltas from base stats (Level 1)
-	var damage_delta = target_stats.damage - level_1_stats.damage
-	var attack_speed_delta = target_stats.attack_speed - level_1_stats.attack_speed
-	var range_delta = target_stats.range - level_1_stats.range
-	var splash_delta = target_stats.splash_radius - level_1_stats.splash_radius
+	var damage_delta = target_stats["damage"] - level_1_stats["damage"]
+	var attack_speed_delta = target_stats["attack_speed"] - level_1_stats["attack_speed"]
+	var range_delta = target_stats["range"] - level_1_stats["range"]
+	var splash_delta = target_stats["splash_radius"] - level_1_stats["splash_radius"]
 
 	# Apply modifiers
 	if damage_delta != 0:
@@ -560,10 +560,10 @@ func choose_inferno_path():
 		return false
 
 	# Calculate deltas from base stats (Level 1)
-	var damage_delta = target_stats.damage - level_1_stats.damage
-	var attack_speed_delta = target_stats.attack_speed - level_1_stats.attack_speed
-	var range_delta = target_stats.range - level_1_stats.range
-	var splash_delta = target_stats.splash_radius - level_1_stats.splash_radius
+	var damage_delta = target_stats["damage"] - level_1_stats["damage"]
+	var attack_speed_delta = target_stats["attack_speed"] - level_1_stats["attack_speed"]
+	var range_delta = target_stats["range"] - level_1_stats["range"]
+	var splash_delta = target_stats["splash_radius"] - level_1_stats["splash_radius"]
 
 	# Apply modifiers
 	var mod_source = "upgrade_path_inferno"
@@ -624,10 +624,10 @@ func choose_frost_path():
 		return false
 
 	# Calculate deltas from base stats (Level 1)
-	var damage_delta = target_stats.damage - level_1_stats.damage
-	var attack_speed_delta = target_stats.attack_speed - level_1_stats.attack_speed
-	var range_delta = target_stats.range - level_1_stats.range
-	var splash_delta = target_stats.splash_radius - level_1_stats.splash_radius
+	var damage_delta = target_stats["damage"] - level_1_stats["damage"]
+	var attack_speed_delta = target_stats["attack_speed"] - level_1_stats["attack_speed"]
+	var range_delta = target_stats["range"] - level_1_stats["range"]
+	var splash_delta = target_stats["splash_radius"] - level_1_stats["splash_radius"]
 
 	# Apply modifiers
 	var mod_source = "upgrade_path_frost"
@@ -699,20 +699,19 @@ func _revalidate_enemies_in_range():
 			_record_target_change_time()
 
 func get_upgrade_cost() -> int:
-	"""Get cost for next upgrade (matches archer tower pricing)"""
-	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
-		# Standard upgrades (Level 1→2, 2→3)
-		match tower_level:
-			1: return 70  # Level 1→2 (mage costs slightly more than archer)
-			2: return 100  # Level 2→3
-	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
-		# Path choice upgrade (Level 3→4)
-		return 150  # Level 3→4 path choice
-	elif tower_level == 4 and upgrade_path != "":
-		# Final upgrade after path choice (Level 4→5)
-		return 200  # Level 4→5 final upgrade (most expensive)
+	"""Get cost for next upgrade from TowerData (data-driven)"""
+	if tower_level >= 5:
+		return 0  # Max level reached
 
-	return 0  # Max level reached
+	# Query TowerData for current level's cost_to_next
+	var current_stats = TowerData.get_tower_stats(tower_id, tower_level, upgrade_path)
+
+	if current_stats and "cost_to_next" in current_stats:
+		return current_stats["cost_to_next"]
+
+	# Fallback: should never happen if TowerData is configured correctly
+	print("⚠️ [Mage] WARNING: No cost_to_next found for level %d, path '%s'" % [tower_level, upgrade_path])
+	return 0
 
 func get_upgrade_stats(preview_path: String = "") -> Dictionary:
 	"""Get preview of what stats will be after upgrade (for UI preview)
@@ -750,10 +749,10 @@ func get_upgrade_stats(preview_path: String = "") -> Dictionary:
 		next_level_stats = TowerData.get_tower_stats(tower_id, preview_level)
 
 	if not next_level_stats.is_empty():
-		damage_bonus = next_level_stats["damage"] - current_damage
-		attack_speed_bonus = next_level_stats["attack_speed"] - current_attack_speed
-		range_bonus = next_level_stats["range"] - current_range
-		splash_bonus = next_level_stats["splash_radius"] - current_splash
+		damage_bonus = next_level_stats.get("damage", 0) - current_damage
+		attack_speed_bonus = next_level_stats.get("attack_speed", 0.0) - current_attack_speed
+		range_bonus = next_level_stats.get("range", 0) - current_range
+		splash_bonus = next_level_stats.get("splash_radius", 0) - current_splash
 
 	return {
 		"damage": current_damage,

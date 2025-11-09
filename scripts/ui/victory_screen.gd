@@ -89,6 +89,10 @@ func _on_level_select_pressed():
 		canvas_layer.queue_free()
 	await get_tree().process_frame  # Wait for cleanup
 
+	# Clean up level state before exiting (fixes bug: game speed persisted across levels)
+	if RestartManager:
+		RestartManager.cleanup_for_exit()
+
 	# Use centralized navigation
 	NavigationManager.go_to_world_map()
 

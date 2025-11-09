@@ -42,55 +42,6 @@ func create_test_items():
 	legendary_bow.can_upgrade = true
 	_register_item(legendary_bow)
 
-	# Health Potion (Common Consumable)
-	var health_potion = ItemData.new()
-	health_potion.item_id = "health_potion"
-	health_potion.item_name = "Health Potion"
-	health_potion.description = "Restores 100 health when consumed."
-	health_potion.item_type = ItemData.ItemType.CONSUMABLE
-	health_potion.rarity = ItemData.Rarity.COMMON
-	health_potion.equip_slot = ItemData.EquipSlot.NONE
-	health_potion.max_stack = 99
-	health_potion.sell_value = 10
-	health_potion.heal_amount = 100
-	_register_item(health_potion)
-
-	# Iron Ore (Common Material)
-	var iron_ore = ItemData.new()
-	iron_ore.item_id = "iron_ore"
-	iron_ore.item_name = "Iron Ore"
-	iron_ore.description = "Raw iron ore. Used for crafting."
-	iron_ore.item_type = ItemData.ItemType.MATERIAL
-	iron_ore.rarity = ItemData.Rarity.COMMON
-	iron_ore.equip_slot = ItemData.EquipSlot.NONE
-	iron_ore.max_stack = 99
-	iron_ore.sell_value = 5
-	_register_item(iron_ore)
-
-	# Magic Essence (Rare Material)
-	var magic_essence = ItemData.new()
-	magic_essence.item_id = "magic_essence"
-	magic_essence.item_name = "Magic Essence"
-	magic_essence.description = "Crystallized magical energy."
-	magic_essence.item_type = ItemData.ItemType.MATERIAL
-	magic_essence.rarity = ItemData.Rarity.RARE
-	magic_essence.equip_slot = ItemData.EquipSlot.NONE
-	magic_essence.max_stack = 99
-	magic_essence.sell_value = 20
-	_register_item(magic_essence)
-
-	# Dragon Scale (Legendary Material)
-	var dragon_scale = ItemData.new()
-	dragon_scale.item_id = "dragon_scale"
-	dragon_scale.item_name = "Dragon Scale"
-	dragon_scale.description = "A scale from an ancient dragon."
-	dragon_scale.item_type = ItemData.ItemType.MATERIAL
-	dragon_scale.rarity = ItemData.Rarity.LEGENDARY
-	dragon_scale.equip_slot = ItemData.EquipSlot.NONE
-	dragon_scale.max_stack = 99
-	dragon_scale.sell_value = 100
-	_register_item(dragon_scale)
-
 	print("[TestItemsLoader] Created %d test items" % ItemDatabase.items.size())
 
 

@@ -46,14 +46,11 @@ func create_new_profile(profile_name: String) -> bool:
 		"inventory": {  # New: Inventory system data
 			"global_inventory": {},
 			"max_slots": {
-				"equipment": 20,
-				"consumables": 15,
-				"materials": 30
+				"equipment": 20
 			}
 		},
-		"hero_equipment": {},  # New: Per-hero equipment slots
-		"tower_loadout": ["archer", "barracks"],  # Phase 1: Global tower loadout (3-4 tower IDs)
-		"unlocked_towers": ["archer", "barracks"],  # Phase 1: All unlocked towers
+		"tower_loadout": ["archer", "barracks", "mage", "artillery"],  # Phase 1: Global tower loadout (3-4 tower IDs)
+		"unlocked_towers": ["archer", "barracks", "mage", "artillery"],  # Phase 1: All unlocked towers
 		"user_preferences": {},  # UI preferences (panel tabs, etc.)
 		"settings": {
 			"master_volume": 1.0,
@@ -93,6 +90,10 @@ func save_profile(profile_data: Dictionary) -> bool:
 	if InventoryManager:
 		profile_data["inventory"] = InventoryManager.save_to_dict()
 
+	# Save equipment data from HeroEquipmentRegistry
+	if HeroEquipmentRegistry:
+		profile_data["equipment_registry"] = HeroEquipmentRegistry.save_to_dict()
+
 	# Convert to JSON
 	var json_string = JSON.stringify(profile_data, "\t")
 
@@ -126,12 +127,41 @@ func load_profile(profile_name: String) -> bool:
 
 		if parse_result == OK:
 			var profile_data = json.data
+
+			# MIGRATION: Remove old consumables/materials from save data
+			if profile_data.has("inventory"):
+				var inv_data = profile_data["inventory"]
+
+				# Remove old categories from max_slots
+				if inv_data.has("max_slots"):
+					inv_data["max_slots"].erase("consumables")
+					inv_data["max_slots"].erase("materials")
+					# Ensure equipment key exists
+					if not inv_data["max_slots"].has("equipment"):
+						inv_data["max_slots"]["equipment"] = 20
+
+				# Filter out consumable/material items from global_inventory
+				if inv_data.has("global_inventory"):
+					var cleaned_inv = {}
+					for item_id in inv_data["global_inventory"].keys():
+						var item_data = ItemDatabase.get_item(item_id)
+						# Only keep items if they exist and are equipment types
+						if item_data and (item_data.item_type == ItemData.ItemType.WEAPON or
+						                  item_data.item_type == ItemData.ItemType.ARMOR):
+							cleaned_inv[item_id] = inv_data["global_inventory"][item_id]
+					inv_data["global_inventory"] = cleaned_inv
+					print("[SaveManager] Migration: Removed consumables/materials from inventory")
+
 			current_profile = profile_data
 			current_profile_name = profile_name
 
 			# Load inventory data into InventoryManager
 			if InventoryManager and profile_data.has("inventory"):
 				InventoryManager.load_from_dict(profile_data["inventory"])
+
+			# Load equipment data into HeroEquipmentRegistry
+			if HeroEquipmentRegistry and profile_data.has("equipment_registry"):
+				HeroEquipmentRegistry.load_from_dict(profile_data["equipment_registry"])
 
 			print("SaveManager: Profile loaded: ", profile_name)
 			profile_loaded.emit(profile_data)
@@ -424,33 +454,9 @@ func has_hero_skill(hero_id: String, skill_id: String) -> bool:
 # INVENTORY & EQUIPMENT MANAGEMENT
 # ============================================
 
-func save_hero_equipment(hero_id: String, equipment_data: Dictionary) -> void:
-	"""Save a hero's equipped items"""
-	if not has_current_profile():
-		push_error("SaveManager: No profile loaded")
-		return
-
-	if not current_profile.has("hero_equipment"):
-		current_profile["hero_equipment"] = {}
-
-	current_profile["hero_equipment"][hero_id] = equipment_data.duplicate()
-	save_current_profile()
-	print("SaveManager: Saved equipment for hero: ", hero_id)
-
-
-func get_hero_equipment(hero_id: String) -> Dictionary:
-	"""Get a hero's equipped items"""
-	if not has_current_profile():
-		return {}
-
-	if not current_profile.has("hero_equipment"):
-		return {}
-
-	if not current_profile["hero_equipment"].has(hero_id):
-		return {}
-
-	return current_profile["hero_equipment"][hero_id].duplicate()
-
+# NOTE: Equipment save/load now handled by HeroEquipmentRegistry
+# Old save_hero_equipment() and get_hero_equipment() functions removed
+# to prevent dual save path conflicts. See save_profile() lines 95-96.
 
 # ============================================
 # USER PREFERENCES (UI STATE)
@@ -654,13 +660,13 @@ func get_tower_loadout() -> Array:
 	"""Get the current tower loadout (3-4 tower IDs)
 
 	Returns:
-		Array of tower_id strings, or default ["archer", "barracks"] if none set
+		Array of tower_id strings, or default all 4 towers if none set
 	"""
 	if not has_current_profile():
-		return ["archer", "barracks"]
+		return ["archer", "barracks", "mage", "artillery"]
 
 	if not current_profile.has("tower_loadout"):
-		return ["archer", "barracks"]
+		return ["archer", "barracks", "mage", "artillery"]
 
 	return current_profile["tower_loadout"]
 
@@ -716,6 +722,13 @@ func get_unlocked_towers() -> Array:
 			unlocked.append(tower_id)
 			needs_save = true
 			print("[SaveManager] Auto-unlocked new tower: %s" % tower_id)
+
+			# SYNC FIX: Also add to loadout if there's room (max 4 towers)
+			if current_profile.has("tower_loadout"):
+				if not tower_id in current_profile["tower_loadout"]:
+					if current_profile["tower_loadout"].size() < 4:
+						current_profile["tower_loadout"].append(tower_id)
+						print("[SaveManager] Auto-added %s to loadout" % tower_id)
 
 	if needs_save:
 		current_profile["unlocked_towers"] = unlocked

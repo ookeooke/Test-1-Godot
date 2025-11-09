@@ -13,7 +13,7 @@ class_name HeroStatsView
 
 @onready var stats_text: RichTextLabel = $MarginContainer/VBoxContainer/ScrollContainer/StatsLabel if has_node("MarginContainer/VBoxContainer/ScrollContainer/StatsLabel") else null
 
-var equipment_manager: EquipmentManager = null
+# equipment_manager removed - now using HeroEquipmentRegistry
 
 
 func _ready():
@@ -40,13 +40,10 @@ func set_hero_id(p_hero_id: String):
 
 
 func _find_equipment_manager():
-	"""Find the hero's equipment manager"""
-	var heroes = get_tree().get_nodes_in_group("hero")
-	for hero in heroes:
-		if hero.has_method("get_hero_id") and hero.get_hero_id() == hero_id:
-			if hero.has_node("EquipmentManager"):
-				equipment_manager = hero.get_node("EquipmentManager")
-				return
+	"""Setup registry integration (renamed for compatibility)"""
+	# Register hero if needed
+	if not HeroEquipmentRegistry.is_hero_registered(hero_id):
+		HeroEquipmentRegistry.register_hero(hero_id)
 
 
 func _update_display():
@@ -114,13 +111,20 @@ func _update_stats_breakdown():
 		text += "  [b]Total: %.0f[/b]\n\n" % hero.movement_speed
 
 		# Show equipment modifiers
-		if equipment_manager:
-			var modifiers = equipment_manager.get_all_stat_modifiers()
-			if not modifiers.is_empty():
-				text += "[color=green][b]EQUIPMENT MODIFIERS[/b][/color]\n"
-				for mod in modifiers:
-					text += "  • %s\n" % _format_modifier(mod)
-				text += "\n"
+		# Get equipment modifiers from registry
+		var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
+		var modifiers: Array[StatModifier] = []
+		for item_id in equipped_items.values():
+			if item_id != "":
+				var item_data = ItemDatabase.get_item(item_id)
+				if item_data:
+					var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
+					modifiers.append_array(item_data.get_stat_modifiers(upgrade_level))
+		if not modifiers.is_empty():
+			text += "[color=green][b]EQUIPMENT MODIFIERS[/b][/color]\n"
+			for mod in modifiers:
+				text += "  • %s\n" % _format_modifier(mod)
+			text += "\n"
 
 		# Show skill modifiers (if skill manager exists)
 		if hero.has_node("SkillManager"):
@@ -137,12 +141,19 @@ func _update_stats_breakdown():
 		text += "[color=gray]Hero not currently deployed[/color]\n\n"
 		text += "Equipment bonuses will apply when hero is deployed.\n\n"
 
-		if equipment_manager:
-			var modifiers = equipment_manager.get_all_stat_modifiers()
-			if not modifiers.is_empty():
-				text += "[color=green][b]EQUIPPED MODIFIERS[/b][/color]\n"
-				for mod in modifiers:
-					text += "  • %s\n" % _format_modifier(mod)
+		# Get equipment modifiers from registry
+		var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
+		var modifiers: Array[StatModifier] = []
+		for item_id in equipped_items.values():
+			if item_id != "":
+				var item_data = ItemDatabase.get_item(item_id)
+				if item_data:
+					var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
+					modifiers.append_array(item_data.get_stat_modifiers(upgrade_level))
+		if not modifiers.is_empty():
+			text += "[color=green][b]EQUIPPED MODIFIERS[/b][/color]\n"
+			for mod in modifiers:
+				text += "  • %s\n" % _format_modifier(mod)
 
 	stats_text.text = text
 

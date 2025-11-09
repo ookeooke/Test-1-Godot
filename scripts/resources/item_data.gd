@@ -7,8 +7,6 @@ extends Resource
 enum ItemType {
 	WEAPON,
 	ARMOR,
-	CONSUMABLE,
-	MATERIAL,
 	CURRENCY
 }
 
@@ -33,13 +31,15 @@ enum EquipSlot {
 @export_multiline var description: String = ""
 @export var icon: Texture2D
 @export var emoji: String = ""  ## Unicode emoji symbol (e.g., "🏹", "🛡️", "💍") - shown if no icon texture
-@export var item_type: ItemType = ItemType.MATERIAL
+@export var item_type: ItemType = ItemType.WEAPON
 @export var rarity: Rarity = Rarity.COMMON
 @export var equip_slot: EquipSlot = EquipSlot.NONE
 
 # Stacking & Economy
 @export var max_stack: int = 1  ## 1 for equipment, 99 for consumables/materials
 @export var sell_value: int = 10
+@export var is_starter_equipment: bool = false  ## Cannot be unequipped to empty slot (auto-equipped on hero recruitment)
+@export var is_account_bound: bool = false  ## Cannot be sold or traded
 
 # Equipment Stats (only used for WEAPON/ARMOR/ACCESSORY types)
 @export_group("Equipment Stats")
@@ -53,12 +53,6 @@ enum EquipSlot {
 # Special Effects (string identifiers for special behaviors)
 @export_group("Special Effects")
 @export var special_effects: Array[String] = []  ## e.g. ["lifesteal_10", "splash_damage", "fire_dot_5"]
-
-# Consumable Properties (only used for CONSUMABLE type)
-@export_group("Consumable Properties")
-@export var heal_amount: int = 0
-@export var buff_duration: float = 0.0
-@export var buff_type: String = ""  ## e.g. "damage_boost", "speed_boost"
 
 # Inventory Display (Multi-Slot Support - Diablo 2 Style)
 @export_group("Inventory Display")
@@ -118,10 +112,6 @@ func get_item_type_name() -> String:
 			return "Weapon"
 		ItemType.ARMOR:
 			return "Armor"
-		ItemType.CONSUMABLE:
-			return "Consumable"
-		ItemType.MATERIAL:
-			return "Material"
 		ItemType.CURRENCY:
 			return "Currency"
 	return "Unknown"

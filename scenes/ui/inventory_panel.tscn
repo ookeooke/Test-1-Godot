@@ -82,14 +82,6 @@ theme_override_constants/separation = 10
 layout_mode = 2
 text = "Equipment"
 
-[node name="ConsumablesTab" type="Button" parent="Panel/MarginContainer/VBoxContainer/TabContainer"]
-layout_mode = 2
-text = "Consumables"
-
-[node name="MaterialsTab" type="Button" parent="Panel/MarginContainer/VBoxContainer/TabContainer"]
-layout_mode = 2
-text = "Materials"
-
 [node name="ContentContainer" type="PanelContainer" parent="Panel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -99,20 +91,6 @@ layout_mode = 2
 theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 5
 columns = 5
-
-[node name="ConsumablesGrid" type="GridContainer" parent="Panel/MarginContainer/VBoxContainer/ContentContainer"]
-visible = false
-layout_mode = 2
-theme_override_constants/h_separation = 5
-theme_override_constants/v_separation = 5
-columns = 5
-
-[node name="MaterialsGrid" type="GridContainer" parent="Panel/MarginContainer/VBoxContainer/ContentContainer"]
-visible = false
-layout_mode = 2
-theme_override_constants/h_separation = 5
-theme_override_constants/v_separation = 5
-columns = 6
 
 [node name="FooterContainer" type="HBoxContainer" parent="Panel/MarginContainer/VBoxContainer"]
 layout_mode = 2
