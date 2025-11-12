@@ -9,13 +9,46 @@ signal profile_created(profile_name: String)
 
 const SAVE_DIR = "user://saves/"
 const SAVE_EXTENSION = ".save"
+const AUTO_SAVE_INTERVAL = 5.0  # Auto-save every 5 seconds if dirty
 
 var current_profile: Dictionary = {}
 var current_profile_name: String = ""
 
+# Auto-save system
+var _is_dirty: bool = false  # Track if data needs saving
+var _is_saving: bool = false  # Prevent concurrent saves
+var _auto_save_timer: Timer = null
+
 func _ready():
 	# Ensure save directory exists
 	_ensure_save_directory()
+	# Initialize auto-save timer
+	_setup_auto_save_timer()
+
+func _notification(what):
+	# Mobile: Save immediately when app is paused/backgrounded
+	if what == NOTIFICATION_APPLICATION_PAUSED:
+		print("[SaveManager] App paused - saving immediately")
+		save_current_profile()
+
+func _setup_auto_save_timer() -> void:
+	"""Initialize the auto-save timer that periodically saves dirty data"""
+	_auto_save_timer = Timer.new()
+	_auto_save_timer.wait_time = AUTO_SAVE_INTERVAL
+	_auto_save_timer.timeout.connect(_on_auto_save_tick)
+	add_child(_auto_save_timer)
+	_auto_save_timer.start()
+	print("[SaveManager] Auto-save timer started (%.1fs interval)" % AUTO_SAVE_INTERVAL)
+
+func _on_auto_save_tick() -> void:
+	"""Timer callback - saves if data is dirty"""
+	if _is_dirty and has_current_profile():
+		print("[SaveManager] Auto-save triggered (dirty flag set)")
+		save_current_profile()
+
+func mark_dirty() -> void:
+	"""Mark profile data as needing save. Called by game systems when data changes."""
+	_is_dirty = true
 
 func _ensure_save_directory() -> void:
 	var dir = DirAccess.open("user://")
@@ -99,8 +132,17 @@ func save_profile(profile_data: Dictionary) -> bool:
 		push_error("SaveManager: Profile data missing profile_name")
 		return false
 
+	# Prevent concurrent saves
+	if _is_saving:
+		print("[SaveManager] Save already in progress, skipping")
+		return false
+
+	_is_saving = true
+
 	var profile_name = profile_data["profile_name"]
 	var save_path = SAVE_DIR + profile_name + SAVE_EXTENSION
+	var temp_path = save_path + ".tmp"
+	var backup_path = save_path + ".bak"
 
 	# Update last played time
 	profile_data["last_played"] = Time.get_datetime_string_from_system()
@@ -116,16 +158,44 @@ func save_profile(profile_data: Dictionary) -> bool:
 	# Convert to JSON
 	var json_string = JSON.stringify(profile_data, "\t")
 
-	# Write to file
-	var file = FileAccess.open(save_path, FileAccess.WRITE)
-	if file:
-		file.store_string(json_string)
-		file.close()
-		print("SaveManager: Profile saved: ", profile_name)
-		profile_saved.emit(profile_name)
-		return true
+	# ATOMIC WRITE: Write to temp file first
+	var file = FileAccess.open(temp_path, FileAccess.WRITE)
+	if not file:
+		push_error("[SaveManager] Failed to open temp file: ", temp_path)
+		_is_saving = false
+		return false
+
+	file.store_string(json_string)
+	file.flush()  # Force OS to write to disk
+	file.close()
+
+	# Create backup of existing save (if it exists)
+	if FileAccess.file_exists(save_path):
+		var dir = DirAccess.open(SAVE_DIR)
+		if dir:
+			# Remove old backup if exists
+			if FileAccess.file_exists(backup_path):
+				dir.remove(backup_path)
+			# Copy current save to backup
+			dir.copy(save_path, backup_path)
+
+	# ATOMIC RENAME: Replace save file with temp file
+	var dir = DirAccess.open(SAVE_DIR)
+	if dir:
+		var error = dir.rename(temp_path, save_path)
+		if error == OK:
+			print("[SaveManager] Profile saved: ", profile_name)
+			_is_dirty = false  # Clear dirty flag after successful save
+			_is_saving = false
+			profile_saved.emit(profile_name)
+			return true
+		else:
+			push_error("[SaveManager] Failed to rename temp file (error %d)" % error)
+			_is_saving = false
+			return false
 	else:
-		push_error("SaveManager: Failed to save profile: ", profile_name)
+		push_error("[SaveManager] Failed to access save directory")
+		_is_saving = false
 		return false
 
 func load_profile(profile_name: String) -> bool:

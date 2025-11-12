@@ -35,6 +35,10 @@ func _on_resume_pressed():
 
 func _on_restart_pressed():
 	print("PauseMenu: Restart level")
+
+	# Save immediately before restarting
+	SaveManager.save_current_profile()
+
 	get_tree().paused = false
 	queue_free()  # Remove pause menu before restarting
 
@@ -43,6 +47,10 @@ func _on_restart_pressed():
 
 func _on_main_menu_pressed():
 	print("PauseMenu: Return to world map")
+
+	# Save immediately before exiting level
+	SaveManager.save_current_profile()
+
 	get_tree().paused = false
 	queue_free()  # Remove pause menu before navigating away
 

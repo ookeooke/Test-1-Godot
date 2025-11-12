@@ -48,85 +48,101 @@ custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 text = "Switch Hero"
 
-[node name="EquipmentGrid" type="GridContainer" parent="MarginContainer/VBoxContainer"]
+[node name="EquipmentPaperDoll" type="Control" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(400, 600)
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
-columns = 2
 
-[node name="WeaponSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid"]
+[node name="CharacterSilhouette" type="ColorRect" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
+layout_mode = 0
+offset_left = 150.0
+offset_top = 100.0
+offset_right = 250.0
+offset_bottom = 500.0
+color = Color(0.3, 0.3, 0.3, 0.15)
+
+[node name="WeaponSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 200.0
+offset_right = 205.0
+offset_bottom = 450.0
+
+[node name="WeaponContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/WeaponSlot"]
+custom_minimum_size = Vector2(165, 250)
 layout_mode = 2
 
-[node name="WeaponContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot"]
-custom_minimum_size = Vector2(100, 150)
-layout_mode = 2
-
-[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot/WeaponContainer"]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
-theme_override_font_sizes/font_size = 20
-text = "⚔️"
-horizontal_alignment = 0
-vertical_alignment = 0
-
-[node name="ArmorSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid"]
-layout_mode = 2
-
-[node name="ArmorContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/ArmorSlot"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-
-[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/ArmorSlot/ArmorContainer"]
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/WeaponSlot/WeaponContainer"]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 32
+text = "🏹"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ArmorSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
+layout_mode = 0
+offset_left = 240.0
+offset_top = 220.0
+offset_right = 360.0
+offset_bottom = 340.0
+
+[node name="ArmorContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot"]
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 2
+
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 32
 text = "🛡️"
-horizontal_alignment = 0
-vertical_alignment = 0
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="Accessory1Slot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid"]
+[node name="Accessory1Slot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
+layout_mode = 0
+offset_left = 60.0
+offset_top = 500.0
+offset_right = 140.0
+offset_bottom = 580.0
+
+[node name="Accessory1Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot"]
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
 
-[node name="Accessory1Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot"]
-custom_minimum_size = Vector2(60, 60)
-layout_mode = 2
-
-[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot/Accessory1Container"]
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
-theme_override_font_sizes/font_size = 20
-text = "💎"
-horizontal_alignment = 0
-vertical_alignment = 0
-
-[node name="Accessory2Slot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid"]
-layout_mode = 2
-
-[node name="Accessory2Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot"]
-custom_minimum_size = Vector2(60, 60)
-layout_mode = 2
-
-[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot/Accessory2Container"]
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container"]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
-theme_override_font_sizes/font_size = 20
-text = "💎"
-horizontal_alignment = 0
-vertical_alignment = 0
+theme_override_font_sizes/font_size = 24
+text = "💍"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="StatsContainer" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+[node name="Accessory2Slot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
+layout_mode = 0
+offset_left = 260.0
+offset_top = 500.0
+offset_right = 340.0
+offset_bottom = 580.0
+
+[node name="Accessory2Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot"]
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
-size_flags_vertical = 3
 
-[node name="StatsLabel" type="RichTextLabel" parent="MarginContainer/VBoxContainer/StatsContainer"]
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container"]
 layout_mode = 2
-bbcode_enabled = true
-text = "[b]EQUIPMENT STATS[/b]
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 24
+text = "💍"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-Loading..."
-fit_content = true
+[node name="StatsFooter" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Dmg: 0 | HP: 300 | Def: 0 | Rng: 240 | AS: 0.55s | Crit: 0%"
+horizontal_alignment = 1

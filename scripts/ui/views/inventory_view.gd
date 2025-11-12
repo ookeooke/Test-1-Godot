@@ -27,6 +27,11 @@ var item_slots: Array[ItemSlot] = []
 # Swap confirmation dialog
 var swap_dialog: SwapConfirmationDialog = null
 
+# Context menu
+var context_menu: PopupMenu = null
+var context_menu_item_id: String = ""  # Track which item the menu is for
+var context_menu_slot: ItemSlot = null
+
 
 func _ready():
 	super._ready()
@@ -39,6 +44,8 @@ func _ready():
 	if InventoryManager:
 		if not InventoryManager.inventory_changed.is_connected(_on_inventory_changed):
 			InventoryManager.inventory_changed.connect(_on_inventory_changed)
+		if not InventoryManager.inventory_full.is_connected(_on_inventory_full):
+			InventoryManager.inventory_full.connect(_on_inventory_full)
 
 	# Hide tooltip initially
 	if tooltip_panel:
@@ -50,6 +57,18 @@ func _ready():
 
 	# Create swap confirmation dialog
 	_setup_swap_dialog()
+
+	# Create context menu
+	_setup_context_menu()
+
+
+func _input(event: InputEvent):
+	"""Handle F3 key for grid visualization toggle"""
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_F3:
+			if inventory_grid:
+				inventory_grid.toggle_grid_visualization()
+			accept_event()
 
 
 func on_view_shown():
@@ -234,8 +253,21 @@ func _show_item_context_menu(item_id: String, slot: ItemSlot):
 	if item_data == null:
 		return
 
-	# TODO: Create proper context menu UI (Equip/Unequip/Drop/Split/Info)
-	# For now, right-click does nothing to prevent accidental item loss
+	if context_menu == null:
+		print("[InventoryView] Error: Context menu not initialized")
+		return
+
+	# Store context for when menu item is selected
+	context_menu_item_id = item_id
+	context_menu_slot = slot
+
+	# Enable/disable menu items based on context
+	var can_equip = item_data.equip_slot != ItemData.EquipSlot.NONE
+	context_menu.set_item_disabled(0, not can_equip)  # Equip option
+
+	# Show menu at mouse position
+	context_menu.position = get_viewport().get_mouse_position()
+	context_menu.popup()
 
 
 func _on_item_slot_hovered(slot: ItemSlot):
@@ -267,8 +299,22 @@ func _on_item_slot_hovered(slot: ItemSlot):
 	tooltip_label.text = tooltip_text
 	tooltip_panel.visible = true
 
-	# Position tooltip near mouse
-	tooltip_panel.global_position = get_global_mouse_position() + Vector2(20, 20)
+	# Position tooltip near mouse with bounds checking
+	var mouse_pos = get_global_mouse_position()
+	var offset = Vector2(20, 20)
+	var tooltip_pos = mouse_pos + offset
+
+	# Get viewport size and tooltip size
+	var viewport_size = get_viewport().get_visible_rect().size
+	var tooltip_size = tooltip_panel.size
+
+	# Clamp to viewport bounds (prevent clipping off screen)
+	if tooltip_pos.x + tooltip_size.x > viewport_size.x:
+		tooltip_pos.x = mouse_pos.x - tooltip_size.x - 20  # Show on left instead
+	if tooltip_pos.y + tooltip_size.y > viewport_size.y:
+		tooltip_pos.y = viewport_size.y - tooltip_size.y - 10  # Push up
+
+	tooltip_panel.global_position = tooltip_pos
 
 
 func _on_item_slot_unhovered():
@@ -341,6 +387,121 @@ func _setup_swap_dialog():
 	swap_dialog.confirmed.connect(_on_swap_confirmed)
 	swap_dialog.cancelled.connect(_on_swap_cancelled)
 
+
+func _setup_context_menu():
+	"""Create and setup the right-click context menu"""
+	context_menu = PopupMenu.new()
+	context_menu.name = "ContextMenu"
+	add_child(context_menu)
+
+	# Add menu items (IDs match indices)
+	context_menu.add_item("⚔️ Equip", 0)
+	context_menu.add_item("💰 Sell", 1)
+	context_menu.add_item("🗑️ Drop", 2)
+	context_menu.add_separator()
+	context_menu.add_item("ℹ️ Item Info", 3)
+	context_menu.add_separator()
+	context_menu.add_item("❌ Cancel", 4)
+
+	# Connect signal
+	context_menu.index_pressed.connect(_on_context_menu_item_selected)
+
+
+func _on_context_menu_item_selected(index: int):
+	"""Handle context menu item selection"""
+	var item_id = context_menu_item_id
+	var item_data = ItemDatabase.get_item(item_id)
+
+	if item_data == null:
+		return
+
+	match index:
+		0:  # Equip
+			_try_auto_equip_item(item_id, item_data)
+		1:  # Sell
+			_sell_item(item_id, item_data)
+		2:  # Drop
+			_drop_item(item_id, item_data)
+		3:  # Item Info
+			_show_item_info(item_id, item_data)
+		4:  # Cancel
+			pass  # Do nothing
+
+
+func _sell_item(item_id: String, item_data: ItemData):
+	"""Sell an item for gold"""
+	# Check if item is rare or upgraded - require confirmation
+	var requires_confirmation = false
+	var confirmation_reason = ""
+
+	if item_data.rarity >= 2:  # Epic (2) or Legendary (3)
+		requires_confirmation = true
+		confirmation_reason = "rare (%s)" % item_data.get_rarity_name()
+
+	# Check if item is upgraded
+	var item_info = InventoryManager.global_inventory.get(item_id)
+	if item_info and item_info.upgrade_level > 0:
+		requires_confirmation = true
+		confirmation_reason += " +%d upgraded" % item_info.upgrade_level if confirmation_reason != "" else "upgraded (+%d)" % item_info.upgrade_level
+
+	# Check if item is equipped
+	if not InventoryManager.item_positions.has(item_id):
+		requires_confirmation = true
+		confirmation_reason += " equipped" if confirmation_reason != "" else "equipped"
+
+	if requires_confirmation:
+		# Show confirmation dialog
+		_show_sell_confirmation(item_id, item_data, confirmation_reason)
+	else:
+		# Sell immediately (Common/Uncommon items)
+		print("[InventoryView] Selling item: %s for %d gold" % [item_data.item_name, item_data.sell_value])
+		InventoryManager.sell_item(item_id)
+
+
+func _show_sell_confirmation(item_id: String, item_data: ItemData, reason: String):
+	"""Show confirmation dialog before selling valuable items"""
+	# Create simple ConfirmationDialog
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "Sell Item?"
+	dialog.dialog_text = "Are you sure you want to sell [b]%s[/b]?\n\nThis item is %s.\n\nYou will receive [color=yellow]%d gold[/color]." % [
+		item_data.item_name,
+		reason,
+		item_data.sell_value
+	]
+	dialog.ok_button_text = "Sell"
+	dialog.cancel_button_text = "Cancel"
+
+	# Connect signals
+	dialog.confirmed.connect(func():
+		print("[InventoryView] Confirmed sell: %s for %d gold" % [item_data.item_name, item_data.sell_value])
+		InventoryManager.sell_item(item_id)
+		dialog.queue_free()
+	)
+	dialog.cancelled.connect(func():
+		print("[InventoryView] Cancelled sell: %s" % item_data.item_name)
+		dialog.queue_free()
+	)
+
+	# Add to scene tree and show
+	add_child(dialog)
+	dialog.popup_centered()
+
+
+func _drop_item(item_id: String, item_data: ItemData):
+	"""Drop an item (remove from inventory permanently)"""
+	print("[InventoryView] Dropping item: %s" % item_data.item_name)
+	# TODO: Add confirmation dialog for Epic+ items
+	InventoryManager.remove_item(item_id)
+
+
+func _show_item_info(item_id: String, item_data: ItemData):
+	"""Show detailed item information modal"""
+	print("[InventoryView] Showing info for: %s" % item_data.item_name)
+	# TODO: Create detailed item info modal
+	# For now, just print to console
+	print("  Description: %s" % item_data.description)
+	print("  Rarity: %s" % item_data.get_rarity_name())
+	print("  Sell Value: %d gold" % item_data.sell_value)
 
 
 func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_item_id: String, slot_name: String, hero_id_val: String):
@@ -421,6 +582,22 @@ func _on_viewport_resized():
 		# Compact/tablet screens
 		inventory_grid.set_columns(6)
 		print("[InventoryView] Compact layout: 6 columns (width: %d)" % width)
+
+
+func _on_inventory_full(item_id: String):
+	"""Show notification when inventory is full"""
+	print("[InventoryView] ⚠️ Inventory full! Cannot add item: %s" % item_id)
+
+	# Show slots label in red temporarily
+	if slots_label:
+		var original_color = slots_label.modulate
+		slots_label.modulate = Color(1.0, 0.3, 0.3)  # Red
+		slots_label.text = "⚠️ INVENTORY FULL!"
+
+		# Reset after 2 seconds
+		await get_tree().create_timer(2.0).timeout
+		slots_label.modulate = original_color
+		_update_labels()
 
 
 func cleanup():

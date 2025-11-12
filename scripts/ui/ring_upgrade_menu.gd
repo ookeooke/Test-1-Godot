@@ -95,6 +95,8 @@ var center_panel: Panel
 var center_label: RichTextLabel
 var enemy_list_panel: Panel = null
 var enemy_list_visible: bool = false
+var enemy_list_container: VBoxContainer = null  # Container for enemy labels
+var enemy_update_timer: Timer = null  # Real-time enemy list updates
 
 # ============================================
 # INITIALIZATION
@@ -115,6 +117,13 @@ func _ready():
 	buttons_container = Control.new()
 	buttons_container.name = "ButtonsContainer"
 	add_child(buttons_container)
+
+	# Create update timer for real-time enemy list
+	enemy_update_timer = Timer.new()
+	enemy_update_timer.name = "EnemyUpdateTimer"
+	enemy_update_timer.wait_time = 0.1  # Update 10 times per second
+	enemy_update_timer.timeout.connect(_update_enemy_list)
+	add_child(enemy_update_timer)
 
 	print("[RingUpgradeMenu] Initialized")
 
@@ -287,16 +296,41 @@ func _calculate_button_positions() -> Dictionary:
 		}
 
 	elif tower.has_method("needs_path_choice") and tower.needs_path_choice():
-		# PATH CHOICE LAYOUT: 5 buttons
-		# 12:00 - Damage Path
+		# PATH CHOICE LAYOUT: 5 buttons (DYNAMIC based on tower type)
+		# 12:00 - Path 1 (damage/cannon/inferno/defense)
 		# 3:00 - Targeting (collapsed)
 		# 6:00 - Sell
-		# 8:00 - Range Path
+		# 8:00 - Path 2 (range/mortar/frost/offense)
 		# 9:00 - Enemy List
-		positions["damage_path"] = {
-			"angle": -PI/2, "size": BUTTON_SIZE_LARGE,
-			"emoji": EMOJI_DAMAGE, "color": COLOR_DAMAGE_PATH
-		}
+
+		# Get path choices from tower (dynamic per tower type)
+		var path_choices = []
+		if tower.has_method("get_path_choices"):
+			path_choices = tower.get_path_choices()
+
+		# Add path buttons dynamically
+		if path_choices.size() >= 2:
+			# First path (top position)
+			positions[path_choices[0]["id"]] = {
+				"angle": -PI/2, "size": BUTTON_SIZE_LARGE,
+				"emoji": path_choices[0]["emoji"], "color": COLOR_DAMAGE_PATH
+			}
+			# Second path (bottom-left position)
+			positions[path_choices[1]["id"]] = {
+				"angle": PI - PI/4, "size": BUTTON_SIZE_LARGE,
+				"emoji": path_choices[1]["emoji"], "color": COLOR_RANGE_PATH
+			}
+		else:
+			# Fallback to hardcoded for backwards compatibility
+			positions["damage_path"] = {
+				"angle": -PI/2, "size": BUTTON_SIZE_LARGE,
+				"emoji": EMOJI_DAMAGE, "color": COLOR_DAMAGE_PATH
+			}
+			positions["range_path"] = {
+				"angle": PI - PI/4, "size": BUTTON_SIZE_LARGE,
+				"emoji": EMOJI_RANGE, "color": COLOR_RANGE_PATH
+			}
+
 		positions["targeting"] = {
 			"angle": 0, "size": BUTTON_SIZE_MEDIUM,
 			"emoji": "🎯", "color": COLOR_TARGETING_ACTIVE
@@ -304,10 +338,6 @@ func _calculate_button_positions() -> Dictionary:
 		positions["sell"] = {
 			"angle": PI/2, "size": BUTTON_SIZE_MEDIUM,
 			"emoji": EMOJI_SELL, "color": COLOR_SELL
-		}
-		positions["range_path"] = {
-			"angle": PI - PI/4, "size": BUTTON_SIZE_LARGE,
-			"emoji": EMOJI_RANGE, "color": COLOR_RANGE_PATH
 		}
 		positions["enemy_list"] = {
 			"angle": PI, "size": BUTTON_SIZE_MEDIUM,
@@ -598,26 +628,19 @@ func _enter_preview_mode(button_id: String):
 		"sell":
 			_update_button_preview_visual(button_id, "CONFIRM")
 
-		"damage_path":
-			if tower.has_method("get_damage_path_stats"):
-				preview_stats = tower.get_damage_path_stats()
-			_update_center_stats()
-			_update_button_preview_visual(button_id, "CONFIRM")
-			_dim_other_path_button("range_path")
-
-		"range_path":
-			if tower.has_method("get_range_path_stats"):
-				preview_stats = tower.get_range_path_stats()
-			_update_center_stats()
-			_update_button_preview_visual(button_id, "CONFIRM")
-			_dim_other_path_button("damage_path")
-
 		"rally":
 			_update_button_preview_visual(button_id, "CONFIRM")
 
 		"enemy_list":
-			# Enemy list toggles immediately (but still two-click for consistency)
-			_update_button_preview_visual(button_id, "CONFIRM")
+			# Enemy list toggles IMMEDIATELY (single-click, no preview)
+			enemy_list_visible = not enemy_list_visible
+			enemy_list_toggled.emit(enemy_list_visible)
+			if enemy_list_visible:
+				_show_enemy_list()
+			else:
+				_hide_enemy_list()
+			# Don't enter preview mode - action is instant
+			return
 
 		"targeting":
 			# SPECIAL: Open targeting submenu instead of preview
@@ -627,6 +650,9 @@ func _enter_preview_mode(button_id: String):
 			# Targeting modes (in submenu)
 			if button_id in ["first", "last", "close", "strong", "weak"]:
 				_update_button_preview_visual(button_id, "CONFIRM")
+			# Generic path button handler (cannon_path, mortar_path, inferno_path, frost_path, defense_path, offense_path, etc.)
+			elif button_id.ends_with("_path"):
+				_handle_path_button_preview(button_id)
 
 func _confirm_action(button_id: String):
 	"""Confirm action (second click)"""
@@ -642,33 +668,25 @@ func _confirm_action(button_id: String):
 			sell_selected.emit(tower)
 			# Menu will close automatically
 
-		"damage_path":
-			damage_path_chosen.emit(tower)
-			# Menu will close automatically
-
-		"range_path":
-			range_path_chosen.emit(tower)
-			# Menu will close automatically
-
 		"rally":
 			rally_mode_entered.emit(tower)
 			close()  # Close menu to let player place rally point
 
 		"enemy_list":
-			enemy_list_visible = not enemy_list_visible
-			enemy_list_toggled.emit(enemy_list_visible)
-			if enemy_list_visible:
-				_show_enemy_list()
-			else:
-				_hide_enemy_list()
-			_cancel_preview()  # Return to normal mode
+			# Enemy list now handles toggling in _enter_preview_mode (single-click)
+			# This case should never be reached
+			pass
 
 		_:
+			# Generic path button handler (cannon_path, mortar_path, inferno_path, frost_path, defense_path, offense_path, etc.)
+			if button_id.ends_with("_path"):
+				_handle_path_button_confirm(button_id)
 			# Targeting modes
-			var mode = _get_targeting_mode_from_button_id(button_id)
-			if mode != -1:
-				targeting_mode_changed.emit(tower, mode)
-				_cancel_preview()  # Return to normal, update button colors
+			elif button_id in ["first", "last", "close", "strong", "weak"]:
+				var mode = _get_targeting_mode_from_button_id(button_id)
+				if mode != -1:
+					targeting_mode_changed.emit(tower, mode)
+					_cancel_preview()  # Return to normal, update button colors
 
 func _cancel_preview():
 	"""Cancel preview mode (click outside or different button)"""
@@ -740,6 +758,44 @@ func _dim_other_path_button(button_id: String):
 	var button = action_buttons[button_id]
 	button.modulate = Color(0.5, 0.5, 0.5)  # Dim
 
+func _handle_path_button_preview(button_id: String):
+	"""Generic handler for path button previews (works for any tower type)"""
+	# Get path internal name from button_id (e.g., "cannon_path" → "cannon")
+	var internal_name = button_id.trim_suffix("_path")
+
+	# Get preview stats from tower
+	if tower.has_method("get_upgrade_stats"):
+		preview_stats = tower.get_upgrade_stats(internal_name)
+
+	_update_center_stats()
+	_update_button_preview_visual(button_id, "CONFIRM")
+
+	# Dim the other path button
+	if tower.has_method("get_path_choices"):
+		var path_choices = tower.get_path_choices()
+		for choice in path_choices:
+			if choice["id"] != button_id:
+				_dim_other_path_button(choice["id"])
+
+func _handle_path_button_confirm(button_id: String):
+	"""Generic handler for path button confirmation (works for any tower type)"""
+	# Map button to position (first or second path choice)
+	# PlacementManager uses damage_path_chosen for LEFT button, range_path_chosen for RIGHT button
+	var path_choices = []
+	if tower.has_method("get_path_choices"):
+		path_choices = tower.get_path_choices()
+
+	# Determine which position this button is in
+	var is_first_path = false
+	if path_choices.size() >= 2:
+		is_first_path = (button_id == path_choices[0]["id"])
+
+	# Emit appropriate signal based on position
+	if is_first_path:
+		damage_path_chosen.emit(tower)  # LEFT button (damage/cannon/inferno/defense)
+	else:
+		range_path_chosen.emit(tower)   # RIGHT button (range/mortar/frost/offense)
+
 func _get_targeting_mode_from_button_id(button_id: String) -> int:
 	"""Convert button_id to TargetingMode enum"""
 	match button_id:
@@ -781,16 +837,36 @@ func _show_enemy_list():
 	scroll.position = Vector2(5, 5)
 	enemy_list_panel.add_child(scroll)
 
-	var vbox = VBoxContainer.new()
-	scroll.add_child(vbox)
+	enemy_list_container = VBoxContainer.new()
+	scroll.add_child(enemy_list_container)
 
 	# Add title
 	var title = Label.new()
 	title.text = "Enemies in Range"
 	title.add_theme_font_size_override("font_size", 12)
-	vbox.add_child(title)
+	enemy_list_container.add_child(title)
 
-	# Get enemies from tower (access property, not method)
+	# Initial enemy list population
+	_update_enemy_list()
+
+	# Start real-time updates
+	if enemy_update_timer:
+		enemy_update_timer.start()
+
+	enemy_list_visible = true
+	print("[RingUpgradeMenu] Enemy list shown with real-time updates")
+
+func _update_enemy_list():
+	"""Update enemy list content in real-time"""
+	if not enemy_list_container or not tower:
+		return
+
+	# Clear old enemy labels (keep title)
+	var children = enemy_list_container.get_children()
+	for i in range(1, children.size()):  # Skip first child (title)
+		children[i].queue_free()
+
+	# Get current enemies from tower
 	var enemies = []
 	if "enemies_in_range" in tower:
 		enemies = tower.enemies_in_range
@@ -798,27 +874,63 @@ func _show_enemy_list():
 	if enemies.size() > 0:
 		for i in range(min(enemies.size(), 10)):  # Limit to 10
 			var enemy = enemies[i]
+			if not is_instance_valid(enemy):
+				continue
+
 			var enemy_label = Label.new()
-			var enemy_name = enemy.name if "name" in enemy else "Enemy"
+			var enemy_name = enemy.get_enemy_name() if enemy.has_method("get_enemy_name") else "Enemy"
 			var hp = enemy.current_health if "current_health" in enemy else 0
 			var max_hp = enemy.max_health if "max_health" in enemy else 0
-			enemy_label.text = "[%d] %s\nHP: %d/%d" % [i+1, enemy_name, hp, max_hp]
+			var gold = enemy.gold_reward if "gold_reward" in enemy else 0
+			var armor = enemy.armor if "armor" in enemy else 0.0
+			var armor_percent = int(armor * 100)
+
+			# Get progress percentage (distance to goal)
+			var progress = 0.0
+			if enemy.has_method("get_path_progress"):
+				progress = enemy.get_path_progress()
+			elif "waypoint_progress" in enemy:
+				progress = enemy.waypoint_progress
+			var progress_percent = int(progress * 100)
+
+			# Format display with armor and gold indicators
+			var armor_text = " [⛨%d%%]" % armor_percent if armor > 0.0 else ""
+			enemy_label.text = "[%d] %s%s\nHP: %d/%d | 💰%dg | %d%%" % [
+				i+1, enemy_name, armor_text, hp, max_hp, gold, progress_percent
+			]
+
+			# Add boss highlighting
+			if _is_enemy_boss(enemy):
+				enemy_label.add_theme_color_override("font_color", Color(1.0, 0.4, 1.0))  # Magenta for bosses
+
 			enemy_label.add_theme_font_size_override("font_size", 10)
-			vbox.add_child(enemy_label)
+			enemy_list_container.add_child(enemy_label)
 	else:
 		var no_enemies = Label.new()
 		no_enemies.text = "No enemies in range"
 		no_enemies.add_theme_font_size_override("font_size", 10)
-		vbox.add_child(no_enemies)
-
-	print("[RingUpgradeMenu] Enemy list shown")
+		enemy_list_container.add_child(no_enemies)
 
 func _hide_enemy_list():
 	"""Hide floating enemy list panel"""
+	# Stop real-time updates
+	if enemy_update_timer:
+		enemy_update_timer.stop()
+
 	if enemy_list_panel:
 		enemy_list_panel.queue_free()
 		enemy_list_panel = null
+		enemy_list_container = null
+
+	enemy_list_visible = false
 	print("[RingUpgradeMenu] Enemy list hidden")
+
+func _is_enemy_boss(enemy) -> bool:
+	"""Check if enemy is a boss"""
+	if "is_boss" in enemy:
+		return enemy.is_boss
+	var name = enemy.get_enemy_name() if enemy.has_method("get_enemy_name") else ""
+	return "boss" in name.to_lower()
 
 # ============================================
 # ANIMATION

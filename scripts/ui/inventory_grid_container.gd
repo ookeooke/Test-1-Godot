@@ -8,6 +8,8 @@ class_name InventoryGridContainer
 @export var cell_size: Vector2 = Vector2(80, 80)
 @export var cell_gap: Vector2 = Vector2(5, 5)
 
+var show_grid: bool = false  # Toggle for debug grid visualization
+
 func _ready():
 	# Connect to child signals to trigger layout when children are added
 	child_entered_tree.connect(_on_child_added)
@@ -77,3 +79,41 @@ func _get_minimum_size() -> Vector2:
 	var min_height = grid_size.y * cell_size.y + (grid_size.y - 1) * cell_gap.y
 
 	return Vector2(min_width, min_height)
+
+
+func toggle_grid_visualization():
+	"""Toggle debug grid visualization (F3 key)"""
+	show_grid = !show_grid
+	queue_redraw()
+	print("[InventoryGrid] Grid visualization: %s" % ("ON" if show_grid else "OFF"))
+
+
+func _draw():
+	"""Draw debug grid lines when enabled"""
+	if not show_grid:
+		return
+
+	var grid_size = get_grid_size()
+	var grid_color = Color(0.5, 0.5, 1.0, 0.3)  # Semi-transparent blue
+
+	# Draw vertical lines
+	for x in range(grid_size.x + 1):
+		var x_pos = x * (cell_size.x + cell_gap.x)
+		var start_pos = Vector2(x_pos, 0)
+		var end_pos = Vector2(x_pos, grid_size.y * (cell_size.y + cell_gap.y))
+		draw_line(start_pos, end_pos, grid_color, 1.0)
+
+	# Draw horizontal lines
+	for y in range(grid_size.y + 1):
+		var y_pos = y * (cell_size.y + cell_gap.y)
+		var start_pos = Vector2(0, y_pos)
+		var end_pos = Vector2(grid_size.x * (cell_size.x + cell_gap.x), y_pos)
+		draw_line(start_pos, end_pos, grid_color, 1.0)
+
+	# Draw cell labels (grid coordinates)
+	for y in range(grid_size.y):
+		for x in range(grid_size.x):
+			var x_pos = x * (cell_size.x + cell_gap.x) + 5
+			var y_pos = y * (cell_size.y + cell_gap.y) + 15
+			var label_text = "(%d,%d)" % [x, y]
+			draw_string(ThemeDB.fallback_font, Vector2(x_pos, y_pos), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.5, 0.5, 1.0, 0.5))

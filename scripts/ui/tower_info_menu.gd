@@ -688,18 +688,24 @@ func update_enemy_list():
 		var max_health = enemy.max_health if "max_health" in enemy else health
 		var progress = _get_enemy_progress(enemy)
 		var progress_percent = int(progress * 100)
+		var gold = enemy.gold_reward if "gold_reward" in enemy else 0
+		var armor = enemy.armor if "armor" in enemy else 0.0
+		var armor_percent = int(armor * 100)
 
-		# Format: [1st] Goblin (HP: 45/100, 78%)
+		# Format with armor and gold indicators: [1st] Goblin [⛨20%] (HP: 45/100, 💰10g, 78%)
 		var position_suffix = _get_position_suffix(position)
-		enemy_label.text = "[%d%s] %s (HP: %d/%d, %d%%)" % [
-			position, position_suffix, enemy_name, health, max_health, progress_percent
+		var armor_text = " [⛨%d%%]" % armor_percent if armor > 0.0 else ""
+		enemy_label.text = "[%d%s] %s%s (HP: %d/%d, 💰%dg, %d%%)" % [
+			position, position_suffix, enemy_name, armor_text, health, max_health, gold, progress_percent
 		]
 
 		# Set smaller font size
 		enemy_label.add_theme_font_size_override("font_size", 8)  # Was 9
 
-		# Color code by priority (1st is red, others fade)
-		if position == 1:
+		# Color code by priority + boss highlighting
+		if _is_enemy_boss(enemy):
+			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.4, 1.0))  # Magenta for bosses
+		elif position == 1:
 			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))  # Red for current target
 		elif position == 2:
 			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))  # Orange
@@ -719,6 +725,15 @@ func _get_position_suffix(pos: int) -> String:
 		return "rd"
 	else:
 		return "th"
+
+func _is_enemy_boss(enemy) -> bool:
+	"""Check if enemy is a boss"""
+	if not enemy or not is_instance_valid(enemy):
+		return false
+	if "is_boss" in enemy:
+		return enemy.is_boss
+	var name = enemy.get_enemy_name() if enemy.has_method("get_enemy_name") else ""
+	return "boss" in name.to_lower()
 
 func _get_enemy_progress(enemy) -> float:
 	"""Get enemy's progress along path"""
@@ -759,6 +774,13 @@ func _update_enemy_list_visibility():
 		enemies_label.visible = enemy_list_visible
 	if enemy_list_scroll:
 		enemy_list_scroll.visible = enemy_list_visible
+
+	# Performance optimization: Start/stop timer based on visibility
+	if update_timer:
+		if enemy_list_visible:
+			update_timer.start()
+		else:
+			update_timer.stop()
 
 	# Update toggle button text
 	if enemy_list_toggle:

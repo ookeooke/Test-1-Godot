@@ -583,15 +583,24 @@ func needs_path_choice() -> bool:
 	"""Check if tower is at level 3 and needs path choice"""
 	return tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == ""
 
-func can_upgrade() -> bool:
-	"""Check if tower can be upgraded"""
-	if tower_level < MAX_LEVEL_BEFORE_CHOICE:
-		return true  # Can do standard upgrade (Lv1→2, Lv2→3)
-	elif tower_level == MAX_LEVEL_BEFORE_CHOICE and upgrade_path == "":
-		return true  # Can choose path (Lv3→4)
-	elif tower_level == 4 and upgrade_path != "":
-		return true  # Can do final upgrade (Lv4→5)
-	return false  # Level 5 = MAX LEVEL
+func get_path_choices() -> Array:
+	"""Get path choice configuration for ring menu"""
+	return [
+		{
+			"id": "defense_path",          # Button ID in ring menu
+			"internal_name": "defense",    # What tower stores in upgrade_path
+			"display_name": "Iron Guard",
+			"emoji": "🛡️",
+			"description": "Maximum tankiness"
+		},
+		{
+			"id": "offense_path",
+			"internal_name": "offense",
+			"display_name": "Blade Master",
+			"emoji": "⚔️",
+			"description": "High damage output"
+		}
+	]
 
 # ============================================
 # CLEANUP

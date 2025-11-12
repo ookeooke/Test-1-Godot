@@ -18,12 +18,12 @@ var accessory1_slot: ItemSlot
 var accessory2_slot: ItemSlot
 
 # UI References
-@onready var weapon_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot/WeaponContainer if has_node("MarginContainer/VBoxContainer/EquipmentGrid/WeaponSlot/WeaponContainer") else null
-@onready var armor_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/ArmorSlot/ArmorContainer if has_node("MarginContainer/VBoxContainer/EquipmentGrid/ArmorSlot/ArmorContainer") else null
-@onready var accessory1_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot/Accessory1Container if has_node("MarginContainer/VBoxContainer/EquipmentGrid/Accessory1Slot/Accessory1Container") else null
-@onready var accessory2_container: Control = $MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot/Accessory2Container if has_node("MarginContainer/VBoxContainer/EquipmentGrid/Accessory2Slot/Accessory2Container") else null
+@onready var weapon_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/WeaponSlot/WeaponContainer if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/WeaponSlot/WeaponContainer") else null
+@onready var armor_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer") else null
+@onready var accessory1_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container") else null
+@onready var accessory2_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container") else null
 
-@onready var stats_label: RichTextLabel = $MarginContainer/VBoxContainer/StatsContainer/StatsLabel if has_node("MarginContainer/VBoxContainer/StatsContainer/StatsLabel") else null
+@onready var stats_label: Label = $MarginContainer/VBoxContainer/StatsFooter if has_node("MarginContainer/VBoxContainer/StatsFooter") else null
 @onready var hero_name_label: Label = $MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel") else null
 @onready var hero_portrait: ColorRect = $MarginContainer/VBoxContainer/HeaderContainer/HeroPortrait if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroPortrait") else null
 @onready var switch_hero_button: Button = $MarginContainer/VBoxContainer/HeaderContainer/SwitchHeroButton if has_node("MarginContainer/VBoxContainer/HeaderContainer/SwitchHeroButton") else null
@@ -184,19 +184,17 @@ func _update_hero_info():
 
 
 func _update_stats_display():
-	"""Update the stats text display - Professional stats comparison (Base vs Equipped)"""
+	"""Update the stats text display - Compact Diablo 2 style single-line format"""
 	if not stats_label:
 		return
 
 	# Get hero data
 	var hero_data = HeroDatabase.get_hero(hero_id)
 	if not hero_data:
-		stats_label.text = "[center][color=red]Hero data not found[/color][/center]"
+		stats_label.text = "Hero data not found"
 		return
 
-	var stats_text = "[center][b]HERO STATS[/b][/center]\n\n"
-
-	# Get equipped items from HeroEquipmentRegistry (NEW SYSTEM)
+	# Get equipped items from HeroEquipmentRegistry
 	var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
 
 	# Collect all stat modifiers from equipped items
@@ -210,10 +208,7 @@ func _update_stats_display():
 		if item_data == null:
 			continue
 
-		# Get upgrade level if item is upgraded
 		var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
-
-		# Get modifiers from this item (includes upgrade bonuses)
 		var item_modifiers = item_data.get_stat_modifiers(upgrade_level)
 		modifiers.append_array(item_modifiers)
 
@@ -228,7 +223,6 @@ func _update_stats_display():
 	for mod in modifiers:
 		var desc_lower = mod.description.to_lower()
 
-		# Parse stat modifiers (simplified - you may need to adjust based on your modifier system)
 		if "damage" in desc_lower:
 			if mod.type == StatModifier.ModifierType.FLAT:
 				damage_bonus += mod.value
@@ -266,22 +260,22 @@ func _update_stats_display():
 				crit_bonus += mod.value
 
 	# Calculate final stats
-	var final_damage = hero_data.base_damage + damage_bonus
-	var final_health = hero_data.base_health + health_bonus
-	var final_defense = hero_data.base_defense + defense_bonus
-	var final_range = hero_data.base_range + range_bonus
+	var final_damage = int(hero_data.base_damage + damage_bonus)
+	var final_health = int(hero_data.base_health + health_bonus)
+	var final_defense = int(hero_data.base_defense + defense_bonus)
+	var final_range = int(hero_data.base_range + range_bonus)
 	var final_attack_speed = hero_data.base_attack_speed * (1.0 + attack_speed_bonus)
-	var final_crit = hero_data.base_crit_chance + crit_bonus
+	var final_crit = (hero_data.base_crit_chance + crit_bonus) * 100
 
-	# Display stats in professional format: "Stat Name: Base → Final (+Bonus)"
-	stats_text += _format_stat_line("Damage", hero_data.base_damage, final_damage, damage_bonus)
-	stats_text += _format_stat_line("Health", hero_data.base_health, final_health, health_bonus)
-	stats_text += _format_stat_line("Defense", hero_data.base_defense, final_defense, defense_bonus)
-	stats_text += _format_stat_line("Range", hero_data.base_range, final_range, range_bonus)
-	stats_text += _format_stat_line_float("Attack Speed", hero_data.base_attack_speed, final_attack_speed, attack_speed_bonus, true)
-	stats_text += _format_stat_line_float("Crit Chance", hero_data.base_crit_chance * 100, final_crit * 100, crit_bonus * 100, false, "%")
-
-	stats_label.text = stats_text
+	# Compact single-line format (Diablo 2 style)
+	stats_label.text = "Dmg: %d | HP: %d | Def: %d | Rng: %d | AS: %.2fs | Crit: %.1f%%" % [
+		final_damage,
+		final_health,
+		final_defense,
+		final_range,
+		final_attack_speed,
+		final_crit
+	]
 
 
 func _format_modifier(mod: StatModifier) -> String:

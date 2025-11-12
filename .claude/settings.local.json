@@ -4,7 +4,8 @@
       "Bash(godot:*)",
       "Bash(findstr:*)",
       "Bash(test:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

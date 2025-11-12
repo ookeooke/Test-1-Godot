@@ -77,6 +77,7 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 
 	item_added.emit(item_id, quantity)
 	inventory_changed.emit()
+	SaveManager.mark_dirty()  # Mark for auto-save
 	return true
 
 
@@ -97,6 +98,7 @@ func remove_item(item_id: String, quantity: int = 1) -> bool:
 
 	item_removed.emit(item_id, quantity)
 	inventory_changed.emit()
+	SaveManager.mark_dirty()  # Mark for auto-save
 	return true
 
 
@@ -143,6 +145,7 @@ func upgrade_item(item_id: String) -> bool:
 	global_inventory[item_id].upgrade_level += 1
 
 	inventory_changed.emit()
+	SaveManager.mark_dirty()  # Mark for auto-save
 	return true
 
 
@@ -244,6 +247,7 @@ func upgrade_inventory_slots(category: String) -> bool:
 	max_slots[category] += SLOTS_PER_UPGRADE
 
 	inventory_changed.emit()
+	SaveManager.mark_dirty()  # Mark for auto-save
 	return true
 
 
@@ -310,6 +314,7 @@ func equip_item_atomic(hero_id: String, slot: String, item_id: String) -> bool:
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
 	inventory_changed.emit()
+	SaveManager.mark_dirty()  # Mark for auto-save
 	return true
 
 func unequip_item_atomic(hero_id: String, slot: String) -> bool:
@@ -339,6 +344,7 @@ func unequip_item_atomic(hero_id: String, slot: String) -> bool:
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
 	inventory_changed.emit()
+	SaveManager.mark_dirty()  # Mark for auto-save
 	return true
 
 func remove_from_grid(item_id: String) -> bool:
