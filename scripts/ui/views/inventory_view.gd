@@ -10,8 +10,8 @@ class_name InventoryView
 @export var swap_dialog_scene: PackedScene = preload("res://scenes/ui/swap_confirmation_dialog.tscn")
 @export var total_slots: int = 60  # Total inventory capacity
 
-# Grid container
-@onready var inventory_grid: GridContainer = $MarginContainer/VBoxContainer/ContentContainer/InventoryGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/InventoryGrid") else null
+# Grid container (now InventoryGridContainer with absolute positioning)
+@onready var inventory_grid: InventoryGridContainer = $MarginContainer/VBoxContainer/ContentContainer/InventoryGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/InventoryGrid") else null
 
 # Info labels
 @onready var slots_label: Label = $MarginContainer/VBoxContainer/FooterContainer/SlotsLabel if has_node("MarginContainer/VBoxContainer/FooterContainer/SlotsLabel") else null
@@ -67,9 +67,6 @@ func _create_item_slots():
 	if inventory_grid == null:
 		return
 
-	# Set grid columns (will be adjusted by responsive system)
-	inventory_grid.columns = 8
-
 	# Create all inventory slots with grid coordinates
 	var grid_width = InventoryManager.GRID_WIDTH
 	var grid_height = InventoryManager.GRID_HEIGHT
@@ -95,7 +92,10 @@ func _create_item_slots():
 
 func _refresh_inventory():
 	"""Refresh all inventory slots from InventoryManager (spatial grid mode)"""
+	print("[InventoryView] 🔄 Refreshing inventory...")
+
 	if not InventoryManager:
+		print("[InventoryView] ❌ InventoryManager not found!")
 		return
 
 	# Clear all slots first and reset occupation states
@@ -103,9 +103,23 @@ func _refresh_inventory():
 		slot.clear_slot()
 		slot.is_root_slot = true
 		slot.occupied_by_item_id = ""
+		# Force visibility and mouse filter reset
+		slot.visible = true
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP
+		# Reset scale from abandoned hover tweens (fixes border thickness artifacts)
+		slot.scale = Vector2(1.0, 1.0)
+		# Force complete style reset using cached default (prevents border artifacts)
+		if slot.has_method("_restore_default_style"):
+			slot._restore_default_style()
+		if slot.margin_container:
+			slot.margin_container.add_theme_constant_override("margin_left", 4)
+			slot.margin_container.add_theme_constant_override("margin_top", 4)
+			slot.margin_container.add_theme_constant_override("margin_right", 4)
+			slot.margin_container.add_theme_constant_override("margin_bottom", 4)
 
 	# Get ALL items from inventory (all categories combined)
 	var all_items = InventoryManager.get_all_items()
+	print("[InventoryView] Found %d items in inventory" % all_items.size())
 
 	# Place items using spatial grid positions
 	for item_info in all_items:
@@ -131,6 +145,7 @@ func _refresh_inventory():
 		# Set the root slot
 		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level)
 		root_slot.is_root_slot = true
+		print("[InventoryView] Placed item '%s' in slot at (%d, %d)" % [item_id, pos.x, pos.y])
 
 		# Mark occupied cells for multi-slot items
 		for dy in range(item_data.inventory_height):
@@ -183,7 +198,6 @@ func _on_inventory_changed():
 
 func _on_item_slot_clicked(item_id: String, slot: ItemSlot):
 	"""Called when an item slot is left-clicked - auto-equip for mobile, Ctrl+click for PC"""
-	print("[InventoryView] Item clicked: ", item_id)
 
 	# Get item data
 	var item_data = ItemDatabase.get_item(item_id)
@@ -202,15 +216,14 @@ func _on_item_slot_clicked(item_id: String, slot: ItemSlot):
 		if not is_pc or ctrl_held:
 			_try_auto_equip_item(item_id, item_data)
 		else:
-			print("[InventoryView] PC: Use drag-and-drop or Ctrl+Click to equip")
+			pass  # PC without Ctrl - show info only
 	else:
 		# Just show info for other items
-		print("[InventoryView] Item clicked - showing info only")
+		pass
 
 
 func _on_item_slot_right_clicked(item_id: String, slot: ItemSlot):
 	"""Called when an item slot is right-clicked"""
-	print("[InventoryView] Item right-clicked: ", item_id)
 	# Show context menu (sell, drop, etc.)
 	_show_item_context_menu(item_id, slot)
 
@@ -223,7 +236,6 @@ func _show_item_context_menu(item_id: String, slot: ItemSlot):
 
 	# TODO: Create proper context menu UI (Equip/Unequip/Drop/Split/Info)
 	# For now, right-click does nothing to prevent accidental item loss
-	print("[InventoryView] Right-click context menu not yet implemented for: ", item_data.item_name)
 
 
 func _on_item_slot_hovered(slot: ItemSlot):
@@ -288,9 +300,9 @@ func _try_auto_equip_item(item_id: String, item_data: ItemData):
 	else:
 		# No item equipped - use atomic equip
 		if InventoryManager.equip_item_atomic(hero_id_val, slot_name, item_id):
-			print("[InventoryView] Auto-equipped %s to %s" % [item_data.item_name, slot_name])
+			pass  # Success
 		else:
-			print("[InventoryView] Failed to auto-equip %s" % item_data.item_name)
+			pass  # Failure
 
 
 func _get_slot_name_for_item(item_data: ItemData) -> String:
@@ -316,12 +328,10 @@ func _get_slot_name_for_item(item_data: ItemData) -> String:
 func _setup_swap_dialog():
 	"""Create and setup the swap confirmation dialog"""
 	if not swap_dialog_scene:
-		print("[InventoryView] Error: No swap dialog scene configured")
 		return
 
 	swap_dialog = swap_dialog_scene.instantiate() as SwapConfirmationDialog
 	if not swap_dialog:
-		print("[InventoryView] Error: Could not instantiate swap dialog")
 		return
 
 	# Add to scene tree
@@ -331,7 +341,6 @@ func _setup_swap_dialog():
 	swap_dialog.confirmed.connect(_on_swap_confirmed)
 	swap_dialog.cancelled.connect(_on_swap_cancelled)
 
-	print("[InventoryView] Swap dialog created and ready")
 
 
 func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_item_id: String, slot_name: String, hero_id_val: String):
@@ -347,7 +356,6 @@ func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_i
 		swap_dialog.show_dialog(new_item_id, old_item_id, slot_name)
 	else:
 		# Fallback: auto-swap if dialog not available
-		print("[InventoryView] Warning: Swap dialog not available, auto-swapping")
 		InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id)
 
 
@@ -356,14 +364,14 @@ func _on_swap_confirmed(new_item_id: String, slot_name: String):
 	var hero_id_val = _get_hero_id_from_equipment_view()
 	if hero_id_val != "":
 		if InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id):
-			print("[InventoryView] Item swapped successfully: %s to %s" % [new_item_id, slot_name])
+			pass  # Success
 		else:
-			print("[InventoryView] Failed to swap item")
+			pass  # Failure
 
 
 func _on_swap_cancelled():
+	pass  # Dialog dismissed
 	"""Handle cancelled swap from dialog"""
-	print("[InventoryView] Swap cancelled by user")
 
 
 func _get_hero_id_from_equipment_view() -> String:
@@ -391,25 +399,27 @@ func _find_flexible_panel_with_equipment() -> FlexiblePanel:
 
 
 func _on_viewport_resized():
-	"""Adjust grid columns based on viewport width (responsive design)"""
+	"""Adjust grid cell size based on viewport width (responsive design)"""
 	if not inventory_grid:
 		return
 
 	var width = get_viewport().get_visible_rect().size.x
 
+	# Note: InventoryGridContainer uses columns property for display purposes only
+	# Actual layout is based on cell_size and item grid coordinates
 	if width >= 2340:
 		# Wide phone (19.5:9 aspect ratio) - more horizontal space
-		inventory_grid.columns = 9
+		inventory_grid.set_columns(9)
 		print("[InventoryView] Wide layout: 9 columns (width: %d)" % width)
 
 	elif width >= 1920:
 		# Standard (16:9 aspect ratio)
-		inventory_grid.columns = 8
+		inventory_grid.set_columns(8)
 		print("[InventoryView] Standard layout: 8 columns (width: %d)" % width)
 
 	else:
 		# Compact/tablet screens
-		inventory_grid.columns = 6
+		inventory_grid.set_columns(6)
 		print("[InventoryView] Compact layout: 6 columns (width: %d)" % width)
 
 

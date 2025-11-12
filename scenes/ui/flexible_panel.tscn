@@ -17,6 +17,7 @@ layout_mode = 2
 theme_override_constants/separation = 0
 
 [node name="Header" type="HBoxContainer" parent="VBoxContainer"]
+visible = false
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 

@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(godot:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(test:*)",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "ask": []

@@ -207,6 +207,11 @@ func _input(event):
 		debug_print_bounds_info()
 		get_viewport().set_input_as_handled()
 
+	# DEBUG: Press F7 to spawn test items
+	if event is InputEventKey and event.pressed and event.keycode == KEY_F7:
+		_spawn_debug_items()
+		get_viewport().set_input_as_handled()
+
 	# ESC key to pause (highest priority - runs before other UI handlers)
 	# Check if pause menu already exists to avoid conflicts
 	if event.is_action_pressed("ui_cancel"):
@@ -214,6 +219,30 @@ func _input(event):
 		if not root.has_node("PauseMenu"):
 			_show_pause_menu()
 			get_viewport().set_input_as_handled()  # Consume to prevent other handlers
+
+func _spawn_debug_items():
+	"""DEBUG: Spawn test items into inventory (F7 key)"""
+	print("\n[DEBUG] F7 pressed - Spawning test items...")
+
+	var items_to_spawn = [
+		"basic_bow",
+		"fire_bow",
+		"elven_longbow",
+		"leather_vest",
+		"epic_plate_armor",
+		"power_ring",
+		"epic_power_amulet"
+	]
+
+	var spawned = 0
+	for item_id in items_to_spawn:
+		if InventoryManager.add_item(item_id, 1):
+			spawned += 1
+		else:
+			print("[DEBUG] Failed to add: ", item_id)
+
+	print("[DEBUG] ✅ Spawned %d/%d items. Press I to open inventory." % [spawned, items_to_spawn.size()])
+
 
 func _show_pause_menu():
 	"""Show the pause menu"""

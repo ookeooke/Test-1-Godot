@@ -117,7 +117,6 @@ func _setup_equipment_manager():
 	# Register hero in equipment registry if not already registered
 	if not HeroEquipmentRegistry.is_hero_registered(hero_id):
 		HeroEquipmentRegistry.register_hero(hero_id)
-		print("[EquipmentView] Registered hero in registry: ", hero_id)
 
 	# Connect to registry batch update signal (only once)
 	if not HeroEquipmentRegistry.batch_update_completed.is_connected(_on_batch_update):
@@ -125,7 +124,6 @@ func _setup_equipment_manager():
 
 	# Load and display current equipment
 	_refresh_equipment()
-	print("[EquipmentView] Setup complete for hero: ", hero_id)
 
 
 func _refresh_equipment():
@@ -329,21 +327,19 @@ func _on_batch_update(dirty_hero_ids: Array[String]) -> void:
 	if hero_id not in dirty_hero_ids:
 		return
 	_refresh_equipment()
-	print("[EquipmentView] Batch refresh for ", hero_id)
 
 
 func _on_equipment_slot_right_clicked(item_id: String, slot: ItemSlot, slot_name: String):
 	"""Called when an equipment slot is right-clicked (unequip)"""
 	if InventoryManager.unequip_item_atomic(hero_id, slot_name):
-		print("[EquipmentView] Unequipped item from: ", slot_name)
+		pass  # Success
 	else:
-		print("[EquipmentView] Failed to unequip item from: ", slot_name)
+		pass  # Failure (starter equipment or inventory full)
 
 
 func _on_switch_hero_button_pressed():
 	"""Called when Switch Hero button is pressed"""
 	switch_hero_requested.emit()
-	print("[EquipmentView] Switch hero requested")
 
 
 ## ============================================
@@ -372,7 +368,6 @@ func _on_viewport_resized():
 	_resize_slot_container(accessory1_container, Vector2(slot_size * 0.6, slot_size * 0.6))  # Small for 1x1 rings
 	_resize_slot_container(accessory2_container, Vector2(slot_size * 0.6, slot_size * 0.6))  # Small for 1x1 amulets
 
-	print("[EquipmentView] Resized equipment slots (base: %.0fpx, panel: %.0fpx)" % [slot_size, panel_width])
 
 
 func _resize_slot_container(container: Control, size: Vector2):

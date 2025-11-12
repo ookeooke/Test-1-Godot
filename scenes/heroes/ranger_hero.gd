@@ -119,24 +119,19 @@ func _ready():
 	print("\n🎯 === RANGER HERO INITIALIZATION START ===")
 
 	# Initialize stat system FIRST (before equipment/skills)
-	print("1️⃣ Initializing stats...")
 	_initialize_stats()
 
 	# Initialize equipment system
-	print("2️⃣ Setting up equipment system...")
 	_setup_equipment_system()
 
 	# Initialize skill system
-	print("3️⃣ Setting up skill system...")
 	_setup_skill_system()
 
 	# Apply all modifiers from equipment and skills
-	print("4️⃣ Final stat recalculation...")
 	_recalculate_all_stats()
 
 	# Set hero to full health after all stat bonuses are applied
 	current_health = max_health
-	print("5️⃣ Health set to max: %.0f" % current_health)
 
 	print("✅ === RANGER HERO INITIALIZATION COMPLETE ===\n")
 
@@ -171,7 +166,6 @@ func _ready():
 		tower_aura.collision_mask = 8  # Detect towers on layer 4 (bit 3, value 8)
 		tower_aura.body_entered.connect(_on_tower_entered_aura)
 		tower_aura.body_exited.connect(_on_tower_exited_aura)
-		print("✅ [RangerHero] Tower buff aura initialized (radius: %.0f)" % AURA_RADIUS)
 
 	# Create timers
 	ranged_timer = Timer.new()
@@ -206,7 +200,6 @@ func _ready():
 	if BalanceTracker:
 		BalanceTracker.register_hero(self, get_hero_id())
 
-	print("✓ Ranger Hero ready at: ", global_position)
 
 # ============================================
 # STAT SYSTEM - NEW UNIFIED APPROACH
@@ -228,7 +221,6 @@ func _initialize_stats():
 	# Set initial health to max
 	current_health = BASE_MAX_HEALTH
 
-	print("✅ Stats initialized with base values")
 
 
 func _recalculate_all_stats():
@@ -272,7 +264,6 @@ func _recalculate_all_stats():
 		for modifier in skill_modifiers:
 			_apply_modifier_to_appropriate_stat(modifier)
 
-	print("   Applied %d equipment modifiers + %d skill modifiers" % [equipment_mod_count, skill_mod_count])
 
 	# Update timer with new attack speed
 	if ranged_timer:
@@ -286,7 +277,6 @@ func _recalculate_all_stats():
 	if current_health > max_health:
 		current_health = max_health
 
-	print("📊 Stats recalculated: HP=%.0f, Damage=%.1f, Range=%.0f, AttackSpeed=%.2f" % [max_health, ranged_damage, ranged_range, ranged_attack_speed])
 
 	# Track equipment in BalanceTracker
 	if BalanceTracker:
@@ -333,7 +323,6 @@ func _setup_equipment_system():
 	# Register hero in equipment registry
 	if not HeroEquipmentRegistry.is_hero_registered(hero_id):
 		HeroEquipmentRegistry.register_hero(hero_id)
-		print("[RangerHero] Registered in equipment registry: ", hero_id)
 
 	# Connect to registry signals
 	HeroEquipmentRegistry.equipment_transaction_completed.connect(_on_equipment_transaction)
@@ -345,7 +334,6 @@ func _setup_equipment_system():
 	# Load equipment from save (this will override starter gear if player has better equipment)
 	_load_equipment_from_save()
 
-	print("✅ Equipment system initialized for ranger")
 
 func _generate_unique_hero_id() -> String:
 	"""Generate static hero class ID for equipment persistence"""
@@ -359,7 +347,6 @@ func _load_equipment_from_save() -> void:
 	# Just verify hero is registered
 	if not HeroEquipmentRegistry.is_hero_registered(hero_id):
 		HeroEquipmentRegistry.register_hero(hero_id)
-		print("[RangerHero] Hero registered during load: ", hero_id)
 
 func _equip_starter_gear() -> void:
 	"""Ensure ranger has Basic Bow equipped (auto-equipped on first spawn)"""
@@ -385,14 +372,12 @@ func _on_equipment_transaction(transaction_hero_id: String, transaction_type: St
 	"""Handle equipment transaction for this hero"""
 	if transaction_hero_id != hero_id:
 		return
-	print("[RangerHero] Equipment transaction: ", transaction_type)
 
 func _on_batch_update(dirty_hero_ids: Array[String]) -> void:
 	"""Handle batched equipment update"""
 	if hero_id not in dirty_hero_ids:
 		return
 	_recalculate_all_stats()
-	print("[RangerHero] Stats recalculated after equipment batch update")
 
 
 
@@ -419,7 +404,6 @@ func _setup_skill_system():
 		if saved_skills:
 			skill_manager.load_save_data(saved_skills)
 			skill_manager.recalculate_all_passives()
-			print("📚 Loaded ", saved_skills.owned_skills.size(), " skills for ranger")
 
 	# Connect to skill activation signal
 	skill_manager.skill_activated.connect(_on_skill_activated)
@@ -433,13 +417,10 @@ func _setup_skill_system():
 				break
 		if multishot_data:
 			skill_manager.unlock_skill("ranger_multishot", multishot_data)
-			print("🎯 Auto-unlocked Multishot for testing")
 
-	print("✅ Skill system initialized for ranger")
 
 func _on_skill_activated(skill_id: String):
 	"""Handle skill activation"""
-	print("🔥 Skill activated: ", skill_id)
 
 	# Execute skill-specific logic
 	match skill_id:
@@ -464,7 +445,6 @@ func _execute_multishot():
 
 	# Get current targets
 	if enemies_in_ranged_range.is_empty():
-		print("⚠️ Multishot: No targets in range")
 		return
 
 	# Determine number of arrows based on skill level
@@ -495,14 +475,12 @@ func _execute_multishot():
 		var damage = ranged_damage * damage_multiplier
 		arrow.setup(target, damage, self)  # Pass self as source for balance tracking
 
-	print("🏹🏹🏹 MULTISHOT: Fired ", targets.size(), " arrows!")
 
 	# Visual feedback (could add particle effect here)
 	_flash_hero(Color(1.5, 1.3, 1.0))
 
 func _execute_smoke_bomb():
 	"""Smoke Bomb ability - Become invisible, enemies lose aggro"""
-	print("💨 SMOKE BOMB activated!")
 
 	# TODO: Implement invisibility mechanic
 	# For now, just clear enemy aggro
@@ -518,7 +496,6 @@ func _execute_smoke_bomb():
 
 func _execute_rally_call():
 	"""Rally Call ability - Boost nearby towers' attack speed"""
-	print("📣 RALLY CALL activated!")
 
 	# TODO: Find nearby towers and boost their attack speed
 	# This requires tower manager or getting towers from the scene
@@ -559,13 +536,11 @@ func _on_area_input_event(_viewport, event, _shape_idx):
 
 func _on_clicked() -> void:
 	"""Called when this hero is clicked"""
-	print("🎯 Hero clicked!")
 	# Single click: Select hero
 	hero_selected.emit(self)
 
 func _on_right_clicked() -> void:
 	"""Called when hero is right-clicked"""
-	print("Right-clicked hero - could open hero menu here")
 	# TODO: Show hero info panel
 
 func _on_mouse_entered() -> void:
@@ -849,14 +824,12 @@ func shoot_arrow():
 
 	current_ranged_target = get_closest_ranged_enemy()
 	if current_ranged_target == null or not is_instance_valid(current_ranged_target):
-		print("⚠️ Hero: No valid ranged target found")
 		return
 
 	# Don't shoot melee targets (they should be blocked)
 	if enemies_in_melee_range.has(current_ranged_target):
 		return
 
-	print("🏹 Hero shooting arrow at: ", current_ranged_target.get_enemy_name() if current_ranged_target.has_method("get_enemy_name") else "Enemy")
 	var arrow = arrow_scene.instantiate()
 	get_tree().root.add_child(arrow)
 	arrow.global_position = global_position
@@ -1044,14 +1017,12 @@ func _on_tower_entered_aura(body: Node2D):
 	if not ("tower_id" in body):
 		return
 
-	print("[RangerHero] Tower entered aura: %s" % body.tower_id)
 	towers_in_aura.append(body)
 	_apply_tower_buff(body)
 
 func _on_tower_exited_aura(body: Node2D):
 	"""Called when a tower exits hero's buff aura"""
 	if body in towers_in_aura:
-		print("[RangerHero] Tower exited aura: %s" % body.tower_id)
 		towers_in_aura.erase(body)
 		_remove_tower_buff(body)
 
@@ -1070,13 +1041,11 @@ func _apply_tower_buff(tower: Node2D):
 		tower.stat_damage.add_modifier(
 			StatModifier.create_additive(damage_bonus, mod_source, mod_description)
 		)
-		print("  ✅ Applied +%.0f%% damage buff to %s (New DMG: %.1f)" % [damage_bonus * 100, tower.tower_id, tower.damage])
 	elif tower.has("stat_soldier_damage"):
 		# Barracks: boost soldier damage
 		tower.stat_soldier_damage.add_modifier(
 			StatModifier.create_additive(damage_bonus, mod_source, mod_description)
 		)
-		print("  ✅ Applied +%.0f%% soldier damage buff to %s (New DMG: %.1f)" % [damage_bonus * 100, tower.tower_id, tower.soldier_damage])
 
 	# Visual indicator: add a subtle glow/tint to buffed tower
 	if tower.has("sprite"):
@@ -1092,10 +1061,8 @@ func _remove_tower_buff(tower: Node2D):
 	# Remove modifiers
 	if tower.has("stat_damage"):
 		tower.stat_damage.remove_modifiers_from_source(mod_source)
-		print("  🔻 Removed damage buff from %s (DMG: %.1f)" % [tower.tower_id, tower.damage])
 	elif tower.has("stat_soldier_damage"):
 		tower.stat_soldier_damage.remove_modifiers_from_source(mod_source)
-		print("  🔻 Removed soldier damage buff from %s (DMG: %.1f)" % [tower.tower_id, tower.soldier_damage])
 
 	# Remove visual indicator
 	if tower.has("sprite"):

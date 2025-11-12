@@ -49,6 +49,9 @@ func create_new_profile(profile_name: String) -> bool:
 				"equipment": 20
 			}
 		},
+		"equipment_registry": {  # Hero equipment slots (per-hero persistence)
+			"heroes": {}
+		},
 		"tower_loadout": ["archer", "barracks", "mage", "artillery"],  # Phase 1: Global tower loadout (3-4 tower IDs)
 		"unlocked_towers": ["archer", "barracks", "mage", "artillery"],  # Phase 1: All unlocked towers
 		"user_preferences": {},  # UI preferences (panel tabs, etc.)
@@ -70,6 +73,22 @@ func create_new_profile(profile_name: String) -> bool:
 	if save_profile(new_profile):
 		current_profile = new_profile
 		current_profile_name = profile_name
+
+		# FIX: Load empty inventory into InventoryManager (same as load_profile does)
+		# This ensures autoload managers are initialized with new profile state
+		if InventoryManager:
+			InventoryManager.load_from_dict(new_profile["inventory"])
+			print("[SaveManager] Initialized InventoryManager for new profile")
+
+			# Add starter items for new players
+			InventoryManager.add_item("basic_bow", 1)
+			print("[SaveManager] ✅ Added starter item: basic_bow")
+
+		# Load empty equipment registry
+		if HeroEquipmentRegistry and new_profile.has("equipment_registry"):
+			HeroEquipmentRegistry.load_from_dict(new_profile["equipment_registry"])
+			print("[SaveManager] Initialized HeroEquipmentRegistry for new profile")
+
 		profile_created.emit(profile_name)
 		return true
 
@@ -162,6 +181,16 @@ func load_profile(profile_name: String) -> bool:
 			# Load equipment data into HeroEquipmentRegistry
 			if HeroEquipmentRegistry and profile_data.has("equipment_registry"):
 				HeroEquipmentRegistry.load_from_dict(profile_data["equipment_registry"])
+
+			# MIGRATION: Add starter items to old profiles that don't have them
+			if InventoryManager:
+				var all_items = InventoryManager.get_all_items()
+				# Check if profile has empty inventory or is missing basic_bow
+				if all_items.is_empty() or not InventoryManager.has_item("basic_bow"):
+					InventoryManager.add_item("basic_bow", 1)
+					print("[SaveManager] Migration: Added missing starter item (basic_bow)")
+					# Save the profile to persist the migration
+					save_current_profile()
 
 			print("SaveManager: Profile loaded: ", profile_name)
 			profile_loaded.emit(profile_data)

@@ -44,7 +44,7 @@ func generate_all_icons():
 
 
 func _assign_icons_to_items():
-	"""Assign generated textures to ItemData resources"""
+	"""Assign generated textures to ItemData resources (only if no icon already exists)"""
 	print("[AutoIconGen] Assigning icons to items...")
 
 	var assigned = 0
@@ -52,8 +52,12 @@ func _assign_icons_to_items():
 		if ItemDatabase.has_item(item_id):
 			var item_data = ItemDatabase.get_item(item_id)
 			if item_data:
-				item_data.icon = icon_cache[item_id]
-				assigned += 1
+				# Only assign if item doesn't already have an icon (respects PNG icons from .tres files)
+				if item_data.icon == null:
+					item_data.icon = icon_cache[item_id]
+					assigned += 1
+				else:
+					print("[AutoIconGen] Skipping '%s' - already has icon texture" % item_id)
 
 	print("[AutoIconGen] Assigned %d icons to items!" % assigned)
 

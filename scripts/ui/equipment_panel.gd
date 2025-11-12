@@ -86,13 +86,11 @@ func _find_equipment_manager():
 	# Register hero if not already registered
 	if not HeroEquipmentRegistry.is_hero_registered(hero_id):
 		HeroEquipmentRegistry.register_hero(hero_id)
-		print("[EquipmentPanel] Registered hero in registry: ", hero_id)
 
 	# Connect to registry batch update signal
 	if not HeroEquipmentRegistry.batch_update_completed.is_connected(_on_batch_update):
 		HeroEquipmentRegistry.batch_update_completed.connect(_on_batch_update)
 
-	print("[EquipmentPanel] Setup complete for hero: ", hero_id)
 
 
 func refresh_equipment():
@@ -234,12 +232,11 @@ func _on_batch_update(dirty_hero_ids: Array[String]) -> void:
 	if hero_id not in dirty_hero_ids:
 		return
 	refresh_equipment()
-	print("[EquipmentPanel] Refreshed for ", hero_id)
 
 
 func _on_equipment_slot_right_clicked(item_id: String, slot: ItemSlot, slot_name: String):
 	"""Called when an equipment slot is right-clicked (unequip)"""
 	if InventoryManager.unequip_item_atomic(hero_id, slot_name):
-		print("[EquipmentPanel] Unequipped item from: ", slot_name)
+		pass  # Success
 	else:
-		print("[EquipmentPanel] Failed to unequip item from: ", slot_name)
+		pass  # Failure

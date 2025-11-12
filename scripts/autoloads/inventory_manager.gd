@@ -27,13 +27,17 @@ const SLOTS_PER_UPGRADE: int = 5
 
 
 func _ready():
+	# Initialize grid immediately on startup
+	_init_grid()
+	print("[InventoryManager] Grid initialized: %dx%d" % [GRID_WIDTH, GRID_HEIGHT])
+
 	# Wait for ItemDatabase to load
 	if not ItemDatabase.items_loaded.is_connected(_on_item_database_loaded):
 		ItemDatabase.items_loaded.connect(_on_item_database_loaded)
 
 
 func _on_item_database_loaded():
-	print("[InventoryManager] Ready - ItemDatabase loaded")
+	pass
 
 
 ## Add an item to the inventory
@@ -53,6 +57,7 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 	if global_inventory.has(item_id):
 		# Stack existing item (grid position already exists)
 		global_inventory[item_id].quantity += quantity
+		print("[InventoryManager] ✅ Stacked item: %s (total: %d)" % [item_id, global_inventory[item_id].quantity])
 	else:
 		# New item entry - add to dictionary AND place in grid atomically
 		global_inventory[item_id] = {
@@ -65,12 +70,13 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 			# Rollback dictionary addition if grid placement fails
 			global_inventory.erase(item_id)
 			inventory_full.emit(item_id)
-			print("[InventoryManager] Inventory grid full - could not place item: ", item_data.item_name)
+			print("[InventoryManager] ❌ Inventory grid full - could not place item: ", item_data.item_name)
 			return false
+
+		print("[InventoryManager] ✅ Added new item: %s at position %s" % [item_id, item_positions.get(item_id, "unknown")])
 
 	item_added.emit(item_id, quantity)
 	inventory_changed.emit()
-	print("[InventoryManager] Added %d x %s" % [quantity, item_data.item_name])
 	return true
 
 
@@ -137,7 +143,6 @@ func upgrade_item(item_id: String) -> bool:
 	global_inventory[item_id].upgrade_level += 1
 
 	inventory_changed.emit()
-	print("[InventoryManager] Upgraded %s to level %d" % [item_data.item_name, global_inventory[item_id].upgrade_level])
 	return true
 
 
@@ -200,6 +205,10 @@ func get_all_items() -> Array:
 	var result = []
 
 	for item_id in global_inventory.keys():
+		# Skip equipped items (items without grid positions)
+		if not item_positions.has(item_id):
+			continue
+
 		var item_data = ItemDatabase.get_item(item_id)
 		if item_data == null:
 			continue
@@ -235,7 +244,6 @@ func upgrade_inventory_slots(category: String) -> bool:
 	max_slots[category] += SLOTS_PER_UPGRADE
 
 	inventory_changed.emit()
-	print("[InventoryManager] Upgraded %s slots to %d" % [category, max_slots[category]])
 	return true
 
 
@@ -256,7 +264,6 @@ func sell_item(item_id: String, quantity: int = 1) -> bool:
 	var sell_value = item_data.sell_value * quantity
 	SaveManager.add_gems(sell_value)
 
-	print("[InventoryManager] Sold %d x %s for %d gems" % [quantity, item_data.item_name, sell_value])
 	return true
 
 
@@ -284,13 +291,11 @@ func equip_item_atomic(hero_id: String, slot: String, item_id: String) -> bool:
 	var old_item = HeroEquipmentRegistry.get_equipped_item(hero_id, slot)
 	if not remove_from_grid(item_id):
 		HeroEquipmentRegistry.rollback_transaction()
-		print("[InventoryManager] Failed to remove item from grid")
 		return false
 	if old_item != "":
 		if not auto_place_item(old_item):
 			auto_place_item(item_id)
 			HeroEquipmentRegistry.rollback_transaction()
-			print("[InventoryManager] Failed to place old item in inventory")
 			return false
 	if not HeroEquipmentRegistry.equip_item_in_transaction(slot, item_id):
 		if old_item != "":
@@ -305,14 +310,12 @@ func equip_item_atomic(hero_id: String, slot: String, item_id: String) -> bool:
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
 	inventory_changed.emit()
-	print("[InventoryManager] Successfully equipped ", item_id, " to ", hero_id, ":", slot)
 	return true
 
 func unequip_item_atomic(hero_id: String, slot: String) -> bool:
 	"""Atomically unequip item with inventory coordination"""
 	var item_id = HeroEquipmentRegistry.get_equipped_item(hero_id, slot)
 	if item_id == "":
-		print("[InventoryManager] Slot already empty: ", slot)
 		return true
 
 	# Prevent unequipping starter equipment to empty slot (can only replace)
@@ -336,7 +339,6 @@ func unequip_item_atomic(hero_id: String, slot: String) -> bool:
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
 	inventory_changed.emit()
-	print("[InventoryManager] Successfully unequipped ", item_id, " from ", hero_id, ":", slot)
 	return true
 
 func remove_from_grid(item_id: String) -> bool:
@@ -361,7 +363,6 @@ func remove_from_grid(item_id: String) -> bool:
 func clear_inventory():
 	global_inventory.clear()
 	inventory_changed.emit()
-	print("[InventoryManager] Inventory cleared")
 
 
 ## Save inventory data to dictionary (for SaveManager)
@@ -378,8 +379,25 @@ func load_from_dict(data: Dictionary):
 	global_inventory = data.get("global_inventory", {})
 	max_slots = data.get("max_slots", max_slots)
 	item_positions = data.get("item_positions", {})
+
+	# Rebuild grid from item positions
+	_init_grid()  # Clear grid first
+	var items_placed = 0
+	for item_id in item_positions:
+		var pos = item_positions[item_id]
+		var item_data = ItemDatabase.get_item(item_id)
+		if item_data:
+			# Mark all cells occupied by this item
+			for dy in range(item_data.inventory_height):
+				for dx in range(item_data.inventory_width):
+					var grid_x = pos.x + dx
+					var grid_y = pos.y + dy
+					if is_valid_position(grid_x, grid_y):
+						grid[grid_y][grid_x] = item_id
+			items_placed += 1
+
+	print("[InventoryManager] Loaded inventory: %d items, %d placed in grid" % [global_inventory.size(), items_placed])
 	inventory_changed.emit()
-	print("[InventoryManager] Loaded inventory with %d unique items" % global_inventory.size())
 
 
 ## ============================================
@@ -565,10 +583,8 @@ func remove_item_from_grid(item_id: String, quantity: int = 1) -> bool:
 ## DEBUG: Print grid state
 func debug_print_grid():
 	if grid.is_empty():
-		print("[InventoryManager] Grid not initialized")
 		return
 
-	print("[InventoryManager] Grid State:")
 	for y in range(GRID_HEIGHT):
 		var row_str = ""
 		for x in range(GRID_WIDTH):
@@ -577,4 +593,3 @@ func debug_print_grid():
 				row_str += "[ ]"
 			else:
 				row_str += "[X]"
-		print("  ", row_str)

@@ -1,3 +1,31 @@
 {
-    "CodeGPT.apiKey": "CodeGPT Plus Beta"
+    "CodeGPT.apiKey": "CodeGPT Plus Beta",
+
+    // Godot Tools Configuration
+    "godotTools.editorPath.godot4": "C:\\Users\\ollil\\Downloads\\Godot_v4.5.1-stable_win64.exe (1)\\Godot_v4.5.1-stable_win64.exe",
+    "godotTools.lsp.serverPort": 6005,
+    "godotTools.lsp.headless": false,
+
+    // File Associations
+    "files.associations": {
+        "*.gd": "gdscript",
+        "*.tscn": "godot-scene",
+        "*.tres": "godot-resource"
+    },
+
+    // Hide Godot Generated Folders
+    "files.exclude": {
+        ".godot/": true,
+        ".import/": true
+    },
+    "search.exclude": {
+        "**/.godot": true,
+        "**/.import": true
+    },
+
+    // GDScript Editor Configuration
+    "[gdscript]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": false
+    }
 }

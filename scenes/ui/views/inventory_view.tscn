@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://inventory_view_scene"]
+[gd_scene load_steps=3 format=3 uid="uid://inventory_view_scene"]
 
 [ext_resource type="Script" path="res://scripts/ui/views/inventory_view.gd" id="1_inventory"]
+[ext_resource type="Script" path="res://scripts/ui/inventory_grid_container.gd" id="2_grid"]
 
 [node name="InventoryView" type="Control"]
 layout_mode = 3
@@ -31,16 +32,14 @@ theme_override_constants/separation = 10
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="InventoryGrid" type="GridContainer" parent="MarginContainer/VBoxContainer/ContentContainer"]
+[node name="InventoryGrid" type="Control" parent="MarginContainer/VBoxContainer/ContentContainer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/h_separation = 5
-theme_override_constants/v_separation = 5
-columns = 8
+script = ExtResource("2_grid")
 
 [node name="FooterContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2

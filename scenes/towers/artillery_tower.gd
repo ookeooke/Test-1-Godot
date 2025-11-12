@@ -695,8 +695,13 @@ func get_upgrade_cost() -> int:
 	if tower_level >= 5:
 		return 0  # Max level reached
 
+	# Convert upgrade_path ("cannon"/"mortar") to TowerData format ("cannon_path"/"mortar_path")
+	var path_param = ""
+	if upgrade_path != "":
+		path_param = upgrade_path + "_path"
+
 	# Query TowerData for current level's cost_to_next
-	var current_stats = TowerData.get_tower_stats(tower_id, tower_level, upgrade_path)
+	var current_stats = TowerData.get_tower_stats(tower_id, tower_level, path_param)
 
 	if current_stats and "cost_to_next" in current_stats:
 		return current_stats["cost_to_next"]

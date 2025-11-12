@@ -24,11 +24,8 @@ func _close_existing_menus():
 		if is_instance_valid(menu):
 			menu.queue_free()
 
-	# Find and close build menus
-	var build_menus = get_tree().get_nodes_in_group("build_menu")
-	for menu in build_menus:
-		if is_instance_valid(menu):
-			menu.queue_free()
+	# Note: Ring menu is now the only build menu and is managed by PlacementManager
+	# It will be cleaned up automatically when the level is reloaded
 
 	print("[DefeatScreen] Closed existing menus")
 

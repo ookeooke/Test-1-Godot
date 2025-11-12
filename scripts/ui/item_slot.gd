@@ -33,6 +33,7 @@ var occupied_by_item_id: String = ""  ## If not root, stores the item_id occupyi
 @onready var quantity_label: Label = $MarginContainer/VBoxContainer/QuantityLabel if has_node("MarginContainer/VBoxContainer/QuantityLabel") else null
 @onready var upgrade_label: Label = $MarginContainer/VBoxContainer/UpgradeLabel if has_node("MarginContainer/VBoxContainer/UpgradeLabel") else null
 @onready var rarity_border: Panel = $RarityBorder if has_node("RarityBorder") else null
+@onready var margin_container: MarginContainer = $MarginContainer if has_node("MarginContainer") else null
 
 var is_empty: bool = true
 var is_hovered: bool = false
@@ -60,6 +61,24 @@ func _ready():
 	update_display()
 
 
+func _restore_default_style():
+	"""Restore default panel style by ALWAYS creating a fresh StyleBox instance.
+	This prevents StyleBox reference sharing bugs across ItemSlot instances.
+	Values match item_slot.tscn SubResource StyleBoxFlat_1."""
+	var fresh_style = StyleBoxFlat.new()
+	fresh_style.bg_color = Color(0.2, 0.2, 0.2, 0.8)
+	fresh_style.border_width_left = 2
+	fresh_style.border_width_top = 2
+	fresh_style.border_width_right = 2
+	fresh_style.border_width_bottom = 2
+	fresh_style.border_color = Color(0.5, 0.5, 0.5, 1)
+	fresh_style.corner_radius_top_left = 4
+	fresh_style.corner_radius_top_right = 4
+	fresh_style.corner_radius_bottom_right = 4
+	fresh_style.corner_radius_bottom_left = 4
+	add_theme_stylebox_override("panel", fresh_style)
+
+
 ## Set item in this slot
 func set_item(new_item_id: String, new_quantity: int = 1, new_upgrade_level: int = 0):
 	item_id = new_item_id
@@ -78,6 +97,54 @@ func set_item(new_item_id: String, new_quantity: int = 1, new_upgrade_level: int
 		return
 
 	is_empty = false
+
+	# MULTI-CELL STRETCHING: Resize slot to span multiple grid cells (Diablo 2 style)
+	if is_root_slot and item_data.inventory_width > 0 and item_data.inventory_height > 0:
+		var slot_width = 80  # Base slot size
+		var slot_height = 80
+		var grid_gap = 5  # Gap between grid cells (from inventory_view.tscn)
+
+		# Calculate total size: (slots × base_size) + (gaps × (slots - 1))
+		var total_width = (item_data.inventory_width * slot_width) + ((item_data.inventory_width - 1) * grid_gap)
+		var total_height = (item_data.inventory_height * slot_height) + ((item_data.inventory_height - 1) * grid_gap)
+
+		custom_minimum_size = Vector2(total_width, total_height)
+		size = Vector2(total_width, total_height)
+
+		# Set higher z_index so multi-cell items render on top
+		z_index = 10
+
+		# DIABLO 2 STYLE: Hide panel styling for multi-cell items
+		# Show ONLY the icon (no border, no background)
+		var transparent_style = StyleBoxFlat.new()
+		transparent_style.bg_color = Color(0, 0, 0, 0)  # Fully transparent
+		transparent_style.border_width_left = 0
+		transparent_style.border_width_top = 0
+		transparent_style.border_width_right = 0
+		transparent_style.border_width_bottom = 0
+		add_theme_stylebox_override("panel", transparent_style)
+
+		# Remove margins so icon fills entire area
+		if margin_container:
+			margin_container.add_theme_constant_override("margin_left", 0)
+			margin_container.add_theme_constant_override("margin_top", 0)
+			margin_container.add_theme_constant_override("margin_right", 0)
+			margin_container.add_theme_constant_override("margin_bottom", 0)
+	else:
+		# Reset to default size for single-cell items
+		custom_minimum_size = Vector2(80, 80)
+		z_index = 0
+
+		# Restore default panel styling (uses cached style for consistency)
+		_restore_default_style()
+
+		# Restore default margins
+		if margin_container:
+			margin_container.add_theme_constant_override("margin_left", 4)
+			margin_container.add_theme_constant_override("margin_top", 4)
+			margin_container.add_theme_constant_override("margin_right", 4)
+			margin_container.add_theme_constant_override("margin_bottom", 4)
+
 	update_display()
 
 
@@ -88,6 +155,21 @@ func clear_slot():
 	quantity = 0
 	upgrade_level = 0
 	is_empty = true
+
+	# Reset size to default
+	custom_minimum_size = Vector2(80, 80)
+	z_index = 0
+
+	# Restore default panel styling (uses cached style for consistency)
+	_restore_default_style()
+
+	# Restore default margins
+	if margin_container:
+		margin_container.add_theme_constant_override("margin_left", 4)
+		margin_container.add_theme_constant_override("margin_top", 4)
+		margin_container.add_theme_constant_override("margin_right", 4)
+		margin_container.add_theme_constant_override("margin_bottom", 4)
+
 	update_display()
 
 
@@ -96,21 +178,15 @@ func update_display():
 	# ALWAYS clear old emoji labels first to prevent visual bugs
 	_clear_emoji_label()
 
-	# Handle occupied (non-root) slots
+	# Handle occupied (non-root) slots - HIDE THEM COMPLETELY (Diablo 2 style)
 	if not is_root_slot and occupied_by_item_id != "":
-		# This slot is occupied by a multi-slot item
-		if icon:
-			icon.texture = null
-		if quantity_label:
-			quantity_label.text = ""
-		if upgrade_label:
-			upgrade_label.text = ""
-		if rarity_border:
-			rarity_border.modulate = Color(0.5, 0.5, 0.5, 0.3)  # Dimmed gray border
-		modulate = Color(0.7, 0.7, 0.7, 0.5)  # Dimmed to show it's reserved
-		tooltip_text = "Occupied by item"
+		# This slot is occupied by a multi-slot item - hide it
+		visible = false
 		mouse_filter = Control.MOUSE_FILTER_IGNORE  # Can't interact with occupied slots
 		return
+	else:
+		# Re-show if this slot is no longer occupied
+		visible = true
 
 	# Re-enable mouse input for non-occupied slots
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -244,7 +320,6 @@ func _drop_data(at_position: Vector2, data):
 	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
 		# Move item in InventoryManager's spatial grid
 		if InventoryManager.move_item(data.item_id, grid_x, grid_y):
-			print("[ItemSlot] Moved item to grid position (%d, %d)" % [grid_x, grid_y])
 			# Trigger refresh of inventory view
 			InventoryManager.inventory_changed.emit()
 		return
@@ -263,7 +338,6 @@ func _drop_data(at_position: Vector2, data):
 	else:
 		source_slot.clear_slot()
 
-	print("[ItemSlot] Swapped items between slots")
 
 
 func _handle_equipment_drop(data: Dictionary, source_slot: ItemSlot):
@@ -272,7 +346,6 @@ func _handle_equipment_drop(data: Dictionary, source_slot: ItemSlot):
 	var target_hero_id = hero_id if slot_type == "equipment" else source_slot.hero_id
 	
 	if target_hero_id == "":
-		print("[ItemSlot] Error: No hero_id set for equipment operation")
 		return
 
 	# Dragging FROM inventory TO equipment (EQUIP)
@@ -280,18 +353,18 @@ func _handle_equipment_drop(data: Dictionary, source_slot: ItemSlot):
 		var slot_name = equipment_slot_name if equipment_slot_name != "" else _get_equipment_slot_name()
 		if slot_name != "":
 			if InventoryManager.equip_item_atomic(target_hero_id, slot_name, data.item_id):
-				print("[ItemSlot] Successfully equipped %s to %s" % [data.item_id, slot_name])
+				pass  # Success - transaction handles all logic
 			else:
-				print("[ItemSlot] Failed to equip item")
+				pass  # Failure - transaction rolled back
 
 	# Dragging FROM equipment TO inventory (UNEQUIP)
 	elif source_slot.slot_type == "equipment" and slot_type == "inventory":
 		var slot_name = source_slot.equipment_slot_name if source_slot.equipment_slot_name != "" else source_slot._get_equipment_slot_name()
 		if slot_name != "":
 			if InventoryManager.unequip_item_atomic(target_hero_id, slot_name):
-				print("[ItemSlot] Successfully unequipped from %s" % slot_name)
+				pass  # Success
 			else:
-				print("[ItemSlot] Failed to unequip item")
+				pass  # Failure
 
 	# Dragging between equipment slots (SWAP)
 	elif source_slot.slot_type == "equipment" and slot_type == "equipment":
@@ -302,11 +375,11 @@ func _handle_equipment_drop(data: Dictionary, source_slot: ItemSlot):
 			# Atomic swap: unequip from source, equip to target
 			if InventoryManager.unequip_item_atomic(target_hero_id, source_slot_name):
 				if InventoryManager.equip_item_atomic(target_hero_id, target_slot_name, data.item_id):
-					print("[ItemSlot] Successfully swapped equipment")
+					pass  # Success
 				else:
-					print("[ItemSlot] Swap failed: could not equip to target slot")
+					pass  # Equip failed
 			else:
-				print("[ItemSlot] Swap failed: could not unequip from source slot")
+				pass  # Unequip failed
 
 
 func _get_equipment_slot_name() -> String:
@@ -374,7 +447,6 @@ func _on_gui_input(event: InputEvent):
 					# Long press detected - trigger right-click action (context menu)
 					if not is_empty:
 						item_right_clicked.emit(item_id, self)
-						print("[ItemSlot] Long-press detected on %s" % item_data.item_name)
 				else:
 					# Short tap - trigger normal click (auto-equip)
 					if not is_empty:

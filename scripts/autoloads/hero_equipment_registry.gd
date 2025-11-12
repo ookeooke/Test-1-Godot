@@ -42,7 +42,7 @@ var _refresh_scheduled: bool = false
 ## ============================================
 
 func _ready():
-	print("[HeroEquipmentRegistry] Initialized")
+	pass  # Autoload ready
 
 ## ============================================
 ## HERO REGISTRATION

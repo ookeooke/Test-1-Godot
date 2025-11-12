@@ -64,8 +64,14 @@ func _ready():
 		# Enable panels for interaction
 		if left_panel:
 			left_panel.set_process_mode(Node.PROCESS_MODE_INHERIT)
+			left_panel.set_hero_id(hero_id)
+			left_panel.refresh_current_view()
+			print("🔍 [DualPanelScreen] Initialized left panel with hero_id: %s" % hero_id)
 		if right_panel:
 			right_panel.set_process_mode(Node.PROCESS_MODE_INHERIT)
+			right_panel.set_hero_id(hero_id)
+			right_panel.refresh_current_view()
+			print("🔍 [DualPanelScreen] Initialized right panel with hero_id: %s" % hero_id)
 	else:
 		# OVERLAY MODE - hide by default until user opens it
 		print("🔍 [DualPanelScreen] Overlay mode - hiding by default")

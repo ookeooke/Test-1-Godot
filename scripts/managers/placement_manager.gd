@@ -4,15 +4,12 @@ extends Node2D
 # PLACEMENT MANAGER - Handles tower spots and menus
 # ============================================
 
-var build_menu_scene = preload("res://scenes/ui/build_menu.tscn")
-var tower_info_menu_scene = preload("res://scenes/ui/tower_info_menu.tscn")
-var ring_menu_script = preload("res://scripts/ui/ring_menu.gd")  # Phase 3B: Ring menu
+var tower_info_menu_scene = preload("res://scenes/ui/tower_info_menu.tscn")  # LEGACY - kept for reference
+var ring_menu_script = preload("res://scripts/ui/ring_menu.gd")
+var ring_upgrade_menu_script = preload("res://scripts/ui/ring_upgrade_menu.gd")  # NEW
 var current_menu = null
 var current_spot = null
 var current_selected_tower = null  # Track selected tower for deselection
-
-# RING MENU TOGGLE (Phase 3B)
-@export var use_ring_menu: bool = true  # Set to false to use old build_menu
 
 # MENU LAYER - CanvasLayer for zoom-independent UI
 var menu_layer: Control  # Reference to MenuContainer in CanvasLayer
@@ -68,14 +65,12 @@ func _on_tower_spot_clicked(spot):
 	"""Handle clicks on empty tower spots"""
 	close_current_menu()
 	current_spot = spot
-	show_build_menu(spot)
+	show_ring_menu(spot)
 
 func _on_tower_clicked(spot, tower):
 	"""Handle clicks on existing towers"""
 	# Deselect previously selected tower
-	if current_selected_tower and is_instance_valid(current_selected_tower):
-		if current_selected_tower.has_method("deselect_tower"):
-			current_selected_tower.deselect_tower()
+	_deselect_current_tower()
 
 	close_current_menu()
 	current_spot = spot
@@ -90,50 +85,16 @@ func _on_tower_clicked(spot, tower):
 func close_current_menu():
 	"""Close any open menu"""
 	# Deselect tower before closing menu
-	if current_selected_tower and is_instance_valid(current_selected_tower):
-		if current_selected_tower.has_method("deselect_tower"):
-			current_selected_tower.deselect_tower()
-			print("🔧 [PlacementManager] Tower deselected in close_current_menu()")
+	_deselect_current_tower()
 
 	if current_menu:
 		current_menu.queue_free()
 		current_menu = null
 
 	# Unlock camera input
-	if camera and camera.has_method("unlock_input"):
-		camera.unlock_input()
+	_unlock_camera()
 
 	current_selected_tower = null
-
-func show_build_menu(spot):
-	"""Show the tower build menu (or ring menu if enabled)"""
-	# Phase 3B: Use ring menu if enabled
-	if use_ring_menu:
-		show_ring_menu(spot)
-		return
-
-	# Original build menu code
-	current_menu = build_menu_scene.instantiate()
-
-	# ADD TO CANVAS LAYER (screen space), not root (world space)
-	menu_layer.add_child(current_menu)
-
-	# CRITICAL: Wait for menu to calculate its size
-	# Menu containers need to be in tree and go through _ready() to calculate size
-	# Extra frames needed for RichTextLabel to finalize layout
-	await get_tree().process_frame
-	await get_tree().process_frame
-	await get_tree().process_frame  # Three frames for RichTextLabel with BBCode
-
-	# Position in screen coordinates (zoom-independent)
-	await position_menu_in_screen_space(spot)
-
-	# Lock camera input (Kingdom Rush style)
-	if camera and camera.has_method("lock_input"):
-		camera.lock_input()
-
-	current_menu.tower_selected.connect(_on_tower_selected)
-	current_menu.menu_closed.connect(_on_menu_closed)
 
 func show_ring_menu(spot):
 	"""Show the ring menu for tower selection (Phase 3B)"""
@@ -160,42 +121,42 @@ func show_ring_menu(spot):
 	current_menu.open_at_position(screen_pos, loadout)
 
 	# Lock camera input (Kingdom Rush style)
-	if camera and camera.has_method("lock_input"):
-		camera.lock_input()
+	_lock_camera()
 
 	# Connect signals
 	current_menu.tower_selected.connect(_on_tower_selected)
 	current_menu.menu_closed.connect(_on_menu_closed)
 
 func show_tower_info_menu(spot, tower):
-	"""Show the tower info/upgrade menu"""
-	current_menu = tower_info_menu_scene.instantiate()
+	"""Show the ring-based tower upgrade menu"""
+	# Create ring upgrade menu programmatically
+	current_menu = Control.new()
+	current_menu.set_script(ring_upgrade_menu_script)
 
 	# ADD TO CANVAS LAYER (screen space), not root (world space)
 	menu_layer.add_child(current_menu)
 
-	if current_menu.has_method("setup"):
-		current_menu.setup(tower, spot)
-
-	# CRITICAL: Wait for menu to calculate its size
-	# Menu containers need to be in tree and go through _ready() to calculate size
-	# Extra frames needed for RichTextLabel to finalize layout
+	# Wait for menu to initialize
 	await get_tree().process_frame
-	await get_tree().process_frame
-	await get_tree().process_frame  # Three frames for RichTextLabel with BBCode
 
-	# Position in screen coordinates (zoom-independent)
-	await position_menu_in_screen_space(spot)
+	# Get screen position of tower spot
+	var world_pos = spot.global_position
+	var screen_pos = get_viewport().get_canvas_transform() * world_pos
+
+	# Open ring upgrade menu at tower position
+	current_menu.open_for_tower(screen_pos, tower, spot)
 
 	# Lock camera input (Kingdom Rush style)
-	if camera and camera.has_method("lock_input"):
-		camera.lock_input()
+	_lock_camera()
 
+	# Connect signals (same as before)
 	current_menu.upgrade_selected.connect(_on_tower_upgraded)
 	current_menu.sell_selected.connect(_on_tower_sold)
 	current_menu.menu_closed.connect(_on_menu_closed)
 	current_menu.damage_path_chosen.connect(_on_damage_path_chosen)
 	current_menu.range_path_chosen.connect(_on_range_path_chosen)
+	current_menu.targeting_mode_changed.connect(_on_targeting_mode_changed)
+	current_menu.rally_mode_entered.connect(_on_rally_mode_entered)
 
 func position_menu_in_screen_space(spot):
 	"""Position menu in screen space, following tower spot but zoom-independent (Kingdom Rush style)"""
@@ -280,29 +241,21 @@ func position_menu_in_screen_space(spot):
 	print("  Final menu bounds: ", Rect2(current_menu.position, menu_size))
 	print("  ✅ Menu positioned and guaranteed visible!")
 
-func _on_tower_selected(tower_scene_or_id):
-	"""Handle tower build selection
+func _on_tower_selected(tower_id: String):
+	"""Handle tower build selection from ring menu
 
 	Args:
-		tower_scene_or_id: Either a PackedScene (old build_menu) or String tower_id (ring_menu)
+		tower_id: Tower ID string (e.g., "archer", "barracks")
 	"""
 	if current_spot:
-		var tower_scene: PackedScene
+		# Load tower scene from TowerData database
+		var tower_scene = TowerData.get_tower_scene(tower_id)
 
-		# Phase 3B: Handle both PackedScene and tower_id string
-		if tower_scene_or_id is String:
-			# Ring menu sends tower_id string - load scene dynamically
-			var tower_id = tower_scene_or_id
-			tower_scene = TowerData.get_tower_scene(tower_id)
-
-			if tower_scene == null:
-				push_error("[PlacementManager] Failed to load tower scene for: %s" % tower_id)
-				close_current_menu()
-				current_spot = null
-				return
-		else:
-			# Old build_menu sends PackedScene directly
-			tower_scene = tower_scene_or_id
+		if tower_scene == null:
+			push_error("[PlacementManager] Failed to load tower scene for: %s" % tower_id)
+			close_current_menu()
+			current_spot = null
+			return
 
 		# Check if this is a soldier tower and validate placement
 		if _is_soldier_tower(tower_scene):
@@ -368,14 +321,8 @@ func _on_tower_upgraded(tower):
 
 		if upgrade_result:
 			print("✅ [PlacementManager] Tower upgraded successfully to level %d" % tower.tower_level)
-
-			# CRITICAL: Reposition menu after upgrade (menu might have changed size or tower visual changed)
-			if current_menu and current_spot:
-				print("🔧 [PlacementManager] Repositioning menu after upgrade...")
-				await get_tree().process_frame  # Wait for menu to update its display
-				await position_menu_in_screen_space(current_spot)
-				print("✅ [PlacementManager] Menu repositioned after upgrade")
-
+			print("🔧 [PlacementManager] Closing menu after upgrade (Kingdom Rush style)...")
+			close_current_menu()
 			print("=== ✅ UPGRADE SUCCESS ===\n")
 		else:
 			push_error("[PlacementManager] Tower upgrade failed!")
@@ -396,8 +343,7 @@ func _on_tower_sold(tower):
 	"""Handle tower sell"""
 
 	# Deselect tower before selling
-	if tower and is_instance_valid(tower) and tower.has_method("deselect_tower"):
-		tower.deselect_tower()
+	_deselect_current_tower()
 
 	if current_spot:
 		# Use the tower spot's built-in cleanup method
@@ -413,22 +359,10 @@ func _on_menu_closed():
 	print("🔧 [PlacementManager] _on_menu_closed() called")
 
 	# Deselect tower when menu closes
-	if current_selected_tower and is_instance_valid(current_selected_tower):
-		if current_selected_tower.has_method("deselect_tower"):
-			print("🔧 [PlacementManager] Deselecting tower: %s" % current_selected_tower.name)
-			current_selected_tower.deselect_tower()
-			print("✅ [PlacementManager] Tower deselected successfully")
-		else:
-			print("⚠️ [PlacementManager] Tower doesn't have deselect_tower() method")
-	else:
-		if not current_selected_tower:
-			print("⚠️ [PlacementManager] No current_selected_tower to deselect")
-		else:
-			print("⚠️ [PlacementManager] current_selected_tower is invalid")
+	_deselect_current_tower()
 
 	# Unlock camera input
-	if camera and camera.has_method("unlock_input"):
-		camera.unlock_input()
+	_unlock_camera()
 
 	current_spot = null
 	current_selected_tower = null
@@ -472,6 +406,8 @@ func _on_damage_path_chosen(tower):
 	if result:
 		print("✅ [PlacementManager] Path chosen successfully!")
 		print("✅ [PlacementManager] Tower is now Level %d with path: %s" % [tower.tower_level, tower.upgrade_path])
+		print("🔧 [PlacementManager] Closing menu after path choice (Kingdom Rush style)...")
+		close_current_menu()
 		print("=== ✅ PATH CHOICE SUCCESS ===\n")
 	else:
 		print("❌ [PlacementManager] Path choice failed!")
@@ -515,7 +451,72 @@ func _on_range_path_chosen(tower):
 	if result:
 		print("✅ [PlacementManager] Path chosen successfully!")
 		print("✅ [PlacementManager] Tower is now Level %d with path: %s" % [tower.tower_level, tower.upgrade_path])
+		print("🔧 [PlacementManager] Closing menu after path choice (Kingdom Rush style)...")
+		close_current_menu()
 		print("=== ✅ PATH CHOICE SUCCESS ===\n")
 	else:
 		print("❌ [PlacementManager] Path choice failed!")
 		print("=== ❌ PATH CHOICE FAILED ===\n")
+
+func _on_targeting_mode_changed(tower, mode: int):
+	"""Handle targeting mode change from ring menu"""
+	print("\n=== 🎯 TARGETING MODE CHANGE ===")
+	print("🎯 [PlacementManager] _on_targeting_mode_changed() called")
+	print("🎯 [PlacementManager] Tower: %s, Mode: %d" % [tower.name if tower else "null", mode])
+
+	if not tower or not is_instance_valid(tower):
+		print("❌ [PlacementManager] ERROR: Tower is null or invalid!")
+		return
+
+	if tower.has_method("set_targeting_mode"):
+		tower.set_targeting_mode(mode)
+		print("✅ [PlacementManager] Targeting mode changed to: %d" % mode)
+	else:
+		print("❌ [PlacementManager] Tower doesn't have set_targeting_mode() method!")
+
+func _on_rally_mode_entered(tower):
+	"""Handle rally point mode entry from ring menu"""
+	print("\n=== 🚩 RALLY POINT MODE ===")
+	print("🚩 [PlacementManager] _on_rally_mode_entered() called")
+
+	if not tower or not is_instance_valid(tower):
+		print("❌ [PlacementManager] ERROR: Tower is null or invalid!")
+		return
+
+	# TODO: Implement rally point placement mode
+	# This would typically:
+	# 1. Close menu
+	# 2. Enter placement mode for rally point
+	# 3. Wait for player to click location
+	# 4. Set rally point on tower
+	print("⚠️ [PlacementManager] Rally point placement not yet implemented")
+
+# ============================================
+# HELPER METHODS
+# ============================================
+
+func _lock_camera():
+	"""Centralized camera locking with null safety"""
+	if camera and camera.has_method("lock_input"):
+		camera.lock_input()
+		print("🔒 [PlacementManager] Camera locked")
+	else:
+		push_warning("[PlacementManager] Cannot lock camera - reference invalid")
+
+func _unlock_camera():
+	"""Centralized camera unlocking with null safety"""
+	if camera and camera.has_method("unlock_input"):
+		camera.unlock_input()
+		print("🔓 [PlacementManager] Camera unlocked")
+	else:
+		push_warning("[PlacementManager] Cannot unlock camera - reference invalid")
+
+func _deselect_current_tower():
+	"""Deselect and hide range indicator for current tower"""
+	if current_selected_tower and is_instance_valid(current_selected_tower):
+		if current_selected_tower.has_method("deselect_tower"):
+			current_selected_tower.deselect_tower()
+			print("🔧 [PlacementManager] Tower deselected: %s" % current_selected_tower.name)
+		else:
+			push_warning("[PlacementManager] Tower missing deselect_tower() method")
+	current_selected_tower = null
