@@ -448,16 +448,34 @@ func _sell_item(item_id: String, item_data: ItemData):
 		requires_confirmation = true
 		confirmation_reason = "rare (%s)" % item_data.get_rarity_name()
 
-	# Check if item is upgraded
-	var item_info = InventoryManager.global_inventory.get(item_id)
-	if item_info and item_info.upgrade_level > 0:
+	# Check if item is upgraded (use getter instead of direct dictionary access)
+	var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
+	if upgrade_level > 0:
 		requires_confirmation = true
-		confirmation_reason += " +%d upgraded" % item_info.upgrade_level if confirmation_reason != "" else "upgraded (+%d)" % item_info.upgrade_level
+		confirmation_reason += " +%d upgraded" % upgrade_level if confirmation_reason != "" else "upgraded (+%d)" % upgrade_level
 
-	# Check if item is equipped
-	if not InventoryManager.item_positions.has(item_id):
-		requires_confirmation = true
-		confirmation_reason += " equipped" if confirmation_reason != "" else "equipped"
+	# Check if item is equipped (use getter instead of direct dictionary access)
+	# DEFENSIVE: Verify item is actually equipped, not just missing from grid
+	var item_pos = InventoryManager.get_item_position(item_id)
+	if item_pos.x == -1:  # Item not in grid - should be equipped
+		# Verify item is actually equipped on any hero (prevents false positives from data corruption)
+		var is_actually_equipped = false
+		if HeroEquipmentRegistry:
+			for hero_id in HeroEquipmentRegistry._equipment_registry.keys():
+				var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
+				for equipped_item_id in equipped_items.values():
+					if equipped_item_id == item_id:
+						is_actually_equipped = true
+						break
+				if is_actually_equipped:
+					break
+
+		if is_actually_equipped:
+			requires_confirmation = true
+			confirmation_reason += " equipped" if confirmation_reason != "" else "equipped"
+		else:
+			# Data corruption: item in inventory but not in grid and not equipped
+			push_error("[InventoryView] Data corruption detected: item '%s' not in grid and not equipped" % item_id)
 
 	if requires_confirmation:
 		# Show confirmation dialog
@@ -598,17 +616,30 @@ func _on_viewport_resized():
 
 
 func _on_inventory_full(item_id: String):
-	"""Show notification when inventory is full"""
-	print("[InventoryView] ⚠️ Inventory full! Cannot add item: %s" % item_id)
+	"""Show detailed notification when inventory is full"""
+	# Get item details for better error message
+	var item_data = ItemDatabase.get_item(item_id)
+	var item_name = item_data.item_name if item_data else item_id
+	var size_info = ""
 
-	# Show slots label in red temporarily
+	if item_data and (item_data.inventory_width > 1 or item_data.inventory_height > 1):
+		size_info = " (%d×%d)" % [item_data.inventory_width, item_data.inventory_height]
+
+	print("[InventoryView] ⚠️ Inventory full! Cannot add '%s'%s" % [item_name, size_info])
+
+	# Show detailed error message in red temporarily
 	if slots_label:
 		var original_color = slots_label.modulate
 		slots_label.modulate = Color(1.0, 0.3, 0.3)  # Red
-		slots_label.text = "⚠️ INVENTORY FULL!"
 
-		# Reset after 2 seconds
-		await get_tree().create_timer(2.0).timeout
+		# Show helpful message with item name and size
+		if size_info != "":
+			slots_label.text = "⚠️ FULL! No %s space for %s" % [size_info.strip_edges(), item_name]
+		else:
+			slots_label.text = "⚠️ INVENTORY FULL! No space for %s" % item_name
+
+		# Reset after 3 seconds (longer for readability)
+		await get_tree().create_timer(3.0).timeout
 		slots_label.modulate = original_color
 		_update_labels()
 
@@ -616,5 +647,13 @@ func _on_inventory_full(item_id: String):
 func cleanup():
 	"""Clean up when view is closed"""
 	super.cleanup()
+
+	# Disconnect signals to prevent memory leaks
+	if InventoryManager:
+		if InventoryManager.inventory_changed.is_connected(_on_inventory_changed):
+			InventoryManager.inventory_changed.disconnect(_on_inventory_changed)
+		if InventoryManager.inventory_full.is_connected(_on_inventory_full):
+			InventoryManager.inventory_full.disconnect(_on_inventory_full)
+
 	if tooltip_panel:
 		tooltip_panel.visible = false

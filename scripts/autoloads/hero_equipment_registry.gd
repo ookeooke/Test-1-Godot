@@ -211,17 +211,25 @@ func rollback_transaction() -> void:
 ## ============================================
 
 func _schedule_batch_refresh() -> void:
-	"""Schedule single end-of-frame batch refresh"""
+	"""Schedule single end-of-frame batch refresh (thread-safe)"""
+	_transaction_mutex.lock()
+
 	if _refresh_scheduled:
+		_transaction_mutex.unlock()
 		return
 
 	_refresh_scheduled = true
+	_transaction_mutex.unlock()
+
 	call_deferred("_execute_batch_refresh")
 
 func _execute_batch_refresh() -> void:
-	"""Execute batched refresh for all dirty heroes"""
+	"""Execute batched refresh for all dirty heroes (thread-safe)"""
+	_transaction_mutex.lock()
+
 	if _dirty_heroes.is_empty():
 		_refresh_scheduled = false
+		_transaction_mutex.unlock()
 		return
 
 	# Collect dirty hero IDs
@@ -234,7 +242,9 @@ func _execute_batch_refresh() -> void:
 	_dirty_heroes.clear()
 	_refresh_scheduled = false
 
-	# Emit SINGLE batch signal for ALL dirty heroes
+	_transaction_mutex.unlock()
+
+	# Emit SINGLE batch signal for ALL dirty heroes (outside mutex to prevent deadlock)
 	batch_update_completed.emit(dirty_hero_ids)
 
 	print("[HeroEquipmentRegistry] Batch refresh completed for ", dirty_hero_ids.size(), " heroes")

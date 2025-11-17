@@ -378,3 +378,13 @@ func _get_parent_panel() -> Control:
 			return node
 		node = node.get_parent()
 	return null
+
+
+func cleanup():
+	"""Clean up when view is closed"""
+	super.cleanup()
+
+	# Disconnect signals to prevent memory leaks
+	if HeroEquipmentRegistry:
+		if HeroEquipmentRegistry.batch_update_completed.is_connected(_on_batch_update):
+			HeroEquipmentRegistry.batch_update_completed.disconnect(_on_batch_update)

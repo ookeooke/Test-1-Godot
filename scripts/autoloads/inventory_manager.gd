@@ -38,6 +38,13 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 		print("[InventoryManager] Error: Invalid item_id: ", item_id)
 		return false
 
+	# Safety check: Prevent dictionary overflow (max 100 unique items)
+	# This prevents memory issues and save file corruption from unbounded growth
+	if not global_inventory.has(item_id) and global_inventory.size() >= 100:
+		inventory_full.emit(item_id)
+		print("[InventoryManager] ⚠️ Inventory dictionary limit reached (100 unique items)")
+		return false
+
 	# Check if we have space (grid availability for non-stackables)
 	if !has_space_for_item(item_data):
 		inventory_full.emit(item_id)
@@ -262,27 +269,54 @@ func equip_item_atomic(hero_id: String, slot: String, item_id: String) -> bool:
 	if not global_inventory.has(item_id):
 		print("[InventoryManager] Cannot equip - item not in inventory: ", item_id)
 		return false
+
+	# PRE-VALIDATION: Check space for old item BEFORE starting transaction
+	# This prevents rollback failures that could cause permanent item loss
+	var old_item = HeroEquipmentRegistry.get_equipped_item(hero_id, slot)
+	if old_item != "":
+		var old_item_data = ItemDatabase.get_item(old_item)
+		if old_item_data and not has_space_for_item(old_item_data):
+			inventory_full.emit(old_item)
+			var size_str = "%d×%d" % [old_item_data.inventory_width, old_item_data.inventory_height]
+			print("[InventoryManager] ⚠️ Cannot equip - no %s space for old item '%s'" % [size_str, old_item_data.item_name])
+			return false  # FAIL EARLY - transaction never starts
+
 	if not HeroEquipmentRegistry.begin_transaction(hero_id, "equip"):
 		return false
-	var old_item = HeroEquipmentRegistry.get_equipped_item(hero_id, slot)
+
+	# Store original position for guaranteed rollback
+	var item_original_pos = get_item_position(item_id)
+
+	# CRITICAL VALIDATION: Item must be in grid to have valid rollback position
+	if item_original_pos.x == -1 or item_original_pos.y == -1:
+		print("[InventoryManager] ⚠️ Cannot equip - item not in inventory grid: ", item_id)
+		HeroEquipmentRegistry.rollback_transaction()
+		return false
+
 	if not remove_from_grid(item_id):
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
 	if old_item != "":
 		if not auto_place_item(old_item):
-			auto_place_item(item_id)
+			# CRITICAL ROLLBACK: Restore to exact original position (guaranteed to succeed)
+			if not place_item(item_id, item_original_pos.x, item_original_pos.y):
+				push_error("[InventoryManager] CRITICAL: Rollback failed! Item may be lost: %s" % item_id)
 			HeroEquipmentRegistry.rollback_transaction()
 			return false
 	if not HeroEquipmentRegistry.equip_item_in_transaction(slot, item_id):
 		if old_item != "":
 			remove_from_grid(old_item)
-		auto_place_item(item_id)
+		# CRITICAL ROLLBACK: Restore to exact original position
+		if not place_item(item_id, item_original_pos.x, item_original_pos.y):
+			push_error("[InventoryManager] CRITICAL: Rollback failed! Item may be lost: %s" % item_id)
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
 	if not HeroEquipmentRegistry.commit_transaction():
 		if old_item != "":
 			remove_from_grid(old_item)
-		auto_place_item(item_id)
+		# CRITICAL ROLLBACK: Restore to exact original position
+		if not place_item(item_id, item_original_pos.x, item_original_pos.y):
+			push_error("[InventoryManager] CRITICAL: Rollback failed! Item may be lost: %s" % item_id)
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
 	inventory_changed.emit()
