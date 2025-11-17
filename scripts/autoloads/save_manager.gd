@@ -76,11 +76,9 @@ func create_new_profile(profile_name: String) -> bool:
 		"level_stars": {}, # level_id: stars_earned (1-3)
 		"gems": 1000,  # Starting gems for skill purchases / hero unlocks
 		"hero_skills": {},  # hero_id: { skill_id: level }
-		"inventory": {  # New: Inventory system data
+		"inventory": {  # Inventory system data (spatial grid only)
 			"global_inventory": {},
-			"max_slots": {
-				"equipment": 20
-			}
+			"item_positions": {}
 		},
 		"equipment_registry": {  # Hero equipment slots (per-hero persistence)
 			"heroes": {}
@@ -221,13 +219,9 @@ func load_profile(profile_name: String) -> bool:
 			if profile_data.has("inventory"):
 				var inv_data = profile_data["inventory"]
 
-				# Remove old categories from max_slots
+				# Remove legacy max_slots system (migration to spatial grid only)
 				if inv_data.has("max_slots"):
-					inv_data["max_slots"].erase("consumables")
-					inv_data["max_slots"].erase("materials")
-					# Ensure equipment key exists
-					if not inv_data["max_slots"].has("equipment"):
-						inv_data["max_slots"]["equipment"] = 20
+					inv_data.erase("max_slots")
 
 				# Filter out consumable/material items from global_inventory
 				if inv_data.has("global_inventory"):

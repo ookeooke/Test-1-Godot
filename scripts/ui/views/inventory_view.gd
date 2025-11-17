@@ -8,7 +8,8 @@ class_name InventoryView
 
 @export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
 @export var swap_dialog_scene: PackedScene = preload("res://scenes/ui/swap_confirmation_dialog.tscn")
-@export var total_slots: int = 60  # Total inventory capacity
+@export var total_slots: int = 64  # Total inventory capacity (8×8 grid)
+@export var debug_logging: bool = false  # Enable detailed inventory logging (F3 to toggle)
 
 # Grid container (now InventoryGridContainer with absolute positioning)
 @onready var inventory_grid: InventoryGridContainer = $MarginContainer/VBoxContainer/ContentContainer/InventoryGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/InventoryGrid") else null
@@ -63,11 +64,14 @@ func _ready():
 
 
 func _input(event: InputEvent):
-	"""Handle F3 key for grid visualization toggle"""
+	"""Handle F3 key for grid visualization and debug logging toggle"""
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F3:
 			if inventory_grid:
 				inventory_grid.toggle_grid_visualization()
+			# Toggle debug logging
+			debug_logging = !debug_logging
+			print("[InventoryView] Debug logging %s" % ("enabled" if debug_logging else "disabled"))
 			accept_event()
 
 
@@ -111,10 +115,12 @@ func _create_item_slots():
 
 func _refresh_inventory():
 	"""Refresh all inventory slots from InventoryManager (spatial grid mode)"""
-	print("[InventoryView] 🔄 Refreshing inventory...")
+	if debug_logging:
+		print("[InventoryView] 🔄 Refreshing inventory...")
 
 	if not InventoryManager:
-		print("[InventoryView] ❌ InventoryManager not found!")
+		if debug_logging:
+			print("[InventoryView] ❌ InventoryManager not found!")
 		return
 
 	# Clear all slots first and reset occupation states
@@ -138,7 +144,8 @@ func _refresh_inventory():
 
 	# Get ALL items from inventory (all categories combined)
 	var all_items = InventoryManager.get_all_items()
-	print("[InventoryView] Found %d items in inventory" % all_items.size())
+	if debug_logging:
+		print("[InventoryView] Found %d items in inventory" % all_items.size())
 
 	# Place items using spatial grid positions
 	for item_info in all_items:
@@ -152,19 +159,22 @@ func _refresh_inventory():
 			if InventoryManager.auto_place_item(item_id):
 				pos = InventoryManager.get_item_position(item_id)
 			else:
-				print("[InventoryView] Warning: Could not place item in grid: ", item_id)
+				if debug_logging:
+					print("[InventoryView] Warning: Could not place item in grid: ", item_id)
 				continue
 
 		# Find the root slot for this item
 		var root_slot = _get_slot_at_position(pos.x, pos.y)
 		if root_slot == null:
-			print("[InventoryView] Warning: No slot found at position (%d, %d)" % [pos.x, pos.y])
+			if debug_logging:
+				print("[InventoryView] Warning: No slot found at position (%d, %d)" % [pos.x, pos.y])
 			continue
 
 		# Set the root slot
 		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level)
 		root_slot.is_root_slot = true
-		print("[InventoryView] Placed item '%s' in slot at (%d, %d)" % [item_id, pos.x, pos.y])
+		if debug_logging:
+			print("[InventoryView] Placed item '%s' in slot at (%d, %d)" % [item_id, pos.x, pos.y])
 
 		# Mark occupied cells for multi-slot items
 		for dy in range(item_data.inventory_height):
@@ -571,17 +581,20 @@ func _on_viewport_resized():
 	if width >= 2340:
 		# Wide phone (19.5:9 aspect ratio) - more horizontal space
 		inventory_grid.set_columns(9)
-		print("[InventoryView] Wide layout: 9 columns (width: %d)" % width)
+		if debug_logging:
+			print("[InventoryView] Wide layout: 9 columns (width: %d)" % width)
 
 	elif width >= 1920:
 		# Standard (16:9 aspect ratio)
 		inventory_grid.set_columns(8)
-		print("[InventoryView] Standard layout: 8 columns (width: %d)" % width)
+		if debug_logging:
+			print("[InventoryView] Standard layout: 8 columns (width: %d)" % width)
 
 	else:
 		# Compact/tablet screens
 		inventory_grid.set_columns(6)
-		print("[InventoryView] Compact layout: 6 columns (width: %d)" % width)
+		if debug_logging:
+			print("[InventoryView] Compact layout: 6 columns (width: %d)" % width)
 
 
 func _on_inventory_full(item_id: String):

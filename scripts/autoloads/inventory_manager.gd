@@ -16,15 +16,6 @@ var global_inventory: Dictionary = {}
 ## Item upgrade levels: {item_id: upgrade_level}
 var item_upgrades: Dictionary = {}
 
-## Maximum slots per category (expandable)
-var max_slots: Dictionary = {
-	"equipment": 20
-}
-
-## Slot upgrade costs
-const SLOT_UPGRADE_COST: int = 500
-const SLOTS_PER_UPGRADE: int = 5
-
 
 func _ready():
 	# Initialize grid immediately on startup
@@ -47,10 +38,11 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 		print("[InventoryManager] Error: Invalid item_id: ", item_id)
 		return false
 
-	# Check if we have space
+	# Check if we have space (grid availability for non-stackables)
 	if !has_space_for_item(item_data):
 		inventory_full.emit(item_id)
-		print("[InventoryManager] Inventory full for item: ", item_id)
+		var size_str = "%d×%d" % [item_data.inventory_width, item_data.inventory_height] if item_data.inventory_width > 1 or item_data.inventory_height > 1 else "1×1"
+		print("[InventoryManager] ⚠️ Inventory full - no %s space for '%s'" % [size_str, item_data.item_name])
 		return false
 
 	# Add to inventory
@@ -155,11 +147,10 @@ func has_space_for_item(item_data: ItemData) -> bool:
 	if item_data.is_stackable() and global_inventory.has(item_data.item_id):
 		return true
 
-	# Check category slot limits
-	var category = _get_category_for_item_type(item_data.item_type)
-	var items_in_category = get_items_by_category(category)
-
-	return items_in_category.size() < max_slots[category]
+	# Check actual 2D grid availability for non-stackable items
+	# This ensures multi-slot items (like 2×3 bows) are properly validated
+	var available_pos = find_available_position(item_data.item_id)
+	return available_pos.x != -1 and available_pos.y != -1
 
 
 ## Get all items in a specific category
@@ -230,25 +221,6 @@ func get_all_items() -> Array:
 func _get_category_for_item_type(item_type: ItemData.ItemType) -> String:
 	# All items are equipment now
 	return "equipment"
-
-
-## Upgrade inventory slots for a category
-func upgrade_inventory_slots(category: String) -> bool:
-	if !max_slots.has(category):
-		return false
-
-	# Check if player has enough gems
-	if SaveManager.get_gems() < SLOT_UPGRADE_COST:
-		print("[InventoryManager] Not enough gems to upgrade slots")
-		return false
-
-	# Deduct cost and increase slots
-	SaveManager.add_gems(-SLOT_UPGRADE_COST)
-	max_slots[category] += SLOTS_PER_UPGRADE
-
-	inventory_changed.emit()
-	SaveManager.mark_dirty()  # Mark for auto-save
-	return true
 
 
 ## Sell an item for gold
@@ -375,7 +347,6 @@ func clear_inventory():
 func save_to_dict() -> Dictionary:
 	return {
 		"global_inventory": global_inventory.duplicate(true),
-		"max_slots": max_slots.duplicate(),
 		"item_positions": item_positions.duplicate(true)
 	}
 
@@ -383,7 +354,7 @@ func save_to_dict() -> Dictionary:
 ## Load inventory data from dictionary (from SaveManager)
 func load_from_dict(data: Dictionary):
 	global_inventory = data.get("global_inventory", {})
-	max_slots = data.get("max_slots", max_slots)
+	# Legacy max_slots removed - spatial grid system is the only capacity limit
 	item_positions = data.get("item_positions", {})
 
 	# Rebuild grid from item positions

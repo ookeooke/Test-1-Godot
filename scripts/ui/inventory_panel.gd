@@ -63,9 +63,9 @@ func _ready():
 
 func _create_item_slots():
 	"""Create ItemSlot instances for each category"""
-	# Equipment slots
-	var equipment_count = InventoryManager.max_slots.get("equipment", 20)
-	_create_slots_for_category("equipment", equipment_grid, equipment_count, 5)
+	# Equipment slots (use grid capacity instead of legacy max_slots)
+	var equipment_count = InventoryManager.GRID_WIDTH * InventoryManager.GRID_HEIGHT
+	_create_slots_for_category("equipment", equipment_grid, equipment_count, 8)
 
 
 func _create_slots_for_category(category: String, grid: GridContainer, count: int, columns: int):
@@ -152,8 +152,8 @@ func _update_labels():
 	# Update slots label
 	if slots_label:
 		var category_items = InventoryManager.get_items_by_category(current_category)
-		var max_slots = InventoryManager.max_slots.get(current_category, 20)
-		slots_label.text = "Slots: %d / %d" % [category_items.size(), max_slots]
+		var grid_capacity = InventoryManager.GRID_WIDTH * InventoryManager.GRID_HEIGHT
+		slots_label.text = "Slots: %d / %d" % [category_items.size(), grid_capacity]
 
 
 func _on_inventory_changed():

@@ -28,6 +28,9 @@ var grid_y: int = -1  ## Grid Y coordinate (row)
 var is_root_slot: bool = true  ## True if this is the top-left cell of a multi-slot item
 var occupied_by_item_id: String = ""  ## If not root, stores the item_id occupying this cell
 
+# Cached theme style (prevents color trail artifacts)
+var _original_panel_style: StyleBox = null
+
 # UI References
 @onready var icon: TextureRect = $MarginContainer/VBoxContainer/Icon if has_node("MarginContainer/VBoxContainer/Icon") else null
 @onready var quantity_label: Label = $MarginContainer/VBoxContainer/QuantityLabel if has_node("MarginContainer/VBoxContainer/QuantityLabel") else null
@@ -49,6 +52,11 @@ func _ready():
 	# 80x80px exceeds Android Material Design 48dp minimum
 	custom_minimum_size = Vector2(80, 80)
 
+	# Cache original theme style to prevent color trail artifacts
+	var theme_style = get_theme_stylebox("panel")
+	if theme_style:
+		_original_panel_style = theme_style.duplicate()
+
 	# Connect mouse signals
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
@@ -62,21 +70,14 @@ func _ready():
 
 
 func _restore_default_style():
-	"""Restore default panel style by ALWAYS creating a fresh StyleBox instance.
-	This prevents StyleBox reference sharing bugs across ItemSlot instances.
-	Values match item_slot.tscn SubResource StyleBoxFlat_1."""
-	var fresh_style = StyleBoxFlat.new()
-	fresh_style.bg_color = Color(0.2, 0.2, 0.2, 0.8)
-	fresh_style.border_width_left = 2
-	fresh_style.border_width_top = 2
-	fresh_style.border_width_right = 2
-	fresh_style.border_width_bottom = 2
-	fresh_style.border_color = Color(0.5, 0.5, 0.5, 1)
-	fresh_style.corner_radius_top_left = 4
-	fresh_style.corner_radius_top_right = 4
-	fresh_style.corner_radius_bottom_right = 4
-	fresh_style.corner_radius_bottom_left = 4
-	add_theme_stylebox_override("panel", fresh_style)
+	"""Restore original theme panel style using cached style.
+	Fixes bow color trail bug by restoring actual theme instead of hard-coded colors."""
+	if _original_panel_style:
+		# Use cached original style (prevents color trail artifacts)
+		add_theme_stylebox_override("panel", _original_panel_style.duplicate())
+	else:
+		# Fallback: Remove override to use default theme
+		remove_theme_stylebox_override("panel")
 
 
 ## Set item in this slot
@@ -319,9 +320,8 @@ func _drop_data(at_position: Vector2, data):
 	# For inventory slots with grid coordinates, use spatial placement
 	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
 		# Move item in InventoryManager's spatial grid
-		if InventoryManager.move_item(data.item_id, grid_x, grid_y):
-			# Trigger refresh of inventory view
-			InventoryManager.inventory_changed.emit()
+		# Note: move_item() already emits inventory_changed, no need to emit again
+		InventoryManager.move_item(data.item_id, grid_x, grid_y)
 		return
 
 	# Fallback: Normal inventory swap (for non-spatial inventory modes)
