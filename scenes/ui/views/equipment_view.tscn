@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://equipment_view_scene"]
+[gd_scene load_steps=3 format=3 uid="uid://bx6pjbyo47rdu"]
 
-[ext_resource type="Script" path="res://scripts/ui/views/equipment_view.gd" id="1_equipment"]
+[ext_resource type="Script" uid="uid://btxf6atnysjcb" path="res://scripts/ui/views/equipment_view.gd" id="1_equipment"]
+[ext_resource type="Script" uid="uid://buvrv5toexi6b" path="res://scripts/ui/equipment_slot_grid.gd" id="2_slot_grid"]
 
 [node name="EquipmentView" type="Control"]
 layout_mode = 3
@@ -53,31 +54,80 @@ custom_minimum_size = Vector2(400, 600)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="CharacterSilhouette" type="ColorRect" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
+[node name="HelmetSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
 layout_mode = 0
-offset_left = 150.0
-offset_top = 100.0
-offset_right = 250.0
-offset_bottom = 500.0
-color = Color(0.3, 0.3, 0.3, 0.15)
+offset_left = 240.0
+offset_top = 10.0
+offset_right = 445.00073
+offset_bottom = 215.0
 
-[node name="WeaponSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
-layout_mode = 0
-offset_left = 40.0
-offset_top = 200.0
-offset_right = 205.0
-offset_bottom = 450.0
-
-[node name="WeaponContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/WeaponSlot"]
-custom_minimum_size = Vector2(165, 250)
+[node name="HelmetContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/HelmetSlot"]
+custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 
-[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/WeaponSlot/WeaponContainer"]
+[node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/HelmetSlot/HelmetContainer"]
+custom_minimum_size = Vector2(165, 165)
+layout_mode = 2
+script = ExtResource("2_slot_grid")
+
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/HelmetSlot/HelmetContainer"]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
 theme_override_font_sizes/font_size = 32
-text = "🏹"
+text = "⛑️"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LeftHandSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 200.0
+offset_right = 140.0
+offset_bottom = 450.0
+
+[node name="LeftHandContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot"]
+custom_minimum_size = Vector2(120, 250)
+layout_mode = 2
+
+[node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer"]
+custom_minimum_size = Vector2(165, 335)
+layout_mode = 2
+script = ExtResource("2_slot_grid")
+grid_height = 4
+
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 32
+text = "🗡️"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RightHandSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
+layout_mode = 0
+offset_left = 470.0
+offset_top = 200.0
+offset_right = 675.0
+offset_bottom = 575.0
+
+[node name="RightHandContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot"]
+custom_minimum_size = Vector2(120, 250)
+layout_mode = 2
+
+[node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot/RightHandContainer"]
+custom_minimum_size = Vector2(165, 335)
+layout_mode = 2
+script = ExtResource("2_slot_grid")
+grid_height = 4
+
+[node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot/RightHandContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 32
+text = "🛡️"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -92,25 +142,38 @@ offset_bottom = 340.0
 custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
 
+[node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer"]
+custom_minimum_size = Vector2(165, 250)
+layout_mode = 2
+script = ExtResource("2_slot_grid")
+grid_height = 3
+
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer"]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 0
 theme_override_font_sizes/font_size = 32
-text = "🛡️"
+text = "👕"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Accessory1Slot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
 layout_mode = 0
 offset_left = 60.0
-offset_top = 500.0
-offset_right = 140.0
-offset_bottom = 580.0
+offset_top = 570.0
+offset_right = 180.0
+offset_bottom = 690.0
 
 [node name="Accessory1Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot"]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
+
+[node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container"]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+script = ExtResource("2_slot_grid")
+grid_width = 1
+grid_height = 1
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container"]
 layout_mode = 2
@@ -123,14 +186,21 @@ vertical_alignment = 1
 
 [node name="Accessory2Slot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
 layout_mode = 0
-offset_left = 260.0
-offset_top = 500.0
-offset_right = 340.0
-offset_bottom = 580.0
+offset_left = 500.0
+offset_top = 570.0
+offset_right = 620.0
+offset_bottom = 690.0
 
 [node name="Accessory2Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot"]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
+
+[node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container"]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+script = ExtResource("2_slot_grid")
+grid_width = 1
+grid_height = 1
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container"]
 layout_mode = 2

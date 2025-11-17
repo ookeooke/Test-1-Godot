@@ -16,6 +16,7 @@ enum HeroClass {
 @export var hero_name: String = "Ranger"
 @export_multiline var description: String = "A skilled archer who strikes from afar."
 @export var hero_class: HeroClass = HeroClass.RANGED
+@export var class_config: HeroClassConfig  # Reference to class template (Type Object pattern)
 
 # Visuals
 @export_group("Visuals")
@@ -39,11 +40,14 @@ enum HeroClass {
 @export var starting_level: int = 1
 @export var max_level: int = 20
 
-# Equipment Restrictions (Diablo 2 style - some items are class-specific)
+# Equipment Restrictions (Inherited from class_config, can override per-hero)
 @export_group("Equipment Restrictions")
-@export var allowed_weapon_types: Array[String] = []  # Empty = all allowed, e.g., ["bow", "crossbow"]
-@export var allowed_armor_types: Array[String] = []   # Empty = all allowed, e.g., ["leather", "cloth"]
-# Accessories are always universal (rings, amulets work for everyone)
+@export var override_allowed_weapon_types: Array[String] = []  # Empty = inherit from class_config, non-empty = override
+@export var override_allowed_armor_types: Array[String] = []   # Empty = inherit from class_config, non-empty = override
+# Note: Accessories are always universal (rings, amulets work for everyone)
+# Legacy fields (deprecated, kept for backwards compatibility)
+@export var allowed_weapon_types: Array[String] = []  # DEPRECATED: Use class_config instead
+@export var allowed_armor_types: Array[String] = []   # DEPRECATED: Use class_config instead
 
 # Skills
 @export_group("Skills")
@@ -54,6 +58,42 @@ enum HeroClass {
 @export_multiline var lore_text: String = ""  # Backstory, flavor text
 
 
+## Get effective allowed weapon types (checks override first, then class config, then legacy)
+func get_allowed_weapon_types() -> Array[String]:
+	# Priority 1: Override array (per-hero customization)
+	if not override_allowed_weapon_types.is_empty():
+		return override_allowed_weapon_types
+
+	# Priority 2: Class config (inherited from class template)
+	if class_config:
+		return class_config.get_allowed_weapons()
+
+	# Priority 3: Legacy field (backwards compatibility)
+	if not allowed_weapon_types.is_empty():
+		return allowed_weapon_types
+
+	# Default: All weapons allowed
+	return []
+
+
+## Get effective allowed armor types (checks override first, then class config, then legacy)
+func get_allowed_armor_types() -> Array[String]:
+	# Priority 1: Override array (per-hero customization)
+	if not override_allowed_armor_types.is_empty():
+		return override_allowed_armor_types
+
+	# Priority 2: Class config (inherited from class template)
+	if class_config:
+		return class_config.get_allowed_armor()
+
+	# Priority 3: Legacy field (backwards compatibility)
+	if not allowed_armor_types.is_empty():
+		return allowed_armor_types
+
+	# Default: All armor allowed
+	return []
+
+
 ## Check if this hero can equip a specific item
 func is_item_compatible(item_data: ItemData) -> bool:
 	"""Check if hero can equip this item based on class restrictions"""
@@ -62,23 +102,29 @@ func is_item_compatible(item_data: ItemData) -> bool:
 
 	# Check weapon type restrictions
 	if item_data.equip_slot == ItemData.EquipSlot.WEAPON:
-		# If allowed_weapon_types is empty, all weapons are allowed
-		if allowed_weapon_types.is_empty():
+		var allowed_weapons = get_allowed_weapon_types()
+		# If allowed_weapons is empty, all weapons are allowed
+		if allowed_weapons.is_empty():
 			return true
 		# Check if item has weapon_type and it's in allowed list
-		if item_data.has("weapon_type"):
-			return allowed_weapon_types.has(item_data.weapon_type)
+		if item_data.weapon_type != "":
+			return allowed_weapons.has(item_data.weapon_type)
 		return false
 
 	# Check armor type restrictions
 	if item_data.equip_slot == ItemData.EquipSlot.ARMOR:
-		# If allowed_armor_types is empty, all armor is allowed
-		if allowed_armor_types.is_empty():
+		var allowed_armor = get_allowed_armor_types()
+		# If allowed_armor is empty, all armor is allowed
+		if allowed_armor.is_empty():
 			return true
 		# Check if item has armor_type and it's in allowed list
-		if item_data.has("armor_type"):
-			return allowed_armor_types.has(item_data.armor_type)
+		if item_data.armor_type != "":
+			return allowed_armor.has(item_data.armor_type)
 		return false
+
+	# Helmets are universal (all heroes can equip)
+	if item_data.equip_slot == ItemData.EquipSlot.HELMET:
+		return true
 
 	# Accessories are universal (all heroes can equip)
 	if item_data.equip_slot == ItemData.EquipSlot.ACCESSORY:

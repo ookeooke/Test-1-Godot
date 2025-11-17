@@ -22,7 +22,8 @@ enum EquipSlot {
 	NONE,
 	WEAPON,
 	ARMOR,
-	ACCESSORY
+	ACCESSORY,
+	HELMET
 }
 
 # Core Identification
@@ -43,6 +44,10 @@ enum EquipSlot {
 
 # Equipment Stats (only used for WEAPON/ARMOR/ACCESSORY types)
 @export_group("Equipment Stats")
+@export var weapon_type: String = ""  ## "bow", "crossbow", "sword", "axe", "mace", "staff", "wand", "shield", etc.
+@export var armor_type: String = ""  ## "leather", "cloth", "plate", "mail", "helmet", etc.
+@export var is_two_handed: bool = false  ## True for bows, greatswords, staffs (occupies both hand slots)
+@export var hand_slot: String = "either"  ## "left", "right", "both" (2H weapons), or "either" (can go in any hand)
 @export var damage_bonus: int = 0
 @export var attack_speed_multiplier: float = 1.0
 @export var health_bonus: int = 0

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="HeroClassConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/hero_class_config.gd" id="1_magic_class"]
+
+[resource]
+script = ExtResource("1_magic_class")
+class_type = 2
+display_name = "Magic"
+class_description = "Wielders of arcane power. Uses staffs and wands to cast devastating spells. Wears cloth armor."
+allowed_weapon_types = ["staff", "wand"]
+allowed_armor_types = ["cloth"]
+base_health_range = Vector2i(150, 250)
+base_damage_multiplier = 1.5
+base_range_default = 350
+base_attack_speed_default = 0.7
+base_movement_speed_default = 150.0
+base_defense_multiplier = 0.6
+health_per_level = 12.0
+damage_per_level = 3.0
+defense_per_level = 0.3
+available_skill_pool = []
+class_color = Color(0.6, 0.3, 0.8, 1)

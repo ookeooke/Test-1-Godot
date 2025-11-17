@@ -1,7 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://inventory_view_scene"]
+[gd_scene load_steps=3 format=3 uid="uid://dr2o3aihpdopc"]
 
-[ext_resource type="Script" path="res://scripts/ui/views/inventory_view.gd" id="1_inventory"]
-[ext_resource type="Script" path="res://scripts/ui/inventory_grid_container.gd" id="2_grid"]
+[ext_resource type="Script" uid="uid://coftotd3eioum" path="res://scripts/ui/views/inventory_view.gd" id="1_inventory"]
+[ext_resource type="Script" uid="uid://wjxvey514yc0" path="res://scripts/ui/inventory_grid_container.gd" id="2_grid"]
 
 [node name="InventoryView" type="Control"]
 layout_mode = 3
@@ -19,14 +19,18 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 10
+theme_override_constants/margin_left = -30
+theme_override_constants/margin_top = -10
+theme_override_constants/margin_right = 180
 theme_override_constants/margin_bottom = 10
 
 [node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
 theme_override_constants/separation = 10
+
+[node name="TabBar" type="TabBar" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
 
 [node name="ContentContainer" type="Control" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -37,6 +41,8 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 207.0
+offset_right = 144.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_grid")
@@ -57,6 +63,7 @@ horizontal_alignment = 2
 
 [node name="TooltipPanel" type="PanelContainer" parent="."]
 visible = false
+layout_mode = 0
 offset_right = 250.0
 offset_bottom = 200.0
 

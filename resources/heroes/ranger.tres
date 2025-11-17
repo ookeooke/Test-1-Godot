@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="HeroData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="HeroData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/hero_data.gd" id="1_ranger"]
+[ext_resource type="Resource" uid="uid://c2xdfnfwqujgo" path="res://resources/hero_classes/ranged_class.tres" id="2_ranged_class"]
 
 [resource]
 script = ExtResource("1_ranger")
@@ -8,6 +9,7 @@ hero_id = "ranger"
 hero_name = "Ranger"
 description = "A skilled archer who strikes enemies from afar with deadly precision."
 hero_class = 1
+class_config = ExtResource("2_ranged_class")
 hero_color = Color(0.4, 0.6, 0.8, 1)
 base_health = 300
 base_damage = 0

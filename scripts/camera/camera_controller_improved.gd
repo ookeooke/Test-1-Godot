@@ -70,7 +70,7 @@ var mobile_zoom_speed = 0.08  # Slower zoom for mobile
 
 # Mobile
 @export var mobile_drag_speed = 1.2  # Slightly faster for touch
-@export var mobile_drag_threshold = 8.0  # Higher to avoid accidental drags
+@export var mobile_drag_threshold = 25.0  # ~3mm real-world distance to prevent accidental drags
 
 # Edge scrolling (PC only)
 @export var edge_scroll_enabled = false  # Disabled - use right-click drag instead
@@ -136,6 +136,28 @@ var drag_speed = 1.0
 var touch_points = {}
 var last_pinch_distance = 0.0  # For pinch-zoom tracking
 var is_pinch_zooming = false
+
+# Tap detection timing
+const MIN_TAP_DURATION: float = 0.05  # 50ms - prevent accidental brush taps
+const MAX_TAP_DURATION: float = 0.25  # 250ms - too slow = not a tap
+var tap_start_time: float = 0.0
+
+# Pinch cooldown (prevents accidental taps after pinch ends)
+const PINCH_TAP_COOLDOWN: float = 0.15  # 150ms after pinch ends
+var pinch_cooldown_timer: float = 0.0
+
+# Pinch detection thresholds
+const MIN_PINCH_DISTANCE: float = 30.0  # Fingers must be 30px apart
+const MIN_PINCH_CHANGE: float = 15.0  # Must change by 15px to register zoom
+const PINCH_DEAD_ZONE: float = 5.0  # Ignore changes < 5px (jitter filter)
+
+# Double-tap zoom detection
+const DOUBLE_TAP_WINDOW: float = 0.3  # 300ms between taps
+const DOUBLE_TAP_DISTANCE: float = 50.0  # Max 50px between tap positions
+var last_tap_time: float = 0.0
+var last_tap_position: Vector2 = Vector2.ZERO
+var zoom_preset_index: int = 0  # Current zoom preset (0=far, 1=normal, 2=close)
+const ZOOM_PRESETS: Array[float] = [1.0, 1.2, 1.4]  # 3 zoom levels for cycling
 
 # Inertia state
 var velocity = Vector2.ZERO
@@ -236,10 +258,16 @@ func calculate_baseline_zoom() -> void:
 
 func detect_platform() -> void:
 	"""Auto-detect platform for appropriate defaults"""
-	if OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]:
-		current_platform = Platform.MOBILE
-	elif OS.has_feature("web") or OS.get_name() == "Web":
-		current_platform = Platform.PC  # Treat web as PC (enable edge scroll, keyboard)
+	var is_mobile_native = OS.has_feature("mobile") or OS.get_name() in ["Android", "iOS"]
+	var is_web = OS.has_feature("web") or OS.get_name() == "Web"
+	var has_touchscreen = DisplayServer.is_touchscreen_available()
+
+	if is_mobile_native:
+		current_platform = Platform.MOBILE  # Native mobile app
+	elif is_web and has_touchscreen:
+		current_platform = Platform.MOBILE  # Web on mobile device (phone/tablet browser)
+	elif is_web:
+		current_platform = Platform.PC  # Web on desktop
 	elif OS.has_feature("pc") or OS.get_name() in ["Windows", "Linux", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "BSD"]:
 		current_platform = Platform.PC
 	else:
@@ -423,19 +451,16 @@ func handle_pc_input(event) -> void:
 				zoom_at_point(event.position, zoom_delta)
 				get_viewport().set_input_as_handled()
 
-		# Middle/Right mouse drag
-		elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
-			if debug_input:
-				print("[Camera DEBUG] Right/Middle mouse - Button: ", event.button_index, " Pressed: ", event.pressed)
-			if event.pressed:
-				if debug_input:
-					print("[Camera DEBUG] Starting drag at: ", event.position)
-				start_drag(event.position)
-			else:
-				if debug_input:
-					print("[Camera DEBUG] Ending drag")
-				end_drag()
-			get_viewport().set_input_as_handled()
+		# REMOVED: Right/Middle mouse drag (web compatibility issue)
+		# Browser intercepts right-click for context menu
+		# Desktop users can use WASD/arrow keys or edge scrolling instead
+		# Mobile/touch users use single-finger drag
+		# elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
+		# 	if event.pressed:
+		# 		start_drag(event.position)
+		# 	else:
+		# 		end_drag()
+		# 	get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseMotion:
 		# Only debug mouse motion if debug_drag_only is FALSE (reduces spam)
@@ -469,21 +494,47 @@ func handle_touch(event: InputEventScreenTouch):
 			is_pinch_zooming = false
 		# Two fingers - start pinch-zoom
 		elif touch_points.size() == 2:
-			is_dragging = false
-			is_pinch_zooming = true
-			# Calculate initial pinch distance
 			var points = touch_points.values()
-			last_pinch_distance = points[0].distance_to(points[1])
-			if debug_input:
-				print("[Camera PINCH] Started - initial distance: ", last_pinch_distance)
+			var distance = points[0].distance_to(points[1])
+
+			# Only start pinch if fingers are far enough apart
+			if distance >= MIN_PINCH_DISTANCE:
+				is_dragging = false
+				is_pinch_zooming = true
+				last_pinch_distance = distance
+				tap_start_time = 0.0  # Cancel any pending tap
+				if debug_input:
+					print("[Camera PINCH] Started - initial distance: ", distance)
+			# else: fingers too close, ignore
 
 	else:
+		# Touch released
+		var was_tap = false
+
+		# Check if this was a tap (not drag/pinch)
+		if not is_dragging and not is_pinch_zooming:
+			var time_held = (Time.get_ticks_msec() / 1000.0) - tap_start_time
+			var distance_moved = event.position.distance_to(drag_start_pos) if drag_start_pos != Vector2.ZERO else 0.0
+
+			# Valid tap: quick release, minimal movement
+			if time_held >= MIN_TAP_DURATION and time_held <= MAX_TAP_DURATION and distance_moved < drag_threshold:
+				was_tap = true
+				# Check for double-tap zoom
+				if handle_tap_input(event.position):
+					# Double-tap consumed input - don't propagate
+					get_viewport().set_input_as_handled()
+
 		touch_points.erase(event.index)
 
 		if touch_points.is_empty():
+			# If was pinching, add cooldown to prevent accidental taps
+			if is_pinch_zooming:
+				pinch_cooldown_timer = PINCH_TAP_COOLDOWN
+
 			end_drag()
 			is_pinch_zooming = false
 			last_pinch_distance = 0.0
+			tap_start_time = 0.0
 		elif touch_points.size() == 1:
 			# One finger remains - switch back to drag mode
 			start_drag(touch_points.values()[0])
@@ -521,14 +572,20 @@ func start_drag(screen_pos: Vector2):
 	is_dragging = false  # Wait for threshold
 	is_inertia_moving = false
 	velocity = Vector2.ZERO
+	tap_start_time = Time.get_ticks_msec() / 1000.0  # Track when press started
 
 func update_drag(screen_pos: Vector2):
 	"""Update camera position while dragging"""
 	# Check if we've moved enough to start drag
 	if not is_dragging:
 		var distance = drag_start_pos.distance_to(screen_pos)
-		if distance > drag_threshold:
+		var time_since_start = (Time.get_ticks_msec() / 1000.0) - tap_start_time
+
+		# Check if drag threshold exceeded AND minimum time passed
+		const MIN_DRAG_DURATION = 0.05  # 50ms minimum
+		if distance > drag_threshold and time_since_start > MIN_DRAG_DURATION:
 			is_dragging = true
+			tap_start_time = 0.0  # No longer a tap
 			if debug_input:
 				print("[Camera DRAG] ✅ Drag threshold exceeded! distance=", distance, " threshold=", drag_threshold)
 				print("[Camera DRAG]   NOW DRAGGING - camera will move")
@@ -564,6 +621,41 @@ func end_drag():
 	drag_button_pressed = false  # Button released
 	is_dragging = false
 
+func handle_tap_input(tap_position: Vector2) -> bool:
+	"""
+	Detect double-tap and cycle zoom presets
+	Returns true if double-tap detected (consumes input)
+	"""
+	# Check if in pinch cooldown
+	if pinch_cooldown_timer > 0:
+		return false
+
+	var current_time = Time.get_ticks_msec() / 1000.0
+	var time_since_last_tap = current_time - last_tap_time
+	var distance_from_last_tap = tap_position.distance_to(last_tap_position)
+
+	# Check if this is second tap in double-tap sequence
+	if time_since_last_tap < DOUBLE_TAP_WINDOW and distance_from_last_tap < DOUBLE_TAP_DISTANCE:
+		# Double-tap detected! Cycle zoom
+		zoom_preset_index = (zoom_preset_index + 1) % ZOOM_PRESETS.size()
+		var target_zoom_level = baseline_zoom * ZOOM_PRESETS[zoom_preset_index]
+
+		# Smooth zoom to preset level
+		var zoom_delta = target_zoom_level - zoom.x
+		zoom_at_point(tap_position, zoom_delta * 0.5)  # Gradual transition
+
+		# Reset double-tap detection
+		last_tap_time = 0.0
+		last_tap_position = Vector2.ZERO
+
+		print("[Camera] Double-tap zoom: %s (%.1fx)" % [["Far", "Normal", "Close"][zoom_preset_index], ZOOM_PRESETS[zoom_preset_index]])
+		return true  # Consumed input
+	else:
+		# First tap - record for double-tap detection
+		last_tap_time = current_time
+		last_tap_position = tap_position
+		return false  # Don't consume - let other systems handle it
+
 func update_pinch_zoom():
 	"""Update zoom based on pinch gesture (two-finger distance change)"""
 	if touch_points.size() != 2:
@@ -573,8 +665,20 @@ func update_pinch_zoom():
 	var points = touch_points.values()
 	var current_distance = points[0].distance_to(points[1])
 
-	# Prevent zero/invalid distance
-	if current_distance < 10.0 or last_pinch_distance < 10.0:
+	# Safety check - fingers must be far enough apart
+	if current_distance < MIN_PINCH_DISTANCE or last_pinch_distance < MIN_PINCH_DISTANCE:
+		return
+
+	# Calculate distance change
+	var distance_change = abs(current_distance - last_pinch_distance)
+
+	# Jitter filtering - ignore tiny movements
+	if distance_change < PINCH_DEAD_ZONE:
+		return
+
+	# Must change by minimum amount to register as intentional zoom
+	if distance_change < MIN_PINCH_CHANGE:
+		last_pinch_distance = current_distance  # Update but don't zoom
 		return
 
 	# Calculate pinch center (world position to keep centered during zoom)
@@ -737,6 +841,10 @@ func _physics_process(delta):
 	# Skip runtime logic in editor
 	if Engine.is_editor_hint():
 		return
+
+	# Update pinch cooldown timer
+	if pinch_cooldown_timer > 0:
+		pinch_cooldown_timer -= delta
 
 	# Handle snap animation
 	if is_snapping:

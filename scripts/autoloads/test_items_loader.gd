@@ -22,6 +22,10 @@ func create_test_items():
 	basic_bow.equip_slot = ItemData.EquipSlot.WEAPON
 	basic_bow.max_stack = 1
 	basic_bow.sell_value = 50
+	basic_bow.weapon_type = "bow"
+	basic_bow.is_two_handed = true
+	basic_bow.inventory_width = 2
+	basic_bow.inventory_height = 3
 	basic_bow.damage_bonus = 15
 	basic_bow.can_upgrade = true
 	_register_item(basic_bow)
@@ -36,6 +40,10 @@ func create_test_items():
 	legendary_bow.equip_slot = ItemData.EquipSlot.WEAPON
 	legendary_bow.max_stack = 1
 	legendary_bow.sell_value = 500
+	legendary_bow.weapon_type = "bow"
+	legendary_bow.is_two_handed = true
+	legendary_bow.inventory_width = 2
+	legendary_bow.inventory_height = 4  # Legendary bows are larger
 	legendary_bow.damage_bonus = 75
 	legendary_bow.attack_speed_multiplier = 1.3
 	legendary_bow.crit_chance_bonus = 0.15

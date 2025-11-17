@@ -275,25 +275,50 @@ func get_pending_loot_with_data() -> Array:
 
 
 ## Distribute pending loot to inventory (called from victory screen)
-func distribute_pending_loot_to_inventory() -> Dictionary:
+func distribute_pending_loot_to_inventory(hero_id: String = "") -> Dictionary:
 	"""
-	Moves all pending loot to InventoryManager
+	Moves all pending loot to hero inventory (if hero_id provided) or shared stash
+
+	Args:
+		hero_id: If provided, items go to hero's inventory first. If empty, items go to shared stash
+
 	Returns: {items_added: int, items_failed: int}
 	"""
 	var items_added: int = 0
 	var items_failed: int = 0
+	var target_inventory: String = "hero inventory" if hero_id != "" else "shared stash"
 
 	for loot_data in pending_wave_loot:
-		if InventoryManager.add_item(loot_data.item_id, loot_data.get("quantity", 1)):
+		var success: bool = false
+
+		# Try to add to hero inventory first if hero_id is provided
+		if hero_id != "" and HeroInventoryManager:
+			# Register hero if not already registered
+			HeroInventoryManager.register_hero(hero_id)
+			success = HeroInventoryManager.add_item_to_hero(hero_id, loot_data.item_id, loot_data.get("quantity", 1))
+			if success:
+				print("[LootManager] Added '%s' to hero '%s' inventory" % [loot_data.item_id, hero_id])
+
+		# Fallback to shared stash if no hero_id or hero inventory is full
+		if not success and InventoryManager:
+			success = InventoryManager.add_item(loot_data.item_id, loot_data.get("quantity", 1))
+			if success:
+				if hero_id != "":
+					print("[LootManager] Hero inventory full, added '%s' to shared stash" % loot_data.item_id)
+				else:
+					print("[LootManager] Added '%s' to shared stash" % loot_data.item_id)
+
+		# Track results
+		if success:
 			items_added += 1
 		else:
 			items_failed += 1
-			print("[LootManager] Warning: Could not add item to inventory: ", loot_data.item_id)
+			print("[LootManager] Warning: Could not add item to any inventory: ", loot_data.item_id)
 
 	# Clear pending loot after distribution
 	pending_wave_loot.clear()
 
-	print("[LootManager] Distributed loot: %d added, %d failed" % [items_added, items_failed])
+	print("[LootManager] Distributed loot to %s: %d added, %d failed" % [target_inventory, items_added, items_failed])
 
 	return {
 		"items_added": items_added,

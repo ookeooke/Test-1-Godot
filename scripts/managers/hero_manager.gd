@@ -109,7 +109,8 @@ func _unhandled_input(event):
 	if Input.is_action_just_pressed("interact"):
 		if current_hero and is_instance_valid(current_hero) and current_hero.is_selected:
 			if debug_input:
-				print("[HeroManager DEBUG] Left-click - moving hero")
+				print("[HeroManager DEBUG] Left-click - checking target")
+
 			# Get world position
 			var camera = get_viewport().get_camera_2d()
 			if camera:
@@ -126,7 +127,36 @@ func _unhandled_input(event):
 
 				var click_world_pos = camera.get_screen_center_position() + (corrected_pos - get_viewport().get_visible_rect().size / 2) / camera.zoom
 
-				# Command hero to move to clicked position
+				# RAYCAST: Check if clicking on interactive object (tower/hero/item)
+				# This prevents hero movement from blocking tower/hero clicks
+				var space_state = get_viewport().get_world_2d().direct_space_state
+				var query = PhysicsPointQueryParameters2D.new()
+				query.position = click_world_pos
+				query.collide_with_areas = true  # Check Area2D (towers, heroes, items)
+				query.collide_with_bodies = false  # Don't check bodies (we only want Area2D)
+
+				var results = space_state.intersect_point(query, 5)  # Check up to 5 objects
+
+				# Check if clicking on tower/hero/item
+				var clicking_interactive_object = false
+				for result in results:
+					var collider = result.collider
+					# Check if object is a tower, hero, or item
+					if collider.is_in_group("towers") or collider.is_in_group("heroes") or collider.is_in_group("items"):
+						clicking_interactive_object = true
+						if debug_input:
+							print("[HeroManager DEBUG] Clicking on interactive object: ", collider.name, " (group: ", collider.get_groups(), ")")
+						break
+
+				# If clicking interactive object, DON'T move hero - let Area2D handle it
+				if clicking_interactive_object:
+					if debug_input:
+						print("[HeroManager DEBUG] Interactive object detected - not moving hero")
+					return  # Exit without consuming input - let Area2D (Stage 4) process it
+
+				# Clicking empty space - move hero
+				if debug_input:
+					print("[HeroManager DEBUG] Empty space - moving hero to: ", click_world_pos)
 				current_hero.move_to_position(click_world_pos)
 
 				# Auto-deselect hero after giving move command

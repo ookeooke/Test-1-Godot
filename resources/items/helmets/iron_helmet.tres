@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_iron_helmet"]
+
+[resource]
+script = ExtResource("1_iron_helmet")
+item_id = "iron_helmet"
+item_name = "Iron Helmet"
+description = "A sturdy iron helmet that provides solid protection."
+emoji = "⛑️"
+item_type = 1
+rarity = 1
+equip_slot = 4
+max_stack = 1
+sell_value = 40
+armor_type = "helmet"
+damage_bonus = 0
+attack_speed_multiplier = 1.0
+health_bonus = 40
+defense_bonus = 5
+range_bonus = 0
+crit_chance_bonus = 0.0
+special_effects = []
+inventory_width = 2
+inventory_height = 2
+can_upgrade = true
+max_upgrade_level = 10
+upgrade_costs = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600]
+stat_increase_per_level = 0.1
+flavor_text = "Forged from quality iron, this helmet has saved many lives."

@@ -11,14 +11,28 @@ signal switch_hero_requested
 @export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
 @export var hero_id: String = "ranger"
 
+# Tile-based sizing constants (matching inventory grid system)
+const TILE_SIZE: int = 80  # Base size of one tile in pixels
+const TILE_GAP: int = 5    # Gap between tiles in pixels
+
+# Equipment slot grid dimensions (width × height in tiles)
+const HELMET_GRID: Vector2i = Vector2i(2, 2)      # 2×2 tiles for helmets
+const HAND_GRID: Vector2i = Vector2i(2, 4)         # 2×4 tiles for weapons (bows, swords, shields)
+const ARMOR_GRID: Vector2i = Vector2i(2, 3)        # 2×3 tiles for body armor
+const ACCESSORY_GRID: Vector2i = Vector2i(1, 1)    # 1×1 tiles for rings/amulets
+
 # Equipment slots (ItemSlot instances)
-var weapon_slot: ItemSlot
+var hand_left_slot: ItemSlot
+var hand_right_slot: ItemSlot
+var helmet_slot: ItemSlot
 var armor_slot: ItemSlot
 var accessory1_slot: ItemSlot
 var accessory2_slot: ItemSlot
 
 # UI References
-@onready var weapon_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/WeaponSlot/WeaponContainer if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/WeaponSlot/WeaponContainer") else null
+@onready var hand_left_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer") else null
+@onready var hand_right_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot/RightHandContainer if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot/RightHandContainer") else null
+@onready var helmet_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/HelmetSlot/HelmetContainer if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/HelmetSlot/HelmetContainer") else null
 @onready var armor_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer") else null
 @onready var accessory1_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container") else null
 @onready var accessory2_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container") else null
@@ -71,15 +85,35 @@ func set_hero_id(p_hero_id: String):
 
 func _create_equipment_slots():
 	"""Create ItemSlot instances for each equipment slot"""
-	# Weapon slot
-	weapon_slot = item_slot_scene.instantiate() as ItemSlot
-	weapon_slot.slot_type = "equipment"
-	weapon_slot.equipment_filter = ItemData.EquipSlot.WEAPON
-	weapon_slot.equipment_slot_name = "weapon"
-	weapon_slot.hero_id = hero_id
-	weapon_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("weapon"))
-	if weapon_container:
-		weapon_container.add_child(weapon_slot)
+	# Left Hand slot
+	hand_left_slot = item_slot_scene.instantiate() as ItemSlot
+	hand_left_slot.slot_type = "equipment"
+	hand_left_slot.equipment_filter = ItemData.EquipSlot.WEAPON
+	hand_left_slot.equipment_slot_name = "hand_left"
+	hand_left_slot.hero_id = hero_id
+	hand_left_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("hand_left"))
+	if hand_left_container:
+		hand_left_container.add_child(hand_left_slot)
+
+	# Right Hand slot
+	hand_right_slot = item_slot_scene.instantiate() as ItemSlot
+	hand_right_slot.slot_type = "equipment"
+	hand_right_slot.equipment_filter = ItemData.EquipSlot.WEAPON
+	hand_right_slot.equipment_slot_name = "hand_right"
+	hand_right_slot.hero_id = hero_id
+	hand_right_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("hand_right"))
+	if hand_right_container:
+		hand_right_container.add_child(hand_right_slot)
+
+	# Helmet slot
+	helmet_slot = item_slot_scene.instantiate() as ItemSlot
+	helmet_slot.slot_type = "equipment"
+	helmet_slot.equipment_filter = ItemData.EquipSlot.HELMET
+	helmet_slot.equipment_slot_name = "helmet"
+	helmet_slot.hero_id = hero_id
+	helmet_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("helmet"))
+	if helmet_container:
+		helmet_container.add_child(helmet_slot)
 
 	# Armor slot
 	armor_slot = item_slot_scene.instantiate() as ItemSlot
@@ -130,12 +164,54 @@ func _refresh_equipment():
 	"""Refresh all equipment slots from HeroEquipmentRegistry"""
 	var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
 
-	# Update weapon slot
-	var weapon_id = equipped_items.get("weapon", "")
-	if weapon_id != "":
-		weapon_slot.set_item(weapon_id, 1, 0)
+	# Update left hand slot
+	var hand_left_id = equipped_items.get("hand_left", "")
+	if hand_left_id != "":
+		hand_left_slot.set_item(hand_left_id, 1, 0)
 	else:
-		weapon_slot.clear_slot()
+		hand_left_slot.clear_slot()
+
+	# Update right hand slot (check for 2H weapon occupation marker)
+	var hand_right_id = equipped_items.get("hand_right", "")
+	if hand_right_id != "":
+		# Check if this is a 2H weapon occupation marker
+		if hand_right_id.begins_with("__2H_OCCUPIED__"):
+			# Extract the actual item_id from the marker
+			var actual_item_id = hand_right_id.substr(len("__2H_OCCUPIED__"))
+
+			# VALIDATION: Check if the item still exists in ItemDatabase
+			var item_data = ItemDatabase.get_item(actual_item_id)
+			if item_data:
+				# Show the 2H weapon in right hand slot (with visual indication it's occupied)
+				hand_right_slot.set_item(actual_item_id, 1, 0)
+				# Set slot to dimmed/disabled state to indicate it's occupied by 2H weapon
+				hand_right_slot.modulate = Color(0.6, 0.6, 0.6, 1.0)  # Dimmed appearance
+			else:
+				# ORPHANED MARKER CLEANUP
+				# Item was deleted from database - clean up stale marker
+				print("[EquipmentView] ⚠️ Orphaned 2H marker detected for non-existent item: ", actual_item_id)
+				hand_right_slot.clear_slot()
+				hand_right_slot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # Normal appearance
+
+				# Clear the orphaned marker using public API (automatically wraps in transaction)
+				if not HeroEquipmentRegistry.equip_item(hero_id, "hand_right", ""):
+					push_error("[EquipmentView] Failed to clear orphaned 2H marker for hero: ", hero_id)
+				else:
+					print("[EquipmentView] ✓ Cleared orphaned 2H marker successfully")
+		else:
+			# Normal item in right hand
+			hand_right_slot.set_item(hand_right_id, 1, 0)
+			hand_right_slot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # Normal appearance
+	else:
+		hand_right_slot.clear_slot()
+		hand_right_slot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # Normal appearance
+
+	# Update helmet slot
+	var helmet_id = equipped_items.get("helmet", "")
+	if helmet_id != "":
+		helmet_slot.set_item(helmet_id, 1, 0)
+	else:
+		helmet_slot.clear_slot()
 
 	# Update armor slot
 	var armor_id = equipped_items.get("armor", "")
@@ -356,12 +432,21 @@ func _on_viewport_resized():
 	# Clamp to reasonable min/max
 	slot_size = clampf(slot_size, 120.0, 300.0)
 
-	# Apply proportional sizing based on typical item dimensions (Diablo 2-style)
-	_resize_slot_container(weapon_container, Vector2(slot_size, slot_size * 1.5))  # Tall for 2x3 bows
-	_resize_slot_container(armor_container, Vector2(slot_size, slot_size))  # Square for 2x2 armor
-	_resize_slot_container(accessory1_container, Vector2(slot_size * 0.6, slot_size * 0.6))  # Small for 1x1 rings
-	_resize_slot_container(accessory2_container, Vector2(slot_size * 0.6, slot_size * 0.6))  # Small for 1x1 amulets
+	# Apply tile-based sizing (Diablo 2-style fixed tile grids)
+	_resize_slot_container(helmet_container, _calculate_tile_size(HELMET_GRID))      # 2×2 tiles = 165×165px
+	_resize_slot_container(hand_left_container, _calculate_tile_size(HAND_GRID))     # 2×4 tiles = 165×330px
+	_resize_slot_container(hand_right_container, _calculate_tile_size(HAND_GRID))    # 2×4 tiles = 165×330px
+	_resize_slot_container(armor_container, _calculate_tile_size(ARMOR_GRID))        # 2×3 tiles = 165×250px
+	_resize_slot_container(accessory1_container, _calculate_tile_size(ACCESSORY_GRID))  # 1×1 tiles = 80×80px
+	_resize_slot_container(accessory2_container, _calculate_tile_size(ACCESSORY_GRID))  # 1×1 tiles = 80×80px
 
+
+
+func _calculate_tile_size(grid_dimensions: Vector2i) -> Vector2:
+	"""Calculate pixel size from tile grid dimensions"""
+	var width = (grid_dimensions.x * TILE_SIZE) + ((grid_dimensions.x - 1) * TILE_GAP)
+	var height = (grid_dimensions.y * TILE_SIZE) + ((grid_dimensions.y - 1) * TILE_GAP)
+	return Vector2(width, height)
 
 
 func _resize_slot_container(container: Control, size: Vector2):

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="HeroClassConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/hero_class_config.gd" id="1_melee_class"]
+
+[resource]
+script = ExtResource("1_melee_class")
+class_type = 0
+display_name = "Melee"
+class_description = "Warriors of close combat. Uses swords, axes, and maces. Wears heavy armor for maximum protection."
+allowed_weapon_types = ["sword", "axe", "mace", "spear", "shield"]
+allowed_armor_types = ["plate", "mail", "leather"]
+base_health_range = Vector2i(350, 500)
+base_damage_multiplier = 1.0
+base_range_default = 80
+base_attack_speed_default = 0.6
+base_movement_speed_default = 140.0
+base_defense_multiplier = 1.5
+health_per_level = 25.0
+damage_per_level = 2.0
+defense_per_level = 1.5
+available_skill_pool = []
+class_color = Color(0.8, 0.2, 0.2, 1)

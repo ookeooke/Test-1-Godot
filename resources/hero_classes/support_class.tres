@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="HeroClassConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/hero_class_config.gd" id="1_support_class"]
+
+[resource]
+script = ExtResource("1_support_class")
+class_type = 3
+display_name = "Support"
+class_description = "Healers and buffers. Uses staffs and wands to support allies. Wears light to medium armor."
+allowed_weapon_types = ["staff", "wand", "mace"]
+allowed_armor_types = ["cloth", "leather", "mail"]
+base_health_range = Vector2i(250, 350)
+base_damage_multiplier = 0.8
+base_range_default = 300
+base_attack_speed_default = 0.65
+base_movement_speed_default = 145.0
+base_defense_multiplier = 1.0
+health_per_level = 18.0
+damage_per_level = 1.5
+defense_per_level = 1.0
+available_skill_pool = []
+class_color = Color(0.3, 0.6, 0.9, 1)

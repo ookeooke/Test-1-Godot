@@ -24,7 +24,7 @@ var _equipment_registry: Dictionary = {}
 # Structure:
 # {
 #   "ranger_hero_1": {
-#     "equipped_items": {"weapon": "bow_01", "armor": "", ...},
+#     "equipped_items": {"hand_left": "bow_01", "hand_right": "bow_01", "armor": "", ...},
 #     "dirty": false
 #   }
 # }
@@ -56,7 +56,8 @@ func register_hero(hero_id: String) -> void:
 
 	_equipment_registry[hero_id] = {
 		"equipped_items": {
-			"weapon": "",
+			"hand_left": "",
+			"hand_right": "",
 			"armor": "",
 			"helmet": "",
 			"accessory_1": "",
@@ -207,6 +208,35 @@ func rollback_transaction() -> void:
 	print("[HeroEquipmentRegistry] Transaction rolled back for hero: ", hero_id)
 
 ## ============================================
+## PUBLIC EQUIPMENT MUTATION (Simple API)
+## ============================================
+
+func equip_item(hero_id: String, slot: String, item_id: String) -> bool:
+	"""
+	Simple public API for equipping items without explicit transactions.
+	Automatically wraps in transaction for atomic operation.
+	Use this for simple direct equips (e.g., orphan cleanup, UI updates).
+	For complex multi-slot operations, use transaction system directly.
+	"""
+	if not _equipment_registry.has(hero_id):
+		push_error("[HeroEquipmentRegistry] Cannot equip - hero not registered: ", hero_id)
+		return false
+
+	# Wrap in transaction for atomicity
+	if not begin_transaction(hero_id, "simple_equip"):
+		return false
+
+	if not equip_item_in_transaction(slot, item_id):
+		rollback_transaction()
+		return false
+
+	if not commit_transaction():
+		rollback_transaction()
+		return false
+
+	return true
+
+## ============================================
 ## BATCH REFRESH SYSTEM (Dirty Flags)
 ## ============================================
 
@@ -269,8 +299,17 @@ func load_from_dict(save_dict: Dictionary) -> void:
 		if not _equipment_registry.has(hero_id):
 			register_hero(hero_id)
 
-		# Load equipped items
-		_equipment_registry[hero_id]["equipped_items"] = save_dict[hero_id].duplicate()
+		# Load equipped items with migration for old save format
+		var equipped_items = save_dict[hero_id].duplicate()
+
+		# MIGRATION: Convert old "weapon" slot to "hand_left"
+		# This ensures old saves from before the dual-hand system continue to work
+		if equipped_items.has("weapon") and not equipped_items.has("hand_left"):
+			equipped_items["hand_left"] = equipped_items["weapon"]
+			equipped_items.erase("weapon")
+			print("[HeroEquipmentRegistry] Migrated 'weapon' slot to 'hand_left' for hero: ", hero_id)
+
+		_equipment_registry[hero_id]["equipped_items"] = equipped_items
 		_equipment_registry[hero_id]["dirty"] = true
 		_dirty_heroes[hero_id] = true
 

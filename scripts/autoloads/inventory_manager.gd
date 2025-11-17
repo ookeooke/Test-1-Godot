@@ -265,21 +265,72 @@ func get_unique_item_count() -> int:
 ## ============================================
 
 func equip_item_atomic(hero_id: String, slot: String, item_id: String) -> bool:
-	"""Atomically equip item with inventory/equipment coordination"""
+	"""Atomically equip item with inventory/equipment coordination (supports two-handed weapons)"""
 	if not global_inventory.has(item_id):
 		print("[InventoryManager] Cannot equip - item not in inventory: ", item_id)
+		return false
+
+	# Get item data to check if it's two-handed
+	var item_data = ItemDatabase.get_item(item_id)
+	if not item_data:
+		print("[InventoryManager] Cannot equip - invalid item: ", item_id)
+		return false
+
+	# PREVENT EQUIPPING TWO-HANDED WEAPONS TO RIGHT HAND
+	# Two-handed weapons must be equipped to left hand (they will occupy both slots)
+	if item_data.is_two_handed and slot == "hand_right":
+		print("[InventoryManager] ⚠️ Cannot equip two-handed weapon to right hand - equip to left hand instead")
 		return false
 
 	# PRE-VALIDATION: Check space for old item BEFORE starting transaction
 	# This prevents rollback failures that could cause permanent item loss
 	var old_item = HeroEquipmentRegistry.get_equipped_item(hero_id, slot)
-	if old_item != "":
+	# Skip validation for 2H occupation markers (they're not real items)
+	if old_item != "" and not old_item.begins_with("__2H_OCCUPIED__"):
 		var old_item_data = ItemDatabase.get_item(old_item)
 		if old_item_data and not has_space_for_item(old_item_data):
 			inventory_full.emit(old_item)
 			var size_str = "%d×%d" % [old_item_data.inventory_width, old_item_data.inventory_height]
 			print("[InventoryManager] ⚠️ Cannot equip - no %s space for old item '%s'" % [size_str, old_item_data.item_name])
 			return false  # FAIL EARLY - transaction never starts
+
+	# TWO-HANDED WEAPON LOGIC: If equipping 2H weapon to left hand, also check right hand
+	var old_right_hand_item = ""
+	if item_data.is_two_handed and slot == "hand_left":
+		old_right_hand_item = HeroEquipmentRegistry.get_equipped_item(hero_id, "hand_right")
+		# Check if right hand has an actual item (not just a 2H marker)
+		if old_right_hand_item != "" and not old_right_hand_item.begins_with("__2H_OCCUPIED__"):
+			var right_hand_data = ItemDatabase.get_item(old_right_hand_item)
+			if right_hand_data and not has_space_for_item(right_hand_data):
+				inventory_full.emit(old_right_hand_item)
+				var size_str = "%d×%d" % [right_hand_data.inventory_width, right_hand_data.inventory_height]
+				print("[InventoryManager] ⚠️ Cannot equip 2H weapon - no %s space for right hand item '%s'" % [size_str, right_hand_data.item_name])
+				return false  # FAIL EARLY
+
+	# PREVENT EQUIPPING TO RIGHT HAND IF LEFT HAND HAS 2H WEAPON
+	# Also validate right-hand marker consistency
+	if slot == "hand_right":
+		# Check if right hand already has a 2H occupation marker (corruption check)
+		var existing_right_hand = HeroEquipmentRegistry.get_equipped_item(hero_id, "hand_right")
+		if existing_right_hand.begins_with("__2H_OCCUPIED__"):
+			# Extract the item_id from the marker
+			var marker_item_id = existing_right_hand.substr(len("__2H_OCCUPIED__"))
+			# Validate that the corresponding left-hand item exists
+			var left_hand_item_id = HeroEquipmentRegistry.get_equipped_item(hero_id, "hand_left")
+			if left_hand_item_id != marker_item_id:
+				push_warning("[InventoryManager] ⚠️ Corrupted 2H marker detected - left hand doesn't match marker. Cleaning up...")
+				# Allow equip to proceed (will clear the corrupted marker)
+			else:
+				print("[InventoryManager] ⚠️ Cannot equip - right hand occupied by two-handed weapon")
+				return false
+
+		# Check if left hand has a 2H weapon (normal validation)
+		var left_hand_item_id = HeroEquipmentRegistry.get_equipped_item(hero_id, "hand_left")
+		if left_hand_item_id != "":
+			var left_hand_item_data = ItemDatabase.get_item(left_hand_item_id)
+			if left_hand_item_data and left_hand_item_data.is_two_handed:
+				print("[InventoryManager] ⚠️ Cannot equip - left hand has two-handed weapon")
+				return false
 
 	if not HeroEquipmentRegistry.begin_transaction(hero_id, "equip"):
 		return false
@@ -296,38 +347,76 @@ func equip_item_atomic(hero_id: String, slot: String, item_id: String) -> bool:
 	if not remove_from_grid(item_id):
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
-	if old_item != "":
+
+	# Unequip old item from target slot (skip 2H markers)
+	if old_item != "" and not old_item.begins_with("__2H_OCCUPIED__"):
 		if not auto_place_item(old_item):
 			# CRITICAL ROLLBACK: Restore to exact original position (guaranteed to succeed)
 			if not place_item(item_id, item_original_pos.x, item_original_pos.y):
 				push_error("[InventoryManager] CRITICAL: Rollback failed! Item may be lost: %s" % item_id)
 			HeroEquipmentRegistry.rollback_transaction()
 			return false
+
+	# TWO-HANDED: Unequip old right hand item if equipping 2H weapon to left hand
+	if item_data.is_two_handed and slot == "hand_left" and old_right_hand_item != "" and not old_right_hand_item.begins_with("__2H_OCCUPIED__"):
+		if not auto_place_item(old_right_hand_item):
+			# CRITICAL ROLLBACK
+			if old_item != "" and not old_item.begins_with("__2H_OCCUPIED__"):
+				remove_from_grid(old_item)
+			if not place_item(item_id, item_original_pos.x, item_original_pos.y):
+				push_error("[InventoryManager] CRITICAL: Rollback failed! Item may be lost: %s" % item_id)
+			HeroEquipmentRegistry.rollback_transaction()
+			return false
+
+	# Equip item to target slot
 	if not HeroEquipmentRegistry.equip_item_in_transaction(slot, item_id):
-		if old_item != "":
+		if old_item != "" and not old_item.begins_with("__2H_OCCUPIED__"):
 			remove_from_grid(old_item)
+		if old_right_hand_item != "" and not old_right_hand_item.begins_with("__2H_OCCUPIED__"):
+			remove_from_grid(old_right_hand_item)
 		# CRITICAL ROLLBACK: Restore to exact original position
 		if not place_item(item_id, item_original_pos.x, item_original_pos.y):
 			push_error("[InventoryManager] CRITICAL: Rollback failed! Item may be lost: %s" % item_id)
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
+
+	# TWO-HANDED: Also occupy right hand slot with marker
+	if item_data.is_two_handed and slot == "hand_left":
+		if not HeroEquipmentRegistry.equip_item_in_transaction("hand_right", "__2H_OCCUPIED__" + item_id):
+			if old_item != "" and not old_item.begins_with("__2H_OCCUPIED__"):
+				remove_from_grid(old_item)
+			if old_right_hand_item != "" and not old_right_hand_item.begins_with("__2H_OCCUPIED__"):
+				remove_from_grid(old_right_hand_item)
+			if not place_item(item_id, item_original_pos.x, item_original_pos.y):
+				push_error("[InventoryManager] CRITICAL: Rollback failed! Item may be lost: %s" % item_id)
+			HeroEquipmentRegistry.rollback_transaction()
+			return false
+
 	if not HeroEquipmentRegistry.commit_transaction():
-		if old_item != "":
+		if old_item != "" and not old_item.begins_with("__2H_OCCUPIED__"):
 			remove_from_grid(old_item)
+		if old_right_hand_item != "" and not old_right_hand_item.begins_with("__2H_OCCUPIED__"):
+			remove_from_grid(old_right_hand_item)
 		# CRITICAL ROLLBACK: Restore to exact original position
 		if not place_item(item_id, item_original_pos.x, item_original_pos.y):
 			push_error("[InventoryManager] CRITICAL: Rollback failed! Item may be lost: %s" % item_id)
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
+
 	inventory_changed.emit()
 	SaveManager.mark_dirty()  # Mark for auto-save
 	return true
 
 func unequip_item_atomic(hero_id: String, slot: String) -> bool:
-	"""Atomically unequip item with inventory coordination"""
+	"""Atomically unequip item with inventory coordination (supports two-handed weapons)"""
 	var item_id = HeroEquipmentRegistry.get_equipped_item(hero_id, slot)
 	if item_id == "":
 		return true
+
+	# Skip unequipping 2H occupation markers (they're not real items)
+	if item_id.begins_with("__2H_OCCUPIED__"):
+		print("[InventoryManager] ⚠️ Cannot unequip 2H marker - unequip the left hand weapon instead")
+		return false
 
 	# Prevent unequipping starter equipment to empty slot (can only replace)
 	var item_data = ItemDatabase.get_item(item_id)
@@ -340,6 +429,13 @@ func unequip_item_atomic(hero_id: String, slot: String) -> bool:
 	if not HeroEquipmentRegistry.equip_item_in_transaction(slot, ""):
 		HeroEquipmentRegistry.rollback_transaction()
 		return false
+
+	# TWO-HANDED: If unequipping 2H weapon from left hand, also clear right hand marker
+	if item_data and item_data.is_two_handed and slot == "hand_left":
+		if not HeroEquipmentRegistry.equip_item_in_transaction("hand_right", ""):
+			HeroEquipmentRegistry.rollback_transaction()
+			return false
+
 	if not auto_place_item(item_id):
 		HeroEquipmentRegistry.rollback_transaction()
 		inventory_full.emit(item_id)

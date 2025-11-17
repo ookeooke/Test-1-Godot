@@ -312,8 +312,8 @@ func _input(event):
 			place_rally_at(world_pos)
 			get_viewport().set_input_as_handled()
 
-		# Cancel placement on right-click
-		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+		# Cancel placement on ESC key (ui_cancel action)
+		elif event.is_action_pressed("ui_cancel"):
 			is_placing_rally = false
 			print("Rally placement cancelled")
 			get_viewport().set_input_as_handled()

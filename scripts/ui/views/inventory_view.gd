@@ -1,15 +1,29 @@
 extends BasePanelView
 class_name InventoryView
 
-## InventoryView - Unified single inventory for all items
-## Mobile-first Diablo Immortal style - no category tabs
-## All equipment in one grid
+## InventoryView - Dual inventory system with tabs
+## - "My Items" tab: Per-hero inventory (items picked up go here first)
+## - "Shared Stash" tab: Account-wide shared storage
 ## Extends BasePanelView for use in FlexiblePanel
+
+enum InventoryMode {
+	HERO_INVENTORY,    # My Items - per-hero inventory
+	SHARED_STASH       # Shared Stash - account-wide inventory
+}
 
 @export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
 @export var swap_dialog_scene: PackedScene = preload("res://scenes/ui/swap_confirmation_dialog.tscn")
 @export var total_slots: int = 64  # Total inventory capacity (8×8 grid)
 @export var debug_logging: bool = false  # Enable detailed inventory logging (F3 to toggle)
+
+# Current inventory mode
+var current_mode: InventoryMode = InventoryMode.HERO_INVENTORY
+
+# Hero ID for per-hero inventory
+var hero_id: String = ""  # Set by EquipmentView or hero selection
+
+# Tab bar
+@onready var tab_bar: TabBar = $MarginContainer/VBoxContainer/TabBar if has_node("MarginContainer/VBoxContainer/TabBar") else null
 
 # Grid container (now InventoryGridContainer with absolute positioning)
 @onready var inventory_grid: InventoryGridContainer = $MarginContainer/VBoxContainer/ContentContainer/InventoryGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/InventoryGrid") else null
@@ -38,15 +52,24 @@ func _ready():
 	super._ready()
 	view_name = "Inventory"
 
+	# Setup tab bar
+	_setup_tabs()
+
 	# Create unified inventory slots
 	_create_item_slots()
 
-	# Connect signals
+	# Connect signals for both inventories
 	if InventoryManager:
 		if not InventoryManager.inventory_changed.is_connected(_on_inventory_changed):
 			InventoryManager.inventory_changed.connect(_on_inventory_changed)
 		if not InventoryManager.inventory_full.is_connected(_on_inventory_full):
 			InventoryManager.inventory_full.connect(_on_inventory_full)
+
+	if HeroInventoryManager:
+		if not HeroInventoryManager.hero_inventory_changed.is_connected(_on_hero_inventory_changed):
+			HeroInventoryManager.hero_inventory_changed.connect(_on_hero_inventory_changed)
+		if not HeroInventoryManager.hero_inventory_full.is_connected(_on_hero_inventory_full):
+			HeroInventoryManager.hero_inventory_full.connect(_on_hero_inventory_full)
 
 	# Hide tooltip initially
 	if tooltip_panel:
@@ -77,12 +100,29 @@ func _input(event: InputEvent):
 
 func on_view_shown():
 	super.on_view_shown()
+	# Set hero_id from equipment view if not already set
+	if hero_id == "":
+		hero_id = _get_hero_id_from_equipment_view()
+		if hero_id != "" and HeroInventoryManager:
+			# Register hero if not already registered
+			HeroInventoryManager.register_hero(hero_id)
 	refresh_view()
 
 
 func refresh_view():
 	super.refresh_view()
 	_refresh_inventory()
+
+
+func set_hero_id(new_hero_id: String):
+	"""Set the hero ID for per-hero inventory tracking"""
+	hero_id = new_hero_id
+	if hero_id != "" and HeroInventoryManager:
+		# Register hero if not already registered
+		HeroInventoryManager.register_hero(hero_id)
+	# Refresh if currently viewing hero inventory
+	if current_mode == InventoryMode.HERO_INVENTORY:
+		_refresh_inventory()
 
 
 func _create_item_slots():
@@ -114,11 +154,17 @@ func _create_item_slots():
 
 
 func _refresh_inventory():
-	"""Refresh all inventory slots from InventoryManager (spatial grid mode)"""
+	"""Refresh all inventory slots from current inventory mode (hero or shared stash)"""
 	if debug_logging:
-		print("[InventoryView] 🔄 Refreshing inventory...")
+		var mode_name = "My Items" if current_mode == InventoryMode.HERO_INVENTORY else "Shared Stash"
+		print("[InventoryView] 🔄 Refreshing inventory (%s)..." % mode_name)
 
-	if not InventoryManager:
+	# Validate managers exist
+	if current_mode == InventoryMode.HERO_INVENTORY and not HeroInventoryManager:
+		if debug_logging:
+			print("[InventoryView] ❌ HeroInventoryManager not found!")
+		return
+	elif current_mode == InventoryMode.SHARED_STASH and not InventoryManager:
 		if debug_logging:
 			print("[InventoryView] ❌ InventoryManager not found!")
 		return
@@ -142,8 +188,13 @@ func _refresh_inventory():
 			slot.margin_container.add_theme_constant_override("margin_right", 4)
 			slot.margin_container.add_theme_constant_override("margin_bottom", 4)
 
-	# Get ALL items from inventory (all categories combined)
-	var all_items = InventoryManager.get_all_items()
+	# Get ALL items from current inventory mode
+	var all_items: Array
+	if current_mode == InventoryMode.HERO_INVENTORY:
+		all_items = HeroInventoryManager.get_all_items(hero_id)
+	else:  # SHARED_STASH
+		all_items = InventoryManager.get_all_items()
+
 	if debug_logging:
 		print("[InventoryView] Found %d items in inventory" % all_items.size())
 
@@ -152,16 +203,17 @@ func _refresh_inventory():
 		var item_id = item_info.item_id
 		var item_data = item_info.item_data
 
-		# Get item's grid position from InventoryManager
-		var pos = InventoryManager.get_item_position(item_id)
+		# Get item's grid position from appropriate manager
+		var pos: Dictionary
+		if current_mode == InventoryMode.HERO_INVENTORY:
+			pos = HeroInventoryManager.get_grid_position(hero_id, item_id)
+		else:  # SHARED_STASH
+			pos = InventoryManager.get_item_position(item_id)
+
 		if pos.x == -1 or pos.y == -1:
-			# Item not yet placed in grid - auto-place it
-			if InventoryManager.auto_place_item(item_id):
-				pos = InventoryManager.get_item_position(item_id)
-			else:
-				if debug_logging:
-					print("[InventoryView] Warning: Could not place item in grid: ", item_id)
-				continue
+			if debug_logging:
+				print("[InventoryView] Warning: Item not placed in grid: ", item_id)
+			continue
 
 		# Find the root slot for this item
 		var root_slot = _get_slot_at_position(pos.x, pos.y)
@@ -208,16 +260,31 @@ func _get_slot_at_position(x: int, y: int) -> ItemSlot:
 
 
 func _update_labels():
-	"""Update info labels"""
+	"""Update info labels for current inventory mode"""
 	# Update gold label
 	if gold_label:
 		var gold = SaveManager.get_gems()
 		gold_label.text = "Gold: %d" % gold
 
-	# Update slots label
+	# Update slots label based on current mode
 	if slots_label:
-		var all_items = InventoryManager.get_all_items()
-		slots_label.text = "Slots: %d / %d" % [all_items.size(), total_slots]
+		var all_items: Array
+		var label_text: String
+
+		if current_mode == InventoryMode.HERO_INVENTORY:
+			if HeroInventoryManager and hero_id != "":
+				all_items = HeroInventoryManager.get_all_items(hero_id)
+				label_text = "My Items: %d / %d" % [all_items.size(), total_slots]
+			else:
+				label_text = "My Items: 0 / %d" % total_slots
+		else:  # SHARED_STASH
+			if InventoryManager:
+				all_items = InventoryManager.get_all_items()
+				label_text = "Shared Stash: %d / %d" % [all_items.size(), total_slots]
+			else:
+				label_text = "Shared Stash: 0 / %d" % total_slots
+
+		slots_label.text = label_text
 
 
 func _on_inventory_changed():
@@ -274,6 +341,18 @@ func _show_item_context_menu(item_id: String, slot: ItemSlot):
 	# Enable/disable menu items based on context
 	var can_equip = item_data.equip_slot != ItemData.EquipSlot.NONE
 	context_menu.set_item_disabled(0, not can_equip)  # Equip option
+
+	# Update transfer menu text based on current mode
+	var transfer_text: String
+	if current_mode == InventoryMode.HERO_INVENTORY:
+		transfer_text = "📦 Transfer to Shared Stash"
+	else:
+		transfer_text = "📦 Transfer to My Items"
+	context_menu.set_item_text(3, transfer_text)
+
+	# Disable transfer if hero_id is not set (can't transfer without knowing which hero)
+	var can_transfer = hero_id != "" and HeroInventoryManager != null and InventoryManager != null
+	context_menu.set_item_disabled(3, not can_transfer)
 
 	# Show menu at mouse position
 	context_menu.position = get_viewport().get_mouse_position()
@@ -354,8 +433,17 @@ func _try_auto_equip_item(item_id: String, item_data: ItemData):
 		# Item already equipped in this slot - show swap confirmation
 		_show_swap_confirmation(item_id, item_data, equipped_item_id, slot_name, hero_id_val)
 	else:
-		# No item equipped - use atomic equip
-		if InventoryManager.equip_item_atomic(hero_id_val, slot_name, item_id):
+		# No item equipped - equip from appropriate inventory
+		var success = false
+
+		if current_mode == InventoryMode.HERO_INVENTORY and HeroInventoryManager:
+			# TODO: Implement hero inventory equip logic
+			# For now, items in hero inventory can't be equipped directly
+			print("[InventoryView] Warning: Equipping from hero inventory not yet implemented")
+		elif current_mode == InventoryMode.SHARED_STASH and InventoryManager:
+			success = InventoryManager.equip_item_atomic(hero_id_val, slot_name, item_id)
+
+		if success:
 			pass  # Success
 		else:
 			pass  # Failure
@@ -365,7 +453,11 @@ func _get_slot_name_for_item(item_data: ItemData) -> String:
 	"""Get the equipment slot name for an item"""
 	match item_data.equip_slot:
 		ItemData.EquipSlot.WEAPON:
-			return "weapon"
+			# Always equip weapons to left hand by default
+			# TODO: Add two-handed weapon logic later
+			return "hand_left"
+		ItemData.EquipSlot.HELMET:
+			return "helmet"
 		ItemData.EquipSlot.ARMOR:
 			return "armor"
 		ItemData.EquipSlot.ACCESSORY:
@@ -379,6 +471,43 @@ func _get_slot_name_for_item(item_data: ItemData) -> String:
 					return "accessory_2"
 			return "accessory_1"
 	return ""
+
+
+func _setup_tabs():
+	"""Setup tab bar with My Items and Shared Stash tabs"""
+	if not tab_bar:
+		return
+
+	# Add tabs
+	tab_bar.add_tab("🎒 My Items")
+	tab_bar.add_tab("🏦 Shared Stash")
+
+	# Set initial tab
+	tab_bar.current_tab = current_mode
+
+	# Connect tab changed signal
+	if not tab_bar.tab_changed.is_connected(_on_tab_changed):
+		tab_bar.tab_changed.connect(_on_tab_changed)
+
+
+func _on_tab_changed(tab_index: int):
+	"""Called when user switches between inventory tabs"""
+	current_mode = tab_index as InventoryMode
+	print("[InventoryView] Switched to %s" % ("My Items" if current_mode == InventoryMode.HERO_INVENTORY else "Shared Stash"))
+	refresh_view()
+
+
+func _on_hero_inventory_changed(hero_id: String):
+	"""Called when hero inventory changes"""
+	# Only refresh if viewing hero inventory and it's the current hero
+	if current_mode == InventoryMode.HERO_INVENTORY and hero_id == self.hero_id:
+		_refresh_inventory()
+
+
+func _on_hero_inventory_full(hero_id: String, item_id: String):
+	"""Called when hero inventory is full"""
+	if hero_id == self.hero_id:
+		print("[InventoryView] Hero inventory full for item: ", item_id)
 
 
 func _setup_swap_dialog():
@@ -409,9 +538,11 @@ func _setup_context_menu():
 	context_menu.add_item("💰 Sell", 1)
 	context_menu.add_item("🗑️ Drop", 2)
 	context_menu.add_separator()
-	context_menu.add_item("ℹ️ Item Info", 3)
+	context_menu.add_item("📦 Transfer to...", 3)  # Will update text based on mode
 	context_menu.add_separator()
-	context_menu.add_item("❌ Cancel", 4)
+	context_menu.add_item("ℹ️ Item Info", 4)
+	context_menu.add_separator()
+	context_menu.add_item("❌ Cancel", 5)
 
 	# Connect signal
 	context_menu.index_pressed.connect(_on_context_menu_item_selected)
@@ -432,14 +563,16 @@ func _on_context_menu_item_selected(index: int):
 			_sell_item(item_id, item_data)
 		2:  # Drop
 			_drop_item(item_id, item_data)
-		3:  # Item Info
+		3:  # Transfer
+			_transfer_item(item_id, item_data)
+		4:  # Item Info
 			_show_item_info(item_id, item_data)
-		4:  # Cancel
+		5:  # Cancel
 			pass  # Do nothing
 
 
 func _sell_item(item_id: String, item_data: ItemData):
-	"""Sell an item for gold"""
+	"""Sell an item for gold from current inventory mode"""
 	# Check if item is rare or upgraded - require confirmation
 	var requires_confirmation = false
 	var confirmation_reason = ""
@@ -448,21 +581,33 @@ func _sell_item(item_id: String, item_data: ItemData):
 		requires_confirmation = true
 		confirmation_reason = "rare (%s)" % item_data.get_rarity_name()
 
-	# Check if item is upgraded (use getter instead of direct dictionary access)
-	var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
+	# Check if item is upgraded based on current mode
+	var upgrade_level = 0
+	if current_mode == InventoryMode.HERO_INVENTORY and HeroInventoryManager:
+		# Hero inventory doesn't track upgrade levels separately yet
+		# TODO: Add upgrade tracking to HeroInventoryManager
+		upgrade_level = 0
+	elif current_mode == InventoryMode.SHARED_STASH and InventoryManager:
+		upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
+
 	if upgrade_level > 0:
 		requires_confirmation = true
 		confirmation_reason += " +%d upgraded" % upgrade_level if confirmation_reason != "" else "upgraded (+%d)" % upgrade_level
 
 	# Check if item is equipped (use getter instead of direct dictionary access)
 	# DEFENSIVE: Verify item is actually equipped, not just missing from grid
-	var item_pos = InventoryManager.get_item_position(item_id)
+	var item_pos: Dictionary
+	if current_mode == InventoryMode.HERO_INVENTORY and HeroInventoryManager:
+		item_pos = HeroInventoryManager.get_grid_position(hero_id, item_id)
+	elif current_mode == InventoryMode.SHARED_STASH and InventoryManager:
+		item_pos = InventoryManager.get_item_position(item_id)
+
 	if item_pos.x == -1:  # Item not in grid - should be equipped
 		# Verify item is actually equipped on any hero (prevents false positives from data corruption)
 		var is_actually_equipped = false
 		if HeroEquipmentRegistry:
-			for hero_id in HeroEquipmentRegistry._equipment_registry.keys():
-				var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
+			for hero_id_check in HeroEquipmentRegistry._equipment_registry.keys():
+				var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id_check)
 				for equipped_item_id in equipped_items.values():
 					if equipped_item_id == item_id:
 						is_actually_equipped = true
@@ -483,7 +628,15 @@ func _sell_item(item_id: String, item_data: ItemData):
 	else:
 		# Sell immediately (Common/Uncommon items)
 		print("[InventoryView] Selling item: %s for %d gold" % [item_data.item_name, item_data.sell_value])
-		InventoryManager.sell_item(item_id)
+
+		# Remove from appropriate inventory
+		if current_mode == InventoryMode.HERO_INVENTORY and HeroInventoryManager:
+			HeroInventoryManager.remove_item_from_hero(hero_id, item_id, 1)
+		elif current_mode == InventoryMode.SHARED_STASH and InventoryManager:
+			InventoryManager.sell_item(item_id)
+
+		# Add gold
+		SaveManager.add_gems(item_data.sell_value)
 
 
 func _show_sell_confirmation(item_id: String, item_data: ItemData, reason: String):
@@ -502,7 +655,16 @@ func _show_sell_confirmation(item_id: String, item_data: ItemData, reason: Strin
 	# Connect signals
 	dialog.confirmed.connect(func():
 		print("[InventoryView] Confirmed sell: %s for %d gold" % [item_data.item_name, item_data.sell_value])
-		InventoryManager.sell_item(item_id)
+
+		# Remove from appropriate inventory
+		if current_mode == InventoryMode.HERO_INVENTORY and HeroInventoryManager:
+			HeroInventoryManager.remove_item_from_hero(hero_id, item_id, 1)
+		elif current_mode == InventoryMode.SHARED_STASH and InventoryManager:
+			InventoryManager.sell_item(item_id)
+
+		# Add gold
+		SaveManager.add_gems(item_data.sell_value)
+
 		dialog.queue_free()
 	)
 	dialog.cancelled.connect(func():
@@ -519,7 +681,52 @@ func _drop_item(item_id: String, item_data: ItemData):
 	"""Drop an item (remove from inventory permanently)"""
 	print("[InventoryView] Dropping item: %s" % item_data.item_name)
 	# TODO: Add confirmation dialog for Epic+ items
-	InventoryManager.remove_item(item_id)
+
+	# Remove from appropriate inventory
+	if current_mode == InventoryMode.HERO_INVENTORY and HeroInventoryManager:
+		HeroInventoryManager.remove_item_from_hero(hero_id, item_id, 1)
+	elif current_mode == InventoryMode.SHARED_STASH and InventoryManager:
+		InventoryManager.remove_item(item_id)
+
+
+func _transfer_item(item_id: String, item_data: ItemData):
+	"""Transfer an item between hero inventory and shared stash"""
+	if hero_id == "":
+		print("[InventoryView] Cannot transfer - no hero selected")
+		return
+
+	if not HeroInventoryManager or not InventoryManager:
+		print("[InventoryView] Cannot transfer - managers not available")
+		return
+
+	var success: bool = false
+	var source: String
+	var destination: String
+
+	if current_mode == InventoryMode.HERO_INVENTORY:
+		# Transfer from hero inventory to shared stash
+		source = "My Items"
+		destination = "Shared Stash"
+		success = HeroInventoryManager.transfer_to_shared_stash(hero_id, item_id, 1)
+	else:
+		# Transfer from shared stash to hero inventory
+		source = "Shared Stash"
+		destination = "My Items"
+		success = HeroInventoryManager.transfer_from_shared_stash(hero_id, item_id, 1)
+
+	if success:
+		print("[InventoryView] ✅ Transferred '%s' from %s to %s" % [item_data.item_name, source, destination])
+		# Refresh will happen automatically via signals
+	else:
+		print("[InventoryView] ❌ Failed to transfer '%s' (inventory may be full)" % item_data.item_name)
+		# Show error message to user
+		if slots_label:
+			var original_color = slots_label.modulate
+			slots_label.modulate = Color(1.0, 0.3, 0.3)  # Red
+			slots_label.text = "⚠️ Transfer failed - %s full!" % destination
+			await get_tree().create_timer(2.0).timeout
+			slots_label.modulate = original_color
+			_update_labels()
 
 
 func _show_item_info(item_id: String, item_data: ItemData):
@@ -537,7 +744,8 @@ func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_i
 	var old_item_data = ItemDatabase.get_item(old_item_id)
 	if not old_item_data:
 		# If can't load old item, just equip new one
-		InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id)
+		if current_mode == InventoryMode.SHARED_STASH and InventoryManager:
+			InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id)
 		return
 
 	# Show swap confirmation dialog
@@ -545,17 +753,20 @@ func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_i
 		swap_dialog.show_dialog(new_item_id, old_item_id, slot_name)
 	else:
 		# Fallback: auto-swap if dialog not available
-		InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id)
+		if current_mode == InventoryMode.SHARED_STASH and InventoryManager:
+			InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id)
 
 
 func _on_swap_confirmed(new_item_id: String, slot_name: String):
 	"""Handle confirmed swap from dialog"""
 	var hero_id_val = _get_hero_id_from_equipment_view()
 	if hero_id_val != "":
-		if InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id):
-			pass  # Success
-		else:
-			pass  # Failure
+		# Equip from appropriate inventory
+		if current_mode == InventoryMode.SHARED_STASH and InventoryManager:
+			if InventoryManager.equip_item_atomic(hero_id_val, slot_name, new_item_id):
+				pass  # Success
+			else:
+				pass  # Failure
 
 
 func _on_swap_cancelled():
@@ -654,6 +865,12 @@ func cleanup():
 			InventoryManager.inventory_changed.disconnect(_on_inventory_changed)
 		if InventoryManager.inventory_full.is_connected(_on_inventory_full):
 			InventoryManager.inventory_full.disconnect(_on_inventory_full)
+
+	if HeroInventoryManager:
+		if HeroInventoryManager.hero_inventory_changed.is_connected(_on_hero_inventory_changed):
+			HeroInventoryManager.hero_inventory_changed.disconnect(_on_hero_inventory_changed)
+		if HeroInventoryManager.hero_inventory_full.is_connected(_on_hero_inventory_full):
+			HeroInventoryManager.hero_inventory_full.disconnect(_on_hero_inventory_full)
 
 	if tooltip_panel:
 		tooltip_panel.visible = false

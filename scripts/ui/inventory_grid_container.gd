@@ -1,14 +1,16 @@
+@tool
 extends Control
 class_name InventoryGridContainer
 
 ## Custom inventory grid that supports variable-sized items (Diablo 2 style)
 ## Unlike GridContainer, this allows items to span multiple cells with absolute positioning
+## @tool directive enables grid rendering in Godot editor preview
 
 @export var columns: int = 8
 @export var cell_size: Vector2 = Vector2(80, 80)
 @export var cell_gap: Vector2 = Vector2(5, 5)
 
-var show_grid: bool = false  # Toggle for debug grid visualization
+var show_grid: bool = true  # Toggle for debug grid visualization (now visible in editor by default)
 
 func _ready():
 	# Connect to child signals to trigger layout when children are added
@@ -16,6 +18,9 @@ func _ready():
 
 	# Initial layout
 	call_deferred("_layout_children")
+
+	# Trigger initial draw for editor preview (@tool mode)
+	queue_redraw()
 
 
 func _on_child_added(_child: Node):
@@ -73,7 +78,8 @@ func get_grid_size() -> Vector2i:
 
 func _get_minimum_size() -> Vector2:
 	"""Calculate minimum size needed to contain all children"""
-	var grid_size = get_grid_size()
+	# Use fixed grid size for editor preview when no children exist
+	var grid_size = Vector2i(columns, 8) if get_grid_size() == Vector2i(0, 0) else get_grid_size()
 
 	var min_width = grid_size.x * cell_size.x + (grid_size.x - 1) * cell_gap.x
 	var min_height = grid_size.y * cell_size.y + (grid_size.y - 1) * cell_gap.y
@@ -93,7 +99,8 @@ func _draw():
 	if not show_grid:
 		return
 
-	var grid_size = get_grid_size()
+	# Use fixed grid size for editor preview when no children exist
+	var grid_size = Vector2i(columns, 8) if get_grid_size() == Vector2i(0, 0) else get_grid_size()
 	var grid_color = Color(0.5, 0.5, 1.0, 0.3)  # Semi-transparent blue
 
 	# Draw vertical lines

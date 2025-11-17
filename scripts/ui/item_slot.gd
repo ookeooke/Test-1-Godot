@@ -425,11 +425,11 @@ func _on_gui_input(event: InputEvent):
 		if event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
 				if not is_empty:
-					item_clicked.emit(item_id, self)
-					accept_event()  # Prevent click from reaching world
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				if not is_empty:
-					item_right_clicked.emit(item_id, self)
+					# Shift+Click for context menu (web compatibility)
+					if event.shift_pressed:
+						item_right_clicked.emit(item_id, self)
+					else:
+						item_clicked.emit(item_id, self)
 					accept_event()  # Prevent click from reaching world
 
 	elif event is InputEventScreenTouch:
@@ -524,7 +524,9 @@ func _generate_comparison() -> String:
 	var slot_name = ""
 	match item_data.equip_slot:
 		ItemData.EquipSlot.WEAPON:
-			slot_name = "weapon"
+			slot_name = "hand_left"  # Weapons now go to left hand by default
+		ItemData.EquipSlot.HELMET:
+			slot_name = "helmet"
 		ItemData.EquipSlot.ARMOR:
 			slot_name = "armor"
 		ItemData.EquipSlot.ACCESSORY:

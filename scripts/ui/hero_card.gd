@@ -119,10 +119,11 @@ func _on_select_pressed():
 
 
 func _on_button_gui_input(event: InputEvent):
-	"""Handle right-click for context menu and touch input"""
+	"""Handle Shift+Click for context menu (web compatibility)"""
 	if event is InputEventMouseButton:
 		var mouse_event = event as InputEventMouseButton
-		if mouse_event.button_index == MOUSE_BUTTON_RIGHT and mouse_event.pressed:
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed and mouse_event.shift_pressed:
+			# Shift+Click for details/context (web compatible)
 			if hero_data:
 				hero_right_clicked.emit(hero_data)
 			get_viewport().set_input_as_handled()

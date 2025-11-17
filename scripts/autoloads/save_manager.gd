@@ -76,10 +76,11 @@ func create_new_profile(profile_name: String) -> bool:
 		"level_stars": {}, # level_id: stars_earned (1-3)
 		"gems": 1000,  # Starting gems for skill purchases / hero unlocks
 		"hero_skills": {},  # hero_id: { skill_id: level }
-		"inventory": {  # Inventory system data (spatial grid only)
+		"inventory": {  # Shared stash inventory (account-wide, spatial grid)
 			"global_inventory": {},
 			"item_positions": {}
 		},
+		"hero_inventories": {},  # Per-hero inventories (hero_id: {items, positions})
 		"equipment_registry": {  # Hero equipment slots (per-hero persistence)
 			"heroes": {}
 		},
@@ -111,9 +112,20 @@ func create_new_profile(profile_name: String) -> bool:
 			InventoryManager.load_from_dict(new_profile["inventory"])
 			print("[SaveManager] Initialized InventoryManager for new profile")
 
+		# Initialize empty hero inventories
+		if HeroInventoryManager:
+			HeroInventoryManager.load_from_dict({})  # Empty dict = no heroes registered yet
+			print("[SaveManager] Initialized HeroInventoryManager for new profile")
+
 			# Add starter items for new players
 			InventoryManager.add_item("basic_bow", 1)
 			print("[SaveManager] ✅ Added starter item: basic_bow")
+
+			# Add helmet items for testing
+			InventoryManager.add_item("leather_cap", 1)
+			InventoryManager.add_item("iron_helmet", 1)
+			InventoryManager.add_item("royal_crown", 1)
+			print("[SaveManager] ✅ Added starter helmets for testing")
 
 		# Load empty equipment registry
 		if HeroEquipmentRegistry and new_profile.has("equipment_registry"):
@@ -145,9 +157,13 @@ func save_profile(profile_data: Dictionary) -> bool:
 	# Update last played time
 	profile_data["last_played"] = Time.get_datetime_string_from_system()
 
-	# Save inventory data from InventoryManager
+	# Save inventory data from InventoryManager (shared stash)
 	if InventoryManager:
 		profile_data["inventory"] = InventoryManager.save_to_dict()
+
+	# Save hero inventories from HeroInventoryManager
+	if HeroInventoryManager:
+		profile_data["hero_inventories"] = HeroInventoryManager.save_to_dict()
 
 	# Save equipment data from HeroEquipmentRegistry
 	if HeroEquipmentRegistry:
@@ -238,9 +254,17 @@ func load_profile(profile_name: String) -> bool:
 			current_profile = profile_data
 			current_profile_name = profile_name
 
-			# Load inventory data into InventoryManager
+			# Load inventory data into InventoryManager (shared stash)
 			if InventoryManager and profile_data.has("inventory"):
 				InventoryManager.load_from_dict(profile_data["inventory"])
+
+			# Load hero inventories into HeroInventoryManager
+			if HeroInventoryManager:
+				if profile_data.has("hero_inventories"):
+					HeroInventoryManager.load_from_dict(profile_data["hero_inventories"])
+				else:
+					# Migration: Initialize empty hero inventories for old saves
+					print("[SaveManager] Migration: Initializing empty hero inventories")
 
 			# Load equipment data into HeroEquipmentRegistry
 			if HeroEquipmentRegistry and profile_data.has("equipment_registry"):

@@ -525,10 +525,7 @@ func _on_area_input_event(_viewport, event, _shape_idx):
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_on_clicked()
 			get_viewport().set_input_as_handled()
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			_on_right_clicked()
-			# DON'T consume right-click - let camera handle right-drag for panning
-			# get_viewport().set_input_as_handled()
+		# Right-click removed for web compatibility (ESC key for deselect)
 	# Handle touch input
 	elif event is InputEventScreenTouch and event.pressed:
 		_on_clicked()
@@ -538,10 +535,6 @@ func _on_clicked() -> void:
 	"""Called when this hero is clicked"""
 	# Single click: Select hero
 	hero_selected.emit(self)
-
-func _on_right_clicked() -> void:
-	"""Called when hero is right-clicked"""
-	# TODO: Show hero info panel
 
 func _on_mouse_entered() -> void:
 	"""Called when mouse enters hero area"""

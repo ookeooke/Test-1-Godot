@@ -143,6 +143,11 @@ func open_for_tower(spot_position: Vector2, tower_node: Node, spot_node: Node):
 		close()
 		return
 
+	# Validate tower before storing reference
+	if not is_instance_valid(tower_node):
+		print("[RingUpgradeMenu] ERROR: Attempted to open for invalid tower")
+		return
+
 	tower = tower_node
 	spot = spot_node
 
@@ -195,6 +200,10 @@ func close():
 
 	# Cancel any preview
 	_cancel_preview()
+
+	# Clear tower/spot references to prevent stale access
+	tower = null
+	spot = null
 
 	_hide_animated()
 	menu_closed.emit()
@@ -262,6 +271,10 @@ func _calculate_button_positions() -> Dictionary:
 	Returns:
 		Dictionary mapping button_id -> {angle: float, size: float, emoji: String, color: Color}
 	"""
+	# Safety check - tower might be freed during sell
+	if not is_instance_valid(tower):
+		return {}  # Return empty positions if tower is gone
+
 	var positions = {}
 
 	# DEBUG: Check path choice status
@@ -545,6 +558,9 @@ func _update_center_stats():
 
 func _get_normal_stats_text() -> String:
 	"""Get normal stats text (no preview)"""
+	if not is_instance_valid(tower):
+		return ""  # Tower freed, return empty string
+
 	var text = ""
 
 	if tower.has_method("get_stat_damage"):
@@ -616,6 +632,9 @@ func _on_action_button_pressed(button_id: String):
 
 func _enter_preview_mode(button_id: String):
 	"""Enter preview mode for a button (first click)"""
+	if not is_instance_valid(tower):
+		return  # Tower freed, exit preview mode
+
 	preview_mode = button_id
 
 	match button_id:
@@ -760,6 +779,9 @@ func _dim_other_path_button(button_id: String):
 
 func _handle_path_button_preview(button_id: String):
 	"""Generic handler for path button previews (works for any tower type)"""
+	if not is_instance_valid(tower):
+		return  # Tower freed, exit preview
+
 	# Get path internal name from button_id (e.g., "cannon_path" → "cannon")
 	var internal_name = button_id.trim_suffix("_path")
 

@@ -38,17 +38,18 @@ func setup_input_actions():
 		esc.keycode = KEY_ESCAPE
 		InputMap.action_add_event("deselect", esc)
 
-	# Camera drag - Used for camera panning
-	if not InputMap.has_action("camera_drag_start"):
-		InputMap.add_action("camera_drag_start")
-		# Mouse middle button
-		var mouse_middle = InputEventMouseButton.new()
-		mouse_middle.button_index = MOUSE_BUTTON_MIDDLE
-		InputMap.action_add_event("camera_drag_start", mouse_middle)
-		# Mouse right button (also used for camera)
-		var mouse_right = InputEventMouseButton.new()
-		mouse_right.button_index = MOUSE_BUTTON_RIGHT
-		InputMap.action_add_event("camera_drag_start", mouse_right)
+	# Camera drag action REMOVED for web compatibility
+	# Right/middle mouse conflicts with browser context menu
+	# Desktop users can use WASD/arrow keys for camera pan
+	# Mobile users use single-finger drag (handled in camera controller)
+	# if not InputMap.has_action("camera_drag_start"):
+	# 	InputMap.add_action("camera_drag_start")
+	# 	var mouse_middle = InputEventMouseButton.new()
+	# 	mouse_middle.button_index = MOUSE_BUTTON_MIDDLE
+	# 	InputMap.action_add_event("camera_drag_start", mouse_middle)
+	# 	var mouse_right = InputEventMouseButton.new()
+	# 	mouse_right.button_index = MOUSE_BUTTON_RIGHT
+	# 	InputMap.action_add_event("camera_drag_start", mouse_right)
 
 	# ============================================
 	# KEYBOARD CAMERA CONTROLS
