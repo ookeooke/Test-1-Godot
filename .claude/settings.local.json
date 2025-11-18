@@ -5,7 +5,10 @@
       "Bash(findstr:*)",
       "Bash(test:*)",
       "Bash(git diff:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dir:*)",
+      "Bash(nul)",
+      "Bash(powershell -Command:*)"
     ],
     "deny": [],
     "ask": []

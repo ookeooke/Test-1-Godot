@@ -297,6 +297,55 @@ func roll_affixes() -> Dictionary:
 
 
 ## ============================================
+## DYNAMIC ITEM NAMING (Diablo 2 Style)
+## ============================================
+
+## Generate display name based on rarity and affixes
+## rolled_affixes: Dictionary from roll_affixes() function
+func get_display_name(rolled_affixes: Dictionary = {}) -> String:
+	# Use base_item_name if set, otherwise item_name
+	var base_name = base_item_name if base_item_name != "" else item_name
+
+	# Normal items: Just the base name (white)
+	if rarity == Rarity.NORMAL or rolled_affixes.is_empty():
+		return base_name
+
+	# Magic items: Prefix + Base + Suffix (blue)
+	if rarity == Rarity.MAGIC:
+		var prefix_name = ""
+		var suffix_name = ""
+
+		# Extract prefix and suffix from rolled_affixes
+		if rolled_affixes.has("prefix"):
+			var prefix_info = rolled_affixes.prefix
+			if prefix_info.has("affix_data"):
+				prefix_name = prefix_info.affix_data.affix_name
+
+		if rolled_affixes.has("suffix"):
+			var suffix_info = rolled_affixes.suffix
+			if suffix_info.has("affix_data"):
+				suffix_name = suffix_info.affix_data.affix_name
+
+		# Construct name: "Prefix Base of Suffix"
+		var display = ""
+		if prefix_name != "":
+			display += prefix_name + " "
+		display += base_name
+		if suffix_name != "":
+			display += " " + suffix_name
+
+		return display
+
+	# Rare items: Use random rare name + base type
+	if rarity == Rarity.RARE:
+		# For now, just show base name (Phase 6 will add rare name generation)
+		return base_name
+
+	# Set/Unique: Use fixed item_name
+	return item_name
+
+
+## ============================================
 ## STAT MODIFIER GENERATION (New Unified System)
 ## ============================================
 

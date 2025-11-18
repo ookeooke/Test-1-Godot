@@ -215,8 +215,8 @@ func _refresh_equipment():
 	# Update left hand slot
 	var hand_left_id = equipped_items.get("hand_left", "")
 	if hand_left_id != "":
-		var rolled_stats = InventoryManager.get_item_rolled_stats(hand_left_id)
-		hand_left_slot.set_item(hand_left_id, 1, 0, rolled_stats)
+		var rolled_affixes = InventoryManager.get_item_rolled_affixes(hand_left_id)
+		hand_left_slot.set_item(hand_left_id, 1, 0, rolled_affixes)
 	else:
 		hand_left_slot.clear_slot()
 
@@ -232,8 +232,8 @@ func _refresh_equipment():
 			var item_data = ItemDatabase.get_item(actual_item_id)
 			if item_data:
 				# Show the 2H weapon in right hand slot (with visual indication it's occupied)
-				var rolled_stats = InventoryManager.get_item_rolled_stats(actual_item_id)
-				hand_right_slot.set_item(actual_item_id, 1, 0, rolled_stats)
+				var rolled_affixes = InventoryManager.get_item_rolled_affixes(actual_item_id)
+				hand_right_slot.set_item(actual_item_id, 1, 0, rolled_affixes)
 				# Set slot to dimmed/disabled state to indicate it's occupied by 2H weapon
 				hand_right_slot.modulate = Color(0.6, 0.6, 0.6, 1.0)  # Dimmed appearance
 			else:
@@ -250,8 +250,8 @@ func _refresh_equipment():
 					print("[EquipmentView] ✓ Cleared orphaned 2H marker successfully")
 		else:
 			# Normal item in right hand
-			var rolled_stats = InventoryManager.get_item_rolled_stats(hand_right_id)
-			hand_right_slot.set_item(hand_right_id, 1, 0, rolled_stats)
+			var rolled_affixes = InventoryManager.get_item_rolled_affixes(hand_right_id)
+			hand_right_slot.set_item(hand_right_id, 1, 0, rolled_affixes)
 			hand_right_slot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # Normal appearance
 	else:
 		hand_right_slot.clear_slot()
@@ -260,32 +260,32 @@ func _refresh_equipment():
 	# Update helmet slot
 	var helmet_id = equipped_items.get("helmet", "")
 	if helmet_id != "":
-		var rolled_stats = InventoryManager.get_item_rolled_stats(helmet_id)
-		helmet_slot.set_item(helmet_id, 1, 0, rolled_stats)
+		var rolled_affixes = InventoryManager.get_item_rolled_affixes(helmet_id)
+		helmet_slot.set_item(helmet_id, 1, 0, rolled_affixes)
 	else:
 		helmet_slot.clear_slot()
 
 	# Update armor slot
 	var armor_id = equipped_items.get("armor", "")
 	if armor_id != "":
-		var rolled_stats = InventoryManager.get_item_rolled_stats(armor_id)
-		armor_slot.set_item(armor_id, 1, 0, rolled_stats)
+		var rolled_affixes = InventoryManager.get_item_rolled_affixes(armor_id)
+		armor_slot.set_item(armor_id, 1, 0, rolled_affixes)
 	else:
 		armor_slot.clear_slot()
 
 	# Update accessory 1 slot
 	var acc1_id = equipped_items.get("accessory_1", "")
 	if acc1_id != "":
-		var rolled_stats = InventoryManager.get_item_rolled_stats(acc1_id)
-		accessory1_slot.set_item(acc1_id, 1, 0, rolled_stats)
+		var rolled_affixes = InventoryManager.get_item_rolled_affixes(acc1_id)
+		accessory1_slot.set_item(acc1_id, 1, 0, rolled_affixes)
 	else:
 		accessory1_slot.clear_slot()
 
 	# Update accessory 2 slot
 	var acc2_id = equipped_items.get("accessory_2", "")
 	if acc2_id != "":
-		var rolled_stats = InventoryManager.get_item_rolled_stats(acc2_id)
-		accessory2_slot.set_item(acc2_id, 1, 0, rolled_stats)
+		var rolled_affixes = InventoryManager.get_item_rolled_affixes(acc2_id)
+		accessory2_slot.set_item(acc2_id, 1, 0, rolled_affixes)
 	else:
 		accessory2_slot.clear_slot()
 
@@ -616,7 +616,7 @@ func _populate_grid(items: Array, slots: Array[ItemSlot], is_hero_inventory: boo
 			continue
 
 		# Set item
-		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level, item_info.get("rolled_stats", {}))
+		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level, item_info.get("rolled_affixes", {}))
 		root_slot.is_root_slot = true
 
 		# Mark occupied cells
@@ -688,18 +688,20 @@ func _quick_transfer_item(item_id: String, slot: ItemSlot):
 
 func _on_hero_button_pressed(new_hero_id: String):
 	"""Called when a hero selection button is pressed"""
+	# Update hero_id and setup equipment manager if changed
 	if new_hero_id != hero_id:
 		hero_id = new_hero_id
 		_setup_equipment_manager()
 
-		# Emit signal for other panels (like InventoryView) to update
-		hero_changed.emit(new_hero_id)
+	# ALWAYS emit signal for UI consistency (even if hero_id unchanged)
+	# This ensures the RIGHT panel and other listeners always update
+	hero_changed.emit(new_hero_id)
 
-		# Refresh the current view
-		if common_chest_mode:
-			_refresh_shared_stash()
-		else:
-			_refresh_equipment()
+	# ALWAYS refresh the current view for visual feedback
+	if common_chest_mode:
+		_refresh_shared_stash()
+	else:
+		_refresh_equipment()
 
 
 func cleanup():

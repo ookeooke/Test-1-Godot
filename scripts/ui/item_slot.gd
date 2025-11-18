@@ -566,8 +566,8 @@ func _generate_tooltip() -> String:
 
 	var tooltip = ""
 
-	# Item name (first line)
-	tooltip += "%s\n" % item_data.item_name
+	# Item name (first line) - dynamic name based on affixes (Diablo 2 style)
+	tooltip += "%s\n" % item_data.get_display_name(rolled_affixes)
 
 	# Rarity + Type (second line)
 	var rarity_name = item_data.get_rarity_name()

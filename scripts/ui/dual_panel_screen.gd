@@ -72,6 +72,14 @@ func _ready():
 			right_panel.set_hero_id(hero_id)
 			right_panel.refresh_current_view()
 			print("🔍 [DualPanelScreen] Initialized right panel with hero_id: %s" % hero_id)
+
+		# Connect to equipment view's hero_changed signal (standalone mode)
+		if left_panel:
+			var equipment_view = left_panel.get_current_view()
+			if equipment_view and equipment_view.has_signal("hero_changed"):
+				if not equipment_view.hero_changed.is_connected(_on_hero_changed):
+					equipment_view.hero_changed.connect(_on_hero_changed)
+					print("🔍 [DualPanelScreen] Connected to hero_changed signal (standalone mode)")
 	else:
 		# OVERLAY MODE - hide by default until user opens it
 		print("🔍 [DualPanelScreen] Overlay mode - hiding by default")

@@ -196,7 +196,7 @@ func _refresh_inventory():
 			continue
 
 		# Set the root slot
-		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level, item_info.get("rolled_stats", {}))
+		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level, item_info.get("rolled_affixes", {}))
 		root_slot.is_root_slot = true
 		if debug_logging:
 			print("[InventoryView] Placed item '%s' in slot at (%d, %d)" % [item_id, pos.x, pos.y])
