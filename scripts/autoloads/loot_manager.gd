@@ -143,14 +143,18 @@ func _spawn_item_pickup(item_id: String, position: Vector2):
 		print("[LootManager] Error: Invalid item_id: ", item_id)
 		return
 
+	# Roll random stats (if item has random stats enabled)
+	var rolled_stats = item_data.roll_stats()
+
 	# Check if ITEM_PICKUP_SCENE exists
 	if ITEM_PICKUP_SCENE == null:
 		print("[LootManager] Warning: ItemPickup scene not found, adding to pending loot")
-		pending_wave_loot.append({"item_id": item_id, "quantity": 1})
+		pending_wave_loot.append({"item_id": item_id, "quantity": 1, "rolled_stats": rolled_stats})
 		return
 
 	var pickup = ITEM_PICKUP_SCENE.instantiate()
 	pickup.item_id = item_id
+	pickup.rolled_stats = rolled_stats
 	pickup.global_position = position
 
 	# Add to current scene (deferred to avoid "flushing queries" error)
@@ -195,8 +199,8 @@ func collect_wave_loot() -> void:
 
 
 ## Add item to pending wave loot (for auto-collect at wave end)
-func add_to_pending_loot(item_id: String, quantity: int = 1):
-	pending_wave_loot.append({"item_id": item_id, "quantity": quantity})
+func add_to_pending_loot(item_id: String, quantity: int = 1, rolled_stats: Dictionary = {}):
+	pending_wave_loot.append({"item_id": item_id, "quantity": quantity, "rolled_stats": rolled_stats})
 
 
 ## Add gold to pending wave gold
@@ -301,7 +305,7 @@ func distribute_pending_loot_to_inventory(hero_id: String = "") -> Dictionary:
 
 		# Fallback to shared stash if no hero_id or hero inventory is full
 		if not success and InventoryManager:
-			success = InventoryManager.add_item(loot_data.item_id, loot_data.get("quantity", 1))
+			success = InventoryManager.add_item(loot_data.item_id, loot_data.get("quantity", 1), loot_data.get("rolled_stats", {}))
 			if success:
 				if hero_id != "":
 					print("[LootManager] Hero inventory full, added '%s' to shared stash" % loot_data.item_id)

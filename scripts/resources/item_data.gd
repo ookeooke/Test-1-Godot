@@ -35,6 +35,8 @@ enum EquipSlot {
 @export var item_type: ItemType = ItemType.WEAPON
 @export var rarity: Rarity = Rarity.COMMON
 @export var equip_slot: EquipSlot = EquipSlot.NONE
+@export var item_level: int = 0  ## Item level (for display purposes)
+@export var required_level: int = 0  ## Minimum character level to equip
 
 # Stacking & Economy
 @export var max_stack: int = 1  ## 1 for equipment, 99 for consumables/materials
@@ -54,6 +56,15 @@ enum EquipSlot {
 @export var defense_bonus: int = 0
 @export var range_bonus: int = 0
 @export var crit_chance_bonus: float = 0.0  ## 0.0 to 1.0 (0% to 100%)
+
+# Random Stat Rolls (Diablo Style)
+@export_group("Random Stats")
+@export var has_random_stats: bool = false  ## Enable random stat ranges for this item
+@export var damage_range: Vector2i = Vector2i(0, 0)  ## Min/Max damage (e.g., 6-10). Use fixed value if min==max
+@export var health_range: Vector2i = Vector2i(0, 0)  ## Min/Max health bonus
+@export var defense_range: Vector2i = Vector2i(0, 0)  ## Min/Max defense bonus
+@export var crit_chance_range: Vector2 = Vector2(0.0, 0.0)  ## Min/Max crit chance (0.03-0.07 = 3%-7%)
+@export var attack_speed_range: Vector2 = Vector2(0.0, 0.0)  ## Min/Max attack speed multiplier
 
 # Special Effects (string identifiers for special behaviors)
 @export_group("Special Effects")
@@ -149,6 +160,54 @@ func is_stackable() -> bool:
 	return max_stack > 1
 
 
+## Roll random stats for this item (if has_random_stats is enabled)
+## Returns a dictionary with rolled stat values
+## Example: {"damage_bonus": 7, "crit_chance_bonus": 0.05}
+func roll_stats() -> Dictionary:
+	var rolled = {}
+
+	if not has_random_stats:
+		# Use fixed stats
+		rolled["damage_bonus"] = damage_bonus
+		rolled["health_bonus"] = health_bonus
+		rolled["defense_bonus"] = defense_bonus
+		rolled["crit_chance_bonus"] = crit_chance_bonus
+		rolled["attack_speed_multiplier"] = attack_speed_multiplier
+		return rolled
+
+	# Roll damage if range is set
+	if damage_range.x > 0 or damage_range.y > 0:
+		rolled["damage_bonus"] = randi_range(damage_range.x, damage_range.y)
+	else:
+		rolled["damage_bonus"] = damage_bonus
+
+	# Roll health if range is set
+	if health_range.x > 0 or health_range.y > 0:
+		rolled["health_bonus"] = randi_range(health_range.x, health_range.y)
+	else:
+		rolled["health_bonus"] = health_bonus
+
+	# Roll defense if range is set
+	if defense_range.x > 0 or defense_range.y > 0:
+		rolled["defense_bonus"] = randi_range(defense_range.x, defense_range.y)
+	else:
+		rolled["defense_bonus"] = defense_bonus
+
+	# Roll crit chance if range is set
+	if crit_chance_range.x > 0.0 or crit_chance_range.y > 0.0:
+		rolled["crit_chance_bonus"] = randf_range(crit_chance_range.x, crit_chance_range.y)
+	else:
+		rolled["crit_chance_bonus"] = crit_chance_bonus
+
+	# Roll attack speed if range is set
+	if attack_speed_range.x > 0.0 or attack_speed_range.y > 0.0:
+		rolled["attack_speed_multiplier"] = randf_range(attack_speed_range.x, attack_speed_range.y)
+	else:
+		rolled["attack_speed_multiplier"] = attack_speed_multiplier
+
+	return rolled
+
+
 ## ============================================
 ## STAT MODIFIER GENERATION (New Unified System)
 ## ============================================
@@ -156,7 +215,8 @@ func is_stackable() -> bool:
 ## Generate StatModifier objects from this item's stats
 ## This converts flat bonuses into the unified modifier system
 ## upgrade_level: Current upgrade level of the item (0 = base level)
-func get_stat_modifiers(upgrade_level: int = 0) -> Array[StatModifier]:
+## rolled_stats: Optional dictionary of rolled stat values (overrides base stats)
+func get_stat_modifiers(upgrade_level: int = 0, rolled_stats: Dictionary = {}) -> Array[StatModifier]:
 	var modifiers: Array[StatModifier] = []
 	var source_id = "equipment:" + item_id  # Namespaced to prevent collision with skills
 
@@ -164,17 +224,25 @@ func get_stat_modifiers(upgrade_level: int = 0) -> Array[StatModifier]:
 	if not is_equippable():
 		return modifiers
 
+	# Use rolled stats if available, otherwise use fixed stats
+	var base_damage = rolled_stats.get("damage_bonus", damage_bonus)
+	var base_health = rolled_stats.get("health_bonus", health_bonus)
+	var base_defense = rolled_stats.get("defense_bonus", defense_bonus)
+	var base_range = rolled_stats.get("range_bonus", range_bonus)
+	var base_attack_speed = rolled_stats.get("attack_speed_multiplier", attack_speed_multiplier)
+	var base_crit = rolled_stats.get("crit_chance_bonus", crit_chance_bonus)
+
 	# Calculate upgraded stats if applicable
-	var final_damage = damage_bonus
-	var final_health = health_bonus
-	var final_defense = defense_bonus
-	var final_range = range_bonus
+	var final_damage = base_damage
+	var final_health = base_health
+	var final_defense = base_defense
+	var final_range = base_range
 
 	if can_upgrade and upgrade_level > 0:
-		final_damage = int(get_upgraded_stat(damage_bonus, upgrade_level))
-		final_health = int(get_upgraded_stat(health_bonus, upgrade_level))
-		final_defense = int(get_upgraded_stat(defense_bonus, upgrade_level))
-		final_range = int(get_upgraded_stat(range_bonus, upgrade_level))
+		final_damage = int(get_upgraded_stat(base_damage, upgrade_level))
+		final_health = int(get_upgraded_stat(base_health, upgrade_level))
+		final_defense = int(get_upgraded_stat(base_defense, upgrade_level))
+		final_range = int(get_upgraded_stat(base_range, upgrade_level))
 
 	# Damage modifier (flat bonus)
 	if final_damage > 0:
@@ -204,14 +272,14 @@ func get_stat_modifiers(upgrade_level: int = 0) -> Array[StatModifier]:
 			desc += " (+%d)" % upgrade_level
 		modifiers.append(StatModifier.create_flat(final_range, source_id, desc))
 
-	# Attack Speed modifier (multiplicative)
-	if attack_speed_multiplier != 1.0:
-		var desc = "×%.2f Attack Speed" % attack_speed_multiplier
-		modifiers.append(StatModifier.create_multiplicative(attack_speed_multiplier, source_id, desc))
+	# Attack Speed modifier (multiplicative) - use rolled or base
+	if base_attack_speed != 1.0:
+		var desc = "×%.2f Attack Speed" % base_attack_speed
+		modifiers.append(StatModifier.create_multiplicative(base_attack_speed, source_id, desc))
 
-	# Crit Chance modifier (additive percentage)
-	if crit_chance_bonus > 0.0:
-		var crit_percent = crit_chance_bonus * 100.0
+	# Crit Chance modifier (additive percentage) - use rolled or base
+	if base_crit > 0.0:
+		var crit_percent = base_crit * 100.0
 		var desc = "+%.1f%% Crit Chance" % crit_percent
 		# Convert decimal to percentage for additive modifier
 		modifiers.append(StatModifier.create_additive(crit_percent, source_id, desc))

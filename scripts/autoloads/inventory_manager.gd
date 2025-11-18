@@ -13,7 +13,7 @@ signal slot_limit_reached(category: String)
 ## CONSTANTS
 const MAX_UNIQUE_ITEMS: int = 100  # Maximum number of unique items allowed (prevents memory/save issues)
 
-## Storage: {item_id: {quantity: int, upgrade_level: int}}
+## Storage: {item_id: {quantity: int, upgrade_level: int, rolled_stats: Dictionary}}
 var global_inventory: Dictionary = {}
 
 ## Item upgrade levels: {item_id: upgrade_level}
@@ -35,7 +35,7 @@ func _on_item_database_loaded():
 
 
 ## Add an item to the inventory
-func add_item(item_id: String, quantity: int = 1) -> bool:
+func add_item(item_id: String, quantity: int = 1, rolled_stats: Dictionary = {}) -> bool:
 	var item_data = ItemDatabase.get_item(item_id)
 	if item_data == null:
 		push_error("[InventoryManager] Invalid item_id: %s" % item_id)
@@ -64,7 +64,8 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 		# New item entry - add to dictionary AND place in grid atomically
 		global_inventory[item_id] = {
 			"quantity": quantity,
-			"upgrade_level": 0
+			"upgrade_level": 0,
+			"rolled_stats": rolled_stats
 		}
 
 		# ATOMIC PLACEMENT: Auto-place in grid immediately
@@ -116,6 +117,13 @@ func get_item_upgrade_level(item_id: String) -> int:
 	if global_inventory.has(item_id):
 		return global_inventory[item_id].upgrade_level
 	return 0
+
+
+## Get rolled stats of a specific item
+func get_item_rolled_stats(item_id: String) -> Dictionary:
+	if global_inventory.has(item_id):
+		return global_inventory[item_id].get("rolled_stats", {})
+	return {}
 
 
 ## Upgrade an item (increase its level)
@@ -178,7 +186,8 @@ func get_items_by_category(category: String) -> Array:
 				"item_id": item_id,
 				"item_data": item_data,
 				"quantity": global_inventory[item_id].quantity,
-				"upgrade_level": global_inventory[item_id].upgrade_level
+				"upgrade_level": global_inventory[item_id].upgrade_level,
+				"rolled_stats": global_inventory[item_id].get("rolled_stats", {})
 			})
 
 	return result
@@ -198,7 +207,8 @@ func get_items_by_type(item_type: ItemData.ItemType) -> Array:
 				"item_id": item_id,
 				"item_data": item_data,
 				"quantity": global_inventory[item_id].quantity,
-				"upgrade_level": global_inventory[item_id].upgrade_level
+				"upgrade_level": global_inventory[item_id].upgrade_level,
+				"rolled_stats": global_inventory[item_id].get("rolled_stats", {})
 			})
 
 	return result
@@ -221,7 +231,8 @@ func get_all_items() -> Array:
 			"item_id": item_id,
 			"item_data": item_data,
 			"quantity": global_inventory[item_id].quantity,
-			"upgrade_level": global_inventory[item_id].upgrade_level
+			"upgrade_level": global_inventory[item_id].upgrade_level,
+			"rolled_stats": global_inventory[item_id].get("rolled_stats", {})
 		})
 
 	return result
@@ -489,6 +500,11 @@ func load_from_dict(data: Dictionary):
 	global_inventory = data.get("global_inventory", {})
 	# Legacy max_slots removed - spatial grid system is the only capacity limit
 	item_positions = data.get("item_positions", {})
+
+	# Migration: Add rolled_stats field to old saves
+	for item_id in global_inventory.keys():
+		if not global_inventory[item_id].has("rolled_stats"):
+			global_inventory[item_id]["rolled_stats"] = {}
 
 	# Rebuild grid from item positions
 	_init_grid()  # Clear grid first

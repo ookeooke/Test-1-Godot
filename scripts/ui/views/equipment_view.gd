@@ -108,6 +108,12 @@ func _ready():
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	_on_viewport_resized()  # Initial sizing
 
+	# Connect to InventoryManager signals for shared stash updates
+	if InventoryManager:
+		if not InventoryManager.inventory_changed.is_connected(_on_inventory_changed):
+			InventoryManager.inventory_changed.connect(_on_inventory_changed)
+		print("[EquipmentView] Connected to InventoryManager.inventory_changed signal")
+
 
 func on_view_shown():
 	super.on_view_shown()
@@ -209,7 +215,8 @@ func _refresh_equipment():
 	# Update left hand slot
 	var hand_left_id = equipped_items.get("hand_left", "")
 	if hand_left_id != "":
-		hand_left_slot.set_item(hand_left_id, 1, 0)
+		var rolled_stats = InventoryManager.get_item_rolled_stats(hand_left_id)
+		hand_left_slot.set_item(hand_left_id, 1, 0, rolled_stats)
 	else:
 		hand_left_slot.clear_slot()
 
@@ -225,7 +232,8 @@ func _refresh_equipment():
 			var item_data = ItemDatabase.get_item(actual_item_id)
 			if item_data:
 				# Show the 2H weapon in right hand slot (with visual indication it's occupied)
-				hand_right_slot.set_item(actual_item_id, 1, 0)
+				var rolled_stats = InventoryManager.get_item_rolled_stats(actual_item_id)
+				hand_right_slot.set_item(actual_item_id, 1, 0, rolled_stats)
 				# Set slot to dimmed/disabled state to indicate it's occupied by 2H weapon
 				hand_right_slot.modulate = Color(0.6, 0.6, 0.6, 1.0)  # Dimmed appearance
 			else:
@@ -242,7 +250,8 @@ func _refresh_equipment():
 					print("[EquipmentView] ✓ Cleared orphaned 2H marker successfully")
 		else:
 			# Normal item in right hand
-			hand_right_slot.set_item(hand_right_id, 1, 0)
+			var rolled_stats = InventoryManager.get_item_rolled_stats(hand_right_id)
+			hand_right_slot.set_item(hand_right_id, 1, 0, rolled_stats)
 			hand_right_slot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # Normal appearance
 	else:
 		hand_right_slot.clear_slot()
@@ -251,28 +260,32 @@ func _refresh_equipment():
 	# Update helmet slot
 	var helmet_id = equipped_items.get("helmet", "")
 	if helmet_id != "":
-		helmet_slot.set_item(helmet_id, 1, 0)
+		var rolled_stats = InventoryManager.get_item_rolled_stats(helmet_id)
+		helmet_slot.set_item(helmet_id, 1, 0, rolled_stats)
 	else:
 		helmet_slot.clear_slot()
 
 	# Update armor slot
 	var armor_id = equipped_items.get("armor", "")
 	if armor_id != "":
-		armor_slot.set_item(armor_id, 1, 0)
+		var rolled_stats = InventoryManager.get_item_rolled_stats(armor_id)
+		armor_slot.set_item(armor_id, 1, 0, rolled_stats)
 	else:
 		armor_slot.clear_slot()
 
 	# Update accessory 1 slot
 	var acc1_id = equipped_items.get("accessory_1", "")
 	if acc1_id != "":
-		accessory1_slot.set_item(acc1_id, 1, 0)
+		var rolled_stats = InventoryManager.get_item_rolled_stats(acc1_id)
+		accessory1_slot.set_item(acc1_id, 1, 0, rolled_stats)
 	else:
 		accessory1_slot.clear_slot()
 
 	# Update accessory 2 slot
 	var acc2_id = equipped_items.get("accessory_2", "")
 	if acc2_id != "":
-		accessory2_slot.set_item(acc2_id, 1, 0)
+		var rolled_stats = InventoryManager.get_item_rolled_stats(acc2_id)
+		accessory2_slot.set_item(acc2_id, 1, 0, rolled_stats)
 	else:
 		accessory2_slot.clear_slot()
 
@@ -552,6 +565,8 @@ func _on_common_chest_toggled(button_pressed: bool):
 
 func _refresh_shared_stash():
 	"""Refresh shared stash grid in common chest mode"""
+	print("[EquipmentView] 🔄 Refreshing shared stash grid...")
+
 	# Validate managers
 	if not InventoryManager:
 		print("[EquipmentView] ❌ InventoryManager not found!")
@@ -568,6 +583,18 @@ func _refresh_shared_stash():
 	# Load shared stash items
 	var stash_items = InventoryManager.get_all_items()
 	_populate_grid(stash_items, stash_item_slots, false)  # false = shared stash
+
+
+func _on_inventory_changed():
+	"""Called when shared stash inventory changes"""
+	print("[EquipmentView] 🔔 inventory_changed signal received")
+
+	# Only refresh if in common chest mode
+	if common_chest_mode:
+		print("[EquipmentView] Common chest mode ON - refreshing shared stash")
+		_refresh_shared_stash()
+	else:
+		print("[EquipmentView] Common chest mode OFF - ignoring signal")
 
 
 func _populate_grid(items: Array, slots: Array[ItemSlot], is_hero_inventory: bool):
@@ -592,7 +619,7 @@ func _populate_grid(items: Array, slots: Array[ItemSlot], is_hero_inventory: boo
 			continue
 
 		# Set item
-		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level)
+		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level, item_info.get("rolled_stats", {}))
 		root_slot.is_root_slot = true
 
 		# Mark occupied cells
@@ -686,3 +713,7 @@ func cleanup():
 	if HeroEquipmentRegistry:
 		if HeroEquipmentRegistry.batch_update_completed.is_connected(_on_batch_update):
 			HeroEquipmentRegistry.batch_update_completed.disconnect(_on_batch_update)
+
+	if InventoryManager:
+		if InventoryManager.inventory_changed.is_connected(_on_inventory_changed):
+			InventoryManager.inventory_changed.disconnect(_on_inventory_changed)

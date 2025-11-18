@@ -10,6 +10,7 @@ class_name ItemPickup
 signal item_collected(item_id: String)
 
 @export var item_id: String = ""
+var rolled_stats: Dictionary = {}  # Stores the rolled stat values for this item
 
 # Collection behavior based on rarity
 enum CollectionMode {
@@ -180,7 +181,7 @@ func collect_item(was_auto: bool = false):
 		fallback_collect_timer.stop()
 
 	# Add to pending wave loot (NEW: goes to LootManager instead of direct inventory)
-	LootManager.add_to_pending_loot(item_id, 1)
+	LootManager.add_to_pending_loot(item_id, 1, rolled_stats)
 
 	# Emit signal
 	item_collected.emit(item_id)

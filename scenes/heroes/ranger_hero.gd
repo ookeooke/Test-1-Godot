@@ -251,8 +251,14 @@ func _recalculate_all_stats():
 		var item_data = ItemDatabase.get_item(item_id)
 		if not item_data:
 			continue
+
+		# Get upgrade level AND rolled stats from inventory
 		var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
-		var modifiers = item_data.get_stat_modifiers(upgrade_level)
+		var rolled_stats = InventoryManager.get_item_rolled_stats(item_id)
+
+		# Generate modifiers with rolled stats
+		var modifiers = item_data.get_stat_modifiers(upgrade_level, rolled_stats)
+
 		for modifier in modifiers:
 			_apply_modifier_to_appropriate_stat(modifier)
 			equipment_mod_count += 1

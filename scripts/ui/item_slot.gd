@@ -21,6 +21,7 @@ var item_id: String = ""
 var item_data: ItemData = null
 var quantity: int = 0
 var upgrade_level: int = 0
+var rolled_stats: Dictionary = {}  # Stores rolled stat values for items with random stats
 
 # Multi-slot grid support (Diablo 2 style)
 var grid_x: int = -1  ## Grid X coordinate (column)
@@ -81,10 +82,11 @@ func _restore_default_style():
 
 
 ## Set item in this slot
-func set_item(new_item_id: String, new_quantity: int = 1, new_upgrade_level: int = 0):
+func set_item(new_item_id: String, new_quantity: int = 1, new_upgrade_level: int = 0, new_rolled_stats: Dictionary = {}):
 	item_id = new_item_id
 	quantity = new_quantity
 	upgrade_level = new_upgrade_level
+	rolled_stats = new_rolled_stats
 
 	if item_id == "":
 		clear_slot()
@@ -246,7 +248,10 @@ func update_display():
 
 ## Godot drag-and-drop: Get drag data
 func _get_drag_data(at_position: Vector2):
+	print("[ItemSlot] 🎯 _get_drag_data called - item_id: %s, is_empty: %s, slot_type: %s, grid_pos: (%d,%d)" % [item_id, is_empty, slot_type, grid_x, grid_y])
+
 	if is_empty:
+		print("[ItemSlot] ❌ Slot is empty, canceling drag")
 		return null
 
 	# Create drag preview
@@ -257,6 +262,8 @@ func _get_drag_data(at_position: Vector2):
 	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview.modulate = Color(1, 1, 1, 0.8)  # Semi-transparent
 	set_drag_preview(preview)
+
+	print("[ItemSlot] ✅ Drag data created for item: %s" % item_id)
 
 	# Return drag data
 	return {
@@ -270,67 +277,132 @@ func _get_drag_data(at_position: Vector2):
 
 ## Godot drag-and-drop: Check if can drop here
 func _can_drop_data(at_position: Vector2, data) -> bool:
+	print("[ItemSlot] 🔍 _can_drop_data - target slot: (%d,%d), slot_type: %s, is_root: %s" % [grid_x, grid_y, slot_type, is_root_slot])
+
 	if not data is Dictionary:
+		print("[ItemSlot] ❌ Data is not Dictionary")
 		return false
 
 	if not data.has("item_id"):
+		print("[ItemSlot] ❌ Data missing item_id")
 		return false
+
+	print("[ItemSlot] Checking drop for item: %s" % data.item_id)
 
 	# Don't drop on self
 	if data.get("source_slot") == self:
+		print("[ItemSlot] ❌ Cannot drop on self")
 		return false
 
 	# Can't drop on occupied (non-root) slots
 	if not is_root_slot and occupied_by_item_id != "":
+		print("[ItemSlot] ❌ Slot occupied by: %s (non-root)" % occupied_by_item_id)
 		return false
 
 	# For inventory slots, use spatial grid validation
 	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
+		# Determine which inventory manager to use
+		var parent_view = _find_parent_inventory_view()
+		var using_hero_inventory = false
+
+		# Check if this is InventoryView (has hero_id for per-hero inventory)
+		if parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
+			using_hero_inventory = true
+
 		# Check if item can be placed at this grid position
-		if not InventoryManager.can_place_item(data.item_id, grid_x, grid_y):
+		var can_place = false
+		if using_hero_inventory:
+			# For hero inventory, we can't validate without modifying HeroInventoryManager
+			# Let the drop operation handle validation via set_grid_position()
+			can_place = true  # Optimistic validation - actual validation happens in _drop_data
+			print("[ItemSlot] Grid validation: hero inventory (optimistic)")
+		else:
+			# For shared stash, use InventoryManager validation
+			can_place = InventoryManager.can_place_item(data.item_id, grid_x, grid_y)
+			print("[ItemSlot] Grid validation: shared stash can_place = %s" % can_place)
+
+		if not can_place:
 			return false
 
 	# Check equipment slot filter
 	if slot_type == "equipment" and equipment_filter != ItemData.EquipSlot.NONE:
 		var dragged_item = ItemDatabase.get_item(data.item_id)
 		if dragged_item == null:
+			print("[ItemSlot] ❌ Invalid item in database")
 			return false
 
 		# Only allow items that match this equipment slot
 		if dragged_item.equip_slot != equipment_filter:
+			print("[ItemSlot] ❌ Item type mismatch for equipment slot")
 			return false
 
+	print("[ItemSlot] ✅ Drop validation passed")
 	return true
 
 
 ## Godot drag-and-drop: Handle drop
 func _drop_data(at_position: Vector2, data):
+	print("[ItemSlot] 📥 _drop_data called - item: %s to slot (%d,%d)" % [data.get("item_id"), grid_x, grid_y])
+
 	if not _can_drop_data(at_position, data):
+		print("[ItemSlot] ❌ Drop validation failed")
 		return
 
 	var source_slot = data.get("source_slot") as ItemSlot
 	if source_slot == null:
+		print("[ItemSlot] ❌ No source slot in data")
 		return
+
+	print("[ItemSlot] Source slot: (%d,%d), type: %s" % [source_slot.grid_x, source_slot.grid_y, source_slot.slot_type])
 
 	# Special handling for equipment slots
 	if slot_type == "equipment" or source_slot.slot_type == "equipment":
+		print("[ItemSlot] → Routing to equipment drop handler")
 		_handle_equipment_drop(data, source_slot)
 		return
 
 	# Check if we're in common chest mode with dual grids
 	var parent_view = _find_parent_inventory_view()
-	if parent_view and parent_view.common_chest_mode:
+	# NOTE: Only EquipmentView has common_chest_mode, InventoryView doesn't!
+	var has_chest_mode = parent_view and "common_chest_mode" in parent_view
+	var is_chest_mode = has_chest_mode and parent_view.common_chest_mode
+	print("[ItemSlot] Parent view found: %s, common_chest_mode: %s" % [parent_view != null, is_chest_mode])
+
+	if is_chest_mode:
+		print("[ItemSlot] → Routing to dual grid drop handler")
 		_handle_dual_grid_drop(data, source_slot, parent_view)
 		return
 
 	# For inventory slots with grid coordinates, use spatial placement
 	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
-		# Move item in InventoryManager's spatial grid
-		# Note: move_item() already emits inventory_changed, no need to emit again
-		InventoryManager.move_item(data.item_id, grid_x, grid_y)
+		print("[ItemSlot] → Spatial grid mode: moving item to (%d,%d)" % [grid_x, grid_y])
+
+		# Reuse parent_view from line 365 (already found above)
+		# Determine which inventory manager to use
+		var using_hero_inventory = false
+		var target_hero_id = ""
+
+		# Check if this is InventoryView (has hero_id for per-hero inventory)
+		if parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
+			using_hero_inventory = true
+			target_hero_id = parent_view.hero_id
+
+		var success = false
+		if using_hero_inventory:
+			# Use HeroInventoryManager for per-hero inventory
+			print("[ItemSlot] Using HeroInventoryManager for hero '%s'" % target_hero_id)
+			success = HeroInventoryManager.set_grid_position(target_hero_id, data.item_id, grid_x, grid_y)
+			print("[ItemSlot] Hero inventory move result: %s" % ("SUCCESS" if success else "FAILED"))
+		else:
+			# Use InventoryManager for shared stash
+			print("[ItemSlot] Using InventoryManager (shared stash)")
+			success = InventoryManager.move_item(data.item_id, grid_x, grid_y)
+			print("[ItemSlot] Shared stash move result: %s" % ("SUCCESS" if success else "FAILED"))
+
 		return
 
 	# Fallback: Normal inventory swap (for non-spatial inventory modes)
+	print("[ItemSlot] → Fallback swap mode")
 	var temp_item_id = item_id
 	var temp_quantity = quantity
 	var temp_upgrade_level = upgrade_level
@@ -462,117 +534,111 @@ func _on_gui_input(event: InputEvent):
 				accept_event()  # Prevent tap from reaching world
 
 
-## Generate tooltip with item comparison
+## Generate tooltip (Diablo 2 style)
 func _generate_tooltip() -> String:
 	if not item_data:
 		return ""
 
 	var tooltip = ""
 
-	# Item name with rarity color
-	var rarity_name = item_data.get_rarity_name()
-	tooltip += "%s (%s)\n" % [item_data.item_name, rarity_name]
-	tooltip += "───────────\n"
+	# Item name (first line)
+	tooltip += "%s\n" % item_data.item_name
 
-	# Equip slot (if equipment) - skip item type, it's redundant
+	# Rarity + Type (second line)
+	var rarity_name = item_data.get_rarity_name()
 	if _is_equipment_type(item_data.item_type):
-		var slot_name = _get_equip_slot_name(item_data.equip_slot)
-		tooltip += "Slot: %s\n" % slot_name
-		tooltip += "───────────\n"
-	else:
-		# For non-equipment, show type
 		var type_name = _get_item_type_name(item_data.item_type)
-		tooltip += "%s\n" % type_name
-		tooltip += "───────────\n"
+		tooltip += "%s %s\n" % [rarity_name, type_name]
+	else:
+		tooltip += "%s\n" % rarity_name
+
+	tooltip += "───────────\n"
 
 	# Stats (for equipment)
 	if _is_equipment_type(item_data.item_type):
-		tooltip += _format_stat_line("Damage", item_data.damage_bonus)
-		tooltip += _format_stat_line("Health", item_data.health_bonus)
-		tooltip += _format_stat_line("Defense", item_data.defense_bonus)
-		tooltip += _format_stat_line("Range", item_data.range_bonus)
+		# Use rolled stats if available, otherwise use fixed stats
+		var display_damage = rolled_stats.get("damage_bonus", item_data.damage_bonus)
+		var display_health = rolled_stats.get("health_bonus", item_data.health_bonus)
+		var display_defense = rolled_stats.get("defense_bonus", item_data.defense_bonus)
+		var display_range = rolled_stats.get("range_bonus", item_data.range_bonus)
+		var display_attack_speed = rolled_stats.get("attack_speed_multiplier", item_data.attack_speed_multiplier)
+		var display_crit = rolled_stats.get("crit_chance_bonus", item_data.crit_chance_bonus)
 
-		if item_data.attack_speed_multiplier != 1.0:
-			var bonus_percent = (item_data.attack_speed_multiplier - 1.0) * 100
-			tooltip += "Attack Speed: %+.0f%%\n" % bonus_percent
+		# Show rolled range if item has random stats
+		if item_data.has_random_stats and not rolled_stats.is_empty():
+			tooltip += _format_stat_with_range("Damage", display_damage, item_data.damage_range)
+			tooltip += _format_stat_with_range("Health", display_health, item_data.health_range)
+			tooltip += _format_stat_with_range("Defense", display_defense, item_data.defense_range)
+			tooltip += _format_stat_line("Range", display_range)  # Range bonus has no random range
 
-		if item_data.crit_chance_bonus > 0:
-			tooltip += "Crit Chance: +%.1f%%\n" % (item_data.crit_chance_bonus * 100)
+			if display_attack_speed != 1.0:
+				var bonus_percent = (display_attack_speed - 1.0) * 100
+				var range_text = ""
+				if item_data.attack_speed_range.x > 0.0 or item_data.attack_speed_range.y > 0.0:
+					var min_pct = (item_data.attack_speed_range.x - 1.0) * 100
+					var max_pct = (item_data.attack_speed_range.y - 1.0) * 100
+					range_text = " (%.0f%%-%.0f%%)" % [min_pct, max_pct]
+				tooltip += "%+.0f%% Attack Speed%s\n" % [bonus_percent, range_text]
 
-		# Add comparison if not in equipment slot and item can be equipped
-		if slot_type == "inventory":
-			tooltip += _generate_comparison()
+			if display_crit > 0:
+				var crit_pct = display_crit * 100
+				var range_text = ""
+				if item_data.crit_chance_range.x > 0.0 or item_data.crit_chance_range.y > 0.0:
+					var min_pct = item_data.crit_chance_range.x * 100
+					var max_pct = item_data.crit_chance_range.y * 100
+					range_text = " (%.1f%%-%.1f%%)" % [min_pct, max_pct]
+				tooltip += "+%.1f%% Critical Strike%s\n" % [crit_pct, range_text]
+		else:
+			# Fixed stats (no random rolls)
+			tooltip += _format_stat_line("Damage", display_damage)
+			tooltip += _format_stat_line("Health", display_health)
+			tooltip += _format_stat_line("Defense", display_defense)
+			tooltip += _format_stat_line("Range", display_range)
+
+			if display_attack_speed != 1.0:
+				var bonus_percent = (display_attack_speed - 1.0) * 100
+				tooltip += "%+.0f%% Attack Speed\n" % bonus_percent
+
+			if display_crit > 0:
+				tooltip += "+%.1f%% Critical Strike\n" % (display_crit * 100)
+
+	# Item level / Requirements
+	var has_level_info = false
+	if item_data.item_level > 0 or item_data.required_level > 0:
+		tooltip += "───────────\n"
+		has_level_info = true
+		if item_data.item_level > 0:
+			tooltip += "Item Level: %d\n" % item_data.item_level
+		if item_data.required_level > 0:
+			tooltip += "Requires Level %d\n" % item_data.required_level
 
 	# Sell value
-	tooltip += "───────────\n"
-	tooltip += "Sell: %d gold\n" % item_data.sell_value
+	if has_level_info:
+		tooltip += "───────────\n"
+	else:
+		tooltip += "───────────\n"
+	tooltip += "Sell Value: %d Gold\n" % item_data.sell_value
 
 	return tooltip
 
 
 func _format_stat_line(stat_name: String, value: int) -> String:
-	"""Format a stat line, hiding if value is 0"""
+	"""Format a stat line (Diablo 2 style - value first), hiding if value is 0"""
 	if value == 0:
 		return ""
-	return "%s: +%d\n" % [stat_name, value]
+	return "+%d %s\n" % [value, stat_name]
 
 
-func _generate_comparison() -> String:
-	"""Generate comparison section with equipped item"""
-	if not item_data or not _is_equipment_type(item_data.item_type):
+func _format_stat_with_range(stat_name: String, value: int, range: Vector2i) -> String:
+	"""Format a stat line showing rolled value with possible range (Diablo 2 style - value first)"""
+	if value == 0:
 		return ""
 
-	# Get hero_id from parent view (if available)
-	if not hero_id or hero_id == "":
-		return ""  # Can't compare without knowing which hero
-
-	# Convert equip slot enum to string slot name (uses shared helper)
-	var slot_name = ItemData.equip_slot_to_name(item_data.equip_slot)
-	if slot_name == "":
-		return ""  # Invalid equipment slot
-
-	# Get equipped item from registry
-	var equipped_item_id = HeroEquipmentRegistry.get_equipped_item(hero_id, slot_name)
-	if equipped_item_id == "":
-		return "\n───────────\nNo item equipped\n"
-
-	var equipped_item = ItemDatabase.get_item(equipped_item_id)
-	if not equipped_item:
-		return ""
-
-	# Generate comparison
-	var comparison = "\n───────────\n"
-	comparison += "VS EQUIPPED:\n"
-
-	comparison += _compare_stat("Damage", item_data.damage_bonus, equipped_item.damage_bonus)
-	comparison += _compare_stat("Health", item_data.health_bonus, equipped_item.health_bonus)
-	comparison += _compare_stat("Defense", item_data.defense_bonus, equipped_item.defense_bonus)
-	comparison += _compare_stat("Range", item_data.range_bonus, equipped_item.range_bonus)
-
-	# Attack speed comparison
-	if item_data.attack_speed_multiplier != equipped_item.attack_speed_multiplier:
-		var diff = (item_data.attack_speed_multiplier - equipped_item.attack_speed_multiplier) * 100
-		var color = "green" if diff > 0 else "red" if diff < 0 else "gray"
-		comparison += "[color=%s]Attack Speed: %+.0f%%[/color]\n" % [color, diff]
-
-	# Crit chance comparison
-	if item_data.crit_chance_bonus != equipped_item.crit_chance_bonus:
-		var diff = (item_data.crit_chance_bonus - equipped_item.crit_chance_bonus) * 100
-		var color = "green" if diff > 0 else "red" if diff < 0 else "gray"
-		comparison += "[color=%s]Crit Chance: %+.1f%%[/color]\n" % [color, diff]
-
-	return comparison
-
-
-func _compare_stat(stat_name: String, new_value: int, old_value: int) -> String:
-	"""Compare stat values and return colored string"""
-	if new_value == old_value:
-		return ""
-
-	var diff = new_value - old_value
-	var color = "green" if diff > 0 else "red"
-
-	return "[color=%s]%s: %+d[/color]\n" % [color, stat_name, diff]
+	# Show range if available (min-max differs)
+	if range.x > 0 and range.y > range.x:
+		return "+%d %s (%d-%d)\n" % [value, stat_name, range.x, range.y]
+	else:
+		return "+%d %s\n" % [value, stat_name]
 
 
 func _is_equipment_type(type: ItemData.ItemType) -> bool:
@@ -628,27 +694,199 @@ func _show_emoji_in_icon(emoji_text: String):
 
 
 func _find_parent_inventory_view():
-	"""Find parent InventoryView or EquipmentView instance"""
+	"""Find parent InventoryView or EquipmentView instance
+
+	NOTE: get_class() returns ENGINE class names ("Control"), NOT script class names!
+	Instead, we identify views by their unique method signatures:
+	- InventoryView has: _refresh_inventory(), set_hero_id(new_hero_id)
+	- EquipmentView has: _refresh_equipment(), _refresh_shared_stash()
+	"""
+	print("[ItemSlot] 🔎 Searching for parent inventory view...")
 	var parent = get_parent()
+	var depth = 0
 	while parent:
-		if parent.get_class() == "InventoryView" or parent.get_class() == "EquipmentView":
+		depth += 1
+		print("[ItemSlot]   Depth %d: %s (class: %s)" % [depth, parent.name, parent.get_class()])
+
+		# Check for InventoryView by unique methods
+		if parent.has_method("_refresh_inventory"):
+			print("[ItemSlot] ✅ Found InventoryView by method signature (_refresh_inventory)")
 			return parent
-		if parent.has_method("_refresh_dual_grids") or parent.has_method("_refresh_shared_stash"):
+
+		# Check for EquipmentView by unique methods
+		if parent.has_method("_refresh_equipment") or parent.has_method("_refresh_shared_stash"):
+			print("[ItemSlot] ✅ Found EquipmentView by method signature (_refresh_equipment/_refresh_shared_stash)")
 			return parent
+
+		# Fallback: check by node name (less reliable but works for standard scene structure)
+		if "InventoryView" in parent.name or "EquipmentView" in parent.name:
+			print("[ItemSlot] ✅ Found view by node name: %s" % parent.name)
+			return parent
+
 		parent = parent.get_parent()
+	print("[ItemSlot] ❌ No parent view found")
 	return null
+
+
+func _find_both_panel_views() -> Dictionary:
+	"""Find both EquipmentView and InventoryView from DualPanelScreen for cross-panel transfers
+
+	Uses group lookup (same proven pattern as InventoryView._get_hero_id_from_equipment_view)
+	NOTE: get_class() returns ENGINE class names ("Control"), NOT script class names ("DualPanelScreen")!
+	"""
+	var result = {
+		"equipment_view": null,
+		"inventory_view": null
+	}
+
+	# Check if scene tree is available
+	if not get_tree():
+		print("[ItemSlot] ❌ No scene tree available")
+		return result
+
+	# Use group lookup - DualPanelScreen adds itself to "dual_panel_screen" group (line 35 in dual_panel_screen.gd)
+	var dual_panels = get_tree().get_nodes_in_group("dual_panel_screen")
+	if dual_panels.size() == 0:
+		print("[ItemSlot] ❌ No DualPanelScreen found in 'dual_panel_screen' group")
+		return result
+
+	var dual_panel = dual_panels[0]
+	print("[ItemSlot] ✅ Found DualPanelScreen via group: %s" % dual_panel.name)
+
+	# Get left panel (EquipmentView)
+	if dual_panel.has_method("get_left_panel"):
+		var left_panel = dual_panel.get_left_panel()
+		print("[ItemSlot]   Left panel found: %s" % (left_panel != null))
+		if left_panel and left_panel.has_method("get_current_view"):
+			var view = left_panel.get_current_view()
+			if view:
+				print("[ItemSlot]   Left panel current view: %s" % view.name)
+				result["equipment_view"] = view
+			else:
+				print("[ItemSlot]   ⚠️ Left panel has no current view")
+		else:
+			print("[ItemSlot]   ⚠️ Left panel has no get_current_view() method")
+	else:
+		print("[ItemSlot] ❌ DualPanelScreen has no get_left_panel() method")
+
+	# Get right panel (InventoryView)
+	if dual_panel.has_method("get_right_panel"):
+		var right_panel = dual_panel.get_right_panel()
+		print("[ItemSlot]   Right panel found: %s" % (right_panel != null))
+		if right_panel and right_panel.has_method("get_current_view"):
+			var view = right_panel.get_current_view()
+			if view:
+				print("[ItemSlot]   Right panel current view: %s" % view.name)
+				result["inventory_view"] = view
+			else:
+				print("[ItemSlot]   ⚠️ Right panel has no current view")
+		else:
+			print("[ItemSlot]   ⚠️ Right panel has no get_current_view() method")
+	else:
+		print("[ItemSlot] ❌ DualPanelScreen has no get_right_panel() method")
+
+	print("[ItemSlot] Final result - equipment_view: %s, inventory_view: %s" % [
+		result["equipment_view"] != null,
+		result["inventory_view"] != null
+	])
+
+	return result
 
 
 func _handle_dual_grid_drop(data: Dictionary, source_slot: ItemSlot, inventory_view):
 	"""Handle drag-drop in common chest mode (shared stash or dual grids)"""
+	print("[ItemSlot] 🔄 _handle_dual_grid_drop called")
+	print("[ItemSlot]   Item: %s, Source: (%d,%d), Target: (%d,%d)" % [data.item_id, source_slot.grid_x, source_slot.grid_y, grid_x, grid_y])
+
+	# FIRST: Check for cross-panel transfers (EquipmentView <-> InventoryView)
+	print("[ItemSlot] 🔍 Checking for cross-panel transfer scenario...")
+	var both_views = _find_both_panel_views()
+	var equipment_view = both_views["equipment_view"]
+	var inventory_view_right = both_views["inventory_view"]
+
+	if equipment_view and inventory_view_right:
+		print("[ItemSlot]   Found both views - equipment_view: %s, inventory_view: %s" % [equipment_view != null, inventory_view_right != null])
+
+		# Check if source is in EquipmentView's shared stash
+		var source_in_equipment_stash = false
+		if "stash_item_slots" in equipment_view and equipment_view.stash_item_slots.size() > 0:
+			source_in_equipment_stash = source_slot in equipment_view.stash_item_slots
+
+		# Check if target is in InventoryView's hero inventory
+		var target_in_inventory = false
+		if "item_slots" in inventory_view_right and inventory_view_right.item_slots.size() > 0:
+			target_in_inventory = self in inventory_view_right.item_slots
+
+		print("[ItemSlot]   source_in_equipment_stash: %s, target_in_inventory: %s" % [source_in_equipment_stash, target_in_inventory])
+
+		# CROSS-PANEL TRANSFER: Shared Stash (LEFT) → Hero Inventory (RIGHT)
+		if source_in_equipment_stash and target_in_inventory:
+			print("[ItemSlot] 🔄 CROSS-PANEL TRANSFER DETECTED: Shared Stash → Hero Inventory")
+			var target_hero_id = inventory_view_right.hero_id
+			print("[ItemSlot]   Target hero_id: %s" % target_hero_id)
+
+			if target_hero_id != "":
+				var success = HeroInventoryManager.transfer_from_shared_stash(target_hero_id, data.item_id, data.quantity)
+				if success:
+					print("[ItemSlot] ✅ Transfer to hero inventory succeeded")
+					# Set grid position in hero inventory
+					HeroInventoryManager.set_grid_position(target_hero_id, data.item_id, grid_x, grid_y)
+					print("[ItemSlot] ✅ Grid position set to (%d,%d)" % [grid_x, grid_y])
+				else:
+					print("[ItemSlot] ❌ Transfer to hero inventory failed")
+			else:
+				print("[ItemSlot] ❌ Target hero_id is empty")
+			return
+
+		# Check reverse: Hero Inventory (RIGHT) → Shared Stash (LEFT)
+		var source_in_inventory = false
+		if "item_slots" in inventory_view_right and inventory_view_right.item_slots.size() > 0:
+			source_in_inventory = source_slot in inventory_view_right.item_slots
+
+		var target_in_equipment_stash = false
+		if "stash_item_slots" in equipment_view and equipment_view.stash_item_slots.size() > 0:
+			target_in_equipment_stash = self in equipment_view.stash_item_slots
+
+		if source_in_inventory and target_in_equipment_stash:
+			print("[ItemSlot] 🔄 CROSS-PANEL TRANSFER DETECTED: Hero Inventory → Shared Stash")
+			var source_hero_id = inventory_view_right.hero_id
+			print("[ItemSlot]   Source hero_id: %s" % source_hero_id)
+
+			if source_hero_id != "":
+				var success = HeroInventoryManager.transfer_to_shared_stash(source_hero_id, data.item_id, data.quantity)
+				if success:
+					print("[ItemSlot] ✅ Transfer to shared stash succeeded")
+					# Set grid position in shared stash
+					InventoryManager.move_item(data.item_id, grid_x, grid_y)
+					print("[ItemSlot] ✅ Grid position set to (%d,%d)" % [grid_x, grid_y])
+				else:
+					print("[ItemSlot] ❌ Transfer to shared stash failed")
+			else:
+				print("[ItemSlot] ❌ Source hero_id is empty")
+			return
+
 	# Check if EquipmentView with shared stash grid (new single-grid mode)
-	if inventory_view.has_method("_refresh_shared_stash") and "stash_item_slots" in inventory_view:
+	var has_refresh_method = inventory_view.has_method("_refresh_shared_stash")
+	var has_stash_slots = "stash_item_slots" in inventory_view
+	print("[ItemSlot]   has_refresh_method: %s, has_stash_slots: %s" % [has_refresh_method, has_stash_slots])
+
+	if has_refresh_method and has_stash_slots:
+		print("[ItemSlot] → EquipmentView with shared stash detected")
+		var stash_slots_count = inventory_view.stash_item_slots.size()
+		print("[ItemSlot]   Stash has %d slots" % stash_slots_count)
+
 		var source_is_stash = source_slot in inventory_view.stash_item_slots
 		var target_is_stash = self in inventory_view.stash_item_slots
 
+		print("[ItemSlot]   source_is_stash: %s, target_is_stash: %s" % [source_is_stash, target_is_stash])
+
 		# Both in shared stash - just rearrange
 		if source_is_stash and target_is_stash:
-			InventoryManager.move_item(data.item_id, grid_x, grid_y)
+			print("[ItemSlot] ✅ Both slots in shared stash - calling InventoryManager.move_item()")
+			var success = InventoryManager.move_item(data.item_id, grid_x, grid_y)
+			print("[ItemSlot] InventoryManager.move_item() result: %s" % ("SUCCESS" if success else "FAILED"))
+		else:
+			print("[ItemSlot] ⚠️ Slots not both in stash - skipping move")
 		# Otherwise, let it fall through to normal drop logic
 		return
 
