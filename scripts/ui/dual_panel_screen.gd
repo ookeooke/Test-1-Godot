@@ -115,22 +115,22 @@ func _on_viewport_resized():
 	print("[DualPanelScreen] Viewport resized to: %d" % width)
 
 	if width >= 2340:  # Wide phone (19.5:9 aspect ratio like modern flagships)
-		main_container.custom_minimum_size = Vector2(1860, 800)  # 600 + 1200 + 30 separation + margins
-		left_panel.custom_minimum_size = Vector2(600, 0)
-		right_panel.custom_minimum_size = Vector2(1200, 0)
-		print("[DualPanelScreen] Applied WIDE layout (2340+): Equipment 600px, Inventory 1200px")
+		main_container.custom_minimum_size = Vector2(1760, 900)  # 750 + 950 + 30 separation + margins
+		left_panel.custom_minimum_size = Vector2(750, 0)
+		right_panel.custom_minimum_size = Vector2(950, 0)
+		print("[DualPanelScreen] Applied WIDE layout (2340+): Equipment 750px, Inventory 950px")
 
 	elif width >= 1920:  # Standard (16:9 aspect ratio)
-		main_container.custom_minimum_size = Vector2(1760, 800)  # 600 + 1100 + 30 separation + margins
-		left_panel.custom_minimum_size = Vector2(600, 0)
-		right_panel.custom_minimum_size = Vector2(1100, 0)
-		print("[DualPanelScreen] Applied STANDARD layout (1920+): Equipment 600px, Inventory 1100px")
+		main_container.custom_minimum_size = Vector2(1660, 900)  # 750 + 850 + 30 separation + margins
+		left_panel.custom_minimum_size = Vector2(750, 0)
+		right_panel.custom_minimum_size = Vector2(850, 0)
+		print("[DualPanelScreen] Applied STANDARD layout (1920+): Equipment 750px, Inventory 850px")
 
 	else:  # Tablet or smaller screens
-		main_container.custom_minimum_size = Vector2(1460, 800)  # 500 + 900 + 30 separation + margins
-		left_panel.custom_minimum_size = Vector2(500, 0)
-		right_panel.custom_minimum_size = Vector2(900, 0)
-		print("[DualPanelScreen] Applied COMPACT layout (<1920): Equipment 500px, Inventory 900px")
+		main_container.custom_minimum_size = Vector2(1360, 900)  # 625 + 675 + 30 separation + margins
+		left_panel.custom_minimum_size = Vector2(625, 0)
+		right_panel.custom_minimum_size = Vector2(675, 0)
+		print("[DualPanelScreen] Applied COMPACT layout (<1920): Equipment 625px, Inventory 675px")
 
 	# Force layout recalculation
 	main_container.queue_sort()

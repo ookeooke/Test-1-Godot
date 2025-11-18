@@ -119,13 +119,10 @@ func create_new_profile(profile_name: String) -> bool:
 
 			# Add starter items for new players
 			InventoryManager.add_item("basic_bow", 1)
-			print("[SaveManager] ✅ Added starter item: basic_bow")
-
-			# Add helmet items for testing
+			InventoryManager.add_item("leather_vest", 1)
 			InventoryManager.add_item("leather_cap", 1)
-			InventoryManager.add_item("iron_helmet", 1)
-			InventoryManager.add_item("royal_crown", 1)
-			print("[SaveManager] ✅ Added starter helmets for testing")
+			InventoryManager.add_item("power_ring", 1)
+			print("[SaveManager] ✅ Added starter items: basic_bow, leather_vest, leather_cap, power_ring")
 
 		# Load empty equipment registry
 		if HeroEquipmentRegistry and new_profile.has("equipment_registry"):
@@ -902,3 +899,45 @@ func is_tower_unlocked(tower_id: String) -> bool:
 		return false
 
 	return current_profile["unlocked_towers"].has(tower_id)
+
+# ============================================
+# GAME SETTINGS (UI Scale, Graphics, etc.)
+# ============================================
+
+func get_setting(key: String, default_value = null):
+	"""Get a game setting value
+
+	Args:
+		key: Setting name (e.g., "ui_scale_multiplier")
+		default_value: Value to return if setting doesn't exist
+
+	Returns:
+		Setting value or default_value
+	"""
+	if not has_current_profile():
+		return default_value
+
+	if not current_profile.has("settings"):
+		return default_value
+
+	if current_profile["settings"].has(key):
+		return current_profile["settings"][key]
+
+	return default_value
+
+func save_setting(key: String, value) -> void:
+	"""Save a game setting value
+
+	Args:
+		key: Setting name (e.g., "ui_scale_multiplier")
+		value: Setting value
+	"""
+	if not has_current_profile():
+		push_error("SaveManager: Cannot save setting - no profile loaded")
+		return
+
+	if not current_profile.has("settings"):
+		current_profile["settings"] = {}
+
+	current_profile["settings"][key] = value
+	mark_dirty()  # Queue auto-save

@@ -29,6 +29,10 @@ var baseline_zoom = 1.0
 enum Platform { MOBILE, PC, CONSOLE }
 var current_platform: Platform
 
+# DPI SCALING (for mobile touch thresholds)
+var screen_dpi: float = 160.0  # Device screen DPI (160 = Android mdpi baseline)
+var dpi_scale: float = 1.0     # Multiplier for touch thresholds (dpi / 160.0)
+
 # ============================================
 # DEBUG SETTINGS
 # ============================================
@@ -146,18 +150,18 @@ var tap_start_time: float = 0.0
 const PINCH_TAP_COOLDOWN: float = 0.15  # 150ms after pinch ends
 var pinch_cooldown_timer: float = 0.0
 
-# Pinch detection thresholds
-const MIN_PINCH_DISTANCE: float = 30.0  # Fingers must be 30px apart
-const MIN_PINCH_CHANGE: float = 15.0  # Must change by 15px to register zoom
-const PINCH_DEAD_ZONE: float = 5.0  # Ignore changes < 5px (jitter filter)
+# Pinch detection thresholds (DPI-scaled on mobile)
+var min_pinch_distance: float = 30.0  # Fingers must be 30px apart (base value for 160 DPI)
+var min_pinch_change: float = 15.0  # Must change by 15px to register zoom (base value)
+var pinch_dead_zone: float = 5.0  # Ignore changes < 5px - jitter filter (base value)
 
 # Double-tap zoom detection
-const DOUBLE_TAP_WINDOW: float = 0.3  # 300ms between taps
-const DOUBLE_TAP_DISTANCE: float = 50.0  # Max 50px between tap positions
+const DOUBLE_TAP_WINDOW: float = 0.3  # 300ms between taps (timing, not DPI-dependent)
+var double_tap_distance: float = 50.0  # Max 50px between tap positions (DPI-scaled on mobile)
 var last_tap_time: float = 0.0
 var last_tap_position: Vector2 = Vector2.ZERO
 var zoom_preset_index: int = 0  # Current zoom preset (0=far, 1=normal, 2=close)
-const ZOOM_PRESETS: Array[float] = [1.0, 1.2, 1.4]  # 3 zoom levels for cycling
+var zoom_presets: Array[float] = []  # HIGH-PRIORITY FIX: Dynamic presets based on platform zoom range
 
 # Inertia state
 var velocity = Vector2.ZERO
@@ -209,8 +213,9 @@ func _ready():
 		await get_tree().process_frame
 
 	# Runtime-only initialization
+	detect_platform()  # Detect first so baseline_zoom can use platform-aware clamping
 	calculate_baseline_zoom()
-	detect_platform()
+	calculate_dpi_scale()  # Calculate DPI scale after platform detection
 	apply_platform_defaults()
 	load_user_preferences()
 
@@ -220,12 +225,25 @@ func _ready():
 	base_position = position
 	target_position = position  # Initialize target to current position
 
+	# HIGH-PRIORITY FIX: Calculate dynamic zoom presets based on platform zoom range
+	# This ensures presets work correctly on all platforms (mobile: 1.0-1.4, PC: 1.0-1.5)
+	zoom_presets = [
+		baseline_zoom,           # Preset 0: Far (minimum zoom)
+		baseline_zoom * 1.2,     # Preset 1: Medium
+		max_zoom                 # Preset 2: Close (maximum zoom)
+	]
+
 	# Validate that bounds have been set by LevelController
 	if level_rect.size == Vector2.ZERO:
-		push_warning("[Camera] ⚠️ WARNING: Level bounds not set! Camera requires LevelController to call set_level_bounds()")
+		push_error("[Camera] ⚠️ CRITICAL: Level bounds not set! Camera requires LevelController to call set_level_bounds()")
 		push_warning("[Camera] → Add a LevelController script to your level scene")
 		push_warning("[Camera] → Assign a LevelConfig resource to the LevelController")
-		push_warning("[Camera] → Camera will continue with zero bounds (may not work correctly)")
+
+		# CRITICAL FIX: Use fallback bounds to prevent camera lockup
+		var viewport_size = get_viewport_rect().size
+		level_rect = Rect2(-viewport_size, viewport_size * 3)  # Large area centered at origin
+		push_warning("[Camera] → Using FALLBACK BOUNDS: %s" % str(level_rect))
+		push_warning("[Camera] → Camera will work, but bounds may not match level design!")
 
 	# Auto-calculate camera bounds from level_rect
 	update_camera_limits()
@@ -251,10 +269,41 @@ func calculate_baseline_zoom() -> void:
 	# This keeps vertical framing consistent (same amount of world space visible vertically)
 	baseline_zoom = viewport_size.y / DESIGN_HEIGHT
 
-	# Clamp to reasonable values to prevent extreme zoom on unusual displays
-	baseline_zoom = clamp(baseline_zoom, 0.5, 2.0)
+	# Platform-aware clamping (mobile gets higher max to support tall smartphones)
+	match current_platform:
+		Platform.MOBILE:
+			# Allow higher zoom for modern smartphones (2200-2800px tall screens)
+			baseline_zoom = clamp(baseline_zoom, 0.8, 3.0)
+		_:
+			# Conservative clamping for PC/console
+			baseline_zoom = clamp(baseline_zoom, 0.5, 2.0)
 
 	print("[Camera] Viewport:", viewport_size, " -> Baseline zoom:", baseline_zoom)
+
+func calculate_dpi_scale() -> void:
+	"""Calculate DPI scale factor for touch threshold scaling on mobile devices"""
+	# Get device DPI from display server
+	screen_dpi = DisplayServer.screen_get_dpi()
+
+	# Fallback for platforms that don't report DPI
+	if screen_dpi <= 0:
+		push_warning("[Camera] DPI not available from DisplayServer - estimating from viewport")
+		# Rough estimate based on viewport size (assumes ~5.5 inch screen for mobile)
+		var viewport_size = get_viewport_rect().size
+		var diagonal_px = sqrt(viewport_size.x ** 2 + viewport_size.y ** 2)
+		screen_dpi = diagonal_px / 5.5
+
+	# Calculate scale relative to 160 DPI baseline (Android mdpi standard)
+	# At 160 DPI: scale = 1.0 (no adjustment)
+	# At 320 DPI: scale = 2.0 (double all thresholds)
+	# At 460 DPI (iPhone 15 Pro): scale = 2.875 (2.875x thresholds)
+	dpi_scale = screen_dpi / 160.0
+	dpi_scale = clamp(dpi_scale, 0.5, 4.0)  # Prevent extreme values
+
+	if debug_input:
+		print("[Camera DPI] Screen DPI: %.0f | Scale: %.2f" % [screen_dpi, dpi_scale])
+		var mm_per_px = 25.4 / screen_dpi
+		print("[Camera DPI] 1 pixel = %.2fmm physically" % mm_per_px)
 
 func detect_platform() -> void:
 	"""Auto-detect platform for appropriate defaults"""
@@ -288,6 +337,21 @@ func apply_platform_defaults() -> void:
 			drag_threshold = mobile_drag_threshold
 			inertia_friction = mobile_inertia_friction
 			edge_scroll_enabled = false
+
+			# DPI SCALING: Apply DPI-aware threshold scaling for mobile devices
+			# Base values are optimized for 160 DPI (Android mdpi baseline)
+			# Scale up for high-DPI phones (460 DPI = 2.875x), down for low-DPI tablets
+			drag_threshold *= dpi_scale
+			min_pinch_distance *= dpi_scale
+			min_pinch_change *= dpi_scale
+			pinch_dead_zone *= dpi_scale
+			double_tap_distance *= dpi_scale
+
+			if debug_input:
+				print("[Camera DPI Scaling] Applied to mobile thresholds:")
+				print("  Drag threshold: %.0fpx (%.1fmm physical)" % [drag_threshold, drag_threshold * 25.4 / screen_dpi])
+				print("  Pinch distance: %.0fpx (%.1fmm physical)" % [min_pinch_distance, min_pinch_distance * 25.4 / screen_dpi])
+				print("  Double-tap dist: %.0fpx (%.1fmm physical)" % [double_tap_distance, double_tap_distance * 25.4 / screen_dpi])
 
 		Platform.PC:
 			# PC: Moderate zoom-in capability (50% closer for detail viewing)
@@ -368,8 +432,12 @@ func lock_input() -> void:
 	input_locked = true
 	# Cancel any ongoing movement
 	is_dragging = false
+	drag_button_pressed = false  # CRITICAL FIX: Reset button state to prevent dangling drag
 	is_inertia_moving = false
 	velocity = Vector2.ZERO
+	# Clear mobile touch state
+	touch_points.clear()
+	is_pinch_zooming = false
 	print("[Camera] Input LOCKED (menu open)")
 
 func unlock_input() -> void:
@@ -451,16 +519,19 @@ func handle_pc_input(event) -> void:
 				zoom_at_point(event.position, zoom_delta)
 				get_viewport().set_input_as_handled()
 
-		# REMOVED: Right/Middle mouse drag (web compatibility issue)
-		# Browser intercepts right-click for context menu
-		# Desktop users can use WASD/arrow keys or edge scrolling instead
-		# Mobile/touch users use single-finger drag
-		# elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
-		# 	if event.pressed:
-		# 		start_drag(event.position)
-		# 	else:
-		# 		end_drag()
-		# 	get_viewport().set_input_as_handled()
+		# Middle mouse button drag (industry standard for RTS/strategy games)
+		# Works on all platforms including web (no context menu conflict)
+		# Right-click drag remains disabled (web context menu issue)
+		elif event.button_index == MOUSE_BUTTON_MIDDLE:
+			if event.pressed:
+				if debug_input:
+					print("[Camera DEBUG] MMB pressed - starting drag")
+				start_drag(event.position)
+			else:
+				if debug_input:
+					print("[Camera DEBUG] MMB released - ending drag")
+				end_drag()
+			get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseMotion:
 		# Only debug mouse motion if debug_drag_only is FALSE (reduces spam)
@@ -472,6 +543,22 @@ func handle_pc_input(event) -> void:
 
 func handle_mobile_input(event) -> void:
 	"""Mobile-specific input (touch)"""
+	# HIGH-PRIORITY FIX: Block camera input when touching interactive GUI elements
+	# Same logic as PC input, but for touch events
+	var gui_element = get_viewport().gui_get_hovered_control()
+	if gui_element:
+		# Check if it's an interactive element that should block camera input
+		# For mobile, we're more permissive - only block for truly interactive elements
+		# Labels and containers should not block camera (user may want to pan on HUD)
+		var is_interactive = gui_element is Button or gui_element is TextureButton or \
+							gui_element is LineEdit or gui_element is TextEdit or \
+							gui_element is SpinBox or gui_element is Slider
+
+		if is_interactive:
+			if debug_input:
+				print("[Camera DEBUG] Mobile touch on interactive GUI - ignoring camera")
+			return  # Let GUI handle the touch
+
 	if event is InputEventScreenTouch:
 		handle_touch(event)
 	elif event is InputEventScreenDrag:
@@ -498,7 +585,7 @@ func handle_touch(event: InputEventScreenTouch):
 			var distance = points[0].distance_to(points[1])
 
 			# Only start pinch if fingers are far enough apart
-			if distance >= MIN_PINCH_DISTANCE:
+			if distance >= min_pinch_distance:
 				is_dragging = false
 				is_pinch_zooming = true
 				last_pinch_distance = distance
@@ -579,11 +666,10 @@ func update_drag(screen_pos: Vector2):
 	# Check if we've moved enough to start drag
 	if not is_dragging:
 		var distance = drag_start_pos.distance_to(screen_pos)
-		var time_since_start = (Time.get_ticks_msec() / 1000.0) - tap_start_time
 
-		# Check if drag threshold exceeded AND minimum time passed
-		const MIN_DRAG_DURATION = 0.05  # 50ms minimum
-		if distance > drag_threshold and time_since_start > MIN_DRAG_DURATION:
+		# CRITICAL FIX: Use distance-only threshold (frame-independent)
+		# Removed MIN_DRAG_DURATION time check - distance threshold is sufficient
+		if distance > drag_threshold:
 			is_dragging = true
 			tap_start_time = 0.0  # No longer a tap
 			if debug_input:
@@ -635,20 +721,20 @@ func handle_tap_input(tap_position: Vector2) -> bool:
 	var distance_from_last_tap = tap_position.distance_to(last_tap_position)
 
 	# Check if this is second tap in double-tap sequence
-	if time_since_last_tap < DOUBLE_TAP_WINDOW and distance_from_last_tap < DOUBLE_TAP_DISTANCE:
+	if time_since_last_tap < DOUBLE_TAP_WINDOW and distance_from_last_tap < double_tap_distance:
 		# Double-tap detected! Cycle zoom
-		zoom_preset_index = (zoom_preset_index + 1) % ZOOM_PRESETS.size()
-		var target_zoom_level = baseline_zoom * ZOOM_PRESETS[zoom_preset_index]
+		zoom_preset_index = (zoom_preset_index + 1) % zoom_presets.size()
+		var target_zoom_level = zoom_presets[zoom_preset_index]
 
-		# Smooth zoom to preset level
+		# HIGH-PRIORITY FIX: Zoom fully to preset (removed * 0.5 for immediate response)
 		var zoom_delta = target_zoom_level - zoom.x
-		zoom_at_point(tap_position, zoom_delta * 0.5)  # Gradual transition
+		zoom_at_point(tap_position, zoom_delta)  # Full zoom to preset
 
 		# Reset double-tap detection
 		last_tap_time = 0.0
 		last_tap_position = Vector2.ZERO
 
-		print("[Camera] Double-tap zoom: %s (%.1fx)" % [["Far", "Normal", "Close"][zoom_preset_index], ZOOM_PRESETS[zoom_preset_index]])
+		print("[Camera] Double-tap zoom: %s (%.1fx)" % [["Far", "Medium", "Close"][zoom_preset_index], zoom_presets[zoom_preset_index]])
 		return true  # Consumed input
 	else:
 		# First tap - record for double-tap detection
@@ -666,18 +752,18 @@ func update_pinch_zoom():
 	var current_distance = points[0].distance_to(points[1])
 
 	# Safety check - fingers must be far enough apart
-	if current_distance < MIN_PINCH_DISTANCE or last_pinch_distance < MIN_PINCH_DISTANCE:
+	if current_distance < min_pinch_distance or last_pinch_distance < min_pinch_distance:
 		return
 
 	# Calculate distance change
 	var distance_change = abs(current_distance - last_pinch_distance)
 
 	# Jitter filtering - ignore tiny movements
-	if distance_change < PINCH_DEAD_ZONE:
+	if distance_change < pinch_dead_zone:
 		return
 
 	# Must change by minimum amount to register as intentional zoom
-	if distance_change < MIN_PINCH_CHANGE:
+	if distance_change < min_pinch_change:
 		last_pinch_distance = current_distance  # Update but don't zoom
 		return
 
@@ -701,6 +787,29 @@ func update_pinch_zoom():
 
 	# Update last distance for next frame
 	last_pinch_distance = current_distance
+
+func _validate_touch_points() -> void:
+	"""
+	Cleanup stale touch points that no longer have active touches.
+	CRITICAL FIX: Prevents touch state leak when rapid multi-touch occurs.
+	"""
+	# Get currently active touches from Godot
+	var active_touch_indices: Array[int] = []
+	for i in range(10):  # Godot supports up to 10 touch points
+		if Input.is_action_pressed("touch_" + str(i)):
+			active_touch_indices.append(i)
+
+	# Remove any touch_points not in active list
+	var stale_indices: Array[int] = []
+	for index in touch_points.keys():
+		if not index in active_touch_indices:
+			stale_indices.append(index)
+
+	# Clean up stale entries
+	for index in stale_indices:
+		touch_points.erase(index)
+		if debug_input:
+			print("[Camera TOUCH] Cleaned up stale touch point: ", index)
 
 # ============================================
 # ZOOM FUNCTIONS
@@ -742,8 +851,14 @@ func zoom_at_point(screen_point: Vector2, zoom_delta: float):
 	var world_pos_before = base_position + cursor_offset
 
 	# Calculate new zoom
+	var old_zoom = target_zoom.x
 	var new_zoom_value = target_zoom.x + zoom_delta
 	new_zoom_value = clamp(new_zoom_value, min_zoom, max_zoom)
+
+	# CRITICAL FIX: Skip position adjustment if zoom didn't change (at limits)
+	if abs(new_zoom_value - old_zoom) < 0.001:
+		return  # Zoom at limit, don't micro-shift camera position
+
 	target_zoom = Vector2(new_zoom_value, new_zoom_value)
 
 	# Adjust position to keep world position under cursor
@@ -845,6 +960,10 @@ func _physics_process(delta):
 	# Update pinch cooldown timer
 	if pinch_cooldown_timer > 0:
 		pinch_cooldown_timer -= delta
+
+	# CRITICAL FIX: Validate touch points on mobile to prevent state leaks
+	if current_platform == Platform.MOBILE and not touch_points.is_empty():
+		_validate_touch_points()
 
 	# Handle snap animation
 	if is_snapping:

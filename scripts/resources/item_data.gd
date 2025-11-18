@@ -217,3 +217,24 @@ func get_stat_modifiers(upgrade_level: int = 0) -> Array[StatModifier]:
 		modifiers.append(StatModifier.create_additive(crit_percent, source_id, desc))
 
 	return modifiers
+
+
+## ============================================
+## STATIC HELPER FUNCTIONS
+## ============================================
+
+## Convert EquipSlot enum to equipment slot name string
+## This is a shared helper to avoid duplicate logic across UI components
+static func equip_slot_to_name(slot: EquipSlot) -> String:
+	match slot:
+		EquipSlot.WEAPON:
+			return "hand_left"  # Weapons go to left hand by default
+		EquipSlot.HELMET:
+			return "helmet"
+		EquipSlot.ARMOR:
+			return "armor"
+		EquipSlot.ACCESSORY:
+			return "accessory_1"  # Default to first accessory slot
+		EquipSlot.NONE:
+			return ""
+	return ""

@@ -11,7 +11,7 @@ func _ready():
 	generate_all_icons()
 
 	# Wait for ItemDatabase to load, then assign icons
-	if ItemDatabase.items_loaded.is_connected(_assign_icons_to_items):
+	if not ItemDatabase.items_loaded.is_connected(_assign_icons_to_items):
 		ItemDatabase.items_loaded.connect(_assign_icons_to_items)
 	else:
 		# If ItemDatabase already loaded, assign now
@@ -23,15 +23,9 @@ func generate_all_icons():
 
 	var items_colors = {
 		"basic_bow": Color(0.78, 0.20, 0.20),          # Red
-		"fire_bow": Color(0.90, 0.31, 0.12),           # Orange-red
-		"elven_longbow": Color(0.59, 0.78, 0.31),      # Green
 		"leather_vest": Color(0.59, 0.39, 0.20),       # Brown
+		"leather_cap": Color(0.65, 0.45, 0.25),        # Light brown
 		"power_ring": Color(0.59, 0.31, 0.78),         # Purple
-		"health_potion": Color(0.78, 0.20, 0.31),      # Red
-		"damage_buff_potion": Color(0.90, 0.59, 0.20), # Orange
-		"dragon_scale": Color(0.90, 0.51, 0.12),       # Orange
-		"iron_ore": Color(0.51, 0.51, 0.51),           # Gray
-		"magic_essence": Color(0.39, 0.71, 0.90)       # Cyan
 	}
 
 	for item_id in items_colors:

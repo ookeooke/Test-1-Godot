@@ -14,3 +14,7 @@ export_presets.cfg
 data_*/
 mono_crash.*.json
 test2/
+
+# Windows shell artifacts
+nul
+NUL

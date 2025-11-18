@@ -10,6 +10,9 @@ signal item_removed(item_id: String, quantity: int)
 signal inventory_full(item_id: String)
 signal slot_limit_reached(category: String)
 
+## CONSTANTS
+const MAX_UNIQUE_ITEMS: int = 100  # Maximum number of unique items allowed (prevents memory/save issues)
+
 ## Storage: {item_id: {quantity: int, upgrade_level: int}}
 var global_inventory: Dictionary = {}
 
@@ -35,14 +38,14 @@ func _on_item_database_loaded():
 func add_item(item_id: String, quantity: int = 1) -> bool:
 	var item_data = ItemDatabase.get_item(item_id)
 	if item_data == null:
-		print("[InventoryManager] Error: Invalid item_id: ", item_id)
+		push_error("[InventoryManager] Invalid item_id: %s" % item_id)
 		return false
 
-	# Safety check: Prevent dictionary overflow (max 100 unique items)
+	# Safety check: Prevent dictionary overflow
 	# This prevents memory issues and save file corruption from unbounded growth
-	if not global_inventory.has(item_id) and global_inventory.size() >= 100:
+	if not global_inventory.has(item_id) and global_inventory.size() >= MAX_UNIQUE_ITEMS:
 		inventory_full.emit(item_id)
-		print("[InventoryManager] ⚠️ Inventory dictionary limit reached (100 unique items)")
+		print("[InventoryManager] ⚠️ Inventory dictionary limit reached (%d unique items)" % MAX_UNIQUE_ITEMS)
 		return false
 
 	# Check if we have space (grid availability for non-stackables)
@@ -83,11 +86,11 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 ## Remove an item from the inventory
 func remove_item(item_id: String, quantity: int = 1) -> bool:
 	if !global_inventory.has(item_id):
-		print("[InventoryManager] Error: Item not in inventory: ", item_id)
+		push_error("[InventoryManager] Item not in inventory: %s" % item_id)
 		return false
 
 	if global_inventory[item_id].quantity < quantity:
-		print("[InventoryManager] Error: Not enough of item %s (have %d, need %d)" % [item_id, global_inventory[item_id].quantity, quantity])
+		push_error("[InventoryManager] Not enough of item %s (have %d, need %d)" % [item_id, global_inventory[item_id].quantity, quantity])
 		return false
 
 	global_inventory[item_id].quantity -= quantity
@@ -122,7 +125,7 @@ func upgrade_item(item_id: String) -> bool:
 		return false
 
 	if !global_inventory.has(item_id):
-		print("[InventoryManager] Error: Item not in inventory: ", item_id)
+		push_error("[InventoryManager] Item not in inventory: %s" % item_id)
 		return false
 
 	var current_level = global_inventory[item_id].upgrade_level
@@ -267,13 +270,13 @@ func get_unique_item_count() -> int:
 func equip_item_atomic(hero_id: String, slot: String, item_id: String) -> bool:
 	"""Atomically equip item with inventory/equipment coordination (supports two-handed weapons)"""
 	if not global_inventory.has(item_id):
-		print("[InventoryManager] Cannot equip - item not in inventory: ", item_id)
+		push_error("[InventoryManager] Cannot equip - item not in inventory: %s" % item_id)
 		return false
 
 	# Get item data to check if it's two-handed
 	var item_data = ItemDatabase.get_item(item_id)
 	if not item_data:
-		print("[InventoryManager] Cannot equip - invalid item: ", item_id)
+		push_error("[InventoryManager] Cannot equip - invalid item: %s" % item_id)
 		return false
 
 	# PREVENT EQUIPPING TWO-HANDED WEAPONS TO RIGHT HAND

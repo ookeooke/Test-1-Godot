@@ -7,9 +7,19 @@ class_name EquipmentView
 
 signal equipment_slot_clicked(slot_name: String)
 signal switch_hero_requested
+signal hero_changed(new_hero_id: String)
 
 @export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
 @export var hero_id: String = "ranger"
+
+# Common chest mode (toggle between equipment and shared stash display)
+var common_chest_mode: bool = false
+
+# Static variable to persist toggle state across panel open/close (session-only)
+static var _saved_chest_mode_preference: bool = false
+
+# Shared stash grid references (for common chest mode)
+var stash_item_slots: Array[ItemSlot] = []
 
 # Tile-based sizing constants (matching inventory grid system)
 const TILE_SIZE: int = 80  # Base size of one tile in pixels
@@ -38,9 +48,22 @@ var accessory2_slot: ItemSlot
 @onready var accessory2_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container") else null
 
 @onready var stats_label: Label = $MarginContainer/VBoxContainer/StatsFooter if has_node("MarginContainer/VBoxContainer/StatsFooter") else null
-@onready var hero_name_label: Label = $MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroNameLabel") else null
-@onready var hero_portrait: ColorRect = $MarginContainer/VBoxContainer/HeaderContainer/HeroPortrait if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroPortrait") else null
-@onready var switch_hero_button: Button = $MarginContainer/VBoxContainer/HeaderContainer/SwitchHeroButton if has_node("MarginContainer/VBoxContainer/HeaderContainer/SwitchHeroButton") else null
+
+# Hero buttons
+@onready var hero_buttons_container: HBoxContainer = $MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer") else null
+@onready var archer_button: Button = $MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer/ArcherButton if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer/ArcherButton") else null
+@onready var warrior_button: Button = $MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer/WarriorButton if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer/WarriorButton") else null
+@onready var wizard_button: Button = $MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer/WizardButton if has_node("MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer/WizardButton") else null
+
+# Common chest toggle
+@onready var common_chest_toggle: CheckButton = $MarginContainer/VBoxContainer/HeaderContainer/CommonChestToggle if has_node("MarginContainer/VBoxContainer/HeaderContainer/CommonChestToggle") else null
+
+# Equipment paperdoll
+@onready var equipment_paperdoll: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll") else null
+
+# Shared stash container (for common chest mode)
+@onready var shared_stash_container: Control = $MarginContainer/VBoxContainer/SharedStashContainer if has_node("MarginContainer/VBoxContainer/SharedStashContainer") else null
+@onready var shared_stash_grid: Control = $MarginContainer/VBoxContainer/SharedStashContainer/SharedStashGrid if has_node("MarginContainer/VBoxContainer/SharedStashContainer/SharedStashGrid") else null
 
 
 func _ready():
@@ -58,9 +81,28 @@ func _ready():
 	# Create or find equipment manager
 	_setup_equipment_manager()
 
-	# Connect switch hero button
-	if switch_hero_button:
-		switch_hero_button.pressed.connect(_on_switch_hero_button_pressed)
+	# Connect hero selection buttons
+	if archer_button:
+		archer_button.pressed.connect(_on_hero_button_pressed.bind("ranger"))
+	if warrior_button:
+		warrior_button.pressed.connect(_on_hero_button_pressed.bind("warrior"))
+	if wizard_button:
+		wizard_button.pressed.connect(_on_hero_button_pressed.bind("mage"))
+
+	# Connect common chest toggle
+	if common_chest_toggle:
+		common_chest_toggle.toggled.connect(_on_common_chest_toggled)
+
+	# Create shared stash grid slots for common chest mode
+	_create_stash_grid_slots()
+
+	# Hide shared stash container initially
+	if shared_stash_container:
+		shared_stash_container.visible = false
+
+	# Restore saved chest mode preference (if any)
+	if common_chest_toggle and _saved_chest_mode_preference:
+		common_chest_toggle.button_pressed = true
 
 	# Setup responsive slot sizing
 	get_viewport().size_changed.connect(_on_viewport_resized)
@@ -234,29 +276,8 @@ func _refresh_equipment():
 	else:
 		accessory2_slot.clear_slot()
 
-	# Update hero info
-	_update_hero_info()
-
 	# Update stats display
 	_update_stats_display()
-
-
-func _update_hero_info():
-	"""Update hero name and portrait"""
-	if hero_name_label:
-		hero_name_label.text = hero_id.capitalize()
-
-	if hero_portrait:
-		# Set color based on hero type
-		match hero_id:
-			"ranger":
-				hero_portrait.color = Color(0.4, 0.6, 0.8)
-			"warrior":
-				hero_portrait.color = Color(0.8, 0.4, 0.4)
-			"mage":
-				hero_portrait.color = Color(0.6, 0.4, 0.8)
-			_:
-				hero_portrait.color = Color(0.5, 0.5, 0.5)
 
 
 func _update_stats_display():
@@ -407,11 +428,6 @@ func _on_equipment_slot_right_clicked(item_id: String, slot: ItemSlot, slot_name
 		pass  # Failure (starter equipment or inventory full)
 
 
-func _on_switch_hero_button_pressed():
-	"""Called when Switch Hero button is pressed"""
-	switch_hero_requested.emit()
-
-
 ## ============================================
 ## RESPONSIVE SLOT SIZING (New Smart Layout)
 ## ============================================
@@ -463,6 +479,203 @@ func _get_parent_panel() -> Control:
 			return node
 		node = node.get_parent()
 	return null
+
+
+func _input(event: InputEvent):
+	"""Handle keyboard shortcuts: C (common chest mode)"""
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_C:
+			# Toggle common chest mode (if button exists)
+			if common_chest_toggle:
+				common_chest_toggle.button_pressed = !common_chest_toggle.button_pressed
+				# Signal will fire automatically, calling _on_common_chest_toggled()
+				accept_event()
+
+
+func _create_stash_grid_slots():
+	"""Create item slots for shared stash grid in common chest mode"""
+	if not shared_stash_grid:
+		return
+
+	var grid_width = InventoryManager.GRID_WIDTH
+	var grid_height = InventoryManager.GRID_HEIGHT
+
+	# Create shared stash grid slots
+	for y in grid_height:
+		for x in grid_width:
+			var slot = item_slot_scene.instantiate() as ItemSlot
+			var i = y * grid_width + x
+			slot.slot_index = i
+			slot.slot_type = "inventory"
+			slot.grid_x = x
+			slot.grid_y = y
+
+			# Connect signals
+			slot.item_clicked.connect(_on_item_slot_clicked)
+			slot.item_right_clicked.connect(_on_item_slot_right_clicked)
+
+			shared_stash_grid.add_child(slot)
+			stash_item_slots.append(slot)
+
+	print("[EquipmentView] Created %d shared stash slots" % stash_item_slots.size())
+
+
+func _on_common_chest_toggled(button_pressed: bool):
+	"""Toggle between equipment and shared stash (common chest) mode"""
+	common_chest_mode = button_pressed
+
+	# Save preference (persists across panel open/close during session)
+	_saved_chest_mode_preference = button_pressed
+
+	if common_chest_mode:
+		# Enable common chest mode - hide equipment and hero buttons, show shared stash
+		if equipment_paperdoll:
+			equipment_paperdoll.visible = false
+		if shared_stash_container:
+			shared_stash_container.visible = true
+		if hero_buttons_container:
+			hero_buttons_container.visible = false  # Hide hero buttons (shared stash is same for all heroes)
+
+		# Refresh shared stash grid
+		_refresh_shared_stash()
+	else:
+		# Return to equipment mode - show equipment and hero buttons, hide shared stash
+		if equipment_paperdoll:
+			equipment_paperdoll.visible = true
+		if shared_stash_container:
+			shared_stash_container.visible = false
+		if hero_buttons_container:
+			hero_buttons_container.visible = true  # Show hero buttons (for switching heroes' equipment)
+
+	print("[EquipmentView] Common chest mode: %s" % ("ON" if common_chest_mode else "OFF"))
+
+
+func _refresh_shared_stash():
+	"""Refresh shared stash grid in common chest mode"""
+	# Validate managers
+	if not InventoryManager:
+		print("[EquipmentView] ❌ InventoryManager not found!")
+		return
+
+	# Clear shared stash grid
+	for slot in stash_item_slots:
+		slot.clear_slot()
+		slot.is_root_slot = true
+		slot.occupied_by_item_id = ""
+		slot.visible = true
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	# Load shared stash items
+	var stash_items = InventoryManager.get_all_items()
+	_populate_grid(stash_items, stash_item_slots, false)  # false = shared stash
+
+
+func _populate_grid(items: Array, slots: Array[ItemSlot], is_hero_inventory: bool):
+	"""Populate a specific grid with items"""
+	for item_info in items:
+		var item_id = item_info.item_id
+		var item_data = item_info.item_data
+
+		# Get item's grid position
+		var pos: Dictionary
+		if is_hero_inventory:
+			pos = HeroInventoryManager.get_grid_position(hero_id, item_id)
+		else:
+			pos = InventoryManager.get_item_position(item_id)
+
+		if pos.x == -1 or pos.y == -1:
+			continue
+
+		# Find root slot
+		var root_slot = _get_slot_at_position_in_array(pos.x, pos.y, slots)
+		if root_slot == null:
+			continue
+
+		# Set item
+		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level)
+		root_slot.is_root_slot = true
+
+		# Mark occupied cells
+		for dy in range(item_data.inventory_height):
+			for dx in range(item_data.inventory_width):
+				if dx == 0 and dy == 0:
+					continue
+
+				var occupied_slot = _get_slot_at_position_in_array(pos.x + dx, pos.y + dy, slots)
+				if occupied_slot:
+					occupied_slot.is_root_slot = false
+					occupied_slot.occupied_by_item_id = item_id
+					occupied_slot.update_display()
+
+	# Update all slot displays
+	for slot in slots:
+		slot.update_display()
+
+
+func _get_slot_at_position_in_array(x: int, y: int, slots: Array[ItemSlot]) -> ItemSlot:
+	"""Get slot at grid coordinates from specific slot array"""
+	var grid_width = InventoryManager.GRID_WIDTH
+	var index = y * grid_width + x
+
+	if index >= 0 and index < slots.size():
+		return slots[index]
+
+	return null
+
+
+func _on_item_slot_clicked(item_id: String, slot: ItemSlot):
+	"""Called when an item slot is clicked in common chest mode - handle Ctrl+Click transfers"""
+	var ctrl_held = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)
+
+	if common_chest_mode and ctrl_held:
+		_quick_transfer_item(item_id, slot)
+
+
+func _on_item_slot_right_clicked(item_id: String, slot: ItemSlot):
+	"""Called when an item slot is right-clicked in common chest mode"""
+	# TODO: Add context menu if needed
+	pass
+
+
+func _quick_transfer_item(item_id: String, slot: ItemSlot):
+	"""Ctrl+Click quick transfer in common chest mode (stash → hero inventory)"""
+	if hero_id == "":
+		return
+
+	if not HeroInventoryManager or not InventoryManager:
+		return
+
+	# Check if slot is in shared stash grid
+	if slot not in stash_item_slots:
+		return  # Slot not in stash grid
+
+	var item_data = ItemDatabase.get_item(item_id)
+	if not item_data:
+		return
+
+	# Transfer from shared stash → hero inventory
+	var success = HeroInventoryManager.transfer_from_shared_stash(hero_id, item_id, 1)
+
+	if success:
+		print("[EquipmentView] ⚡ Quick transferred '%s' to hero inventory" % item_data.item_name)
+		# Refresh will happen automatically via signals
+		_refresh_shared_stash()
+
+
+func _on_hero_button_pressed(new_hero_id: String):
+	"""Called when a hero selection button is pressed"""
+	if new_hero_id != hero_id:
+		hero_id = new_hero_id
+		_setup_equipment_manager()
+
+		# Emit signal for other panels (like InventoryView) to update
+		hero_changed.emit(new_hero_id)
+
+		# Refresh the current view
+		if common_chest_mode:
+			_refresh_shared_stash()
+		else:
+			_refresh_equipment()
 
 
 func cleanup():

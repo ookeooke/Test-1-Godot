@@ -64,6 +64,7 @@ var parent_spot = null
 
 # FLAG PLACEMENT MODE (Kingdom Rush style)
 var is_placing_rally = false  # True when player clicked "Rally" button in UI
+var camera: Camera2D = null  # Reference to camera for locking during rally placement
 
 # ============================================
 # STAT INITIALIZATION
@@ -252,6 +253,13 @@ func _create_rally_flag():
 func enter_rally_placement_mode():
 	"""Called by tower UI when player clicks 'Rally Point' button"""
 	is_placing_rally = true
+
+	# HIGH-PRIORITY FIX: Lock camera during rally placement (Kingdom Rush pattern)
+	if not camera:
+		camera = get_viewport().get_camera_2d()
+	if camera and camera.has_method("lock_input"):
+		camera.lock_input()
+
 	print("🚩 Rally placement mode activated - click anywhere to move flag")
 	# Could show visual feedback here (highlight valid areas, change cursor, etc.)
 
@@ -267,6 +275,10 @@ func place_rally_at(world_position: Vector2):
 
 	print("✓ Rally flag moved to: ", rally_position)
 	is_placing_rally = false
+
+	# HIGH-PRIORITY FIX: Unlock camera after placement
+	if camera and camera.has_method("unlock_input"):
+		camera.unlock_input()
 
 # ============================================
 # VISUAL FUNCTIONS
@@ -316,6 +328,11 @@ func _input(event):
 		elif event.is_action_pressed("ui_cancel"):
 			is_placing_rally = false
 			print("Rally placement cancelled")
+
+			# HIGH-PRIORITY FIX: Unlock camera when cancelled
+			if camera and camera.has_method("unlock_input"):
+				camera.unlock_input()
+
 			get_viewport().set_input_as_handled()
 
 # ============================================

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://btxf6atnysjcb" path="res://scripts/ui/views/equipment_view.gd" id="1_equipment"]
 [ext_resource type="Script" uid="uid://buvrv5toexi6b" path="res://scripts/ui/equipment_slot_grid.gd" id="2_slot_grid"]
+[ext_resource type="Script" uid="uid://wjxvey514yc0" path="res://scripts/ui/inventory_grid_container.gd" id="3_inventory_grid"]
 
 [node name="EquipmentView" type="Control"]
 layout_mode = 3
@@ -33,21 +34,36 @@ custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="HeroPortrait" type="ColorRect" parent="MarginContainer/VBoxContainer/HeaderContainer"]
+[node name="HeroButtonsContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/HeaderContainer"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="ArcherButton" type="Button" parent="MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer"]
 custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
-color = Color(0.5, 0.5, 0.5, 1)
+tooltip_text = "Archer (Ranger)"
+text = "🏹"
 
-[node name="HeroNameLabel" type="Label" parent="MarginContainer/VBoxContainer/HeaderContainer"]
+[node name="WarriorButton" type="Button" parent="MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer"]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+tooltip_text = "Warrior"
+text = "⚔️"
+
+[node name="WizardButton" type="Button" parent="MarginContainer/VBoxContainer/HeaderContainer/HeroButtonsContainer"]
+custom_minimum_size = Vector2(60, 60)
+layout_mode = 2
+tooltip_text = "Wizard (Mage)"
+text = "🧙"
+
+[node name="Spacer" type="Control" parent="MarginContainer/VBoxContainer/HeaderContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Hero Name"
-vertical_alignment = 1
 
-[node name="SwitchHeroButton" type="Button" parent="MarginContainer/VBoxContainer/HeaderContainer"]
-custom_minimum_size = Vector2(120, 0)
+[node name="CommonChestToggle" type="CheckButton" parent="MarginContainer/VBoxContainer/HeaderContainer"]
 layout_mode = 2
-text = "Switch Hero"
+tooltip_text = "Show shared stash for item storage and transfers (C)"
+text = "📦 Common Chest"
 
 [node name="EquipmentPaperDoll" type="Control" parent="MarginContainer/VBoxContainer"]
 custom_minimum_size = Vector2(400, 600)
@@ -210,6 +226,21 @@ theme_override_font_sizes/font_size = 24
 text = "💍"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="SharedStashContainer" type="Control" parent="MarginContainer/VBoxContainer"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SharedStashGrid" type="Control" parent="MarginContainer/VBoxContainer/SharedStashContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/default_color = Color(0.2, 0.25, 0.3, 0.3)
+script = ExtResource("3_inventory_grid")
 
 [node name="StatsFooter" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2

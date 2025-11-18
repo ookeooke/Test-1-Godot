@@ -226,12 +226,9 @@ func _spawn_debug_items():
 
 	var items_to_spawn = [
 		"basic_bow",
-		"fire_bow",
-		"elven_longbow",
 		"leather_vest",
-		"epic_plate_armor",
+		"leather_cap",
 		"power_ring",
-		"epic_power_amulet"
 	]
 
 	var spawned = 0

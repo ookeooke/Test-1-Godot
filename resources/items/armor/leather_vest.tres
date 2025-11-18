@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_leather_vest"]
+[ext_resource type="Texture2D" path="res://assets/icons/items/armor/basic_armor_leather.png" id="2_icon"]
 
 [resource]
 script = ExtResource("1_leather_vest")
+icon = ExtResource("2_icon")
 item_id = "leather_vest"
 item_name = "Leather Vest"
 description = "Light leather armor. Better than nothing."

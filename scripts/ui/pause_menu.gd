@@ -21,6 +21,11 @@ func _ready():
 	# Pause the game when this menu appears
 	get_tree().paused = true
 
+	# HIGH-PRIORITY FIX: Lock camera input during pause
+	var camera = get_viewport().get_camera_2d()
+	if camera and camera.has_method("lock_input"):
+		camera.lock_input()
+
 func _input(event):
 	# Allow ESC to close pause menu
 	# Consume event to prevent other handlers from also processing it
@@ -30,6 +35,12 @@ func _input(event):
 
 func _on_resume_pressed():
 	print("PauseMenu: Resume game")
+
+	# HIGH-PRIORITY FIX: Unlock camera before resuming
+	var camera = get_viewport().get_camera_2d()
+	if camera and camera.has_method("unlock_input"):
+		camera.unlock_input()
+
 	get_tree().paused = false
 	queue_free()
 
@@ -64,3 +75,8 @@ func _on_main_menu_pressed():
 func _exit_tree():
 	# Ensure game is unpaused when menu is removed
 	get_tree().paused = false
+
+	# HIGH-PRIORITY FIX: Ensure camera is unlocked when menu is removed
+	var camera = get_viewport().get_camera_2d()
+	if camera and camera.has_method("unlock_input"):
+		camera.unlock_input()

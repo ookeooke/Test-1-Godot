@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/item_data.gd" id="1_power_ring"]
+[ext_resource type="Texture2D" path="res://assets/icons/items/accessories/rings/basic_ring.png" id="2_icon"]
 
 [resource]
 script = ExtResource("1_power_ring")
+icon = ExtResource("2_icon")
 item_id = "power_ring"
 item_name = "Power Ring"
 description = "A magical ring that increases damage."

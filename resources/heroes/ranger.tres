@@ -1,10 +1,12 @@
-[gd_resource type="Resource" script_class="HeroData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="HeroData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/hero_data.gd" id="1_ranger"]
 [ext_resource type="Resource" uid="uid://c2xdfnfwqujgo" path="res://resources/hero_classes/ranged_class.tres" id="2_ranged_class"]
+[ext_resource type="Texture2D" path="res://assets/icons/heroes/ranger_portrait.png" id="3_portrait"]
 
 [resource]
 script = ExtResource("1_ranger")
+portrait = ExtResource("3_portrait")
 hero_id = "ranger"
 hero_name = "Ranger"
 description = "A skilled archer who strikes enemies from afar with deadly precision."

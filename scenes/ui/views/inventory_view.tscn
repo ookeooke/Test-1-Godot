@@ -28,9 +28,13 @@ theme_override_constants/margin_bottom = 10
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="TabBar" type="TabBar" parent="MarginContainer/VBoxContainer"]
+[node name="HeaderLabel" type="Label" parent="MarginContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "🎒 My Items"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="ContentContainer" type="Control" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -41,7 +45,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 207.0
+offset_left = 107.0
 offset_right = 144.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -53,7 +57,7 @@ layout_mode = 2
 [node name="SlotsLabel" type="Label" parent="MarginContainer/VBoxContainer/FooterContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Slots: 0 / 20"
+text = "My Items: 0 / 64"
 
 [node name="GoldLabel" type="Label" parent="MarginContainer/VBoxContainer/FooterContainer"]
 layout_mode = 2

@@ -56,6 +56,76 @@ This project uses **19 autoload singletons** as the architectural foundation. Al
 **Debug & Tools:**
 - `BalanceTracker` / `BalanceExporter` / `BalanceAnalyzer` - Real-time metrics tracking
 
+**UI & Interface:**
+- `UIScaleManager` - DPI-aware UI scaling system with theme-based scaling
+- `WebFullscreenManager` - Web platform fullscreen and mobile detection
+
+## UI Scaling System
+
+This project implements **professional-grade UI scaling** via `UIScaleManager` that automatically adapts interface elements to different screen resolutions and DPI densities.
+
+### Key Features
+
+- **Design Resolution:** 1920x1080 baseline (industry standard)
+- **Height-Based Scaling:** Maintains consistent vertical framing across aspect ratios
+- **Theme System:** Automatically scales fonts, spacing, and margins
+- **Touch Target Compliance:** Ensures 44-48dp minimum for mobile usability
+- **Scale Constraints:** 0.5x to 2.0x prevents extreme distortions
+- **Debounced Resize:** 100ms delay prevents performance issues during window resizing
+
+### Usage Examples
+
+```gdscript
+# Get current UI scale (1.0 at 1080p, 0.67 at 720p, 2.0 at 4K)
+var current_scale = UIScaleManager.ui_scale
+
+# Scale individual values (useful for custom UI elements)
+var button_width = UIScaleManager.get_scaled_value(100.0)  # Returns 100px at 1080p, 200px at 4K
+var button_size = UIScaleManager.get_scaled_size(Vector2(80, 60))  # Scales both dimensions
+
+# Validate touch targets meet 44x44dp minimum
+var is_valid = UIScaleManager.is_valid_touch_target(Vector2(60, 60))  # Returns true
+
+# Listen for scale changes (useful for dynamic layouts)
+UIScaleManager.scale_changed.connect(_on_ui_scale_changed)
+
+func _on_ui_scale_changed(new_scale: float):
+    # Recalculate custom UI element sizes
+    update_layout()
+```
+
+### When to Use UIScaleManager
+
+**Use `get_scaled_value()` for:**
+- Custom-drawn UI elements (not using Control nodes)
+- Procedurally generated layouts
+- Canvas-based UI (CanvasItem not Control)
+- Dynamic positioning calculations
+
+**Don't use for:**
+- Standard Control nodes with Theme (already auto-scaled)
+- Elements using `custom_minimum_size` (theme handles these)
+- Most game UI (theme system is sufficient)
+
+### Resolution Behavior
+
+| Resolution | Scale | Use Case |
+|------------|-------|----------|
+| 1280x720 | 0.67x | Budget laptops, low-end |
+| 1920x1080 | 1.0x | Baseline (most common) |
+| 2560x1440 | 1.33x | High-end desktop |
+| 3840x2160 | 2.0x | 4K monitors |
+
+**Mobile:** Scale adapts to device height, typically 0.7x to 1.5x depending on screen size.
+
+### Platform-Specific Behavior
+
+- **Desktop:** Responds to window resize in real-time
+- **Mobile:** Adapts to device resolution and orientation changes
+- **Web:** Uses browser window size, handles fullscreen transitions
+
+See: [scripts/autoloads/ui_scale_manager.gd](scripts/autoloads/ui_scale_manager.gd)
+
 ## Key Architectural Patterns
 
 ### 1. Separated Resource Loading

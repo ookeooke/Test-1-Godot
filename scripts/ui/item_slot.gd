@@ -317,6 +317,12 @@ func _drop_data(at_position: Vector2, data):
 		_handle_equipment_drop(data, source_slot)
 		return
 
+	# Check if we're in common chest mode with dual grids
+	var parent_view = _find_parent_inventory_view()
+	if parent_view and parent_view.common_chest_mode:
+		_handle_dual_grid_drop(data, source_slot, parent_view)
+		return
+
 	# For inventory slots with grid coordinates, use spatial placement
 	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
 		# Move item in InventoryManager's spatial grid
@@ -520,17 +526,10 @@ func _generate_comparison() -> String:
 	if not hero_id or hero_id == "":
 		return ""  # Can't compare without knowing which hero
 
-	# Convert equip slot enum to string slot name
-	var slot_name = ""
-	match item_data.equip_slot:
-		ItemData.EquipSlot.WEAPON:
-			slot_name = "hand_left"  # Weapons now go to left hand by default
-		ItemData.EquipSlot.HELMET:
-			slot_name = "helmet"
-		ItemData.EquipSlot.ARMOR:
-			slot_name = "armor"
-		ItemData.EquipSlot.ACCESSORY:
-			slot_name = "accessory_1"  # Default to first accessory slot for comparison
+	# Convert equip slot enum to string slot name (uses shared helper)
+	var slot_name = ItemData.equip_slot_to_name(item_data.equip_slot)
+	if slot_name == "":
+		return ""  # Invalid equipment slot
 
 	# Get equipped item from registry
 	var equipped_item_id = HeroEquipmentRegistry.get_equipped_item(hero_id, slot_name)
@@ -626,3 +625,59 @@ func _show_emoji_in_icon(emoji_text: String):
 	emoji_label.z_index = 10  # Above icon texture rect
 
 	icon.add_child(emoji_label)
+
+
+func _find_parent_inventory_view():
+	"""Find parent InventoryView or EquipmentView instance"""
+	var parent = get_parent()
+	while parent:
+		if parent.get_class() == "InventoryView" or parent.get_class() == "EquipmentView":
+			return parent
+		if parent.has_method("_refresh_dual_grids") or parent.has_method("_refresh_shared_stash"):
+			return parent
+		parent = parent.get_parent()
+	return null
+
+
+func _handle_dual_grid_drop(data: Dictionary, source_slot: ItemSlot, inventory_view):
+	"""Handle drag-drop in common chest mode (shared stash or dual grids)"""
+	# Check if EquipmentView with shared stash grid (new single-grid mode)
+	if inventory_view.has_method("_refresh_shared_stash") and "stash_item_slots" in inventory_view:
+		var source_is_stash = source_slot in inventory_view.stash_item_slots
+		var target_is_stash = self in inventory_view.stash_item_slots
+
+		# Both in shared stash - just rearrange
+		if source_is_stash and target_is_stash:
+			InventoryManager.move_item(data.item_id, grid_x, grid_y)
+		# Otherwise, let it fall through to normal drop logic
+		return
+
+	# Legacy: InventoryView with dual grids (left = hero, right = shared stash)
+	if "left_item_slots" in inventory_view and "right_item_slots" in inventory_view:
+		var source_is_left = source_slot in inventory_view.left_item_slots
+		var target_is_left = self in inventory_view.left_item_slots
+
+		# Same grid - just move position
+		if source_is_left == target_is_left:
+			if target_is_left:
+				# Left grid (hero inventory)
+				HeroInventoryManager.set_grid_position(inventory_view.hero_id, data.item_id, grid_x, grid_y)
+			else:
+				# Right grid (shared stash)
+				InventoryManager.move_item(data.item_id, grid_x, grid_y)
+		else:
+			# Cross-grid transfer
+			if source_is_left and not target_is_left:
+				# Left to right (hero → shared stash)
+				if HeroInventoryManager.transfer_to_shared_stash(inventory_view.hero_id, data.item_id, data.quantity):
+					# Success - now move to target position in shared stash
+					InventoryManager.move_item(data.item_id, grid_x, grid_y)
+				else:
+					print("[ItemSlot] Transfer to shared stash failed")
+			else:
+				# Right to left (shared stash → hero)
+				if HeroInventoryManager.transfer_from_shared_stash(inventory_view.hero_id, data.item_id, data.quantity):
+					# Success - now move to target position in hero inventory
+					HeroInventoryManager.set_grid_position(inventory_view.hero_id, data.item_id, grid_x, grid_y)
+				else:
+					print("[ItemSlot] Transfer from shared stash failed")

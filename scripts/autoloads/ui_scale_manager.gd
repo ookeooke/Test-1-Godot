@@ -19,6 +19,10 @@ const MAX_SCALE: float = 2.0
 ## Current UI scale factor (1.0 = 1080p baseline)
 var ui_scale: float = 1.0
 
+## User-adjustable scale multiplier (allows manual UI size adjustment)
+## 1.0 = auto-scaling, 0.5-2.0 range for user control
+var user_scale_multiplier: float = 1.0
+
 ## Reference to the scaled theme (created at runtime)
 var scaled_theme: Theme = null
 
@@ -65,13 +69,16 @@ func calculate_ui_scale() -> void:
 		ui_scale = MIN_SCALE
 		return
 
-	# Calculate scale based on height (industry standard approach)
+	# Calculate base scale from resolution (industry standard approach)
 	var calculated_scale: float = float(screen_height) / float(DESIGN_HEIGHT)
+
+	# Apply user multiplier (allows manual adjustment)
+	calculated_scale *= user_scale_multiplier
 
 	# Clamp to sensible bounds
 	ui_scale = clampf(calculated_scale, MIN_SCALE, MAX_SCALE)
 
-	print("[UIScaleManager] Screen: %dx%d, Scale: %.2f" % [window_size.x, window_size.y, ui_scale])
+	print("[UIScaleManager] Screen: %dx%d, User Multiplier: %.1fx, Final Scale: %.2f" % [window_size.x, window_size.y, user_scale_multiplier, ui_scale])
 
 
 ## Load base theme and create scaled version
@@ -201,3 +208,18 @@ func pixels_to_dp(pixels: float) -> float:
 func is_valid_touch_target(size_pixels: Vector2) -> bool:
 	var dp_size: Vector2 = Vector2(pixels_to_dp(size_pixels.x), pixels_to_dp(size_pixels.y))
 	return dp_size.x >= 44.0 and dp_size.y >= 44.0
+
+
+## Set user scale multiplier (for settings menu slider)
+## Multiplies the auto-calculated scale by this value
+## Range: 0.5 (50%) to 2.0 (200%)
+func set_user_scale(multiplier: float) -> void:
+	# Clamp multiplier to safe range
+	user_scale_multiplier = clampf(multiplier, 0.5, 2.0)
+
+	print("[UIScaleManager] User scale set to: %.1fx (%.0f%%)" % [user_scale_multiplier, user_scale_multiplier * 100.0])
+
+	# Recalculate and apply new scale
+	calculate_ui_scale()
+	load_and_scale_theme()
+	scale_changed.emit(ui_scale)
