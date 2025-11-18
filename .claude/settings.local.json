@@ -8,9 +8,18 @@
       "Bash(find:*)",
       "Bash(dir:*)",
       "Bash(nul)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(node --version)",
+      "Bash(npx --version)",
+      "Bash(npx:*)",
+      "Bash(where /R \"C:\\Program Files\" Godot*.exe 2)",
+      "Bash(where /R \"C:\\Program Files (x86)\" Godot*.exe 2)",
+      "Bash(where /R \"C:\\Godot\" Godot*.exe 2)",
+      "Bash(where /R %USERPROFILE%Downloads Godot*.exe 2)",
+      "Bash(\"C:\\Users\\ollil\\Downloads\\Godot_v4.5.1-stable_win64.exe (1)\" --editor --path \"c:\\Users\\ollil\\Test-1-Godot\")"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true
 }
