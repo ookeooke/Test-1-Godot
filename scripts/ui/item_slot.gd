@@ -579,53 +579,34 @@ func _generate_tooltip() -> String:
 
 	tooltip += "───────────\n"
 
-	# Stats (for equipment)
+	# Stats (for equipment) - Diablo 2 style: Base stats + Affix bonuses
 	if _is_equipment_type(item_data.item_type):
-		# Show base item stats (affixes will be shown separately in Phase 6)
-		var display_damage = item_data.damage_bonus
-		var display_health = item_data.health_bonus
-		var display_defense = item_data.defense_bonus
-		var display_range = item_data.range_bonus
-		var display_attack_speed = item_data.attack_speed_multiplier
-		var display_crit = item_data.crit_chance_bonus
+		# Show base item stats (from ItemData)
+		tooltip += _format_stat_line("Damage", item_data.damage_bonus)
+		tooltip += _format_stat_line("Health", item_data.health_bonus)
+		tooltip += _format_stat_line("Defense", item_data.defense_bonus)
+		tooltip += _format_stat_line("Range", item_data.range_bonus)
 
-		# Show rolled range if item has random stats (legacy system - will be replaced with affix display in Phase 6)
-		if item_data.has_random_stats and false:  # Temporarily disabled - Phase 6 will add proper affix tooltips
-			tooltip += _format_stat_with_range("Damage", display_damage, item_data.damage_range)
-			tooltip += _format_stat_with_range("Health", display_health, item_data.health_range)
-			tooltip += _format_stat_with_range("Defense", display_defense, item_data.defense_range)
-			tooltip += _format_stat_line("Range", display_range)  # Range bonus has no random range
+		if item_data.attack_speed_multiplier != 1.0:
+			var bonus_percent = (item_data.attack_speed_multiplier - 1.0) * 100
+			tooltip += "%+.0f%% Attack Speed\n" % bonus_percent
 
-			if display_attack_speed != 1.0:
-				var bonus_percent = (display_attack_speed - 1.0) * 100
-				var range_text = ""
-				if item_data.attack_speed_range.x > 0.0 or item_data.attack_speed_range.y > 0.0:
-					var min_pct = (item_data.attack_speed_range.x - 1.0) * 100
-					var max_pct = (item_data.attack_speed_range.y - 1.0) * 100
-					range_text = " (%.0f%%-%.0f%%)" % [min_pct, max_pct]
-				tooltip += "%+.0f%% Attack Speed%s\n" % [bonus_percent, range_text]
+		if item_data.crit_chance_bonus > 0:
+			tooltip += "+%.1f%% Critical Strike\n" % (item_data.crit_chance_bonus * 100)
 
-			if display_crit > 0:
-				var crit_pct = display_crit * 100
-				var range_text = ""
-				if item_data.crit_chance_range.x > 0.0 or item_data.crit_chance_range.y > 0.0:
-					var min_pct = item_data.crit_chance_range.x * 100
-					var max_pct = item_data.crit_chance_range.y * 100
-					range_text = " (%.1f%%-%.1f%%)" % [min_pct, max_pct]
-				tooltip += "+%.1f%% Critical Strike%s\n" % [crit_pct, range_text]
-		else:
-			# Fixed stats (no random rolls)
-			tooltip += _format_stat_line("Damage", display_damage)
-			tooltip += _format_stat_line("Health", display_health)
-			tooltip += _format_stat_line("Defense", display_defense)
-			tooltip += _format_stat_line("Range", display_range)
+		# Show affix bonuses (Diablo 2 style - listed separately)
+		if not rolled_affixes.is_empty():
+			for affix_key in rolled_affixes.keys():
+				var affix_info = rolled_affixes[affix_key]
 
-			if display_attack_speed != 1.0:
-				var bonus_percent = (display_attack_speed - 1.0) * 100
-				tooltip += "%+.0f%% Attack Speed\n" % bonus_percent
+				# affix_info structure: {affix_data: AffixData, rolled_value: float}
+				if affix_info.has("affix_data") and affix_info.has("rolled_value"):
+					var affix_data: AffixData = affix_info.affix_data
+					var rolled_value: float = affix_info.rolled_value
 
-			if display_crit > 0:
-				tooltip += "+%.1f%% Critical Strike\n" % (display_crit * 100)
+					# Get affix description with rolled value
+					var affix_desc = affix_data.get_stat_description(rolled_value)
+					tooltip += affix_desc + " (" + affix_data.affix_name + ")\n"
 
 	# Item level / Requirements
 	var has_level_info = false

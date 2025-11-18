@@ -697,10 +697,12 @@ func _on_hero_button_pressed(new_hero_id: String):
 	# This ensures the RIGHT panel and other listeners always update
 	hero_changed.emit(new_hero_id)
 
-	# ALWAYS refresh the current view for visual feedback
-	if common_chest_mode:
-		_refresh_shared_stash()
+	# Exit common chest mode when clicking hero button
+	# User wants to see THIS HERO'S equipment, not the shared stash
+	if common_chest_mode and common_chest_toggle:
+		common_chest_toggle.button_pressed = false  # This triggers _on_common_chest_toggled
 	else:
+		# Refresh equipment if not in common chest mode
 		_refresh_equipment()
 
 

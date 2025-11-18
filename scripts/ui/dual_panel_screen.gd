@@ -97,6 +97,10 @@ func _ready():
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	_on_viewport_resized()  # Initial check
 
+	# Fallback: Ensure hero_changed signal is connected (safety for both modes)
+	# This is called deferred to ensure views are fully loaded
+	call_deferred("_connect_hero_signal_fallback")
+
 
 func _input(event: InputEvent):
 	# ESC KEY PRIORITY: This runs after level_controller and pause_menu
@@ -381,6 +385,16 @@ func _on_hero_changed(new_hero_id: String):
 	if left_panel:
 		left_panel.set_hero_id(new_hero_id)
 		left_panel.refresh_current_view()
+
+
+func _connect_hero_signal_fallback():
+	"""Fallback function to ensure hero_changed signal is connected (called deferred)"""
+	if left_panel:
+		var equipment_view = left_panel.get_current_view()
+		if equipment_view and equipment_view.has_signal("hero_changed"):
+			if not equipment_view.hero_changed.is_connected(_on_hero_changed):
+				equipment_view.hero_changed.connect(_on_hero_changed)
+				print("🔍 [DualPanelScreen] Connected to hero_changed signal (fallback)")
 
 
 ## Integration with WaveManager
