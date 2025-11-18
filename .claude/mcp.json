@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "godot": {
+      "command": "python",
+      "args": [".mcp/godot_server.py"],
+      "env": {
+        "PYTHONPATH": ".mcp"
+      }
+    }
+  }
+}

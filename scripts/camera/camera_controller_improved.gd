@@ -167,6 +167,7 @@ var zoom_presets: Array[float] = []  # HIGH-PRIORITY FIX: Dynamic presets based 
 var velocity = Vector2.ZERO
 var is_inertia_moving = false
 var inertia_friction = 0.9
+var last_drag_time: float = 0.0  # For proper velocity calculation
 
 # Zoom state
 var target_zoom = Vector2.ONE
@@ -471,6 +472,22 @@ func _unhandled_input(event):
 			print("[Camera DEBUG] Input locked - ignoring event")
 		return
 
+	# UNIFIED GUI CHECK (before platform routing)
+	# Block camera input when interacting with UI elements
+	var gui_element = get_viewport().gui_get_hovered_control()
+	if gui_element:
+		# Check if it's an interactive element that should block camera input
+		var is_interactive = gui_element is Button or gui_element is TextureButton or \
+							gui_element is LineEdit or gui_element is TextEdit or \
+							gui_element is SpinBox or gui_element is Slider or \
+							gui_element is CheckBox or gui_element is CheckButton or \
+							gui_element is OptionButton or gui_element is MenuButton
+
+		if is_interactive:
+			if debug_input:
+				print("[Camera DEBUG] Interactive GUI detected - ignoring camera input: ", gui_element.get_class())
+			return  # Let GUI handle the input
+
 	match current_platform:
 		Platform.MOBILE:
 			handle_mobile_input(event)
@@ -480,28 +497,9 @@ func _unhandled_input(event):
 func handle_pc_input(event) -> void:
 	"""PC-specific input (mouse + keyboard)"""
 	if event is InputEventMouseButton:
-		# Only block camera input when mouse is over INTERACTIVE GUI elements
-		# (labels, containers, and other non-interactive elements should not block camera)
-		var gui_element = get_viewport().gui_get_hovered_control()
 		if debug_input:
 			print("[Camera DEBUG] handle_pc_input - MouseButton")
-			print("  GUI element hovered: ", gui_element)
-
-		if gui_element:
-			# Check if it's an interactive element that should block camera input
-			var is_interactive = gui_element is Button or gui_element is TextureButton or gui_element is LineEdit or gui_element is TextEdit or gui_element is SpinBox or gui_element is Slider
-
-			if debug_input:
-				print("[Camera DEBUG] GUI element type: ", gui_element.get_class())
-				print("  Is interactive: ", is_interactive)
-
-			if is_interactive:
-				if debug_input:
-					print("[Camera DEBUG] Interactive GUI detected - ignoring camera input")
-				return  # Let GUI handle the input
-			else:
-				if debug_input:
-					print("[Camera DEBUG] Non-interactive GUI (Label/Container) - allowing camera input")
+			print("  Button: ", event.button_index, " Pressed: ", event.pressed)
 
 		# Mouse wheel zoom
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -509,14 +507,16 @@ func handle_pc_input(event) -> void:
 				if debug_input:
 					print("[Camera DEBUG] Mouse wheel UP - zooming in")
 				var zoom_delta = zoom_speed * user_prefs["zoom_speed_multiplier"]
-				zoom_at_point(event.position, zoom_delta)
+				var corrected_pos = get_canvas_corrected_position(event.position)  # Fix for web exports
+				zoom_at_point(corrected_pos, zoom_delta)
 				get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			if event.pressed:
 				if debug_input:
 					print("[Camera DEBUG] Mouse wheel DOWN - zooming out")
 				var zoom_delta = -zoom_speed * user_prefs["zoom_speed_multiplier"]
-				zoom_at_point(event.position, zoom_delta)
+				var corrected_pos = get_canvas_corrected_position(event.position)  # Fix for web exports
+				zoom_at_point(corrected_pos, zoom_delta)
 				get_viewport().set_input_as_handled()
 
 		# Middle mouse button drag (industry standard for RTS/strategy games)
@@ -543,22 +543,6 @@ func handle_pc_input(event) -> void:
 
 func handle_mobile_input(event) -> void:
 	"""Mobile-specific input (touch)"""
-	# HIGH-PRIORITY FIX: Block camera input when touching interactive GUI elements
-	# Same logic as PC input, but for touch events
-	var gui_element = get_viewport().gui_get_hovered_control()
-	if gui_element:
-		# Check if it's an interactive element that should block camera input
-		# For mobile, we're more permissive - only block for truly interactive elements
-		# Labels and containers should not block camera (user may want to pan on HUD)
-		var is_interactive = gui_element is Button or gui_element is TextureButton or \
-							gui_element is LineEdit or gui_element is TextEdit or \
-							gui_element is SpinBox or gui_element is Slider
-
-		if is_interactive:
-			if debug_input:
-				print("[Camera DEBUG] Mobile touch on interactive GUI - ignoring camera")
-			return  # Let GUI handle the touch
-
 	if event is InputEventScreenTouch:
 		handle_touch(event)
 	elif event is InputEventScreenDrag:
@@ -579,6 +563,7 @@ func handle_touch(event: InputEventScreenTouch):
 		if touch_points.size() == 1:
 			start_drag(event.position)
 			is_pinch_zooming = false
+			get_viewport().set_input_as_handled()  # Consume touch to prevent tower placement
 		# Two fingers - start pinch-zoom
 		elif touch_points.size() == 2:
 			var points = touch_points.values()
@@ -590,6 +575,7 @@ func handle_touch(event: InputEventScreenTouch):
 				is_pinch_zooming = true
 				last_pinch_distance = distance
 				tap_start_time = 0.0  # Cancel any pending tap
+				get_viewport().set_input_as_handled()  # Consume pinch input
 				if debug_input:
 					print("[Camera PINCH] Started - initial distance: ", distance)
 			# else: fingers too close, ignore
@@ -612,6 +598,7 @@ func handle_touch(event: InputEventScreenTouch):
 					get_viewport().set_input_as_handled()
 
 		touch_points.erase(event.index)
+		get_viewport().set_input_as_handled()  # Always consume touch releases
 
 		if touch_points.is_empty():
 			# If was pinching, add cooldown to prevent accidental taps
@@ -635,9 +622,11 @@ func handle_touch_drag(event: InputEventScreenDrag):
 	# Single finger drag
 	if touch_points.size() == 1 and is_dragging:
 		update_drag(event.position)
+		get_viewport().set_input_as_handled()  # Consume drag input
 	# Two finger pinch-zoom
 	elif touch_points.size() == 2 and is_pinch_zooming:
 		update_pinch_zoom()
+		get_viewport().set_input_as_handled()  # Consume pinch drag input
 
 # ============================================
 # DRAG FUNCTIONS
@@ -660,6 +649,7 @@ func start_drag(screen_pos: Vector2):
 	is_inertia_moving = false
 	velocity = Vector2.ZERO
 	tap_start_time = Time.get_ticks_msec() / 1000.0  # Track when press started
+	last_drag_time = tap_start_time  # Initialize time tracking for velocity calculation
 
 func update_drag(screen_pos: Vector2):
 	"""Update camera position while dragging"""
@@ -691,9 +681,18 @@ func update_drag(screen_pos: Vector2):
 	target_position = base_position  # Keep target in sync during drag
 
 	# Store velocity for inertia (frame-independent)
-	velocity = -delta / get_physics_process_delta_time()
-	velocity = velocity.limit_length(max_inertia_velocity)
+	# Use real time elapsed, not physics delta (input events have variable timing)
+	var current_time = Time.get_ticks_msec() / 1000.0
+	var time_delta = current_time - last_drag_time
 
+	if time_delta > 0.0 and time_delta < 0.1:  # Ignore huge time gaps (>100ms = paused/tabbed out)
+		velocity = -delta / time_delta
+		velocity = velocity.limit_length(max_inertia_velocity)
+	else:
+		# First drag event or large time gap - reset velocity
+		velocity = Vector2.ZERO
+
+	last_drag_time = current_time
 	last_mouse_pos = screen_pos
 
 func end_drag():
@@ -790,26 +789,21 @@ func update_pinch_zoom():
 
 func _validate_touch_points() -> void:
 	"""
-	Cleanup stale touch points that no longer have active touches.
-	CRITICAL FIX: Prevents touch state leak when rapid multi-touch occurs.
+	Safety cleanup for stale touch points.
+	NOTE: Godot's touch system is reliable - releases are always fired by the OS.
+	The handle_touch() function already cleans up touches on release (line 615).
+	This function serves as a safety net for edge cases (app losing focus, etc.)
 	"""
-	# Get currently active touches from Godot
-	var active_touch_indices: Array[int] = []
-	for i in range(10):  # Godot supports up to 10 touch points
-		if Input.is_action_pressed("touch_" + str(i)):
-			active_touch_indices.append(i)
-
-	# Remove any touch_points not in active list
-	var stale_indices: Array[int] = []
-	for index in touch_points.keys():
-		if not index in active_touch_indices:
-			stale_indices.append(index)
-
-	# Clean up stale entries
-	for index in stale_indices:
-		touch_points.erase(index)
-		if debug_input:
-			print("[Camera TOUCH] Cleaned up stale touch point: ", index)
+	# Safety limit: If we somehow have more than 2 active touches, clean up the oldest
+	# (The game only uses up to 2 touches for pinch-zoom)
+	if touch_points.size() > 2:
+		# Keep the 2 most recent touches, remove the rest
+		var indices = touch_points.keys()
+		indices.sort()  # Lower indices are usually older
+		for i in range(touch_points.size() - 2):
+			touch_points.erase(indices[i])
+			if debug_input:
+				print("[Camera TOUCH] Cleaned up excess touch point: ", indices[i])
 
 # ============================================
 # ZOOM FUNCTIONS

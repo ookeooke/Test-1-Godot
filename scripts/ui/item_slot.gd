@@ -489,7 +489,9 @@ func _get_equipment_slot_name() -> String:
 	"""Get the equipment slot name based on filter"""
 	match equipment_filter:
 		ItemData.EquipSlot.WEAPON:
-			return "weapon"
+			return "hand_left"
+		ItemData.EquipSlot.HELMET:
+			return "helmet"
 		ItemData.EquipSlot.ARMOR:
 			return "armor"
 		ItemData.EquipSlot.ACCESSORY:

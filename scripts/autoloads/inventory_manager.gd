@@ -280,10 +280,6 @@ func get_unique_item_count() -> int:
 
 func equip_item_atomic(hero_id: String, slot: String, item_id: String) -> bool:
 	"""Atomically equip item with inventory/equipment coordination (supports two-handed weapons)"""
-	if not global_inventory.has(item_id):
-		push_error("[InventoryManager] Cannot equip - item not in inventory: %s" % item_id)
-		return false
-
 	# Get item data to check if it's two-handed
 	var item_data = ItemDatabase.get_item(item_id)
 	if not item_data:
@@ -464,7 +460,7 @@ func unequip_item_atomic(hero_id: String, slot: String) -> bool:
 	return true
 
 func remove_from_grid(item_id: String) -> bool:
-	"""Remove item from grid (for equipping)"""
+	"""Remove item from grid (for equipping). NOTE: Item remains in global_inventory."""
 	if not item_positions.has(item_id):
 		return false
 	var pos = item_positions[item_id]
@@ -617,6 +613,16 @@ func place_item(item_id: String, x: int, y: int) -> bool:
 	var item_data = ItemDatabase.get_item(item_id)
 	if item_data == null:
 		return false
+
+	# Ensure item exists in global_inventory (for equipped items, starter items, etc.)
+	# Items should always be tracked in global_inventory whether equipped or not
+	if not global_inventory.has(item_id):
+		global_inventory[item_id] = {
+			"quantity": 1,
+			"upgrade_level": 0,
+			"rolled_affixes": {}
+		}
+		print("[InventoryManager] Added item to global_inventory: %s" % item_id)
 
 	if not can_place_item(item_id, x, y):
 		return false

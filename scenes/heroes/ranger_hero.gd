@@ -356,7 +356,7 @@ func _load_equipment_from_save() -> void:
 
 func _equip_starter_gear() -> void:
 	"""Ensure ranger has Basic Bow equipped (auto-equipped on first spawn)"""
-	var equipped_weapon = HeroEquipmentRegistry.get_equipped_item(hero_id, "weapon")
+	var equipped_weapon = HeroEquipmentRegistry.get_equipped_item(hero_id, "hand_left")
 
 	if equipped_weapon == "":  # No weapon equipped
 		print("[RangerHero] No weapon equipped - equipping starter Basic Bow")
@@ -367,7 +367,7 @@ func _equip_starter_gear() -> void:
 			print("[RangerHero] Added Basic Bow to inventory")
 
 		# Auto-equip it
-		if InventoryManager.equip_item_atomic(hero_id, "weapon", "basic_bow"):
+		if InventoryManager.equip_item_atomic(hero_id, "hand_left", "basic_bow"):
 			print("[RangerHero] ✅ Starter weapon equipped: Basic Bow")
 		else:
 			print("[RangerHero] ⚠️ Failed to equip starter weapon")
