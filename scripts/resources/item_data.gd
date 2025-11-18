@@ -11,11 +11,11 @@ enum ItemType {
 }
 
 enum Rarity {
-	COMMON,      # White/Grey - 70% drop rate
-	UNCOMMON,    # Green - 25% drop rate
-	RARE,        # Blue - 10% drop rate
-	EPIC,        # Purple - 4% drop rate
-	LEGENDARY    # Orange/Gold - 1% drop rate
+	NORMAL,      # White - Base stats only, no magical properties
+	MAGIC,       # Blue - 1-2 random affixes (prefix/suffix)
+	RARE,        # Yellow - 3-6 random affixes
+	SET,         # Green - Fixed set bonuses (future implementation)
+	UNIQUE       # Gold/Orange - Fixed unique properties
 }
 
 enum EquipSlot {
@@ -28,15 +28,17 @@ enum EquipSlot {
 
 # Core Identification
 @export var item_id: String = ""
-@export var item_name: String = ""
+@export var item_name: String = ""  ## Display name (for unique items) OR base name (for normal/magic/rare items)
+@export var base_item_name: String = ""  ## Base item name without affixes (e.g., "Sword", "Ring"). If empty, uses item_name
 @export_multiline var description: String = ""
 @export var icon: Texture2D
 @export var emoji: String = ""  ## Unicode emoji symbol (e.g., "🏹", "🛡️", "💍") - shown if no icon texture
 @export var item_type: ItemType = ItemType.WEAPON
-@export var rarity: Rarity = Rarity.COMMON
+@export var rarity: Rarity = Rarity.NORMAL
 @export var equip_slot: EquipSlot = EquipSlot.NONE
 @export var item_level: int = 0  ## Item level (for display purposes)
 @export var required_level: int = 0  ## Minimum character level to equip
+@export var can_have_affixes: bool = true  ## If false, item uses fixed stats (for unique items)
 
 # Stacking & Economy
 @export var max_stack: int = 1  ## 1 for equipment, 99 for consumables/materials
@@ -89,35 +91,35 @@ enum EquipSlot {
 @export var use_sound: AudioStream
 
 
-## Get the color associated with this item's rarity
+## Get the color associated with this item's rarity (Diablo 2 style)
 func get_rarity_color() -> Color:
 	match rarity:
-		Rarity.COMMON:
+		Rarity.NORMAL:
 			return Color.WHITE
-		Rarity.UNCOMMON:
-			return Color.GREEN
+		Rarity.MAGIC:
+			return Color.DODGER_BLUE  # Blue for magic items
 		Rarity.RARE:
-			return Color.DODGER_BLUE
-		Rarity.EPIC:
-			return Color.PURPLE
-		Rarity.LEGENDARY:
-			return Color.ORANGE
+			return Color.YELLOW  # Yellow for rare items
+		Rarity.SET:
+			return Color.GREEN  # Green for set items
+		Rarity.UNIQUE:
+			return Color.ORANGE  # Orange/Gold for uniques
 	return Color.WHITE
 
 
-## Get the rarity name as a string
+## Get the rarity name as a string (Diablo 2 style)
 func get_rarity_name() -> String:
 	match rarity:
-		Rarity.COMMON:
-			return "Common"
-		Rarity.UNCOMMON:
-			return "Uncommon"
+		Rarity.NORMAL:
+			return "Normal"
+		Rarity.MAGIC:
+			return "Magic"
 		Rarity.RARE:
 			return "Rare"
-		Rarity.EPIC:
-			return "Epic"
-		Rarity.LEGENDARY:
-			return "Legendary"
+		Rarity.SET:
+			return "Set"
+		Rarity.UNIQUE:
+			return "Unique"
 	return "Unknown"
 
 
@@ -209,14 +211,100 @@ func roll_stats() -> Dictionary:
 
 
 ## ============================================
+## AFFIX SYSTEM (Diablo 2 Style)
+## ============================================
+
+## Roll affixes based on item rarity (Diablo 2 style)
+## Returns a dictionary with rolled affixes and their values
+## Structure: {
+##   "affixes": [{"affix": AffixData, "rolled_value": float}, ...],
+##   "prefix": AffixData or null,
+##   "suffix": AffixData or null
+## }
+func roll_affixes() -> Dictionary:
+	var result = {
+		"affixes": [],
+		"prefix": null,
+		"suffix": null
+	}
+
+	# NORMAL items have no affixes (base stats only)
+	if rarity == Rarity.NORMAL:
+		return result
+
+	# UNIQUE and SET items use fixed stats (no random affixes)
+	if rarity == Rarity.UNIQUE or rarity == Rarity.SET:
+		return result
+
+	# Items that can't have affixes use fixed stats
+	if not can_have_affixes:
+		return result
+
+	# MAGIC items: 1-2 affixes (Diablo 2 distribution)
+	if rarity == Rarity.MAGIC:
+		var roll = randf()
+		if roll < 0.5:
+			# 50% chance: Suffix only
+			result.suffix = AffixDatabase.get_random_suffix(item_level)
+			if result.suffix:
+				var rolled_value = result.suffix.roll_value()
+				result.affixes.append({"affix": result.suffix, "rolled_value": rolled_value})
+		elif roll < 0.75:
+			# 25% chance: Prefix only
+			result.prefix = AffixDatabase.get_random_prefix(item_level)
+			if result.prefix:
+				var rolled_value = result.prefix.roll_value()
+				result.affixes.append({"affix": result.prefix, "rolled_value": rolled_value})
+		else:
+			# 25% chance: Both prefix and suffix
+			result.prefix = AffixDatabase.get_random_prefix(item_level)
+			result.suffix = AffixDatabase.get_random_suffix(item_level)
+			if result.prefix:
+				var rolled_value = result.prefix.roll_value()
+				result.affixes.append({"affix": result.prefix, "rolled_value": rolled_value})
+			if result.suffix:
+				var rolled_value = result.suffix.roll_value()
+				result.affixes.append({"affix": result.suffix, "rolled_value": rolled_value})
+
+	# RARE items: 3-6 affixes (simplified: 2-3 prefixes + 1-3 suffixes)
+	elif rarity == Rarity.RARE:
+		var prefix_count = randi_range(2, 3)
+		var suffix_count = randi_range(1, 3)
+
+		# Roll prefixes (avoid duplicates from same family)
+		var used_families = []
+		for i in prefix_count:
+			var prefix = AffixDatabase.get_random_prefix(item_level)
+			if prefix and prefix.affix_family not in used_families:
+				used_families.append(prefix.affix_family)
+				var rolled_value = prefix.roll_value()
+				result.affixes.append({"affix": prefix, "rolled_value": rolled_value})
+				if i == 0:
+					result.prefix = prefix  # Store first prefix for naming
+
+		# Roll suffixes (avoid duplicates from same family)
+		used_families.clear()
+		for i in suffix_count:
+			var suffix = AffixDatabase.get_random_suffix(item_level)
+			if suffix and suffix.affix_family not in used_families:
+				used_families.append(suffix.affix_family)
+				var rolled_value = suffix.roll_value()
+				result.affixes.append({"affix": suffix, "rolled_value": rolled_value})
+				if i == 0:
+					result.suffix = suffix  # Store first suffix for naming
+
+	return result
+
+
+## ============================================
 ## STAT MODIFIER GENERATION (New Unified System)
 ## ============================================
 
-## Generate StatModifier objects from this item's stats
-## This converts flat bonuses into the unified modifier system
+## Generate StatModifier objects from this item's stats + affixes (Diablo 2 style)
+## This converts flat bonuses and affixes into the unified modifier system
 ## upgrade_level: Current upgrade level of the item (0 = base level)
-## rolled_stats: Optional dictionary of rolled stat values (overrides base stats)
-func get_stat_modifiers(upgrade_level: int = 0, rolled_stats: Dictionary = {}) -> Array[StatModifier]:
+## rolled_affixes: Dictionary of rolled affixes from roll_affixes() function
+func get_stat_modifiers(upgrade_level: int = 0, rolled_affixes: Dictionary = {}) -> Array[StatModifier]:
 	var modifiers: Array[StatModifier] = []
 	var source_id = "equipment:" + item_id  # Namespaced to prevent collision with skills
 
@@ -224,65 +312,66 @@ func get_stat_modifiers(upgrade_level: int = 0, rolled_stats: Dictionary = {}) -
 	if not is_equippable():
 		return modifiers
 
-	# Use rolled stats if available, otherwise use fixed stats
-	var base_damage = rolled_stats.get("damage_bonus", damage_bonus)
-	var base_health = rolled_stats.get("health_bonus", health_bonus)
-	var base_defense = rolled_stats.get("defense_bonus", defense_bonus)
-	var base_range = rolled_stats.get("range_bonus", range_bonus)
-	var base_attack_speed = rolled_stats.get("attack_speed_multiplier", attack_speed_multiplier)
-	var base_crit = rolled_stats.get("crit_chance_bonus", crit_chance_bonus)
-
-	# Calculate upgraded stats if applicable
-	var final_damage = base_damage
-	var final_health = base_health
-	var final_defense = base_defense
-	var final_range = base_range
+	# Start with base item stats (with upgrade scaling)
+	var final_damage = damage_bonus
+	var final_health = health_bonus
+	var final_defense = defense_bonus
+	var final_range = range_bonus
 
 	if can_upgrade and upgrade_level > 0:
-		final_damage = int(get_upgraded_stat(base_damage, upgrade_level))
-		final_health = int(get_upgraded_stat(base_health, upgrade_level))
-		final_defense = int(get_upgraded_stat(base_defense, upgrade_level))
-		final_range = int(get_upgraded_stat(base_range, upgrade_level))
+		final_damage = int(get_upgraded_stat(damage_bonus, upgrade_level))
+		final_health = int(get_upgraded_stat(health_bonus, upgrade_level))
+		final_defense = int(get_upgraded_stat(defense_bonus, upgrade_level))
+		final_range = int(get_upgraded_stat(range_bonus, upgrade_level))
 
-	# Damage modifier (flat bonus)
+	# Base item stat modifiers
 	if final_damage > 0:
 		var desc = "+%d Damage" % final_damage
 		if upgrade_level > 0:
 			desc += " (+%d)" % upgrade_level
 		modifiers.append(StatModifier.create_flat(final_damage, source_id, desc))
 
-	# Health modifier (flat bonus)
 	if final_health > 0:
 		var desc = "+%d Health" % final_health
 		if upgrade_level > 0:
 			desc += " (+%d)" % upgrade_level
 		modifiers.append(StatModifier.create_flat(final_health, source_id, desc))
 
-	# Defense modifier (flat bonus)
 	if final_defense > 0:
 		var desc = "+%d Defense" % final_defense
 		if upgrade_level > 0:
 			desc += " (+%d)" % upgrade_level
 		modifiers.append(StatModifier.create_flat(final_defense, source_id, desc))
 
-	# Range modifier (flat bonus)
 	if final_range > 0:
 		var desc = "+%d Range" % final_range
 		if upgrade_level > 0:
 			desc += " (+%d)" % upgrade_level
 		modifiers.append(StatModifier.create_flat(final_range, source_id, desc))
 
-	# Attack Speed modifier (multiplicative) - use rolled or base
-	if base_attack_speed != 1.0:
-		var desc = "×%.2f Attack Speed" % base_attack_speed
-		modifiers.append(StatModifier.create_multiplicative(base_attack_speed, source_id, desc))
+	if attack_speed_multiplier != 1.0:
+		var desc = "×%.2f Attack Speed" % attack_speed_multiplier
+		modifiers.append(StatModifier.create_multiplicative(attack_speed_multiplier, source_id, desc))
 
-	# Crit Chance modifier (additive percentage) - use rolled or base
-	if base_crit > 0.0:
-		var crit_percent = base_crit * 100.0
+	if crit_chance_bonus > 0.0:
+		var crit_percent = crit_chance_bonus * 100.0
 		var desc = "+%.1f%% Crit Chance" % crit_percent
-		# Convert decimal to percentage for additive modifier
 		modifiers.append(StatModifier.create_additive(crit_percent, source_id, desc))
+
+	# Add affix modifiers (Diablo 2 style - affixes add bonus stats)
+	if not rolled_affixes.is_empty():
+		for affix_key in rolled_affixes.keys():
+			var affix_info = rolled_affixes[affix_key]
+
+			# affix_info structure: {affix_data: AffixData, rolled_value: float}
+			if affix_info.has("affix_data") and affix_info.has("rolled_value"):
+				var affix_data: AffixData = affix_info.affix_data
+				var rolled_value: float = affix_info.rolled_value
+
+				# Convert affix to stat modifier
+				var affix_modifier = affix_data.to_stat_modifier(rolled_value, source_id + ":affix")
+				if affix_modifier:
+					modifiers.append(affix_modifier)
 
 	return modifiers
 

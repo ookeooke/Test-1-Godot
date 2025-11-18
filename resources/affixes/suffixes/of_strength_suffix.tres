@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AffixData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/affix_data.gd" id="1_strength"]
+
+[resource]
+script = ExtResource("1_strength")
+affix_id = "of_strength_suffix"
+affix_name = "of Strength"
+affix_type = 1
+stat_type = 0
+min_value = 1.0
+max_value = 3.0
+required_item_level = 1
+affix_level = 1
+affix_family = "damage_suffix"

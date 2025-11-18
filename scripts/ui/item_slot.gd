@@ -21,7 +21,7 @@ var item_id: String = ""
 var item_data: ItemData = null
 var quantity: int = 0
 var upgrade_level: int = 0
-var rolled_stats: Dictionary = {}  # Stores rolled stat values for items with random stats
+var rolled_affixes: Dictionary = {}  # Stores rolled affixes for magic/rare items (Diablo 2 style)
 
 # Multi-slot grid support (Diablo 2 style)
 var grid_x: int = -1  ## Grid X coordinate (column)
@@ -82,11 +82,11 @@ func _restore_default_style():
 
 
 ## Set item in this slot
-func set_item(new_item_id: String, new_quantity: int = 1, new_upgrade_level: int = 0, new_rolled_stats: Dictionary = {}):
+func set_item(new_item_id: String, new_quantity: int = 1, new_upgrade_level: int = 0, new_rolled_affixes: Dictionary = {}):
 	item_id = new_item_id
 	quantity = new_quantity
 	upgrade_level = new_upgrade_level
-	rolled_stats = new_rolled_stats
+	rolled_affixes = new_rolled_affixes
 
 	if item_id == "":
 		clear_slot()
@@ -305,9 +305,14 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 		var parent_view = _find_parent_inventory_view()
 		var using_hero_inventory = false
 
-		# Check if this is InventoryView (has hero_id for per-hero inventory)
-		if parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
+		# Priority 1: Check if EquipmentView in common chest mode (uses shared stash)
+		if parent_view and "common_chest_mode" in parent_view and parent_view.common_chest_mode:
+			using_hero_inventory = false
+		# Priority 2: Check if InventoryView (has hero_id, uses hero inventory)
+		elif parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
 			using_hero_inventory = true
+		else:
+			using_hero_inventory = false  # Fallback to shared stash
 
 		# Check if item can be placed at this grid position
 		var can_place = false
@@ -361,31 +366,51 @@ func _drop_data(at_position: Vector2, data):
 		_handle_equipment_drop(data, source_slot)
 		return
 
-	# Check if we're in common chest mode with dual grids
-	var parent_view = _find_parent_inventory_view()
-	# NOTE: Only EquipmentView has common_chest_mode, InventoryView doesn't!
-	var has_chest_mode = parent_view and "common_chest_mode" in parent_view
-	var is_chest_mode = has_chest_mode and parent_view.common_chest_mode
-	print("[ItemSlot] Parent view found: %s, common_chest_mode: %s" % [parent_view != null, is_chest_mode])
+	# Detect cross-panel transfers by checking if source and target are in different views
+	var target_parent_view = _find_parent_inventory_view()
+	var source_parent_view = source_slot._find_parent_inventory_view() if source_slot else null
 
-	if is_chest_mode:
-		print("[ItemSlot] → Routing to dual grid drop handler")
-		_handle_dual_grid_drop(data, source_slot, parent_view)
+	# Cross-panel transfer detection:
+	# - Source and target must be in different views
+	# - At least one must be EquipmentView (has _refresh_shared_stash method)
+	# - At least one must be InventoryView (has _refresh_inventory method)
+	var is_cross_panel_transfer = false
+
+	if target_parent_view and source_parent_view and target_parent_view != source_parent_view:
+		var source_is_equipment = source_parent_view.has_method("_refresh_shared_stash")
+		var target_is_equipment = target_parent_view.has_method("_refresh_shared_stash")
+		var source_is_inventory = source_parent_view.has_method("_refresh_inventory")
+		var target_is_inventory = target_parent_view.has_method("_refresh_inventory")
+
+		# Cross-panel if one is EquipmentView and other is InventoryView
+		is_cross_panel_transfer = (source_is_equipment and target_is_inventory) or \
+		                           (source_is_inventory and target_is_equipment)
+
+	print("[ItemSlot] Cross-panel transfer detected: %s (source: %s, target: %s)" % [is_cross_panel_transfer, source_parent_view != null, target_parent_view != null])
+
+	if is_cross_panel_transfer:
+		print("[ItemSlot] → Routing to dual grid drop handler (cross-panel transfer)")
+		_handle_dual_grid_drop(data, source_slot, target_parent_view)
 		return
 
 	# For inventory slots with grid coordinates, use spatial placement
 	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
 		print("[ItemSlot] → Spatial grid mode: moving item to (%d,%d)" % [grid_x, grid_y])
 
-		# Reuse parent_view from line 365 (already found above)
+		# Reuse target_parent_view from line 370 (already found above)
 		# Determine which inventory manager to use
 		var using_hero_inventory = false
 		var target_hero_id = ""
 
-		# Check if this is InventoryView (has hero_id for per-hero inventory)
-		if parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
+		# Priority 1: Check if EquipmentView in common chest mode (uses shared stash)
+		if target_parent_view and "common_chest_mode" in target_parent_view and target_parent_view.common_chest_mode:
+			using_hero_inventory = false
+		# Priority 2: Check if InventoryView (has hero_id, uses hero inventory)
+		elif target_parent_view and "hero_id" in target_parent_view and target_parent_view.hero_id != "":
 			using_hero_inventory = true
-			target_hero_id = parent_view.hero_id
+			target_hero_id = target_parent_view.hero_id
+		else:
+			using_hero_inventory = false  # Fallback to shared stash
 
 		var success = false
 		if using_hero_inventory:
@@ -556,16 +581,16 @@ func _generate_tooltip() -> String:
 
 	# Stats (for equipment)
 	if _is_equipment_type(item_data.item_type):
-		# Use rolled stats if available, otherwise use fixed stats
-		var display_damage = rolled_stats.get("damage_bonus", item_data.damage_bonus)
-		var display_health = rolled_stats.get("health_bonus", item_data.health_bonus)
-		var display_defense = rolled_stats.get("defense_bonus", item_data.defense_bonus)
-		var display_range = rolled_stats.get("range_bonus", item_data.range_bonus)
-		var display_attack_speed = rolled_stats.get("attack_speed_multiplier", item_data.attack_speed_multiplier)
-		var display_crit = rolled_stats.get("crit_chance_bonus", item_data.crit_chance_bonus)
+		# Show base item stats (affixes will be shown separately in Phase 6)
+		var display_damage = item_data.damage_bonus
+		var display_health = item_data.health_bonus
+		var display_defense = item_data.defense_bonus
+		var display_range = item_data.range_bonus
+		var display_attack_speed = item_data.attack_speed_multiplier
+		var display_crit = item_data.crit_chance_bonus
 
-		# Show rolled range if item has random stats
-		if item_data.has_random_stats and not rolled_stats.is_empty():
+		# Show rolled range if item has random stats (legacy system - will be replaced with affix display in Phase 6)
+		if item_data.has_random_stats and false:  # Temporarily disabled - Phase 6 will add proper affix tooltips
 			tooltip += _format_stat_with_range("Damage", display_damage, item_data.damage_range)
 			tooltip += _format_stat_with_range("Health", display_health, item_data.health_range)
 			tooltip += _format_stat_with_range("Defense", display_defense, item_data.defense_range)

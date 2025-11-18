@@ -159,11 +159,11 @@ func show_screen():
 	# Re-enable panels now that we're showing
 	if left_panel:
 		left_panel.set_process_mode(Node.PROCESS_MODE_ALWAYS)
-		# Connect to equipment view's switch hero signal
+		# Connect to equipment view's hero_changed signal to propagate to RIGHT panel
 		var equipment_view = left_panel.get_current_view()
-		if equipment_view and equipment_view.has_signal("switch_hero_requested"):
-			if not equipment_view.switch_hero_requested.is_connected(_on_switch_hero_requested):
-				equipment_view.switch_hero_requested.connect(_on_switch_hero_requested)
+		if equipment_view and equipment_view.has_signal("hero_changed"):
+			if not equipment_view.hero_changed.is_connected(_on_hero_changed):
+				equipment_view.hero_changed.connect(_on_hero_changed)
 	if right_panel:
 		right_panel.set_process_mode(Node.PROCESS_MODE_ALWAYS)
 
@@ -357,15 +357,22 @@ func get_right_panel() -> FlexiblePanel:
 	return right_panel
 
 
-func _on_switch_hero_requested():
-	"""Handle hero switching request from equipment view"""
-	# TODO: Implement hero selection UI
-	# For now, just show a simple message
-	print("[DualPanelScreen] Switch hero requested - hero selection UI not yet implemented")
+func _on_hero_changed(new_hero_id: String):
+	"""Handle hero change from equipment view - propagate to RIGHT panel"""
+	print("[DualPanelScreen] Hero changed to: %s - updating both panels" % new_hero_id)
 
-	# Future implementation will show a hero roster overlay
-	# Player taps a hero card to switch
-	# Updates both left and right panels with new hero_id
+	# Update stored hero_id
+	hero_id = new_hero_id
+
+	# Update RIGHT panel (InventoryView) to show the new hero's inventory
+	if right_panel:
+		right_panel.set_hero_id(new_hero_id)
+		right_panel.refresh_current_view()
+
+	# Also update LEFT panel in case it's not in common chest mode
+	if left_panel:
+		left_panel.set_hero_id(new_hero_id)
+		left_panel.refresh_current_view()
 
 
 ## Integration with WaveManager

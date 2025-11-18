@@ -10,7 +10,7 @@ class_name ItemPickup
 signal item_collected(item_id: String)
 
 @export var item_id: String = ""
-var rolled_stats: Dictionary = {}  # Stores the rolled stat values for this item
+var rolled_affixes: Dictionary = {}  # Stores the rolled affixes for this item (Diablo 2 style)
 
 # Collection behavior based on rarity
 enum CollectionMode {
@@ -74,19 +74,19 @@ func load_item_data():
 
 
 func _setup_collection_mode():
-	"""Determine how this item should be collected based on rarity"""
+	"""Determine how this item should be collected based on rarity (Diablo 2 style)"""
 	match item_data.rarity:
-		ItemData.Rarity.COMMON:
+		ItemData.Rarity.NORMAL:
 			collection_mode = CollectionMode.AUTO
 			_start_auto_collect_timer(AUTO_COLLECT_DELAY)
-			print("[ItemPickup] Common item - auto-collecting in ", AUTO_COLLECT_DELAY, "s")
+			print("[ItemPickup] Normal item - auto-collecting in ", AUTO_COLLECT_DELAY, "s")
 
-		ItemData.Rarity.UNCOMMON:
+		ItemData.Rarity.MAGIC:
 			collection_mode = CollectionMode.AUTO
 			_start_auto_collect_timer(AUTO_COLLECT_DELAY)
-			print("[ItemPickup] Uncommon item - auto-collecting in ", AUTO_COLLECT_DELAY, "s")
+			print("[ItemPickup] Magic item - auto-collecting in ", AUTO_COLLECT_DELAY, "s")
 
-		ItemData.Rarity.RARE, ItemData.Rarity.EPIC, ItemData.Rarity.LEGENDARY:
+		ItemData.Rarity.RARE, ItemData.Rarity.SET, ItemData.Rarity.UNIQUE:
 			collection_mode = CollectionMode.MANUAL
 			_start_fallback_timer(FALLBACK_TIMEOUT)
 			print("[ItemPickup] ", item_data.get_rarity_name(), " item - manual click required (", FALLBACK_TIMEOUT, "s timeout)")
@@ -181,7 +181,7 @@ func collect_item(was_auto: bool = false):
 		fallback_collect_timer.stop()
 
 	# Add to pending wave loot (NEW: goes to LootManager instead of direct inventory)
-	LootManager.add_to_pending_loot(item_id, 1, rolled_stats)
+	LootManager.add_to_pending_loot(item_id, 1, rolled_affixes)
 
 	# Emit signal
 	item_collected.emit(item_id)

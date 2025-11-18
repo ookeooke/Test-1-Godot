@@ -252,12 +252,12 @@ func _recalculate_all_stats():
 		if not item_data:
 			continue
 
-		# Get upgrade level AND rolled stats from inventory
+		# Get upgrade level AND rolled affixes from inventory
 		var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
-		var rolled_stats = InventoryManager.get_item_rolled_stats(item_id)
+		var rolled_affixes = InventoryManager.get_item_rolled_affixes(item_id)
 
-		# Generate modifiers with rolled stats
-		var modifiers = item_data.get_stat_modifiers(upgrade_level, rolled_stats)
+		# Generate modifiers from base stats + affixes
+		var modifiers = item_data.get_stat_modifiers(upgrade_level, rolled_affixes)
 
 		for modifier in modifiers:
 			_apply_modifier_to_appropriate_stat(modifier)

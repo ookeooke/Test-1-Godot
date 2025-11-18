@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AffixData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/affix_data.gd" id="1_vitality"]
+
+[resource]
+script = ExtResource("1_vitality")
+affix_id = "of_vitality_suffix"
+affix_name = "of Vitality"
+affix_type = 1
+stat_type = 1
+min_value = 15.0
+max_value = 35.0
+required_item_level = 1
+affix_level = 1
+affix_family = "health_suffix"

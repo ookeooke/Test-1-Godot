@@ -18,7 +18,7 @@ func create_test_items():
 	basic_bow.item_name = "Basic Bow"
 	basic_bow.description = "A simple wooden bow for beginning rangers."
 	basic_bow.item_type = ItemData.ItemType.WEAPON
-	basic_bow.rarity = ItemData.Rarity.COMMON
+	basic_bow.rarity = ItemData.Rarity.NORMAL
 	basic_bow.equip_slot = ItemData.EquipSlot.WEAPON
 	basic_bow.max_stack = 1
 	basic_bow.sell_value = 50
@@ -36,7 +36,7 @@ func create_test_items():
 	legendary_bow.item_name = "Windseeker Bow"
 	legendary_bow.description = "A legendary bow blessed by ancient winds."
 	legendary_bow.item_type = ItemData.ItemType.WEAPON
-	legendary_bow.rarity = ItemData.Rarity.LEGENDARY
+	legendary_bow.rarity = ItemData.Rarity.UNIQUE
 	legendary_bow.equip_slot = ItemData.EquipSlot.WEAPON
 	legendary_bow.max_stack = 1
 	legendary_bow.sell_value = 500

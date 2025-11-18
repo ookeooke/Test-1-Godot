@@ -541,24 +541,21 @@ func _on_common_chest_toggled(button_pressed: bool):
 	_saved_chest_mode_preference = button_pressed
 
 	if common_chest_mode:
-		# Enable common chest mode - hide equipment and hero buttons, show shared stash
+		# Enable common chest mode - hide equipment, show shared stash
+		# Hero buttons stay visible (to control which hero is shown in the RIGHT panel)
 		if equipment_paperdoll:
 			equipment_paperdoll.visible = false
 		if shared_stash_container:
 			shared_stash_container.visible = true
-		if hero_buttons_container:
-			hero_buttons_container.visible = false  # Hide hero buttons (shared stash is same for all heroes)
 
 		# Refresh shared stash grid
 		_refresh_shared_stash()
 	else:
-		# Return to equipment mode - show equipment and hero buttons, hide shared stash
+		# Return to equipment mode - show equipment, hide shared stash
 		if equipment_paperdoll:
 			equipment_paperdoll.visible = true
 		if shared_stash_container:
 			shared_stash_container.visible = false
-		if hero_buttons_container:
-			hero_buttons_container.visible = true  # Show hero buttons (for switching heroes' equipment)
 
 	print("[EquipmentView] Common chest mode: %s" % ("ON" if common_chest_mode else "OFF"))
 

@@ -9,41 +9,41 @@ signal gold_spawned(amount: int, position: Vector2)
 
 const ITEM_PICKUP_SCENE = preload("res://scenes/items/item_pickup.tscn")
 
-# Loot tables per enemy tier
-# Diablo 2 style: 1-3 items/level, steep rarity curve, bosses drop best loot
-# Common items = vendor trash, Legendary = very rare jackpots
+# Loot tables per enemy tier (Diablo 2 style)
+# Normal (white) = Base items, Magic (blue) = 1-2 affixes, Rare (yellow) = 3-6 affixes
+# Steep rarity curve - bosses drop best loot
 var loot_tables: Dictionary = {
 	"tier1": {
 		"drop_chance": 0.015,  # 1.5% - Very rare drops
 		"gold_range": [5, 15],
 		"rarity_weights": {
-			ItemData.Rarity.COMMON: 0.85,
-			ItemData.Rarity.UNCOMMON: 0.14,
-			ItemData.Rarity.RARE: 0.01,
-			ItemData.Rarity.EPIC: 0.0,
-			ItemData.Rarity.LEGENDARY: 0.0
+			ItemData.Rarity.NORMAL: 0.85,   # 85% normal (white) items
+			ItemData.Rarity.MAGIC: 0.14,    # 14% magic (blue) items
+			ItemData.Rarity.RARE: 0.01,     # 1% rare (yellow) items
+			ItemData.Rarity.SET: 0.0,       # No set items from trash mobs
+			ItemData.Rarity.UNIQUE: 0.0     # No unique items from trash mobs
 		}
 	},
 	"tier2": {
 		"drop_chance": 0.04,  # 4% - Rare drops
 		"gold_range": [15, 40],
 		"rarity_weights": {
-			ItemData.Rarity.COMMON: 0.70,
-			ItemData.Rarity.UNCOMMON: 0.20,
-			ItemData.Rarity.RARE: 0.08,
-			ItemData.Rarity.EPIC: 0.02,
-			ItemData.Rarity.LEGENDARY: 0.0
+			ItemData.Rarity.NORMAL: 0.70,   # 70% normal items
+			ItemData.Rarity.MAGIC: 0.25,    # 25% magic items
+			ItemData.Rarity.RARE: 0.05,     # 5% rare items
+			ItemData.Rarity.SET: 0.0,       # No set items
+			ItemData.Rarity.UNIQUE: 0.0     # No unique items
 		}
 	},
 	"tier3": {
 		"drop_chance": 0.10,  # 10% - Uncommon drops
 		"gold_range": [40, 80],
 		"rarity_weights": {
-			ItemData.Rarity.COMMON: 0.50,
-			ItemData.Rarity.UNCOMMON: 0.30,
-			ItemData.Rarity.RARE: 0.15,
-			ItemData.Rarity.EPIC: 0.04,
-			ItemData.Rarity.LEGENDARY: 0.01
+			ItemData.Rarity.NORMAL: 0.50,   # 50% normal items
+			ItemData.Rarity.MAGIC: 0.35,    # 35% magic items
+			ItemData.Rarity.RARE: 0.14,     # 14% rare items
+			ItemData.Rarity.SET: 0.0,       # No set items
+			ItemData.Rarity.UNIQUE: 0.01    # 1% unique items (very rare!)
 		}
 	},
 	"boss": {
@@ -51,11 +51,11 @@ var loot_tables: Dictionary = {
 		"gold_range": [100, 200],
 		"item_count": 1,  # 1 item per boss
 		"rarity_weights": {
-			ItemData.Rarity.COMMON: 0.0,       # Bosses never drop common
-			ItemData.Rarity.UNCOMMON: 0.05,    # 5% uncommon
-			ItemData.Rarity.RARE: 0.20,        # 20% rare
-			ItemData.Rarity.EPIC: 0.50,        # 50% epic (HIGH CHANCE!)
-			ItemData.Rarity.LEGENDARY: 0.25    # 25% legendary (HIGH CHANCE!)
+			ItemData.Rarity.NORMAL: 0.0,    # Bosses never drop normal items
+			ItemData.Rarity.MAGIC: 0.20,    # 20% magic items
+			ItemData.Rarity.RARE: 0.50,     # 50% rare items (HIGH CHANCE!)
+			ItemData.Rarity.SET: 0.05,      # 5% set items
+			ItemData.Rarity.UNIQUE: 0.25    # 25% unique items (HIGH CHANCE!)
 		}
 	}
 }
@@ -114,8 +114,8 @@ func _roll_rarity(weights: Dictionary) -> ItemData.Rarity:
 		if roll <= cumulative:
 			return rarity
 
-	# Fallback to common
-	return ItemData.Rarity.COMMON
+	# Fallback to normal
+	return ItemData.Rarity.NORMAL
 
 
 ## Get a random item of a specific rarity
@@ -143,18 +143,18 @@ func _spawn_item_pickup(item_id: String, position: Vector2):
 		print("[LootManager] Error: Invalid item_id: ", item_id)
 		return
 
-	# Roll random stats (if item has random stats enabled)
-	var rolled_stats = item_data.roll_stats()
+	# Roll affixes based on rarity (Diablo 2 system)
+	var rolled_affixes = item_data.roll_affixes()
 
 	# Check if ITEM_PICKUP_SCENE exists
 	if ITEM_PICKUP_SCENE == null:
 		print("[LootManager] Warning: ItemPickup scene not found, adding to pending loot")
-		pending_wave_loot.append({"item_id": item_id, "quantity": 1, "rolled_stats": rolled_stats})
+		pending_wave_loot.append({"item_id": item_id, "quantity": 1, "rolled_affixes": rolled_affixes})
 		return
 
 	var pickup = ITEM_PICKUP_SCENE.instantiate()
 	pickup.item_id = item_id
-	pickup.rolled_stats = rolled_stats
+	pickup.rolled_affixes = rolled_affixes
 	pickup.global_position = position
 
 	# Add to current scene (deferred to avoid "flushing queries" error)
@@ -199,8 +199,8 @@ func collect_wave_loot() -> void:
 
 
 ## Add item to pending wave loot (for auto-collect at wave end)
-func add_to_pending_loot(item_id: String, quantity: int = 1, rolled_stats: Dictionary = {}):
-	pending_wave_loot.append({"item_id": item_id, "quantity": quantity, "rolled_stats": rolled_stats})
+func add_to_pending_loot(item_id: String, quantity: int = 1, rolled_affixes: Dictionary = {}):
+	pending_wave_loot.append({"item_id": item_id, "quantity": quantity, "rolled_affixes": rolled_affixes})
 
 
 ## Add gold to pending wave gold
@@ -305,7 +305,7 @@ func distribute_pending_loot_to_inventory(hero_id: String = "") -> Dictionary:
 
 		# Fallback to shared stash if no hero_id or hero inventory is full
 		if not success and InventoryManager:
-			success = InventoryManager.add_item(loot_data.item_id, loot_data.get("quantity", 1), loot_data.get("rolled_stats", {}))
+			success = InventoryManager.add_item(loot_data.item_id, loot_data.get("quantity", 1), loot_data.get("rolled_affixes", {}))
 			if success:
 				if hero_id != "":
 					print("[LootManager] Hero inventory full, added '%s' to shared stash" % loot_data.item_id)
