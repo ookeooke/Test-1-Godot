@@ -136,8 +136,10 @@ func _load_loot_data():
 
 func _display_stash():
 	"""Display hero's personal inventory items in left panel"""
-	# Clear existing items
+	# Clear existing items (reset modulation first for defensive programming)
 	for child in stash_grid.get_children():
+		if child is PanelContainer:
+			child.modulate = Color.WHITE  # Safety reset before freeing
 		child.queue_free()
 
 	# Safety check
@@ -177,8 +179,10 @@ func _display_stash():
 
 func _display_found_loot():
 	"""Display loot items in right panel (FOUND LOOT)"""
-	# Clear existing items
+	# Clear existing items (reset modulation first for defensive programming)
 	for child in loot_grid.get_children():
+		if child is PanelContainer:
+			child.modulate = Color.WHITE  # Safety reset before freeing
 		child.queue_free()
 
 	# Create draggable item slots for each loot item
@@ -435,8 +439,10 @@ func _on_item_hover_enter(panel: PanelContainer):
 
 func _on_item_hover_exit(panel: PanelContainer):
 	"""Reset hover effect"""
-	if dragged_item != panel:
-		panel.modulate = Color.WHITE
+	# CRITICAL FIX: Always reset modulation on hover exit (removed conditional)
+	# Prevents brightening state from persisting if drag starts during hover
+	# The _start_drag() function will set the correct dimmed state anyway
+	panel.modulate = Color.WHITE
 
 
 func _on_item_input(event: InputEvent, panel: PanelContainer):
@@ -479,11 +485,12 @@ func _end_drag():
 	var mouse_pos = get_global_mouse_position()
 	var is_over_stash = _is_point_over_control(mouse_pos, stash_grid.get_parent().get_parent())
 
+	# CRITICAL FIX: Always reset modulation BEFORE processing drop
+	# This prevents visual state leaks when panels are freed/recreated
+	dragged_item.modulate = Color.WHITE
+
 	if is_over_stash:
 		_add_item_to_inventory(item_id, item_data, quantity)
-	else:
-		# Cancel drag
-		dragged_item.modulate = Color.WHITE
 
 	# Cleanup
 	if drag_preview:
