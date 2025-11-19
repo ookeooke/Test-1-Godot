@@ -36,6 +36,41 @@ var drag_preview: Control = null
 var drag_start_parent: Control = null
 
 
+func _reset_drag_visuals():
+	"""CRITICAL: Reset all drag visual states to normal.
+
+	This function MUST be called BEFORE any code path that might free/recreate
+	panels (e.g., _display_stash(), _display_found_loot()).
+
+	WHY: When panels are freed via queue_free() while still having modified
+	modulation/scale, the visual state can leak into newly created panels,
+	causing inconsistent colors/sizes across the UI.
+
+	Visual states reset:
+	- dragged_item.modulation: Reset from dimmed (0.3 alpha) to normal (WHITE)
+	- dragged_item.scale: Reset from hover scale (1.05x) to normal (1.0x)
+	- drag_preview: Freed to prevent memory leak
+	"""
+	if dragged_item:
+		dragged_item.modulate = Color.WHITE  # Reset from dimmed drag state
+		dragged_item.scale = Vector2(1.0, 1.0)  # Reset from potential hover scale
+
+	if drag_preview:
+		drag_preview.queue_free()
+		drag_preview = null
+
+
+func _clear_drag_state():
+	"""Clear drag state references after visual cleanup.
+
+	IMPORTANT: Always call _reset_drag_visuals() BEFORE this function.
+	Visual cleanup must happen before clearing references to ensure
+	proper cleanup even if panels are freed during processing.
+	"""
+	dragged_item = null
+	drag_start_parent = null
+
+
 func _ready():
 	# Connect buttons
 	take_all_button.pressed.connect(_on_take_all_pressed)
@@ -485,19 +520,15 @@ func _end_drag():
 	var mouse_pos = get_global_mouse_position()
 	var is_over_stash = _is_point_over_control(mouse_pos, stash_grid.get_parent().get_parent())
 
-	# CRITICAL FIX: Always reset modulation BEFORE processing drop
+	# CRITICAL: Reset visuals BEFORE processing drop
 	# This prevents visual state leaks when panels are freed/recreated
-	dragged_item.modulate = Color.WHITE
+	_reset_drag_visuals()
 
 	if is_over_stash:
 		_add_item_to_inventory(item_id, item_data, quantity)
 
-	# Cleanup
-	if drag_preview:
-		drag_preview.queue_free()
-		drag_preview = null
-	dragged_item = null
-	drag_start_parent = null
+	# Clear state references
+	_clear_drag_state()
 
 
 func _add_item_to_inventory(item_id: String, item_data: ItemData, quantity: int):
@@ -505,8 +536,7 @@ func _add_item_to_inventory(item_id: String, item_data: ItemData, quantity: int)
 	# Safety check
 	if selected_hero_id == "":
 		print("[LootDistScreen] ERROR: No hero selected!")
-		if dragged_item:
-			dragged_item.modulate = Color.WHITE
+		_reset_drag_visuals()  # Ensure clean state on error
 		return
 
 	# Try to add to hero's inventory
@@ -533,8 +563,7 @@ func _add_item_to_inventory(item_id: String, item_data: ItemData, quantity: int)
 		_update_counters()
 	else:
 		print("[LootDistScreen] Hero inventory full! Cannot add: %s" % item_data.item_name)
-		if dragged_item:
-			dragged_item.modulate = Color.WHITE
+		_reset_drag_visuals()  # Ensure clean state on error
 
 
 func _on_take_all_pressed():

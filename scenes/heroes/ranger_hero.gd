@@ -133,6 +133,13 @@ func _ready():
 	# Set hero to full health after all stat bonuses are applied
 	current_health = max_health
 
+	# CRITICAL: Set metadata for WaveManager to read at level end
+	var hero_number = int(hero_id.split("_")[1]) if "_" in hero_id else 1
+	set_meta("hero_id", hero_id)
+	set_meta("hero_name", "Ranger #%d" % hero_number)
+	set_meta("hero_class", "ranger")
+	print("[RangerHero] Metadata set: hero_id=%s, hero_name=%s" % [hero_id, get_meta("hero_name")])
+
 	print("✅ === RANGER HERO INITIALIZATION COMPLETE ===\n")
 
 	# Set collision layers
@@ -342,9 +349,20 @@ func _setup_equipment_system():
 
 
 func _generate_unique_hero_id() -> String:
-	"""Generate static hero class ID for equipment persistence"""
-	# Use static ID so equipment persists across game sessions
-	return "ranger"
+	"""Generate instance-based hero ID for multi-hero support"""
+	# Count existing rangers in the scene
+	var heroes = get_tree().get_nodes_in_group("hero")
+	var ranger_count = 0
+
+	for hero in heroes:
+		if is_instance_valid(hero) and hero != self and hero.has_method("get_hero_class"):
+			if hero.get_hero_class() == "ranger":
+				ranger_count += 1
+
+	# Generate instance-based ID: "ranger_1", "ranger_2", etc.
+	var instance_id = "ranger_%d" % (ranger_count + 1)
+
+	return instance_id
 
 func _load_equipment_from_save() -> void:
 	"""Verify equipment is loaded from save manager"""
@@ -518,7 +536,11 @@ func _flash_hero(color: Color):
 	sprite.modulate = original_color
 
 func get_hero_id() -> String:
-	"""Get unique ID for this hero (used for save/load)"""
+	"""Get unique instance ID for this hero (used for save/load)"""
+	return hero_id
+
+func get_hero_class() -> String:
+	"""Get hero class (static, not instance-specific)"""
 	return "ranger"
 
 # ============================================
