@@ -1,6 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://cqoyfbnb1nbig"]
+[gd_scene load_steps=7 format=3 uid="uid://cqoyfbnb1nbig"]
 
 [ext_resource type="Script" path="res://scripts/ui/hero_button.gd" id="1_herobutton"]
+[ext_resource type="Texture2D" uid="uid://ranger_portrait" path="res://assets/icons/heroes/ranger_portrait.png" id="2_portrait"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
 bg_color = Color(0.85, 0.1, 0.1, 1)
@@ -13,6 +14,17 @@ border_color = Color(0, 0, 0, 1)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fill"]
 bg_color = Color(0.2, 0.6, 0.2, 0.9)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xp_bg"]
+bg_color = Color(0.16, 0.16, 0.23, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xp_fill"]
+bg_color = Color(1, 0.84, 0, 1)
+
 [node name="HeroButton" type="Button" groups=["hero_button"]]
 custom_minimum_size = Vector2(90, 120)
 anchors_preset = 0
@@ -21,14 +33,16 @@ offset_bottom = 120.0
 flat = false
 script = ExtResource("1_herobutton")
 
-[node name="Portrait" type="ColorRect" parent="."]
+[node name="Portrait" type="TextureRect" parent="."]
 layout_mode = 0
 offset_left = 5.0
 offset_top = 5.0
 offset_right = 85.0
 offset_bottom = 85.0
 mouse_filter = 2
-color = Color(0.4, 0.6, 0.8, 1)
+texture = ExtResource("2_portrait")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="HealthBar" type="ProgressBar" parent="."]
 layout_mode = 0
@@ -43,5 +57,33 @@ theme_override_styles/fill = SubResource("StyleBoxFlat_fill")
 max_value = 100.0
 value = 100.0
 show_percentage = false
+
+[node name="XPBar" type="ProgressBar" parent="."]
+layout_mode = 0
+offset_left = 7.0
+offset_top = 102.0
+offset_right = 83.0
+offset_bottom = 108.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0, 0, 0, 0)
+theme_override_styles/background = SubResource("StyleBoxFlat_xp_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_xp_fill")
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="LevelLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 30.0
+offset_bottom = 26.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 12
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [connection signal="pressed" from="." to="." method="_on_button_pressed"]

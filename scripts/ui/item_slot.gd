@@ -44,6 +44,9 @@ var _original_panel_style: StyleBox = null
 var is_empty: bool = true
 var is_hovered: bool = false
 
+# Hover animation tween (tracked to prevent leaks)
+var _hover_tween: Tween = null
+
 # Long-press detection for mobile
 var touch_start_time: float = 0.0
 var is_touch_held: bool = false
@@ -74,13 +77,30 @@ func _ready():
 
 func _restore_default_style():
 	"""Restore original theme panel style using cached style.
-	Fixes bow color trail bug by restoring actual theme instead of hard-coded colors."""
+	Fixes bow color trail bug by restoring actual theme instead of hard-coded colors.
+	Also kills active hover tweens to prevent visual state leaks (bright borders)."""
+
+	# CRITICAL: Kill active hover tween to prevent scale/modulation artifacts
+	if _hover_tween and _hover_tween.is_valid():
+		_hover_tween.kill()
+		_hover_tween = null
+
+	# Reset scale and modulation immediately (prevents border artifacts)
+	scale = Vector2(1.0, 1.0)
+	modulate = Color.WHITE
+
+	# NUCLEAR FIX: Hide and reset rarity_border completely
+	if rarity_border:
+		rarity_border.visible = false  # Hide it (not just transparent!)
+		rarity_border.modulate = Color.WHITE  # Reset modulation
+
+	# NUCLEAR FIX: Remove theme override completely before applying new one
+	remove_theme_stylebox_override("panel")
+
 	if _original_panel_style:
 		# Use cached original style (prevents color trail artifacts)
 		add_theme_stylebox_override("panel", _original_panel_style.duplicate())
-	else:
-		# Fallback: Remove override to use default theme
-		remove_theme_stylebox_override("panel")
+	# else: Keep override removed (use default theme)
 
 
 ## Set item in this slot
@@ -121,6 +141,9 @@ func set_item(new_item_id: String, new_quantity: int = 1, new_upgrade_level: int
 
 		# DIABLO 2 STYLE: Hide panel styling for multi-cell items
 		# Show ONLY the icon (no border, no background)
+		# NUCLEAR FIX: Remove override first to prevent stale state
+		remove_theme_stylebox_override("panel")
+
 		var transparent_style = StyleBoxFlat.new()
 		transparent_style.bg_color = Color(0, 0, 0, 0)  # Fully transparent
 		transparent_style.border_width_left = 0
@@ -166,6 +189,7 @@ func clear_slot():
 	z_index = 0
 
 	# Restore default panel styling (uses cached style for consistency)
+	# NOTE: _restore_default_style() now also kills active tweens
 	_restore_default_style()
 
 	# Restore default margins
@@ -192,6 +216,9 @@ func update_display():
 	else:
 		# Re-show if this slot is no longer occupied
 		visible = true
+		# CRITICAL: Reset modulation to WHITE immediately for non-occupied slots
+		# This prevents visual state leaks from previous items (bright borders, dimming)
+		modulate = Color.WHITE
 
 	# Re-enable mouse input for non-occupied slots
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -200,13 +227,16 @@ func update_display():
 		# Empty slot
 		if icon:
 			icon.texture = null
+			icon.modulate = Color(1, 1, 1, 0.3)  # Dim icon area only
 		if quantity_label:
 			quantity_label.text = ""
 		if upgrade_label:
 			upgrade_label.text = ""
 		if rarity_border:
-			rarity_border.modulate = Color(1, 1, 1, 0)  # Transparent
-		modulate = Color(1, 1, 1, 0.5)  # Dim empty slots
+			# NUCLEAR FIX: Hide rarity border completely (not just transparent!)
+			rarity_border.visible = false
+			rarity_border.modulate = Color.WHITE  # Reset to white
+		modulate = Color.WHITE  # Keep borders at full opacity
 		tooltip_text = ""
 		return
 
@@ -242,6 +272,7 @@ func update_display():
 
 	# Set rarity border color
 	if rarity_border:
+		rarity_border.visible = true  # Show it
 		rarity_border.modulate = item_data.get_rarity_color()
 
 	# Update tooltip with comparison
@@ -539,18 +570,26 @@ func _on_mouse_entered():
 	is_hovered = true
 
 	if not is_empty:
+		# Kill existing tween first to prevent multiple simultaneous tweens
+		if _hover_tween and _hover_tween.is_valid():
+			_hover_tween.kill()
+
 		# Scale up slightly
-		var tween = create_tween()
-		tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.1)
+		_hover_tween = create_tween()
+		_hover_tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.1)
 
 
 ## Handle mouse exit
 func _on_mouse_exited():
 	is_hovered = false
 
+	# Kill existing tween first to prevent multiple simultaneous tweens
+	if _hover_tween and _hover_tween.is_valid():
+		_hover_tween.kill()
+
 	# Scale back to normal
-	var tween = create_tween()
-	tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.1)
+	_hover_tween = create_tween()
+	_hover_tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.1)
 
 
 ## Handle GUI input (clicks)

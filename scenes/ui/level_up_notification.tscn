@@ -1,0 +1,55 @@
+[gd_scene load_steps=3 format=3 uid="uid://dlevelup456"]
+
+[ext_resource type="Script" path="res://scripts/ui/level_up_notification.gd" id="1_levelup"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_levelup"]
+bg_color = Color(1, 0.84, 0, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="LevelUpNotification" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 120.0
+offset_bottom = 60.0
+mouse_filter = 2
+script = ExtResource("1_levelup")
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_levelup")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer"]
+layout_mode = 2
+
+[node name="LevelUpLabel" type="Label" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 20
+text = "LEVEL UP!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LevelNumberLabel" type="Label" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 14
+text = "Level 5"
+horizontal_alignment = 1
+vertical_alignment = 1

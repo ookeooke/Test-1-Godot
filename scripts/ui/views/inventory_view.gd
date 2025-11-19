@@ -163,6 +163,10 @@ func _refresh_inventory():
 		# Force complete style reset using cached default (prevents border artifacts)
 		if slot.has_method("_restore_default_style"):
 			slot._restore_default_style()
+		# CRITICAL: Defensive modulation reset to prevent visual state leaks
+		# Even though _restore_default_style() sets this, ensure it's WHITE
+		# in case update_display() is called later with inconsistent state
+		slot.modulate = Color.WHITE
 		if slot.margin_container:
 			slot.margin_container.add_theme_constant_override("margin_left", 4)
 			slot.margin_container.add_theme_constant_override("margin_top", 4)
@@ -172,8 +176,18 @@ func _refresh_inventory():
 	# Get ALL items from hero inventory
 	var all_items: Array = HeroInventoryManager.get_all_items(hero_id)
 
+	# DEBUG: Log hero inventory details
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[InventoryView] 🎒 Refreshing Gear Screen Inventory")
+	print("  Hero ID: '%s' (type: %s)" % [hero_id, typeof(hero_id)])
+	print("  Items Found: %d" % all_items.size())
+
 	if debug_logging:
 		print("[InventoryView] Found %d items in inventory" % all_items.size())
+
+	# Track filtered items
+	var displayed_count = 0
+	var filtered_count = 0
 
 	# Place items using spatial grid positions
 	for item_info in all_items:
@@ -184,9 +198,13 @@ func _refresh_inventory():
 		var pos: Dictionary = HeroInventoryManager.get_grid_position(hero_id, item_id)
 
 		if pos.x == -1 or pos.y == -1:
+			filtered_count += 1
+			print("  ⚠️  FILTERED: %s (no grid position)" % item_id)
 			if debug_logging:
 				print("[InventoryView] Warning: Item not placed in grid: ", item_id)
 			continue
+
+		displayed_count += 1
 
 		# Find the root slot for this item
 		var root_slot = _get_slot_at_position(pos.x, pos.y)
@@ -219,6 +237,11 @@ func _refresh_inventory():
 
 	# Update labels
 	_update_labels()
+
+	# DEBUG: Summary
+	print("  ✅ Displayed: %d items" % displayed_count)
+	print("  ❌ Filtered: %d items (no grid position)" % filtered_count)
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 
 ## Get slot at specific grid coordinates

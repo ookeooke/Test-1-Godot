@@ -13,7 +13,8 @@ var current_state = State.IDLE
 var hero_id: String
 
 # STATS - NEW UNIFIED SYSTEM
-var hero_level = 1
+var hero_level = 1  # Legacy - use current_level instead
+var current_level: int = 1  # In-mission level (1-20, managed by HeroProgressionManager)
 
 # Core stats using new Stat system (with modifiers from equipment/skills)
 var stat_max_health: Stat
@@ -90,6 +91,7 @@ var click_area: Area2D  # For clicking the hero
 @onready var melee_detection = $MeleeDetection
 @onready var range_indicator = $RangeIndicator
 @onready var health_bar = $HealthBar
+@onready var xp_bar = $XPBar
 @onready var sprite = $Sprite2D
 
 # TOWER BUFF SYSTEM (Phase 2B)
@@ -127,6 +129,13 @@ func _ready():
 	# Initialize skill system
 	_setup_skill_system()
 
+	# Register with progression system (must be after hero_id is set)
+	_setup_progression_system()
+
+	# Setup XP bar UI
+	if xp_bar:
+		xp_bar.setup(self)
+
 	# Apply all modifiers from equipment and skills
 	_recalculate_all_stats()
 
@@ -134,9 +143,8 @@ func _ready():
 	current_health = max_health
 
 	# CRITICAL: Set metadata for WaveManager to read at level end
-	var hero_number = int(hero_id.split("_")[1]) if "_" in hero_id else 1
 	set_meta("hero_id", hero_id)
-	set_meta("hero_name", "Ranger #%d" % hero_number)
+	set_meta("hero_name", "Ranger")
 	set_meta("hero_class", "ranger")
 	print("[RangerHero] Metadata set: hero_id=%s, hero_name=%s" % [hero_id, get_meta("hero_name")])
 
@@ -277,6 +285,10 @@ func _recalculate_all_stats():
 		for modifier in skill_modifiers:
 			_apply_modifier_to_appropriate_stat(modifier)
 
+	# Gather modifiers from hero level
+	var level_modifiers = _get_level_based_modifiers()
+	for modifier in level_modifiers:
+		_apply_modifier_to_appropriate_stat(modifier)
 
 	# Update timer with new attack speed
 	if ranged_timer:
@@ -318,6 +330,10 @@ func _apply_modifier_to_appropriate_stat(modifier: StatModifier):
 		stat_ranged_range.add_modifier(modifier)
 	elif "attack speed" in desc_lower:
 		stat_ranged_attack_speed.add_modifier(modifier)
+	elif "crit" in desc_lower:
+		stat_crit_chance.add_modifier(modifier)
+	elif "defense" in desc_lower or "armor" in desc_lower:
+		stat_defense.add_modifier(modifier)
 	elif "movement" in desc_lower or "speed" in desc_lower:
 		stat_movement_speed.add_modifier(modifier)
 	else:
@@ -349,20 +365,10 @@ func _setup_equipment_system():
 
 
 func _generate_unique_hero_id() -> String:
-	"""Generate instance-based hero ID for multi-hero support"""
-	# Count existing rangers in the scene
-	var heroes = get_tree().get_nodes_in_group("hero")
-	var ranger_count = 0
-
-	for hero in heroes:
-		if is_instance_valid(hero) and hero != self and hero.has_method("get_hero_class"):
-			if hero.get_hero_class() == "ranger":
-				ranger_count += 1
-
-	# Generate instance-based ID: "ranger_1", "ranger_2", etc.
-	var instance_id = "ranger_%d" % (ranger_count + 1)
-
-	return instance_id
+	"""Generate static hero class ID for equipment persistence"""
+	# Use static ID so equipment persists across game sessions
+	# Each hero class (ranger, amazon, wizard) gets unique ID
+	return "ranger"
 
 func _load_equipment_from_save() -> void:
 	"""Verify equipment is loaded from save manager"""
@@ -441,6 +447,126 @@ func _setup_skill_system():
 				break
 		if multishot_data:
 			skill_manager.unlock_skill("ranger_multishot", multishot_data)
+
+
+# ============================================
+# PROGRESSION SYSTEM
+# ============================================
+
+func _setup_progression_system():
+	"""Register hero with progression system and connect signals"""
+	if not HeroProgressionManager:
+		push_warning("[RangerHero] HeroProgressionManager not available")
+		return
+
+	# Register this hero for XP tracking
+	HeroProgressionManager.register_hero(self)
+
+	# Connect to level-up signal
+	HeroProgressionManager.hero_leveled_up.connect(_on_hero_leveled_up)
+
+	print("[RangerHero] Registered with HeroProgressionManager, starting at level 1")
+
+
+func set_current_level(level: int) -> void:
+	"""Set hero's current level (called by HeroProgressionManager)"""
+	if level < 1 or level > 20:
+		push_warning("[RangerHero] Invalid level: %d (must be 1-20)" % level)
+		return
+
+	current_level = level
+	hero_level = level  # Keep legacy variable in sync
+
+	# Recalculate stats with new level bonuses
+	_recalculate_all_stats()
+
+
+func get_current_level() -> int:
+	"""Get hero's current level"""
+	return current_level
+
+
+func get_available_skills() -> Array:
+	"""Get list of available skills (called by HeroProgressionManager)"""
+	return available_skills
+
+
+func _on_hero_leveled_up(hero: Node, new_level: int) -> void:
+	"""Called when this hero levels up"""
+	if hero != self:
+		return  # Not for us
+
+	print("[RangerHero] 🎉 LEVEL UP! Now level %d" % new_level)
+
+	# Level is already set by HeroProgressionManager via set_current_level()
+	# Stats are already recalculated by set_current_level()
+
+	# Visual feedback: Show level-up notification
+	_show_level_up_notification(new_level)
+
+	# TODO: Add particle effect, sound
+
+
+func _show_level_up_notification(new_level: int):
+	"""Spawn level-up notification popup at hero position"""
+	# Load notification scene
+	var notification_scene = preload("res://scenes/ui/level_up_notification.tscn")
+	var popup = notification_scene.instantiate()
+
+	# Set level
+	popup.show_level_up(new_level)
+
+	# Get hero's screen position (convert world position to screen)
+	var screen_pos = global_position
+	popup.global_position = screen_pos + Vector2(-60, -80)  # Offset above hero
+
+	# Add to scene tree (use current scene root or a CanvasLayer)
+	get_tree().root.add_child(popup)
+
+
+func _get_level_based_modifiers() -> Array[StatModifier]:
+	"""Generate stat modifiers based on current hero level"""
+	var modifiers: Array[StatModifier] = []
+
+	if current_level <= 1:
+		return modifiers  # No bonuses at level 1
+
+	# Calculate bonuses (scales from level 2-20)
+	var levels_gained = current_level - 1
+
+	# +5 HP per level (Level 20 = +95 HP = 395 total from base 300)
+	var health_bonus = levels_gained * 5.0
+	modifiers.append(StatModifier.create_flat(
+		health_bonus,
+		"level",
+		"Level Bonus: +%d Health" % int(health_bonus)
+	))
+
+	# +2 damage per level (Level 20 = +38 damage)
+	var damage_bonus = levels_gained * 2.0
+	modifiers.append(StatModifier.create_flat(
+		damage_bonus,
+		"level",
+		"Level Bonus: +%d Damage" % int(damage_bonus)
+	))
+
+	# +0.5% attack speed per level (Level 20 = +9.5% attack speed)
+	var attack_speed_multiplier = 1.0 + (levels_gained * 0.005)
+	modifiers.append(StatModifier.create_multiplicative(
+		attack_speed_multiplier,
+		"level",
+		"Level Bonus: +%.1f%% Attack Speed" % ((attack_speed_multiplier - 1.0) * 100)
+	))
+
+	# +1% crit chance per level (Level 20 = +19% crit)
+	var crit_bonus = levels_gained * 1.0
+	modifiers.append(StatModifier.create_flat(
+		crit_bonus,
+		"level",
+		"Level Bonus: +%d%% Crit Chance" % int(crit_bonus)
+	))
+
+	return modifiers
 
 
 func _on_skill_activated(skill_id: String):

@@ -216,6 +216,16 @@ func wave_completed():
 	if BalanceTracker:
 		BalanceTracker.record_wave_bonus(current_wave, wave_bonus)
 
+	# Award XP completion bonus to all heroes
+	if HeroProgressionManager:
+		var xp_bonus = HeroProgressionManager.get_wave_completion_xp(current_wave)
+		var heroes = _get_active_hero_nodes()
+		for hero in heroes:
+			if is_instance_valid(hero):
+				HeroProgressionManager.award_xp(hero, xp_bonus)
+		if heroes.size() > 0:
+			print("[WaveManager] Wave completion XP: +%d to %d heroes" % [xp_bonus, heroes.size()])
+
 	# Set combat state to inactive
 	is_combat_active = false
 	combat_ended.emit()
@@ -415,6 +425,9 @@ func _on_enemy_died(enemy):
 	# NEW: Roll loot for the enemy
 	if is_instance_valid(enemy):
 		_roll_loot_for_enemy(enemy)
+
+		# Award XP to participating heroes
+		_award_xp_for_enemy_kill(enemy)
 
 	# Remove enemy from tracking dictionary
 	if tracked_enemies.has(enemy):
@@ -788,3 +801,52 @@ func _is_boss_enemy(enemy) -> bool:
 	"""Check if an enemy is a boss"""
 	var enemy_name = enemy.name.to_lower()
 	return "boss" in enemy_name or (enemy.has_method("is_boss") and enemy.is_boss())
+
+
+func _award_xp_for_enemy_kill(enemy):
+	"""Award XP to heroes when an enemy is killed"""
+	if not HeroProgressionManager:
+		return  # Progression system not available
+
+	# Get enemy tier to determine XP amount
+	var enemy_tier = _get_enemy_tier(enemy)
+	if _is_boss_enemy(enemy):
+		enemy_tier = "boss"
+
+	# Get XP amount for this tier
+	var xp_amount = HeroProgressionManager.get_recommended_xp_for_tier(enemy_tier)
+
+	# Get all active heroes in the level
+	var heroes = _get_active_hero_nodes()
+
+	if heroes.is_empty():
+		return  # No heroes to award XP to
+
+	# Award XP to all participating heroes (Bloons TD 6 style)
+	# All heroes in level get XP regardless of proximity
+	for hero in heroes:
+		if is_instance_valid(hero):
+			HeroProgressionManager.award_xp(hero, xp_amount)
+
+	print("[WaveManager] Awarded %d XP to %d heroes for killing %s" % [xp_amount, heroes.size(), enemy_tier])
+
+
+func _get_active_hero_nodes() -> Array:
+	"""Get all active hero nodes in the level (actual Node references, not metadata)"""
+	var hero_nodes: Array = []
+
+	# Try to find HeroManager in the level
+	var hero_manager = get_tree().get_first_node_in_group("hero_manager")
+	if hero_manager and "spawned_heroes" in hero_manager:
+		for hero in hero_manager.spawned_heroes:
+			if is_instance_valid(hero):
+				hero_nodes.append(hero)
+		return hero_nodes
+
+	# Fallback: Search for all heroes in "hero" group
+	var heroes = get_tree().get_nodes_in_group("hero")
+	for hero in heroes:
+		if is_instance_valid(hero):
+			hero_nodes.append(hero)
+
+	return hero_nodes

@@ -193,10 +193,12 @@ func get_all_items(hero_id: String) -> Array:
 	for item_id in hero_inv.items.keys():
 		# Skip items without grid positions (shouldn't happen, but safety check)
 		if not hero_inv.positions.has(item_id):
+			push_error("[HeroInventoryManager] ⚠️ DATA CORRUPTION: Item '%s' exists in hero '%s' inventory but has NO grid position! This item will be INVISIBLE in Gear screen." % [item_id, hero_id])
 			continue
 
 		var item_data = ItemDatabase.get_item(item_id)
 		if item_data == null:
+			push_warning("[HeroInventoryManager] ⚠️ Item '%s' not found in ItemDatabase (might be deleted)" % item_id)
 			continue
 
 		result.append({

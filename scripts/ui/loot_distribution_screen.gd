@@ -191,6 +191,19 @@ func _display_stash():
 	# Returns Array of {item_id, item_data, quantity, upgrade_level}
 	var hero_items = HeroInventoryManager.get_all_items(selected_hero_id)
 
+	# DEBUG: Log hero inventory details
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[LootDistScreen] 📦 Displaying Hero Inventory")
+	print("  Hero ID: '%s' (type: %s)" % [selected_hero_id, typeof(selected_hero_id)])
+	print("  Hero Name: '%s'" % selected_hero_info.get("hero_name", "Unknown"))
+	print("  Items Found: %d" % hero_items.size())
+	if hero_items.size() > 0:
+		print("  Item List:")
+		for item_entry in hero_items:
+			var pos = HeroInventoryManager.get_grid_position(selected_hero_id, item_entry.item_id)
+			print("    - %s (qty: %d, pos: [%d, %d])" % [item_entry.item_id, item_entry.quantity, pos.x, pos.y])
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
 	if hero_items.is_empty():
 		# Show empty message
 		var empty_label = Label.new()
@@ -486,6 +499,13 @@ func _on_item_input(event: InputEvent, panel: PanelContainer):
 		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_start_drag(panel)
 		elif not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_end_drag()
+
+
+func _unhandled_input(event: InputEvent):
+	"""End drag even if mouse button released off the panel"""
+	if event is InputEventMouseButton and dragged_item:
+		if not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_end_drag()
 
 

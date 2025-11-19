@@ -12,6 +12,8 @@ extends Button
 # REFERENCES
 @onready var portrait = $Portrait
 @onready var health_bar = $HealthBar
+@onready var xp_bar = $XPBar
+@onready var level_label = $LevelLabel
 
 # Ability buttons container
 var abilities_container: HBoxContainer = null
@@ -133,9 +135,9 @@ func _update_hero_info():
 		var health_percent = (hero_reference.current_health / hero_reference.max_health) * 100.0
 		health_bar.value = health_percent
 
-	# Update portrait color (could be sprite later)
-	# For now, use a color that represents the hero type
-	portrait.color = Color(0.4, 0.6, 0.8, 1.0)  # Blue for ranger
+	# Update level and XP
+	_update_level_display()
+	_update_xp_display()
 
 ## ============================================
 ## UPDATE LOOP
@@ -147,6 +149,37 @@ func _process(delta):
 		if "current_health" in hero_reference and "max_health" in hero_reference:
 			var health_percent = (hero_reference.current_health / hero_reference.max_health) * 100.0
 			health_bar.value = health_percent
+
+		# Update XP and level
+		_update_xp_display()
+		_update_level_display()
+
+
+func _update_level_display():
+	"""Update level label with current hero level"""
+	if not hero_reference or not is_instance_valid(hero_reference) or not level_label:
+		return
+
+	if not HeroProgressionManager:
+		return
+
+	var level = HeroProgressionManager.get_hero_level(hero_reference)
+	level_label.text = str(level)
+
+
+func _update_xp_display():
+	"""Update XP bar with current hero XP progress"""
+	if not hero_reference or not is_instance_valid(hero_reference) or not xp_bar:
+		return
+
+	if not HeroProgressionManager:
+		return
+
+	# Get XP progress (0.0 to 1.0)
+	var progress = HeroProgressionManager.get_level_progress(hero_reference)
+
+	# Convert to percentage (0-100)
+	xp_bar.value = progress * 100.0
 
 ## ============================================
 ## BUTTON INTERACTION
