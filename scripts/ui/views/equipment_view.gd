@@ -5,6 +5,8 @@ class_name EquipmentView
 ## Allows drag-drop from inventory to equipment slots
 ## Extends BasePanelView for use in FlexiblePanel
 
+const DEBUG_INVENTORY = false  # Set to true to enable verbose inventory logging
+
 signal equipment_slot_clicked(slot_name: String)
 signal switch_hero_requested
 signal hero_changed(new_hero_id: String)
@@ -584,13 +586,15 @@ func _refresh_shared_stash():
 
 func _on_inventory_changed():
 	"""Called when shared stash inventory changes"""
-	print("[EquipmentView] 🔔 inventory_changed signal received")
+	if DEBUG_INVENTORY:
+		print("[EquipmentView] 🔔 inventory_changed signal received")
 
 	# Only refresh if in common chest mode
 	if common_chest_mode:
-		print("[EquipmentView] Common chest mode ON - refreshing shared stash")
+		if DEBUG_INVENTORY:
+			print("[EquipmentView] Common chest mode ON - refreshing shared stash")
 		_refresh_shared_stash()
-	else:
+	elif DEBUG_INVENTORY:
 		print("[EquipmentView] Common chest mode OFF - ignoring signal")
 
 

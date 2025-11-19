@@ -3,6 +3,7 @@ extends Control
 ## Loot Distribution Screen - Battle Brothers Style
 ## Two-panel layout: Hero Inventory (left) + Found Loot (right)
 ## Drag items from Found Loot to Hero Inventory
+## NOW SUPPORTS: Per-hero inventories + multi-hero selection!
 
 signal continue_to_victory
 
@@ -23,7 +24,11 @@ signal continue_to_victory
 var loot_items: Array = []  # Items in Found Loot panel
 var stars_earned: int = 3
 var gems_earned: int = 0  # Gems earned from star bonus
-var selected_hero = null  # Currently selected hero
+
+# Hero data (passed from WaveManager)
+var participating_heroes: Array = []  # [{hero_id, hero_name, hero_class}]
+var selected_hero_id: String = ""  # Currently selected hero's ID
+var selected_hero_info: Dictionary = {}  # Full hero data
 
 # Drag state
 var dragged_item: Control = null
@@ -56,56 +61,71 @@ func _ready():
 
 
 func _load_heroes():
-	"""Load available heroes into dropdown"""
+	"""Load available heroes into dropdown from participating_heroes data"""
 	hero_dropdown.clear()
 
-	# Try to get heroes from scene
-	var heroes_in_scene = get_tree().get_nodes_in_group("hero")
-
-	if heroes_in_scene.size() > 0:
-		for i in range(heroes_in_scene.size()):
-			var hero = heroes_in_scene[i]
-			var hero_name = hero.get_meta("hero_name", "Hero %d" % (i+1))
-			hero_dropdown.add_item(hero_name, i)
-
-		# Select first hero
-		selected_hero = heroes_in_scene[0]
-		hero_dropdown.select(0)
-		_update_hero_display()
-	else:
-		# No heroes in scene - use placeholder
+	if participating_heroes.is_empty():
+		# No heroes provided - error state
 		hero_dropdown.add_item("No Hero", 0)
 		hero_name_label.text = "No Hero"
 		hero_portrait.color = Color(0.3, 0.3, 0.3)
+		print("[LootDistScreen] ERROR: No participating heroes provided!")
+		return
+
+	# Populate dropdown with participating heroes
+	for i in range(participating_heroes.size()):
+		var hero_info = participating_heroes[i]
+		hero_dropdown.add_item(hero_info.hero_name, i)
+
+	# Select first hero
+	selected_hero_info = participating_heroes[0]
+	selected_hero_id = selected_hero_info.hero_id
+	hero_dropdown.select(0)
+
+	# Register hero in HeroInventoryManager if not already registered
+	if not HeroInventoryManager.is_hero_registered(selected_hero_id):
+		HeroInventoryManager.register_hero(selected_hero_id)
+		print("[LootDistScreen] Registered new hero in inventory system: ", selected_hero_id)
+
+	_update_hero_display()
+	print("[LootDistScreen] Loaded %d heroes, selected: %s" % [participating_heroes.size(), selected_hero_id])
 
 
 func _on_hero_selected(index: int):
-	"""When user selects a different hero"""
-	var heroes = get_tree().get_nodes_in_group("hero")
-	if index < heroes.size():
-		selected_hero = heroes[index]
+	"""When user selects a different hero from dropdown"""
+	if index < participating_heroes.size():
+		selected_hero_info = participating_heroes[index]
+		selected_hero_id = selected_hero_info.hero_id
+
+		# Register hero in HeroInventoryManager if not already registered
+		if not HeroInventoryManager.is_hero_registered(selected_hero_id):
+			HeroInventoryManager.register_hero(selected_hero_id)
+			print("[LootDistScreen] Registered new hero in inventory system: ", selected_hero_id)
+
 		_update_hero_display()
 		_display_stash()  # Refresh inventory display
 		_update_counters()
+		print("[LootDistScreen] Switched to hero: %s (%s)" % [selected_hero_info.hero_name, selected_hero_id])
 
 
 func _update_hero_display():
 	"""Update hero portrait and name"""
-	if selected_hero:
-		var hero_name = selected_hero.get_meta("hero_name", "Hero")
-		hero_name_label.text = hero_name
+	if selected_hero_info.is_empty():
+		return
 
-		# Set portrait color based on hero class
-		var hero_class = selected_hero.get_meta("hero_class", "warrior")
-		match hero_class:
-			"warrior":
-				hero_portrait.color = Color(0.8, 0.2, 0.2)  # Red
-			"ranger":
-				hero_portrait.color = Color(0.2, 0.8, 0.2)  # Green
-			"mage":
-				hero_portrait.color = Color(0.2, 0.2, 0.8)  # Blue
-			_:
-				hero_portrait.color = Color(0.5, 0.5, 0.5)  # Gray
+	hero_name_label.text = selected_hero_info.hero_name
+
+	# Set portrait color based on hero class
+	var hero_class = selected_hero_info.get("hero_class", "warrior")
+	match hero_class:
+		"warrior":
+			hero_portrait.color = Color(0.8, 0.2, 0.2)  # Red
+		"ranger":
+			hero_portrait.color = Color(0.2, 0.8, 0.2)  # Green
+		"mage":
+			hero_portrait.color = Color(0.2, 0.2, 0.8)  # Blue
+		_:
+			hero_portrait.color = Color(0.5, 0.5, 0.5)  # Gray
 
 
 func _load_loot_data():
@@ -115,30 +135,44 @@ func _load_loot_data():
 
 
 func _display_stash():
-	"""Display hero's inventory items in left panel"""
+	"""Display hero's personal inventory items in left panel"""
 	# Clear existing items
 	for child in stash_grid.get_children():
 		child.queue_free()
 
-	# Get all items from InventoryManager (global stash)
-	var inventory_items = InventoryManager.global_inventory
+	# Safety check
+	if selected_hero_id == "":
+		var error_label = Label.new()
+		error_label.text = "No Hero Selected"
+		error_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		error_label.add_theme_font_size_override("font_size", 16)
+		error_label.modulate = Color(1.0, 0.3, 0.3)
+		stash_grid.add_child(error_label)
+		return
 
-	for item_id in inventory_items:
-		var item_entry = inventory_items[item_id]
-		var item_data = ItemDatabase.get_item(item_id)
+	# Get items from hero's personal inventory (HeroInventoryManager)
+	# Returns Array of {item_id, item_data, quantity, upgrade_level}
+	var hero_items = HeroInventoryManager.get_all_items(selected_hero_id)
 
-		if item_data:
-			var item_panel = _create_item_display(item_data, item_entry.quantity, item_id, false)
-			stash_grid.add_child(item_panel)
-
-	# Show empty message if no items
-	if inventory_items.is_empty():
+	if hero_items.is_empty():
+		# Show empty message
 		var empty_label = Label.new()
 		empty_label.text = "Empty"
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty_label.add_theme_font_size_override("font_size", 16)
 		empty_label.modulate = Color(0.5, 0.5, 0.5)
 		stash_grid.add_child(empty_label)
+		return
+
+	# Display hero's items
+	for item_entry in hero_items:
+		var item_id = item_entry.item_id
+		var item_data = item_entry.item_data
+		var quantity = item_entry.quantity
+
+		if item_data:
+			var item_panel = _create_item_display(item_data, quantity, item_id, false)
+			stash_grid.add_child(item_panel)
 
 
 func _display_found_loot():
@@ -460,9 +494,19 @@ func _end_drag():
 
 
 func _add_item_to_inventory(item_id: String, item_data: ItemData, quantity: int):
-	"""Add item to hero inventory"""
-	if InventoryManager.add_item(item_id, quantity):
-		print("[LootDistScreen] Item added: ", item_data.item_name)
+	"""Add item to selected hero's inventory"""
+	# Safety check
+	if selected_hero_id == "":
+		print("[LootDistScreen] ERROR: No hero selected!")
+		if dragged_item:
+			dragged_item.modulate = Color.WHITE
+		return
+
+	# Try to add to hero's inventory
+	var success = HeroInventoryManager.add_item_to_hero(selected_hero_id, item_id, quantity)
+
+	if success:
+		print("[LootDistScreen] Item added to %s's inventory: %s" % [selected_hero_info.hero_name, item_data.item_name])
 
 		# Remove from pending loot
 		for i in range(LootManager.pending_wave_loot.size()):
@@ -481,7 +525,7 @@ func _add_item_to_inventory(item_id: String, item_data: ItemData, quantity: int)
 		_display_found_loot()
 		_update_counters()
 	else:
-		print("[LootDistScreen] Inventory full!")
+		print("[LootDistScreen] Hero inventory full! Cannot add: %s" % item_data.item_name)
 		if dragged_item:
 			dragged_item.modulate = Color.WHITE
 
@@ -523,8 +567,13 @@ func _is_point_over_control(point: Vector2, control: Control) -> bool:
 
 func _update_counters():
 	"""Update capacity and loot count labels"""
-	var item_count = InventoryManager.global_inventory.size()
-	var max_capacity = 99
+	# Get hero's inventory count
+	var item_count = 0
+	if selected_hero_id != "":
+		var hero_items = HeroInventoryManager.get_all_items(selected_hero_id)
+		item_count = hero_items.size()
+
+	var max_capacity = 64  # 8x8 grid = 64 slots max
 	capacity_label.text = "%d/%d" % [item_count, max_capacity]
 
 	loot_count_label.text = "%d items" % loot_items.size()

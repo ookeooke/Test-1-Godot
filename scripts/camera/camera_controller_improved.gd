@@ -236,15 +236,13 @@ func _ready():
 
 	# Validate that bounds have been set by LevelController
 	if level_rect.size == Vector2.ZERO:
-		push_error("[Camera] ⚠️ CRITICAL: Level bounds not set! Camera requires LevelController to call set_level_bounds()")
-		push_warning("[Camera] → Add a LevelController script to your level scene")
-		push_warning("[Camera] → Assign a LevelConfig resource to the LevelController")
-
 		# CRITICAL FIX: Use fallback bounds to prevent camera lockup
 		var viewport_size = get_viewport_rect().size
 		level_rect = Rect2(-viewport_size, viewport_size * 3)  # Large area centered at origin
-		push_warning("[Camera] → Using FALLBACK BOUNDS: %s" % str(level_rect))
-		push_warning("[Camera] → Camera will work, but bounds may not match level design!")
+
+		# Check after one frame if bounds were set by parent scene (e.g., WorldMap)
+		# If not, warn the user about missing LevelController setup
+		call_deferred("_check_bounds_after_ready")
 
 	# Auto-calculate camera bounds from level_rect
 	update_camera_limits()
@@ -255,6 +253,18 @@ func _ready():
 	print("[Camera] Initialized - Baseline zoom:", baseline_zoom, " Zoom:", zoom, " Bounds:", Vector4i(limit_left, limit_top, limit_right, limit_bottom))
 	if level_rect.size != Vector2.ZERO:
 		print("[Camera] Level rect:", level_rect)
+
+func _check_bounds_after_ready() -> void:
+	"""Deferred check to warn about missing bounds if parent didn't set them"""
+	# Check if bounds are still at fallback values
+	var viewport_size = get_viewport_rect().size
+	var fallback_rect = Rect2(-viewport_size, viewport_size * 3)
+
+	if level_rect == fallback_rect:
+		push_error("[Camera] ⚠️ Level bounds not set by parent scene!")
+		push_warning("[Camera] → Add a LevelController script to your level scene")
+		push_warning("[Camera] → OR call set_level_bounds() from your scene's script")
+		push_warning("[Camera] → Using fallback bounds - camera may not match level design")
 
 func calculate_baseline_zoom() -> void:
 	"""Calculate baseline zoom from viewport to maintain consistent framing across devices"""

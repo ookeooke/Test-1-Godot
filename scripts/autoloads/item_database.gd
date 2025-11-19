@@ -89,6 +89,10 @@ func get_item(item_id: String) -> ItemData:
 	if items.has(item_id):
 		return items[item_id]
 
+	# Don't warn about placeholder items (e.g., __2H_OCCUPIED__basic_bow)
+	if item_id.begins_with("__") and item_id.contains("OCCUPIED"):
+		return null
+
 	print("[ItemDatabase] Warning: Item not found: ", item_id)
 	return null
 

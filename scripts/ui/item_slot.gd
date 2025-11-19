@@ -7,6 +7,8 @@ class_name ItemSlot
 ## - Mobile: Tap to equip/use, long-press (0.5s) for context menu
 ## Built-in Godot tooltips work automatically on hover
 
+const DEBUG_DRAG_DROP = false  # Set to true to enable verbose drag-drop logging
+
 signal item_clicked(item_id: String, slot: ItemSlot)
 signal item_right_clicked(item_id: String, slot: ItemSlot)
 
@@ -248,10 +250,12 @@ func update_display():
 
 ## Godot drag-and-drop: Get drag data
 func _get_drag_data(at_position: Vector2):
-	print("[ItemSlot] 🎯 _get_drag_data called - item_id: %s, is_empty: %s, slot_type: %s, grid_pos: (%d,%d)" % [item_id, is_empty, slot_type, grid_x, grid_y])
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] 🎯 _get_drag_data called - item_id: %s, is_empty: %s, slot_type: %s, grid_pos: (%d,%d)" % [item_id, is_empty, slot_type, grid_x, grid_y])
 
 	if is_empty:
-		print("[ItemSlot] ❌ Slot is empty, canceling drag")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] ❌ Slot is empty, canceling drag")
 		return null
 
 	# Create drag preview
@@ -263,7 +267,8 @@ func _get_drag_data(at_position: Vector2):
 	preview.modulate = Color(1, 1, 1, 0.8)  # Semi-transparent
 	set_drag_preview(preview)
 
-	print("[ItemSlot] ✅ Drag data created for item: %s" % item_id)
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] ✅ Drag data created for item: %s" % item_id)
 
 	# Return drag data
 	return {
@@ -277,26 +282,32 @@ func _get_drag_data(at_position: Vector2):
 
 ## Godot drag-and-drop: Check if can drop here
 func _can_drop_data(at_position: Vector2, data) -> bool:
-	print("[ItemSlot] 🔍 _can_drop_data - target slot: (%d,%d), slot_type: %s, is_root: %s" % [grid_x, grid_y, slot_type, is_root_slot])
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] 🔍 _can_drop_data - target slot: (%d,%d), slot_type: %s, is_root: %s" % [grid_x, grid_y, slot_type, is_root_slot])
 
 	if not data is Dictionary:
-		print("[ItemSlot] ❌ Data is not Dictionary")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] ❌ Data is not Dictionary")
 		return false
 
 	if not data.has("item_id"):
-		print("[ItemSlot] ❌ Data missing item_id")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] ❌ Data missing item_id")
 		return false
 
-	print("[ItemSlot] Checking drop for item: %s" % data.item_id)
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] Checking drop for item: %s" % data.item_id)
 
 	# Don't drop on self
 	if data.get("source_slot") == self:
-		print("[ItemSlot] ❌ Cannot drop on self")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] ❌ Cannot drop on self")
 		return false
 
 	# Can't drop on occupied (non-root) slots
 	if not is_root_slot and occupied_by_item_id != "":
-		print("[ItemSlot] ❌ Slot occupied by: %s (non-root)" % occupied_by_item_id)
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] ❌ Slot occupied by: %s (non-root)" % occupied_by_item_id)
 		return false
 
 	# For inventory slots, use spatial grid validation
@@ -320,11 +331,13 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 			# For hero inventory, we can't validate without modifying HeroInventoryManager
 			# Let the drop operation handle validation via set_grid_position()
 			can_place = true  # Optimistic validation - actual validation happens in _drop_data
-			print("[ItemSlot] Grid validation: hero inventory (optimistic)")
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] Grid validation: hero inventory (optimistic)")
 		else:
 			# For shared stash, use InventoryManager validation
 			can_place = InventoryManager.can_place_item(data.item_id, grid_x, grid_y)
-			print("[ItemSlot] Grid validation: shared stash can_place = %s" % can_place)
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] Grid validation: shared stash can_place = %s" % can_place)
 
 		if not can_place:
 			return false
@@ -333,36 +346,44 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 	if slot_type == "equipment" and equipment_filter != ItemData.EquipSlot.NONE:
 		var dragged_item = ItemDatabase.get_item(data.item_id)
 		if dragged_item == null:
-			print("[ItemSlot] ❌ Invalid item in database")
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] ❌ Invalid item in database")
 			return false
 
 		# Only allow items that match this equipment slot
 		if dragged_item.equip_slot != equipment_filter:
-			print("[ItemSlot] ❌ Item type mismatch for equipment slot")
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] ❌ Item type mismatch for equipment slot")
 			return false
 
-	print("[ItemSlot] ✅ Drop validation passed")
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] ✅ Drop validation passed")
 	return true
 
 
 ## Godot drag-and-drop: Handle drop
 func _drop_data(at_position: Vector2, data):
-	print("[ItemSlot] 📥 _drop_data called - item: %s to slot (%d,%d)" % [data.get("item_id"), grid_x, grid_y])
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] 📥 _drop_data called - item: %s to slot (%d,%d)" % [data.get("item_id"), grid_x, grid_y])
 
 	if not _can_drop_data(at_position, data):
-		print("[ItemSlot] ❌ Drop validation failed")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] ❌ Drop validation failed")
 		return
 
 	var source_slot = data.get("source_slot") as ItemSlot
 	if source_slot == null:
-		print("[ItemSlot] ❌ No source slot in data")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] ❌ No source slot in data")
 		return
 
-	print("[ItemSlot] Source slot: (%d,%d), type: %s" % [source_slot.grid_x, source_slot.grid_y, source_slot.slot_type])
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] Source slot: (%d,%d), type: %s" % [source_slot.grid_x, source_slot.grid_y, source_slot.slot_type])
 
 	# Special handling for equipment slots
 	if slot_type == "equipment" or source_slot.slot_type == "equipment":
-		print("[ItemSlot] → Routing to equipment drop handler")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] → Routing to equipment drop handler")
 		_handle_equipment_drop(data, source_slot)
 		return
 
@@ -386,16 +407,19 @@ func _drop_data(at_position: Vector2, data):
 		is_cross_panel_transfer = (source_is_equipment and target_is_inventory) or \
 		                           (source_is_inventory and target_is_equipment)
 
-	print("[ItemSlot] Cross-panel transfer detected: %s (source: %s, target: %s)" % [is_cross_panel_transfer, source_parent_view != null, target_parent_view != null])
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] Cross-panel transfer detected: %s (source: %s, target: %s)" % [is_cross_panel_transfer, source_parent_view != null, target_parent_view != null])
 
 	if is_cross_panel_transfer:
-		print("[ItemSlot] → Routing to dual grid drop handler (cross-panel transfer)")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] → Routing to dual grid drop handler (cross-panel transfer)")
 		_handle_dual_grid_drop(data, source_slot, target_parent_view)
 		return
 
 	# For inventory slots with grid coordinates, use spatial placement
 	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
-		print("[ItemSlot] → Spatial grid mode: moving item to (%d,%d)" % [grid_x, grid_y])
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] → Spatial grid mode: moving item to (%d,%d)" % [grid_x, grid_y])
 
 		# Reuse target_parent_view from line 370 (already found above)
 		# Determine which inventory manager to use
@@ -415,19 +439,24 @@ func _drop_data(at_position: Vector2, data):
 		var success = false
 		if using_hero_inventory:
 			# Use HeroInventoryManager for per-hero inventory
-			print("[ItemSlot] Using HeroInventoryManager for hero '%s'" % target_hero_id)
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] Using HeroInventoryManager for hero '%s'" % target_hero_id)
 			success = HeroInventoryManager.set_grid_position(target_hero_id, data.item_id, grid_x, grid_y)
-			print("[ItemSlot] Hero inventory move result: %s" % ("SUCCESS" if success else "FAILED"))
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] Hero inventory move result: %s" % ("SUCCESS" if success else "FAILED"))
 		else:
 			# Use InventoryManager for shared stash
-			print("[ItemSlot] Using InventoryManager (shared stash)")
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] Using InventoryManager (shared stash)")
 			success = InventoryManager.move_item(data.item_id, grid_x, grid_y)
-			print("[ItemSlot] Shared stash move result: %s" % ("SUCCESS" if success else "FAILED"))
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] Shared stash move result: %s" % ("SUCCESS" if success else "FAILED"))
 
 		return
 
 	# Fallback: Normal inventory swap (for non-spatial inventory modes)
-	print("[ItemSlot] → Fallback swap mode")
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] → Fallback swap mode")
 	var temp_item_id = item_id
 	var temp_quantity = quantity
 	var temp_upgrade_level = upgrade_level
@@ -709,30 +738,36 @@ func _find_parent_inventory_view():
 	- InventoryView has: _refresh_inventory(), set_hero_id(new_hero_id)
 	- EquipmentView has: _refresh_equipment(), _refresh_shared_stash()
 	"""
-	print("[ItemSlot] 🔎 Searching for parent inventory view...")
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] 🔎 Searching for parent inventory view...")
 	var parent = get_parent()
 	var depth = 0
 	while parent:
 		depth += 1
-		print("[ItemSlot]   Depth %d: %s (class: %s)" % [depth, parent.name, parent.get_class()])
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot]   Depth %d: %s (class: %s)" % [depth, parent.name, parent.get_class()])
 
 		# Check for InventoryView by unique methods
 		if parent.has_method("_refresh_inventory"):
-			print("[ItemSlot] ✅ Found InventoryView by method signature (_refresh_inventory)")
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] ✅ Found InventoryView by method signature (_refresh_inventory)")
 			return parent
 
 		# Check for EquipmentView by unique methods
 		if parent.has_method("_refresh_equipment") or parent.has_method("_refresh_shared_stash"):
-			print("[ItemSlot] ✅ Found EquipmentView by method signature (_refresh_equipment/_refresh_shared_stash)")
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] ✅ Found EquipmentView by method signature (_refresh_equipment/_refresh_shared_stash)")
 			return parent
 
 		# Fallback: check by node name (less reliable but works for standard scene structure)
 		if "InventoryView" in parent.name or "EquipmentView" in parent.name:
-			print("[ItemSlot] ✅ Found view by node name: %s" % parent.name)
+			if DEBUG_DRAG_DROP:
+				print("[ItemSlot] ✅ Found view by node name: %s" % parent.name)
 			return parent
 
 		parent = parent.get_parent()
-	print("[ItemSlot] ❌ No parent view found")
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] ❌ No parent view found")
 	return null
 
 
@@ -749,54 +784,62 @@ func _find_both_panel_views() -> Dictionary:
 
 	# Check if scene tree is available
 	if not get_tree():
-		print("[ItemSlot] ❌ No scene tree available")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] ❌ No scene tree available")
 		return result
 
 	# Use group lookup - DualPanelScreen adds itself to "dual_panel_screen" group (line 35 in dual_panel_screen.gd)
 	var dual_panels = get_tree().get_nodes_in_group("dual_panel_screen")
 	if dual_panels.size() == 0:
-		print("[ItemSlot] ❌ No DualPanelScreen found in 'dual_panel_screen' group")
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot] ❌ No DualPanelScreen found in 'dual_panel_screen' group")
 		return result
 
 	var dual_panel = dual_panels[0]
-	print("[ItemSlot] ✅ Found DualPanelScreen via group: %s" % dual_panel.name)
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] ✅ Found DualPanelScreen via group: %s" % dual_panel.name)
 
 	# Get left panel (EquipmentView)
 	if dual_panel.has_method("get_left_panel"):
 		var left_panel = dual_panel.get_left_panel()
-		print("[ItemSlot]   Left panel found: %s" % (left_panel != null))
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot]   Left panel found: %s" % (left_panel != null))
 		if left_panel and left_panel.has_method("get_current_view"):
 			var view = left_panel.get_current_view()
 			if view:
-				print("[ItemSlot]   Left panel current view: %s" % view.name)
+				if DEBUG_DRAG_DROP:
+					print("[ItemSlot]   Left panel current view: %s" % view.name)
 				result["equipment_view"] = view
-			else:
+			elif DEBUG_DRAG_DROP:
 				print("[ItemSlot]   ⚠️ Left panel has no current view")
-		else:
+		elif DEBUG_DRAG_DROP:
 			print("[ItemSlot]   ⚠️ Left panel has no get_current_view() method")
-	else:
+	elif DEBUG_DRAG_DROP:
 		print("[ItemSlot] ❌ DualPanelScreen has no get_left_panel() method")
 
 	# Get right panel (InventoryView)
 	if dual_panel.has_method("get_right_panel"):
 		var right_panel = dual_panel.get_right_panel()
-		print("[ItemSlot]   Right panel found: %s" % (right_panel != null))
+		if DEBUG_DRAG_DROP:
+			print("[ItemSlot]   Right panel found: %s" % (right_panel != null))
 		if right_panel and right_panel.has_method("get_current_view"):
 			var view = right_panel.get_current_view()
 			if view:
-				print("[ItemSlot]   Right panel current view: %s" % view.name)
+				if DEBUG_DRAG_DROP:
+					print("[ItemSlot]   Right panel current view: %s" % view.name)
 				result["inventory_view"] = view
-			else:
+			elif DEBUG_DRAG_DROP:
 				print("[ItemSlot]   ⚠️ Right panel has no current view")
-		else:
+		elif DEBUG_DRAG_DROP:
 			print("[ItemSlot]   ⚠️ Right panel has no get_current_view() method")
-	else:
+	elif DEBUG_DRAG_DROP:
 		print("[ItemSlot] ❌ DualPanelScreen has no get_right_panel() method")
 
-	print("[ItemSlot] Final result - equipment_view: %s, inventory_view: %s" % [
-		result["equipment_view"] != null,
-		result["inventory_view"] != null
-	])
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] Final result - equipment_view: %s, inventory_view: %s" % [
+			result["equipment_view"] != null,
+			result["inventory_view"] != null
+		])
 
 	return result
 

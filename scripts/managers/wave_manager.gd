@@ -490,6 +490,13 @@ func _show_victory_screen():
 
 func _show_loot_distribution_screen(stars: int, gems_earned: int):
 	"""Show loot distribution screen and wait for user to continue"""
+	# Get heroes who participated in this level
+	var participating_heroes = _get_participating_heroes()
+
+	if participating_heroes.is_empty():
+		print("[WaveManager] WARNING: No heroes found in level! Skipping loot distribution.")
+		return
+
 	# Create canvas layer for loot screen
 	var canvas_layer = CanvasLayer.new()
 	canvas_layer.layer = 99  # Below victory screen but above gameplay
@@ -503,6 +510,9 @@ func _show_loot_distribution_screen(stars: int, gems_earned: int):
 	if loot_screen.has_method("set_gems_earned") or "gems_earned" in loot_screen:
 		loot_screen.gems_earned = gems_earned
 
+	# CRITICAL: Pass hero data to loot screen
+	loot_screen.participating_heroes = participating_heroes
+
 	# Add to scene tree
 	get_tree().root.add_child(canvas_layer)
 	canvas_layer.add_child(loot_screen)
@@ -511,6 +521,42 @@ func _show_loot_distribution_screen(stars: int, gems_earned: int):
 	await loot_screen.continue_to_victory
 
 	print("[WaveManager] Loot distribution complete, continuing to results screen")
+
+
+func _get_participating_heroes() -> Array:
+	"""Get all heroes who participated in this level
+
+	Returns Array of hero data: [{hero_id: String, hero_name: String, hero_class: String}]
+	"""
+	var hero_data_list: Array = []
+
+	# Try to find HeroManager in the level
+	var hero_manager = get_tree().get_first_node_in_group("hero_manager")
+	if hero_manager and "spawned_heroes" in hero_manager:
+		for hero in hero_manager.spawned_heroes:
+			if is_instance_valid(hero):
+				var hero_info = {
+					"hero_id": hero.get_meta("hero_id", "hero_" + str(hero.get_instance_id())),
+					"hero_name": hero.get_meta("hero_name", "Hero"),
+					"hero_class": hero.get_meta("hero_class", "warrior")
+				}
+				hero_data_list.append(hero_info)
+				print("[WaveManager] Found hero: %s (%s)" % [hero_info.hero_name, hero_info.hero_id])
+
+	# Fallback: Search for all heroes in "hero" group
+	if hero_data_list.is_empty():
+		var heroes = get_tree().get_nodes_in_group("hero")
+		for hero in heroes:
+			if is_instance_valid(hero):
+				var hero_info = {
+					"hero_id": hero.get_meta("hero_id", "hero_" + str(hero.get_instance_id())),
+					"hero_name": hero.get_meta("hero_name", "Hero"),
+					"hero_class": hero.get_meta("hero_class", "warrior")
+				}
+				hero_data_list.append(hero_info)
+				print("[WaveManager] Found hero (fallback): %s (%s)" % [hero_info.hero_name, hero_info.hero_id])
+
+	return hero_data_list
 
 func _calculate_stars() -> int:
 	# Use centralized star calculation from GameStateManager
