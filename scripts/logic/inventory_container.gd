@@ -206,6 +206,10 @@ func get_all_items() -> Array[ItemInstance]:
 		list.append(_items[key])
 	return list
 
+## Get count of items in container
+func get_item_count() -> int:
+	return _items.size()
+
 ## Get item position
 func get_item_position(uuid: String) -> Vector2i:
 	return _item_positions.get(uuid, Vector2i(-1, -1))
