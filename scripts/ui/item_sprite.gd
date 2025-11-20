@@ -265,7 +265,7 @@ func update_display():
 	if item_data.icon:
 		icon.texture = item_data.icon
 		icon.modulate = Color.WHITE
-	elif item_data.emoji_icon != "":
+	elif item_data.emoji != "":
 		# Create emoji label (similar to ItemSlot approach)
 		icon.texture = null
 		# TODO: Add emoji label support if needed
