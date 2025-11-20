@@ -366,10 +366,11 @@ func _display_stash():
 
 		# 🔧 FIX HIGH #5: Defensive null check with error logging
 		if item_data:
-			# Note: ItemInstance doesn't have quantity in spatial grid architecture
-			# Each instance is unique (even if same item_id)
-			var item_panel = _create_item_display(item_data, 1, item_instance.item_id, false)
-			stash_grid.add_child(item_panel)
+			# PHASE 1 REFACTOR: Use ItemSprite instead of custom rendering
+			var item_sprite = ItemSprite.new()
+			item_sprite.set_item(item_instance)
+			item_sprite.hero_id = selected_hero_id  # Set context for drag-drop
+			stash_grid.add_child(item_sprite)
 		else:
 			push_warning("[LootDistScreen] Skipping hero item with invalid data: UUID %s" % item_instance.uuid)
 
@@ -400,11 +401,11 @@ func _display_found_loot():
 
 		# 🔧 FIX HIGH #5: Defensive null check with error logging
 		if item_data:
-			# Note: Each ItemInstance is unique (quantity is always 1 in spatial grid)
-			var item_panel = _create_item_display(item_data, 1, item_instance.item_id, true)
-			# Store UUID in metadata for future drag-drop integration
-			item_panel.set_meta("uuid", item_instance.uuid)
-			loot_grid.add_child(item_panel)
+			# PHASE 1 REFACTOR: Use ItemSprite instead of custom rendering
+			var item_sprite = ItemSprite.new()
+			item_sprite.set_item(item_instance)
+			item_sprite.hero_id = loot_container.container_id  # Set context for drag-drop
+			loot_grid.add_child(item_sprite)
 		else:
 			push_warning("[LootDistScreen] Skipping loot item with invalid data: UUID %s" % item_instance.uuid)
 
