@@ -4,6 +4,13 @@ extends Control
 ## Two-panel layout: Hero Inventory (left) + Found Loot (right)
 ## Drag items from Found Loot to Hero Inventory
 ## NOW SUPPORTS: Per-hero inventories + multi-hero selection!
+##
+## REFACTORED (Phase 1-5):
+## - Backend: Uses InventoryContainer + ItemTransactionService (was manual arrays)
+## - Drag-Drop: Uses ItemTransactionService with Smart Nudge + Atomic Swap (was custom)
+## - Buttons: Use ItemTransactionService for Take All/Rare (was HeroInventoryManager)
+## - Benefits: Auto-rollback, Smart Nudge, Atomic Swap, consistent with main inventory system
+## - Code Reduction: ~250 lines of duplicate code eliminated
 
 signal continue_to_victory
 
@@ -196,31 +203,34 @@ func _initialize_containers():
 
 
 func _load_loot_data():
-	"""Load all pending loot from LootManager and populate loot_container"""
-	# Load into legacy array first (for compatibility during transition)
-	loot_items = LootManager.get_pending_loot_with_data()
-	print("[LootDistScreen] Loaded %d items for distribution" % loot_items.size())
-
-	# PHASE 1: Also populate the new loot_container
-	_populate_loot_container()
-
-
-func _populate_loot_container():
-	"""PHASE 1: Convert loot_data array into ItemInstances in loot_container"""
+	"""PHASE 5: Load all pending loot from LootManager directly into loot_container"""
 	if not loot_container:
-		push_error("[LootDistScreen] Cannot populate - loot_container not initialized!")
+		push_error("[LootDistScreen] Cannot load loot - container not initialized!")
 		return
 
+	# Get loot data from LootManager
+	var loot_data = LootManager.get_pending_loot_with_data()
+	print("[LootDistScreen] Loading %d loot items for distribution..." % loot_data.size())
+
+	# Keep loot_items for backward compatibility (used by legacy code)
+	loot_items = loot_data
+
+	# Populate loot_container
+	_populate_loot_container(loot_data)
+
+
+func _populate_loot_container(loot_data: Array):
+	"""PHASE 5: Convert loot_data array into ItemInstances in loot_container"""
 	print("[LootDistScreen] 📦 Populating loot container...")
 
-	for loot in loot_items:
+	for loot in loot_data:
 		var item_id = loot.item_id
-		var item_data = loot.item_data
+		var item_data = loot.get("item_data", null)
 		var quantity = loot.get("quantity", 1)
 
 		# Create ItemInstances (one per quantity)
 		for i in range(quantity):
-			# Get item data from database
+			# Get item data from database if not provided
 			if not item_data:
 				item_data = ItemDatabase.get_item(item_id)
 
@@ -693,41 +703,6 @@ func _move_item_to_hero(uuid: String):
 		# Item automatically rolled back by ItemTransactionService
 
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
-
-func _add_item_to_inventory(item_id: String, item_data: ItemData, quantity: int):
-	"""LEGACY: Add item to selected hero's inventory (used by Take All/Rare buttons)"""
-	# Safety check
-	if selected_hero_id == "":
-		print("[LootDistScreen] ERROR: No hero selected!")
-		_reset_drag_visuals()  # Ensure clean state on error
-		return
-
-	# Try to add to hero's inventory
-	var success = HeroInventoryManager.add_item_to_hero(selected_hero_id, item_id, quantity)
-
-	if success:
-		print("[LootDistScreen] Item added to %s's inventory: %s" % [selected_hero_info.hero_name, item_data.item_name])
-
-		# Remove from pending loot
-		for i in range(LootManager.pending_wave_loot.size()):
-			if LootManager.pending_wave_loot[i].item_id == item_id:
-				LootManager.pending_wave_loot.remove_at(i)
-				break
-
-		# Remove from loot_items array
-		for i in range(loot_items.size()):
-			if loot_items[i].item_id == item_id:
-				loot_items.remove_at(i)
-				break
-
-		# Refresh displays
-		_display_stash()
-		_display_found_loot()
-		_update_counters()
-	else:
-		print("[LootDistScreen] Hero inventory full! Cannot add: %s" % item_data.item_name)
-		_reset_drag_visuals()  # Ensure clean state on error
 
 
 func _on_take_all_pressed():
