@@ -117,12 +117,14 @@ func create_new_profile(profile_name: String) -> bool:
 			HeroInventoryManager.load_from_dict({})  # Empty dict = no heroes registered yet
 			print("[SaveManager] Initialized HeroInventoryManager for new profile")
 
-			# Add starter items for new players
-			InventoryManager.add_item("basic_bow", 1)
-			InventoryManager.add_item("leather_vest", 1)
-			InventoryManager.add_item("leather_cap", 1)
-			InventoryManager.add_item("power_ring", 1)
-			print("[SaveManager] ✅ Added starter items: basic_bow, leather_vest, leather_cap, power_ring")
+			# 🧪 TESTING: Add starter items to RANGER'S HERO INVENTORY for UUID system testing
+			# This allows us to test equip/unequip operations from hero inventory
+			HeroInventoryManager.register_hero("ranger")
+			HeroInventoryManager.add_item_instance_to_hero("ranger", "basic_bow", 0)
+			HeroInventoryManager.add_item_instance_to_hero("ranger", "leather_vest", 0)
+			HeroInventoryManager.add_item_instance_to_hero("ranger", "leather_cap", 0)
+			HeroInventoryManager.add_item_instance_to_hero("ranger", "power_ring", 0)
+			print("[SaveManager] ✅ Added starter items to ranger's hero inventory: basic_bow, leather_vest, leather_cap, power_ring")
 
 		# Load empty equipment registry
 		if HeroEquipmentRegistry and new_profile.has("equipment_registry"):

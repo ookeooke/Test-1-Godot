@@ -1,0 +1,495 @@
+extends Control
+class_name ItemSprite
+
+## ItemSprite - Renders a single item as an overlay on top of the static grid
+## Part of the Static Grid + Item Overlay architecture (Diablo 2 / Path of Exile style)
+##
+## ⚠️ ARCHITECTURE NOTE:
+## This class is used ONLY in Inventory Grids (InventoryView, EquipmentView common chest).
+## Equipment slots use ItemSlot rendering directly (see item_slot.gd MODE 1).
+##
+## How it works:
+## 1. ItemSlots form a STATIC grid (never modified, no item data)
+## 2. ItemSprites render as overlays on top (z_index=10)
+## 3. ItemSprites handle drag initiation (_get_drag_data)
+## 4. ItemSprites validate drops (_can_drop_data)
+## 5. ItemSprites forward drop logic to ItemSlot._handle_sprite_drop()
+##
+## This class handles:
+## - Rendering item icon, quantity, upgrade level
+## - Positioning based on grid coordinates
+## - Sizing based on item dimensions (multi-cell items)
+## - Visual hover feedback
+## - Tooltip generation
+## - Mobile touch input (tap/long-press)
+##
+## The grid slots beneath remain STATIC (never modified)
+## Drag/drop business logic delegated to ItemSlot system
+
+# Item data
+var item_instance: ItemInstance = null
+
+# Inventory context (which inventory this item belongs to)
+var hero_id: String = "" # Empty string = shared stash, otherwise hero's ID
+
+# Grid positioning
+var grid_x: int = 0
+var grid_y: int = 0
+
+# UI references (created programmatically)
+var icon: TextureRect
+var quantity_label: Label
+var upgrade_label: Label
+var rarity_border: Panel
+
+# Constants (must match InventoryGridContainer!)
+const CELL_SIZE: int = 80
+const CELL_GAP: int = 5 # CRITICAL: Must match InventoryGridContainer.cell_gap (5px, not 4px!)
+
+# Mobile touch support (long-press detection)
+var touch_start_time: float = 0.0
+var is_touch_held: bool = false
+const LONG_PRESS_DURATION: float = 0.5 # 500ms
+
+# Signals for mobile interaction
+signal item_tapped(item_sprite: ItemSprite) # Short tap - show tooltip
+signal item_long_pressed(item_sprite: ItemSprite) # Long press - context menu
+
+
+func _on_mouse_entered():
+	"""Visual feedback when mouse enters item"""
+	if item_instance:
+		print("[ItemSprite] Mouse ENTERED - item: %s" % item_instance.item_id)
+	modulate = Color(1.2, 1.2, 1.2) # Brighten on hover
+
+
+func _on_mouse_exited():
+	"""Reset visual when mouse leaves item"""
+	if item_instance:
+		print("[ItemSprite] Mouse EXITED - item: %s" % item_instance.item_id)
+	modulate = Color.WHITE # Reset to normal
+
+
+func _on_gui_input(event: InputEvent):
+	"""Handle touch input for mobile support
+
+	Mobile interaction patterns:
+	- Short tap (< 0.5s): Show tooltip/item details
+	- Long press (≥ 0.5s): Show context menu
+	- Drag: Handled by _get_drag_data() (Godot's built-in system)
+	"""
+	if not item_instance:
+		return
+
+	# Handle touch events (mobile)
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			# Touch started - begin long-press timer
+			touch_start_time = Time.get_ticks_msec() / 1000.0
+			is_touch_held = true
+			print("[ItemSprite] Touch started on: %s" % item_instance.item_id)
+		else:
+			# Touch ended - check if it was short tap or long press
+			if is_touch_held:
+				var hold_duration = (Time.get_ticks_msec() / 1000.0) - touch_start_time
+
+				if hold_duration >= LONG_PRESS_DURATION:
+					# Long press - show context menu
+					print("[ItemSprite] 📱 Long press detected: %s (%.2fs)" % [item_instance.item_id, hold_duration])
+					item_long_pressed.emit(self)
+				else:
+					# Short tap - show tooltip
+					print("[ItemSprite] 📱 Short tap detected: %s (%.2fs)" % [item_instance.item_id, hold_duration])
+					item_tapped.emit(self)
+
+				is_touch_held = false
+
+	# Handle mouse events (PC) - right-click for context menu
+	elif event is InputEventMouseButton:
+		if event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+			print("[ItemSprite] 🖱️ Right-click detected: %s" % item_instance.item_id)
+			item_long_pressed.emit(self)
+			accept_event() # Prevent click from reaching world
+
+
+func _ready():
+	# Create UI elements programmatically (only if not already created)
+	if icon == null:
+		_setup_ui()
+
+	# CRITICAL: ItemSprite MUST receive input to initiate drags
+	# STOP = This node handles input and drag/drop events
+	# ItemSlots are empty in overlay architecture - only ItemSprites have item data!
+	mouse_filter = Control.MOUSE_FILTER_STOP
+
+	# CRITICAL: Ensure size is applied (must happen after node is in tree)
+	# Force the Control to use the size we calculated in set_item()
+	if custom_minimum_size != Vector2.ZERO:
+		size = custom_minimum_size # Force size to match minimum
+		if item_instance:
+			print("[ItemSprite] _ready() forcing size to %s for item '%s'" % [size, item_instance.item_id])
+
+	# Connect hover signals for visual feedback
+	if not mouse_entered.is_connected(_on_mouse_entered):
+		mouse_entered.connect(_on_mouse_entered)
+	if not mouse_exited.is_connected(_on_mouse_exited):
+		mouse_exited.connect(_on_mouse_exited)
+
+	# Connect touch input for mobile support
+	if not gui_input.is_connected(_on_gui_input):
+		gui_input.connect(_on_gui_input)
+
+	# Debug: Verify mouse input is configured
+	print("[ItemSprite] _ready() complete - mouse_filter=%s, size=%s" % [mouse_filter, size])
+
+
+func _setup_ui():
+	"""Create child nodes for rendering"""
+
+	# Main icon (TextureRect)
+	icon = TextureRect.new()
+	icon.name = "Icon"
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.anchor_right = 1.0
+	icon.anchor_bottom = 1.0
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE # Let clicks pass through to parent
+	add_child(icon)
+
+	# Quantity label (bottom-right corner)
+	quantity_label = Label.new()
+	quantity_label.name = "QuantityLabel"
+	quantity_label.add_theme_font_size_override("font_size", 14)
+	quantity_label.add_theme_color_override("font_color", Color.WHITE)
+	quantity_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	quantity_label.add_theme_constant_override("outline_size", 2)
+	quantity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	quantity_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	quantity_label.anchor_left = 0.5
+	quantity_label.anchor_top = 0.5
+	quantity_label.anchor_right = 1.0
+	quantity_label.anchor_bottom = 1.0
+	quantity_label.offset_left = 0
+	quantity_label.offset_top = 0
+	quantity_label.offset_right = -4
+	quantity_label.offset_bottom = -4
+	quantity_label.mouse_filter = Control.MOUSE_FILTER_IGNORE # Let clicks pass through to parent
+	add_child(quantity_label)
+
+	# Upgrade label (top-left corner)
+	upgrade_label = Label.new()
+	upgrade_label.name = "UpgradeLabel"
+	upgrade_label.add_theme_font_size_override("font_size", 14)
+	upgrade_label.add_theme_color_override("font_color", Color(0.5, 1.0, 0.5)) # Light green
+	upgrade_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	upgrade_label.add_theme_constant_override("outline_size", 2)
+	upgrade_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	upgrade_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	upgrade_label.anchor_right = 0.5
+	upgrade_label.anchor_bottom = 0.5
+	upgrade_label.offset_left = 4
+	upgrade_label.offset_top = 4
+	upgrade_label.mouse_filter = Control.MOUSE_FILTER_IGNORE # Let clicks pass through to parent
+	add_child(upgrade_label)
+
+	# Rarity border (upper-left corner indicator)
+	rarity_border = Panel.new()
+	rarity_border.name = "RarityBorder"
+	rarity_border.custom_minimum_size = Vector2(16, 16)
+	rarity_border.position = Vector2(0, 0)
+	rarity_border.visible = false # Hidden by default
+	rarity_border.mouse_filter = Control.MOUSE_FILTER_IGNORE # Let clicks pass through to parent
+	add_child(rarity_border)
+
+
+func set_item(new_item: ItemInstance):
+	"""Set the item to display using ItemInstance"""
+	# Ensure UI is set up before we try to use it (handles case where set_item() is called before _ready())
+	if icon == null:
+		_setup_ui()
+
+	item_instance = new_item
+	
+	if not item_instance:
+		return
+
+	var item_data = item_instance.get_data()
+	if not item_data:
+		print("[ItemSprite] Warning: Item data not found for: ", item_instance.item_id)
+		return
+
+	# Update size based on item dimensions
+	var total_width = item_data.inventory_width * CELL_SIZE + (item_data.inventory_width - 1) * CELL_GAP
+	var total_height = item_data.inventory_height * CELL_SIZE + (item_data.inventory_height - 1) * CELL_GAP
+	custom_minimum_size = Vector2(total_width, total_height)
+	size = Vector2(total_width, total_height)
+
+	# Update visual display
+	update_display()
+
+
+func update_display():
+	"""Update the visual display of the item"""
+	if not item_instance:
+		return
+		
+	var item_data = item_instance.get_data()
+	if not item_data:
+		return
+
+	# Set icon texture or emoji
+	if item_data.icon:
+		icon.texture = item_data.icon
+		icon.modulate = Color.WHITE
+	elif item_data.emoji_icon != "":
+		# Create emoji label (similar to ItemSlot approach)
+		icon.texture = null
+		# TODO: Add emoji label support if needed
+	else:
+		icon.texture = null
+
+	# Set quantity label
+	if quantity_label:
+		if item_data.item_type != ItemData.ItemType.CURRENCY and item_instance.quantity > 1:
+			quantity_label.text = "×%d" % item_instance.quantity
+		else:
+			quantity_label.text = ""
+
+	# Set upgrade label
+	if upgrade_label:
+		if item_data.can_upgrade and item_instance.upgrade_level > 0:
+			upgrade_label.text = "+%d" % item_instance.upgrade_level
+		else:
+			upgrade_label.text = ""
+
+	# Set rarity border (upper-left corner indicator)
+	if rarity_border and item_data.rarity != ItemData.Rarity.NORMAL:
+		rarity_border.visible = true
+		rarity_border.modulate = item_data.get_rarity_color()
+	else:
+		if rarity_border:
+			rarity_border.visible = false
+
+	# Set tooltip
+	tooltip_text = _generate_tooltip()
+
+
+func _generate_tooltip() -> String:
+	"""Generate tooltip text for this item"""
+	if not item_instance:
+		return ""
+		
+	var item_data = item_instance.get_data()
+	if not item_data:
+		return ""
+
+	var tooltip = "[b]%s[/b]\n" % item_data.item_name
+	tooltip += "[color=gray]%s[/color]\n\n" % item_data.get_rarity_name()
+
+	# Add description
+	if item_data.description != "":
+		tooltip += "%s\n\n" % item_data.description
+
+	# Add stat bonuses
+	var stats_lines: Array = []
+	if item_data.damage_bonus > 0:
+		stats_lines.append("+%d Damage" % item_data.damage_bonus)
+	if item_data.range_bonus > 0:
+		stats_lines.append("+%d Range" % item_data.range_bonus)
+	if item_data.attack_speed_multiplier > 1.0:
+		var speed_percent = (item_data.attack_speed_multiplier - 1.0) * 100
+		stats_lines.append("+%d%% Attack Speed" % speed_percent)
+	if item_data.health_bonus > 0:
+		stats_lines.append("+%d Health" % item_data.health_bonus)
+	if item_data.defense_bonus > 0:
+		stats_lines.append("+%d Defense" % item_data.defense_bonus)
+
+	if not stats_lines.is_empty():
+		tooltip += "\n".join(stats_lines) + "\n"
+
+	# Add upgrade level
+	if item_instance.upgrade_level > 0:
+		tooltip += "\n[color=green]+%d Upgrade Level[/color]" % item_instance.upgrade_level
+
+	return tooltip
+
+
+func set_grid_position(x: int, y: int):
+	"""Set the grid position and update absolute position
+
+	CRITICAL FIX: Use local position (relative to parent), NOT global_position
+	Since item_layer is sized to match the grid container (no anchors), local position is correct
+	"""
+	grid_x = x
+	grid_y = y
+
+	# Calculate local position from grid coordinates (relative to item_layer origin at 0,0)
+	# This works because item_layer has no anchors and is positioned at parent's origin
+	position = Vector2(grid_x * (CELL_SIZE + CELL_GAP), grid_y * (CELL_SIZE + CELL_GAP))
+
+	# Debug: Verify positioning
+	if item_instance:
+		print("[ItemSprite] Positioned '%s' at grid(%d,%d) → pos(%d,%d)" % [
+			item_instance.item_id, grid_x, grid_y,
+			int(position.x), int(position.y)
+		])
+
+
+## Drag/Drop Implementation (ItemSprite Handles Input)
+## ItemSprites MUST handle drag/drop because ItemSlots are empty in overlay architecture
+## Only ItemSprites have item data - ItemSlots are just static grid placeholders
+
+func _get_drag_data(at_position: Vector2):
+	"""Godot drag-and-drop: Get drag data when user starts dragging"""
+	if not item_instance:
+		return null
+
+	var item_data = item_instance.get_data()
+	if not item_data:
+		return null
+
+	# Calculate drag offset (where user clicked within the item)
+	# This creates a "natural grab" feel - item follows cursor from where you clicked
+	var drag_offset = at_position
+
+	# Create drag preview with correct sizing
+	# CRITICAL: Root preview Control must be 0x0 so Godot anchors it exactly at mouse cursor
+	var preview = Control.new()
+	preview.custom_minimum_size = Vector2.ZERO
+	preview.size = Vector2.ZERO
+
+	var preview_icon = TextureRect.new()
+	preview_icon.texture = icon.texture
+	preview_icon.size = size
+	preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview_icon.modulate = Color(1, 1, 1, 0.7)
+	# Offset icon so click position stays under cursor (natural grab feel)
+	preview_icon.position = Vector2.ZERO - drag_offset
+
+	preview.add_child(preview_icon)
+	set_drag_preview(preview)
+
+	print("[ItemSprite] 🎯 Drag started: %s (UUID: %s) from (%d,%d)" % [item_instance.item_id, item_instance.uuid, grid_x, grid_y])
+
+	# Return drag data (compatible with ItemSlot's expectations)
+	return {
+		"uuid": item_instance.uuid, # 🆕 UUID SYSTEM: Primary identifier for item instance
+		"item_id": item_instance.item_id, # Legacy/display
+		"quantity": item_instance.quantity,
+		"upgrade_level": item_instance.upgrade_level,
+		"rolled_affixes": item_instance.rolled_affixes,
+		"item_instance": item_instance, # Pass the full object for convenience
+		"source_sprite": self,
+		"source_hero_id": hero_id, # Which inventory (empty = shared stash)
+		"source_grid_x": grid_x, # Source grid position
+		"source_grid_y": grid_y,
+		"drag_offset": drag_offset # Where user clicked within item (for natural feel)
+	}
+
+
+func _can_drop_data(at_position: Vector2, data) -> bool:
+	"""Godot drag-and-drop: Check if drop is valid
+
+	FIX: This now properly validates drops to EMPTY slots using grid coordinates!
+	The original bug was here - it returned false for all drops, blocking empty slot placement.
+	"""
+	if not data.has("item_id"):
+		return false
+
+	# Get parent grid container for coordinate conversion
+	var grid_container = get_parent().get_parent() as InventoryGridContainer
+	if not grid_container:
+		print("[ItemSprite] ❌ No grid container found")
+		return false
+
+	# Convert mouse position to grid coordinates
+	var grid_pos = grid_container.screen_to_grid(get_global_mouse_position())
+
+	# Get item data to check dimensions
+	var dragged_item = ItemDatabase.get_item(data.item_id)
+	if not dragged_item:
+		return false
+
+	# Validate using grid bounds
+	if not grid_container.is_valid_grid_position(grid_pos, dragged_item.inventory_width, dragged_item.inventory_height):
+		print("[ItemSprite] ❌ Invalid grid position: (%d,%d)" % [grid_pos.x, grid_pos.y])
+		return false
+
+	# Check inventory-specific validation
+	var source_hero_id = data.get("source_hero_id", "")
+
+	# Determine target inventory from parent view
+	var target_hero_id = hero_id
+
+	# Same inventory check
+	var is_same_inventory = (source_hero_id == target_hero_id)
+
+	if is_same_inventory:
+		# Within same inventory - validate via manager
+		if target_hero_id != "":
+			# Hero inventory - use HeroInventoryManager
+			# Note: We can't validate collision without modifying manager, so optimistically allow
+			print("[ItemSprite] ✅ Drop validation passed (hero inventory, optimistic)")
+			return true
+		else:
+			# Shared stash - use InventoryManager
+			# 🆕 UUID SYSTEM: Use UUID for validation if available
+			if data.has("uuid"):
+				var can_place = InventoryManager.can_place_item(data.uuid, grid_pos.x, grid_pos.y)
+				print("[ItemSprite] Drop validation: can_place=%s at (%d,%d)" % [can_place, grid_pos.x, grid_pos.y])
+				return can_place
+			else:
+				return false
+	else:
+		# Cross-inventory transfer - always allow (managers handle validation)
+		print("[ItemSprite] ✅ Drop validation passed (cross-inventory transfer)")
+		return true
+
+
+func _drop_data(at_position: Vector2, data):
+	"""Godot drag-and-drop: Handle drop
+
+	Forwards drop to ItemSlot system which already has comprehensive drop logic.
+	ItemSlot._handle_sprite_drop() handles all the business logic (lines 1138-1226 in item_slot.gd)
+	"""
+	print("[ItemSprite] 📥 Drop received: %s at grid(%d,%d)" % [data.get("item_id"), grid_x, grid_y])
+
+	# Get parent grid container
+	var grid_container = get_parent().get_parent() as InventoryGridContainer
+	if not grid_container:
+		print("[ItemSprite] ❌ No grid container found for drop")
+		return
+
+	# Convert mouse position to grid coordinates
+	var grid_pos = grid_container.screen_to_grid(get_global_mouse_position())
+
+	# Find ItemSlot at target grid position
+	var target_slot = _find_slot_at_grid_position(grid_pos.x, grid_pos.y)
+	if not target_slot:
+		print("[ItemSprite] ❌ No ItemSlot found at grid position (%d,%d)" % [grid_pos.x, grid_pos.y])
+		return
+
+	# Forward drop to ItemSlot system (uses existing _handle_sprite_drop logic)
+	print("[ItemSprite] → Forwarding drop to ItemSlot at (%d,%d)" % [grid_pos.x, grid_pos.y])
+	target_slot._handle_sprite_drop(data)
+
+
+func _find_slot_at_grid_position(target_x: int, target_y: int) -> ItemSlot:
+	"""Find ItemSlot at the specified grid coordinates
+
+	Searches through InventoryGridContainer children to find ItemSlot with matching grid_x/grid_y
+	"""
+	var grid_container = get_parent().get_parent() as InventoryGridContainer
+	if not grid_container:
+		return null
+
+	# Search through grid container's children (not item_layer children!)
+	for child in grid_container.get_children():
+		if child is ItemSlot:
+			var slot = child as ItemSlot
+			if slot.grid_x == target_x and slot.grid_y == target_y:
+				return slot
+
+	print("[ItemSprite] ⚠️  No ItemSlot found at grid position (%d,%d)" % [target_x, target_y])
+	return null

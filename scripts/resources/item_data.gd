@@ -7,15 +7,18 @@ extends Resource
 enum ItemType {
 	WEAPON,
 	ARMOR,
+	ACCESSORY,
+	CONSUMABLE,
+	MATERIAL,
 	CURRENCY
 }
 
 enum Rarity {
-	NORMAL,      # White - Base stats only, no magical properties
-	MAGIC,       # Blue - 1-2 random affixes (prefix/suffix)
-	RARE,        # Yellow - 3-6 random affixes
-	SET,         # Green - Fixed set bonuses (future implementation)
-	UNIQUE       # Gold/Orange - Fixed unique properties
+	NORMAL, # White - Base stats only, no magical properties
+	MAGIC, # Blue - 1-2 random affixes (prefix/suffix)
+	RARE, # Yellow - 3-6 random affixes
+	SET, # Green - Fixed set bonuses (future implementation)
+	UNIQUE # Gold/Orange - Fixed unique properties
 }
 
 enum EquipSlot {
@@ -28,65 +31,65 @@ enum EquipSlot {
 
 # Core Identification
 @export var item_id: String = ""
-@export var item_name: String = ""  ## Display name (for unique items) OR base name (for normal/magic/rare items)
-@export var base_item_name: String = ""  ## Base item name without affixes (e.g., "Sword", "Ring"). If empty, uses item_name
+@export var item_name: String = "" ## Display name (for unique items) OR base name (for normal/magic/rare items)
+@export var base_item_name: String = "" ## Base item name without affixes (e.g., "Sword", "Ring"). If empty, uses item_name
 @export_multiline var description: String = ""
 @export var icon: Texture2D
-@export var emoji: String = ""  ## Unicode emoji symbol (e.g., "🏹", "🛡️", "💍") - shown if no icon texture
+@export var emoji: String = "" ## Unicode emoji symbol (e.g., "🏹", "🛡️", "💍") - shown if no icon texture
 @export var item_type: ItemType = ItemType.WEAPON
 @export var rarity: Rarity = Rarity.NORMAL
 @export var equip_slot: EquipSlot = EquipSlot.NONE
-@export var item_level: int = 0  ## Item level (for display purposes)
-@export var required_level: int = 0  ## Minimum character level to equip
-@export var can_have_affixes: bool = true  ## If false, item uses fixed stats (for unique items)
+@export var item_level: int = 0 ## Item level (for display purposes)
+@export var required_level: int = 0 ## Minimum character level to equip
+@export var can_have_affixes: bool = true ## If false, item uses fixed stats (for unique items)
 
 # Stacking & Economy
-@export var max_stack: int = 1  ## 1 for equipment, 99 for consumables/materials
+@export var max_stack: int = 1 ## 1 for equipment, 99 for consumables/materials
 @export var sell_value: int = 10
-@export var is_starter_equipment: bool = false  ## Cannot be unequipped to empty slot (auto-equipped on hero recruitment)
-@export var is_account_bound: bool = false  ## Cannot be sold or traded
+@export var is_starter_equipment: bool = false ## Cannot be unequipped to empty slot (auto-equipped on hero recruitment)
+@export var is_account_bound: bool = false ## Cannot be sold or traded
 
 # Equipment Stats (only used for WEAPON/ARMOR/ACCESSORY types)
 @export_group("Equipment Stats")
-@export var weapon_type: String = ""  ## "bow", "crossbow", "sword", "axe", "mace", "staff", "wand", "shield", etc.
-@export var armor_type: String = ""  ## "leather", "cloth", "plate", "mail", "helmet", etc.
-@export var is_two_handed: bool = false  ## True for bows, greatswords, staffs (occupies both hand slots)
-@export var hand_slot: String = "either"  ## "left", "right", "both" (2H weapons), or "either" (can go in any hand)
+@export var weapon_type: String = "" ## "bow", "crossbow", "sword", "axe", "mace", "staff", "wand", "shield", etc.
+@export var armor_type: String = "" ## "leather", "cloth", "plate", "mail", "helmet", etc.
+@export var is_two_handed: bool = false ## True for bows, greatswords, staffs (occupies both hand slots)
+@export var hand_slot: String = "either" ## "left", "right", "both" (2H weapons), or "either" (can go in any hand)
 @export var damage_bonus: int = 0
 @export var attack_speed_multiplier: float = 1.0
 @export var health_bonus: int = 0
 @export var defense_bonus: int = 0
 @export var range_bonus: int = 0
-@export var crit_chance_bonus: float = 0.0  ## 0.0 to 1.0 (0% to 100%)
+@export var crit_chance_bonus: float = 0.0 ## 0.0 to 1.0 (0% to 100%)
 
 # Random Stat Rolls (Diablo Style)
 @export_group("Random Stats")
-@export var has_random_stats: bool = false  ## Enable random stat ranges for this item
-@export var damage_range: Vector2i = Vector2i(0, 0)  ## Min/Max damage (e.g., 6-10). Use fixed value if min==max
-@export var health_range: Vector2i = Vector2i(0, 0)  ## Min/Max health bonus
-@export var defense_range: Vector2i = Vector2i(0, 0)  ## Min/Max defense bonus
-@export var crit_chance_range: Vector2 = Vector2(0.0, 0.0)  ## Min/Max crit chance (0.03-0.07 = 3%-7%)
-@export var attack_speed_range: Vector2 = Vector2(0.0, 0.0)  ## Min/Max attack speed multiplier
+@export var has_random_stats: bool = false ## Enable random stat ranges for this item
+@export var damage_range: Vector2i = Vector2i(0, 0) ## Min/Max damage (e.g., 6-10). Use fixed value if min==max
+@export var health_range: Vector2i = Vector2i(0, 0) ## Min/Max health bonus
+@export var defense_range: Vector2i = Vector2i(0, 0) ## Min/Max defense bonus
+@export var crit_chance_range: Vector2 = Vector2(0.0, 0.0) ## Min/Max crit chance (0.03-0.07 = 3%-7%)
+@export var attack_speed_range: Vector2 = Vector2(0.0, 0.0) ## Min/Max attack speed multiplier
 
 # Special Effects (string identifiers for special behaviors)
 @export_group("Special Effects")
-@export var special_effects: Array[String] = []  ## e.g. ["lifesteal_10", "splash_damage", "fire_dot_5"]
+@export var special_effects: Array[String] = [] ## e.g. ["lifesteal_10", "splash_damage", "fire_dot_5"]
 
 # Inventory Display (Multi-Slot Support - Diablo 2 Style)
 @export_group("Inventory Display")
-@export_range(1, 3) var inventory_width: int = 1  ## Width in inventory grid slots (1-3)
-@export_range(1, 3) var inventory_height: int = 1  ## Height in inventory grid slots (1-3)
+@export_range(1, 3) var inventory_width: int = 1 ## Width in inventory grid slots (1-3)
+@export_range(1, 3) var inventory_height: int = 1 ## Height in inventory grid slots (1-3)
 
 # Upgrade System
 @export_group("Upgrade System")
 @export var can_upgrade: bool = true
 @export var max_upgrade_level: int = 10
 @export var upgrade_costs: Array[int] = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600]
-@export var stat_increase_per_level: float = 0.1  ## 10% increase per level
+@export var stat_increase_per_level: float = 0.1 ## 10% increase per level
 
 # Visual & Audio
 @export_group("Presentation")
-@export var flavor_text: String = ""  ## Lore/story text
+@export var flavor_text: String = "" ## Lore/story text
 @export var pickup_sound: AudioStream
 @export var use_sound: AudioStream
 
@@ -97,13 +100,13 @@ func get_rarity_color() -> Color:
 		Rarity.NORMAL:
 			return Color.WHITE
 		Rarity.MAGIC:
-			return Color.DODGER_BLUE  # Blue for magic items
+			return Color.DODGER_BLUE # Blue for magic items
 		Rarity.RARE:
-			return Color.YELLOW  # Yellow for rare items
+			return Color.YELLOW # Yellow for rare items
 		Rarity.SET:
-			return Color.GREEN  # Green for set items
+			return Color.GREEN # Green for set items
 		Rarity.UNIQUE:
-			return Color.ORANGE  # Orange/Gold for uniques
+			return Color.ORANGE # Orange/Gold for uniques
 	return Color.WHITE
 
 
@@ -147,7 +150,7 @@ func get_upgraded_stat(base_stat: float, upgrade_level: int) -> float:
 ## Get the cost to upgrade from current level to next level
 func get_upgrade_cost(current_level: int) -> int:
 	if current_level >= max_upgrade_level or current_level >= upgrade_costs.size():
-		return -1  # Cannot upgrade further
+		return -1 # Cannot upgrade further
 
 	return upgrade_costs[current_level]
 
@@ -280,7 +283,7 @@ func roll_affixes() -> Dictionary:
 				var rolled_value = prefix.roll_value()
 				result.affixes.append({"affix": prefix, "rolled_value": rolled_value})
 				if i == 0:
-					result.prefix = prefix  # Store first prefix for naming
+					result.prefix = prefix # Store first prefix for naming
 
 		# Roll suffixes (avoid duplicates from same family)
 		used_families.clear()
@@ -291,7 +294,7 @@ func roll_affixes() -> Dictionary:
 				var rolled_value = suffix.roll_value()
 				result.affixes.append({"affix": suffix, "rolled_value": rolled_value})
 				if i == 0:
-					result.suffix = suffix  # Store first suffix for naming
+					result.suffix = suffix # Store first suffix for naming
 
 	return result
 
@@ -355,7 +358,7 @@ func get_display_name(rolled_affixes: Dictionary = {}) -> String:
 ## rolled_affixes: Dictionary of rolled affixes from roll_affixes() function
 func get_stat_modifiers(upgrade_level: int = 0, rolled_affixes: Dictionary = {}) -> Array[StatModifier]:
 	var modifiers: Array[StatModifier] = []
-	var source_id = "equipment:" + item_id  # Namespaced to prevent collision with skills
+	var source_id = "equipment:" + item_id # Namespaced to prevent collision with skills
 
 	# Only generate modifiers for equippable items
 	if not is_equippable():
@@ -434,13 +437,13 @@ func get_stat_modifiers(upgrade_level: int = 0, rolled_affixes: Dictionary = {})
 static func equip_slot_to_name(slot: EquipSlot) -> String:
 	match slot:
 		EquipSlot.WEAPON:
-			return "hand_left"  # Weapons go to left hand by default
+			return "hand_left" # Weapons go to left hand by default
 		EquipSlot.HELMET:
 			return "helmet"
 		EquipSlot.ARMOR:
 			return "armor"
 		EquipSlot.ACCESSORY:
-			return "accessory_1"  # Default to first accessory slot
+			return "accessory_1" # Default to first accessory slot
 		EquipSlot.NONE:
 			return ""
 	return ""

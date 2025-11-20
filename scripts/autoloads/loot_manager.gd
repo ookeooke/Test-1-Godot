@@ -283,6 +283,8 @@ func distribute_pending_loot_to_inventory(hero_id: String = "") -> Dictionary:
 	"""
 	Moves all pending loot to hero inventory (if hero_id provided) or shared stash
 
+	🆕 UUID SYSTEM: Now generates unique UUIDs for each item instance
+
 	Args:
 		hero_id: If provided, items go to hero's inventory first. If empty, items go to shared stash
 
@@ -293,27 +295,42 @@ func distribute_pending_loot_to_inventory(hero_id: String = "") -> Dictionary:
 	var target_inventory: String = "hero inventory" if hero_id != "" else "shared stash"
 
 	for loot_data in pending_wave_loot:
-		var success: bool = false
+		var uuid: String = ""
+		var rolled_affixes: Dictionary = loot_data.get("rolled_affixes", {})
 
 		# Try to add to hero inventory first if hero_id is provided
 		if hero_id != "" and HeroInventoryManager:
 			# Register hero if not already registered
 			HeroInventoryManager.register_hero(hero_id)
-			success = HeroInventoryManager.add_item_to_hero(hero_id, loot_data.item_id, loot_data.get("quantity", 1))
-			if success:
-				print("[LootManager] Added '%s' to hero '%s' inventory" % [loot_data.item_id, hero_id])
+
+			# 🆕 UUID SYSTEM: Generate UUID for item instance
+			uuid = HeroInventoryManager.add_item_instance_to_hero(
+				hero_id,
+				loot_data.item_id,
+				0,  # upgrade_level (default 0 for new loot)
+				rolled_affixes
+			)
+
+			if uuid != "":
+				print("[LootManager] Added '%s' (UUID: %s) to hero '%s' inventory" % [loot_data.item_id, uuid, hero_id])
 
 		# Fallback to shared stash if no hero_id or hero inventory is full
-		if not success and InventoryManager:
-			success = InventoryManager.add_item(loot_data.item_id, loot_data.get("quantity", 1), loot_data.get("rolled_affixes", {}))
-			if success:
+		if uuid == "" and InventoryManager:
+			# 🆕 UUID SYSTEM: Generate UUID for item instance
+			uuid = InventoryManager.add_item_instance(
+				loot_data.item_id,
+				0,  # upgrade_level (default 0 for new loot)
+				rolled_affixes
+			)
+
+			if uuid != "":
 				if hero_id != "":
-					print("[LootManager] Hero inventory full, added '%s' to shared stash" % loot_data.item_id)
+					print("[LootManager] Hero inventory full, added '%s' (UUID: %s) to shared stash" % [loot_data.item_id, uuid])
 				else:
-					print("[LootManager] Added '%s' to shared stash" % loot_data.item_id)
+					print("[LootManager] Added '%s' (UUID: %s) to shared stash" % [loot_data.item_id, uuid])
 
 		# Track results
-		if success:
+		if uuid != "":
 			items_added += 1
 		else:
 			items_failed += 1

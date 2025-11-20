@@ -5,7 +5,10 @@ class_name EquipmentView
 ## Allows drag-drop from inventory to equipment slots
 ## Extends BasePanelView for use in FlexiblePanel
 
-const DEBUG_INVENTORY = false  # Set to true to enable verbose inventory logging
+const DEBUG_INVENTORY = false # Set to true to enable verbose inventory logging
+
+# Preload ItemSprite for overlay rendering (static grid + item overlay architecture)
+const ItemSpriteScript = preload("res://scripts/ui/item_sprite.gd")
 
 signal equipment_slot_clicked(slot_name: String)
 signal switch_hero_requested
@@ -24,14 +27,14 @@ static var _saved_chest_mode_preference: bool = false
 var stash_item_slots: Array[ItemSlot] = []
 
 # Tile-based sizing constants (matching inventory grid system)
-const TILE_SIZE: int = 80  # Base size of one tile in pixels
-const TILE_GAP: int = 5    # Gap between tiles in pixels
+const TILE_SIZE: int = 80 # Base size of one tile in pixels
+const TILE_GAP: int = 5 # Gap between tiles in pixels
 
 # Equipment slot grid dimensions (width × height in tiles)
-const HELMET_GRID: Vector2i = Vector2i(2, 2)      # 2×2 tiles for helmets
-const HAND_GRID: Vector2i = Vector2i(2, 4)         # 2×4 tiles for weapons (bows, swords, shields)
-const ARMOR_GRID: Vector2i = Vector2i(2, 3)        # 2×3 tiles for body armor
-const ACCESSORY_GRID: Vector2i = Vector2i(1, 1)    # 1×1 tiles for rings/amulets
+const HELMET_GRID: Vector2i = Vector2i(2, 2) # 2×2 tiles for helmets
+const HAND_GRID: Vector2i = Vector2i(2, 4) # 2×4 tiles for weapons (bows, swords, shields)
+const ARMOR_GRID: Vector2i = Vector2i(2, 3) # 2×3 tiles for body armor
+const ACCESSORY_GRID: Vector2i = Vector2i(1, 1) # 1×1 tiles for rings/amulets
 
 # Equipment slots (ItemSlot instances)
 var hand_left_slot: ItemSlot
@@ -108,13 +111,16 @@ func _ready():
 
 	# Setup responsive slot sizing
 	get_viewport().size_changed.connect(_on_viewport_resized)
-	_on_viewport_resized()  # Initial sizing
+	_on_viewport_resized() # Initial sizing
 
 	# Connect to InventoryManager signals for shared stash updates
-	if InventoryManager:
-		if not InventoryManager.inventory_changed.is_connected(_on_inventory_changed):
-			InventoryManager.inventory_changed.connect(_on_inventory_changed)
-		print("[EquipmentView] Connected to InventoryManager.inventory_changed signal")
+	# Note: InventoryManager is now just a wrapper around InventoryContainer("stash")
+	# But we can connect to InventoryRegistry.get_container("stash").content_changed
+	var stash = InventoryRegistry.get_container("stash")
+	if stash:
+		if not stash.content_changed.is_connected(_on_inventory_changed):
+			stash.content_changed.connect(_on_inventory_changed)
+		print("[EquipmentView] Connected to Stash content_changed signal")
 
 
 func on_view_shown():
@@ -214,82 +220,30 @@ func _refresh_equipment():
 	"""Refresh all equipment slots from HeroEquipmentRegistry"""
 	var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
 
-	# Update left hand slot
-	var hand_left_id = equipped_items.get("hand_left", "")
-	if hand_left_id != "":
-		var rolled_affixes = InventoryManager.get_item_rolled_affixes(hand_left_id)
-		hand_left_slot.set_item(hand_left_id, 1, 0, rolled_affixes)
-	else:
-		hand_left_slot.clear_slot()
-
-	# Update right hand slot (check for 2H weapon occupation marker)
-	var hand_right_id = equipped_items.get("hand_right", "")
-	if hand_right_id != "":
-		# Check if this is a 2H weapon occupation marker
-		if hand_right_id.begins_with("__2H_OCCUPIED__"):
-			# Extract the actual item_id from the marker
-			var actual_item_id = hand_right_id.substr(len("__2H_OCCUPIED__"))
-
-			# VALIDATION: Check if the item still exists in ItemDatabase
-			var item_data = ItemDatabase.get_item(actual_item_id)
-			if item_data:
-				# Show the 2H weapon in right hand slot (with visual indication it's occupied)
-				var rolled_affixes = InventoryManager.get_item_rolled_affixes(actual_item_id)
-				hand_right_slot.set_item(actual_item_id, 1, 0, rolled_affixes)
-				# Set slot to dimmed/disabled state to indicate it's occupied by 2H weapon
-				hand_right_slot.modulate = Color(0.6, 0.6, 0.6, 1.0)  # Dimmed appearance
-			else:
-				# ORPHANED MARKER CLEANUP
-				# Item was deleted from database - clean up stale marker
-				print("[EquipmentView] ⚠️ Orphaned 2H marker detected for non-existent item: ", actual_item_id)
-				hand_right_slot.clear_slot()
-				hand_right_slot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # Normal appearance
-
-				# Clear the orphaned marker using public API (automatically wraps in transaction)
-				if not HeroEquipmentRegistry.equip_item(hero_id, "hand_right", ""):
-					push_error("[EquipmentView] Failed to clear orphaned 2H marker for hero: ", hero_id)
-				else:
-					print("[EquipmentView] ✓ Cleared orphaned 2H marker successfully")
+	# Helper to update a slot
+	var update_slot = func(slot: ItemSlot, slot_name: String):
+		var content = equipped_items.get(slot_name)
+		
+		if content is ItemInstance:
+			slot.set_item(content)
+			slot.modulate = Color.WHITE
+		elif content is String and content.begins_with("__2H_OCCUPIED__"):
+			# 2H Marker
+			# Extract actual item ID if possible, or just dim
+			# Ideally we show the ghost of the 2H weapon here
+			# For now, just clear and dim
+			slot.clear_slot()
+			slot.modulate = Color(0.5, 0.5, 0.5, 0.5) # Dimmed
 		else:
-			# Normal item in right hand
-			var rolled_affixes = InventoryManager.get_item_rolled_affixes(hand_right_id)
-			hand_right_slot.set_item(hand_right_id, 1, 0, rolled_affixes)
-			hand_right_slot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # Normal appearance
-	else:
-		hand_right_slot.clear_slot()
-		hand_right_slot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # Normal appearance
+			slot.clear_slot()
+			slot.modulate = Color.WHITE
 
-	# Update helmet slot
-	var helmet_id = equipped_items.get("helmet", "")
-	if helmet_id != "":
-		var rolled_affixes = InventoryManager.get_item_rolled_affixes(helmet_id)
-		helmet_slot.set_item(helmet_id, 1, 0, rolled_affixes)
-	else:
-		helmet_slot.clear_slot()
-
-	# Update armor slot
-	var armor_id = equipped_items.get("armor", "")
-	if armor_id != "":
-		var rolled_affixes = InventoryManager.get_item_rolled_affixes(armor_id)
-		armor_slot.set_item(armor_id, 1, 0, rolled_affixes)
-	else:
-		armor_slot.clear_slot()
-
-	# Update accessory 1 slot
-	var acc1_id = equipped_items.get("accessory_1", "")
-	if acc1_id != "":
-		var rolled_affixes = InventoryManager.get_item_rolled_affixes(acc1_id)
-		accessory1_slot.set_item(acc1_id, 1, 0, rolled_affixes)
-	else:
-		accessory1_slot.clear_slot()
-
-	# Update accessory 2 slot
-	var acc2_id = equipped_items.get("accessory_2", "")
-	if acc2_id != "":
-		var rolled_affixes = InventoryManager.get_item_rolled_affixes(acc2_id)
-		accessory2_slot.set_item(acc2_id, 1, 0, rolled_affixes)
-	else:
-		accessory2_slot.clear_slot()
+	update_slot.call(hand_left_slot, "hand_left")
+	update_slot.call(hand_right_slot, "hand_right")
+	update_slot.call(helmet_slot, "helmet")
+	update_slot.call(armor_slot, "armor")
+	update_slot.call(accessory1_slot, "accessory_1")
+	update_slot.call(accessory2_slot, "accessory_2")
 
 	# Update stats display
 	_update_stats_display()
@@ -312,17 +266,12 @@ func _update_stats_display():
 	# Collect all stat modifiers from equipped items
 	var modifiers: Array[StatModifier] = []
 
-	for item_id in equipped_items.values():
-		if item_id == "":
-			continue
-
-		var item_data = ItemDatabase.get_item(item_id)
-		if item_data == null:
-			continue
-
-		var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
-		var item_modifiers = item_data.get_stat_modifiers(upgrade_level)
-		modifiers.append_array(item_modifiers)
+	for content in equipped_items.values():
+		if content is ItemInstance:
+			var item_data = content.get_data()
+			if item_data:
+				var item_modifiers = item_data.get_stat_modifiers(content.upgrade_level)
+				modifiers.append_array(item_modifiers)
 
 	# Calculate bonuses by stat type
 	var damage_bonus: float = 0.0
@@ -390,44 +339,6 @@ func _update_stats_display():
 	]
 
 
-func _format_modifier(mod: StatModifier) -> String:
-	"""Format a modifier for display"""
-	match mod.type:
-		StatModifier.ModifierType.FLAT:
-			return "+%.0f %s" % [mod.value, mod.description]
-		StatModifier.ModifierType.ADDITIVE:
-			return "+%.0f%% %s" % [mod.value * 100, mod.description]
-		StatModifier.ModifierType.MULTIPLICATIVE:
-			return "×%.2f %s" % [mod.value, mod.description]
-	return mod.description
-
-
-func _format_stat_line(stat_name: String, base_value: float, final_value: float, bonus: float) -> String:
-	"""Format a stat line: 'Stat: Base → Final (+Bonus)' or just 'Stat: Base' if no bonus"""
-	if abs(bonus) < 0.01:
-		# No bonus - show only base value
-		return "[b]%s:[/b] %.0f\n" % [stat_name, base_value]
-	else:
-		# Has bonus - show base → final (+bonus) in green
-		return "[b]%s:[/b] %.0f → [color=green]%.0f[/color] [color=gray](+%.0f)[/color]\n" % [stat_name, base_value, final_value, bonus]
-
-
-func _format_stat_line_float(stat_name: String, base_value: float, final_value: float, bonus: float, is_speed: bool = false, suffix: String = "") -> String:
-	"""Format a stat line for float values (attack speed, crit chance, etc.)"""
-	if abs(bonus) < 0.001:
-		# No bonus - show only base value
-		if is_speed:
-			return "[b]%s:[/b] %.2fs%s\n" % [stat_name, base_value, suffix]
-		else:
-			return "[b]%s:[/b] %.1f%s\n" % [stat_name, base_value, suffix]
-	else:
-		# Has bonus - show base → final (+bonus) in green
-		if is_speed:
-			return "[b]%s:[/b] %.2fs → [color=green]%.2fs[/color] [color=gray](%.0f%%)[/color]\n" % [stat_name, base_value, final_value, bonus * 100]
-		else:
-			return "[b]%s:[/b] %.1f%s → [color=green]%.1f%s[/color] [color=gray](+%.1f%s)[/color]\n" % [stat_name, base_value, suffix, final_value, suffix, bonus, suffix]
-
-
 func _on_batch_update(dirty_hero_ids: Array[String]) -> void:
 	"""Handle batched refresh (ONLY place where UI refreshes!)"""
 	if hero_id not in dirty_hero_ids:
@@ -435,12 +346,9 @@ func _on_batch_update(dirty_hero_ids: Array[String]) -> void:
 	_refresh_equipment()
 
 
-func _on_equipment_slot_right_clicked(item_id: String, slot: ItemSlot, slot_name: String):
+func _on_equipment_slot_right_clicked(_item: ItemInstance, _slot: ItemSlot, slot_name: String):
 	"""Called when an equipment slot is right-clicked (unequip)"""
-	if InventoryManager.unequip_item_atomic(hero_id, slot_name):
-		pass  # Success
-	else:
-		pass  # Failure (starter equipment or inventory full)
+	ItemTransactionService.unequip_item(hero_id, slot_name)
 
 
 ## ============================================
@@ -457,20 +365,19 @@ func _on_viewport_resized():
 
 	# Calculate slot size for 2×2 grid
 	# Formula: (available_width - gap_between_columns) / 2
-	var gap = 20.0  # Space between columns
+	var gap = 20.0 # Space between columns
 	var slot_size = (available_width - gap) / 2.0
 
 	# Clamp to reasonable min/max
 	slot_size = clampf(slot_size, 120.0, 300.0)
 
 	# Apply tile-based sizing (Diablo 2-style fixed tile grids)
-	_resize_slot_container(helmet_container, _calculate_tile_size(HELMET_GRID))      # 2×2 tiles = 165×165px
-	_resize_slot_container(hand_left_container, _calculate_tile_size(HAND_GRID))     # 2×4 tiles = 165×330px
-	_resize_slot_container(hand_right_container, _calculate_tile_size(HAND_GRID))    # 2×4 tiles = 165×330px
-	_resize_slot_container(armor_container, _calculate_tile_size(ARMOR_GRID))        # 2×3 tiles = 165×250px
-	_resize_slot_container(accessory1_container, _calculate_tile_size(ACCESSORY_GRID))  # 1×1 tiles = 80×80px
-	_resize_slot_container(accessory2_container, _calculate_tile_size(ACCESSORY_GRID))  # 1×1 tiles = 80×80px
-
+	_resize_slot_container(helmet_container, _calculate_tile_size(HELMET_GRID)) # 2×2 tiles = 165×165px
+	_resize_slot_container(hand_left_container, _calculate_tile_size(HAND_GRID)) # 2×4 tiles = 165×330px
+	_resize_slot_container(hand_right_container, _calculate_tile_size(HAND_GRID)) # 2×4 tiles = 165×330px
+	_resize_slot_container(armor_container, _calculate_tile_size(ARMOR_GRID)) # 2×3 tiles = 165×250px
+	_resize_slot_container(accessory1_container, _calculate_tile_size(ACCESSORY_GRID)) # 1×1 tiles = 80×80px
+	_resize_slot_container(accessory2_container, _calculate_tile_size(ACCESSORY_GRID)) # 1×1 tiles = 80×80px
 
 
 func _calculate_tile_size(grid_dimensions: Vector2i) -> Vector2:
@@ -563,25 +470,48 @@ func _on_common_chest_toggled(button_pressed: bool):
 
 
 func _refresh_shared_stash():
-	"""Refresh shared stash grid in common chest mode"""
+	"""Refresh shared stash grid in common chest mode (using ItemSprite overlays)"""
 	print("[EquipmentView] 🔄 Refreshing shared stash grid...")
 
-	# Validate managers
-	if not InventoryManager:
-		print("[EquipmentView] ❌ InventoryManager not found!")
+	var container = InventoryRegistry.get_container("stash")
+	if not container:
+		print("[EquipmentView] ❌ Stash container not found!")
 		return
 
-	# Clear shared stash grid
-	for slot in stash_item_slots:
-		slot.clear_slot()
-		slot.is_root_slot = true
-		slot.occupied_by_item_id = ""
-		slot.visible = true
-		slot.mouse_filter = Control.MOUSE_FILTER_STOP
+	# REFACTOR: Static Grid + Item Overlay Architecture
+	# Grid slots remain STATIC (never modified)
+	# Items are rendered as ItemSprite overlays on top of the grid
+
+	# CRITICAL FIX: Clear old item sprites SYNCHRONOUSLY (not queue_free!)
+	# queue_free() is async - nodes aren't freed immediately, causing race conditions
+	if shared_stash_grid and shared_stash_grid.item_layer:
+		for child in shared_stash_grid.item_layer.get_children():
+			child.free() # Synchronous deletion (Path of Exile / Diablo 2 style)
 
 	# Load shared stash items
-	var stash_items = InventoryManager.get_all_items()
-	_populate_grid(stash_items, stash_item_slots, false)  # false = shared stash
+	var stash_items = container.get_all_items()
+
+	# Create ItemSprite overlays for each item
+	for item_instance in stash_items:
+		# Get item's grid position from container
+		var pos: Vector2i = container.get_item_position(item_instance.uuid)
+
+		if pos.x == -1 or pos.y == -1:
+			continue
+
+		# Create ItemSprite overlay
+		var item_sprite = ItemSpriteScript.new()
+		item_sprite.hero_id = "" # Empty string = shared stash
+		item_sprite.set_item(item_instance)
+		item_sprite.set_grid_position(pos.x, pos.y)
+
+		# Add to item layer (renders on top of grid)
+		if shared_stash_grid and shared_stash_grid.item_layer:
+			shared_stash_grid.item_layer.add_child(item_sprite)
+
+	# Refresh debug grid visualization
+	if shared_stash_grid:
+		shared_stash_grid.refresh_items_display()
 
 
 func _on_inventory_changed():
@@ -598,91 +528,37 @@ func _on_inventory_changed():
 		print("[EquipmentView] Common chest mode OFF - ignoring signal")
 
 
-func _populate_grid(items: Array, slots: Array[ItemSlot], is_hero_inventory: bool):
-	"""Populate a specific grid with items"""
-	for item_info in items:
-		var item_id = item_info.item_id
-		var item_data = item_info.item_data
-
-		# Get item's grid position
-		var pos: Dictionary
-		if is_hero_inventory:
-			pos = HeroInventoryManager.get_grid_position(hero_id, item_id)
-		else:
-			pos = InventoryManager.get_item_position(item_id)
-
-		if pos.x == -1 or pos.y == -1:
-			continue
-
-		# Find root slot
-		var root_slot = _get_slot_at_position_in_array(pos.x, pos.y, slots)
-		if root_slot == null:
-			continue
-
-		# Set item
-		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level, item_info.get("rolled_affixes", {}))
-		root_slot.is_root_slot = true
-
-		# Mark occupied cells
-		for dy in range(item_data.inventory_height):
-			for dx in range(item_data.inventory_width):
-				if dx == 0 and dy == 0:
-					continue
-
-				var occupied_slot = _get_slot_at_position_in_array(pos.x + dx, pos.y + dy, slots)
-				if occupied_slot:
-					occupied_slot.is_root_slot = false
-					occupied_slot.occupied_by_item_id = item_id
-					occupied_slot.update_display()
-
-	# Update all slot displays
-	for slot in slots:
-		slot.update_display()
-
-
-func _get_slot_at_position_in_array(x: int, y: int, slots: Array[ItemSlot]) -> ItemSlot:
-	"""Get slot at grid coordinates from specific slot array"""
-	var grid_width = InventoryManager.GRID_WIDTH
-	var index = y * grid_width + x
-
-	if index >= 0 and index < slots.size():
-		return slots[index]
-
-	return null
-
-
-func _on_item_slot_clicked(item_id: String, slot: ItemSlot):
+func _on_item_slot_clicked(_item: ItemInstance, slot: ItemSlot):
 	"""Called when an item slot is clicked in common chest mode - handle Ctrl+Click transfers"""
 	var ctrl_held = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)
 
 	if common_chest_mode and ctrl_held:
-		_quick_transfer_item(item_id, slot)
+		if slot.item_instance:
+			_quick_transfer_item(slot.item_instance, slot)
 
 
-func _on_item_slot_right_clicked(item_id: String, slot: ItemSlot):
-	"""Called when an item slot is right-clicked in common chest mode"""
-	# TODO: Add context menu if needed
-	pass
+func _on_item_slot_right_clicked(_item: ItemInstance, slot: ItemSlot):
+	"""Called when an item slot is right-clicked in common chest mode - show context menu"""
+	if common_chest_mode and slot.item_instance:
+		# For now, just trigger quick transfer on right-click as well
+		# TODO: Add context menu for more options (transfer, inspect, etc.)
+		_quick_transfer_item(slot.item_instance, slot)
 
 
-func _quick_transfer_item(item_id: String, slot: ItemSlot):
+func _quick_transfer_item(item_instance: ItemInstance, slot: ItemSlot):
 	"""Ctrl+Click quick transfer in common chest mode (stash → hero inventory)"""
 	if hero_id == "":
 		return
 
-	if not HeroInventoryManager or not InventoryManager:
-		return
-
 	# Check if slot is in shared stash grid
 	if slot not in stash_item_slots:
-		return  # Slot not in stash grid
-
-	var item_data = ItemDatabase.get_item(item_id)
-	if not item_data:
-		return
+		return # Slot not in stash grid
+		
+	var item_data = item_instance.get_data()
+	if not item_data: return
 
 	# Transfer from shared stash → hero inventory
-	var success = HeroInventoryManager.transfer_from_shared_stash(hero_id, item_id, 1)
+	var success = ItemTransactionService.move_item(item_instance.uuid, "stash", hero_id)
 
 	if success:
 		print("[EquipmentView] ⚡ Quick transferred '%s' to hero inventory" % item_data.item_name)
@@ -704,7 +580,7 @@ func _on_hero_button_pressed(new_hero_id: String):
 	# Exit common chest mode when clicking hero button
 	# User wants to see THIS HERO'S equipment, not the shared stash
 	if common_chest_mode and common_chest_toggle:
-		common_chest_toggle.button_pressed = false  # This triggers _on_common_chest_toggled
+		common_chest_toggle.button_pressed = false # This triggers _on_common_chest_toggled
 	else:
 		# Refresh equipment if not in common chest mode
 		_refresh_equipment()
@@ -719,6 +595,7 @@ func cleanup():
 		if HeroEquipmentRegistry.batch_update_completed.is_connected(_on_batch_update):
 			HeroEquipmentRegistry.batch_update_completed.disconnect(_on_batch_update)
 
-	if InventoryManager:
-		if InventoryManager.inventory_changed.is_connected(_on_inventory_changed):
-			InventoryManager.inventory_changed.disconnect(_on_inventory_changed)
+	var stash = InventoryRegistry.get_container("stash")
+	if stash:
+		if stash.content_changed.is_connected(_on_inventory_changed):
+			stash.content_changed.disconnect(_on_inventory_changed)

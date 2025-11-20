@@ -4,19 +4,27 @@ class_name InventoryView
 ## InventoryView - Simple hero inventory display
 ## Shows only the current hero's inventory (single grid)
 ## Extends BasePanelView for use in FlexiblePanel
+##
+## ⚠️ ARCHITECTURE: Static Grid + ItemSprite Overlay (Diablo 2 / Path of Exile style)
+## - ItemSlots: Static 8×8 grid (never modified, no item data)
+## - ItemSprites: Render items as overlays on top (z_index=10)
+## - See item_sprite.gd for full architecture explanation
 
 @export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
 @export var swap_dialog_scene: PackedScene = preload("res://scenes/ui/swap_confirmation_dialog.tscn")
-@export var total_slots: int = 64  # Total inventory capacity (8×8 grid)
-@export var debug_logging: bool = false  # Enable detailed inventory logging (F3 to toggle)
+@export var total_slots: int = 64 # Total inventory capacity (8×8 grid)
+
+# Preload ItemSprite for overlay rendering
+const ItemSpriteScript = preload("res://scripts/ui/item_sprite.gd")
+@export var debug_logging: bool = false # Enable detailed inventory logging (F3 to toggle)
 
 # Responsive layout breakpoints (screen width in pixels)
-const BREAKPOINT_WIDE_PHONE: int = 2340  # 19.5:9 aspect ratio (9 columns)
-const BREAKPOINT_STANDARD: int = 1920    # 16:9 aspect ratio (8 columns)
+const BREAKPOINT_WIDE_PHONE: int = 2340 # 19.5:9 aspect ratio (9 columns)
+const BREAKPOINT_STANDARD: int = 1920 # 16:9 aspect ratio (8 columns)
 # Below BREAKPOINT_STANDARD = compact/tablet (6 columns)
 
 # Hero ID for per-hero inventory
-var hero_id: String = ""  # Set by EquipmentView or hero selection
+var hero_id: String = "" # Set by EquipmentView or hero selection
 
 # Grid container (now InventoryGridContainer with absolute positioning)
 @onready var inventory_grid: InventoryGridContainer = $MarginContainer/VBoxContainer/ContentContainer/InventoryGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/InventoryGrid") else null
@@ -37,7 +45,7 @@ var swap_dialog: SwapConfirmationDialog = null
 
 # Context menu
 var context_menu: PopupMenu = null
-var context_menu_item_id: String = ""  # Track which item the menu is for
+var context_menu_item_uuid: String = "" # Track which item the menu is for
 var context_menu_slot: ItemSlot = null
 
 
@@ -61,7 +69,7 @@ func _ready():
 
 	# Setup responsive column adjustment
 	get_viewport().size_changed.connect(_on_viewport_resized)
-	_on_viewport_resized()  # Initial setup
+	_on_viewport_resized() # Initial setup
 
 	# Create swap confirmation dialog
 	_setup_swap_dialog()
@@ -149,32 +157,27 @@ func _refresh_inventory():
 		if debug_logging:
 			print("[InventoryView] ❌ HeroInventoryManager not found!")
 		return
+		
+	# Get container directly from registry
+	var container = InventoryRegistry.get_container(hero_id)
+	if not container:
+		if debug_logging:
+			print("[InventoryView] ❌ No container found for hero: ", hero_id)
+		return
 
-	# Clear all slots first and reset occupation states
-	for slot in item_slots:
-		slot.clear_slot()
-		slot.is_root_slot = true
-		slot.occupied_by_item_id = ""
-		# Force visibility and mouse filter reset
-		slot.visible = true
-		slot.mouse_filter = Control.MOUSE_FILTER_STOP
-		# Reset scale from abandoned hover tweens (fixes border thickness artifacts)
-		slot.scale = Vector2(1.0, 1.0)
-		# Force complete style reset using cached default (prevents border artifacts)
-		if slot.has_method("_restore_default_style"):
-			slot._restore_default_style()
-		# CRITICAL: Defensive modulation reset to prevent visual state leaks
-		# Even though _restore_default_style() sets this, ensure it's WHITE
-		# in case update_display() is called later with inconsistent state
-		slot.modulate = Color.WHITE
-		if slot.margin_container:
-			slot.margin_container.add_theme_constant_override("margin_left", 4)
-			slot.margin_container.add_theme_constant_override("margin_top", 4)
-			slot.margin_container.add_theme_constant_override("margin_right", 4)
-			slot.margin_container.add_theme_constant_override("margin_bottom", 4)
+	# REFACTOR: Static Grid + Item Overlay Architecture
+	# Grid slots remain STATIC (never modified)
+	# Items are rendered as ItemSprite overlays on top of the grid
 
-	# Get ALL items from hero inventory
-	var all_items: Array = HeroInventoryManager.get_all_items(hero_id)
+	# CRITICAL FIX: Clear old item sprites SYNCHRONOUSLY (not queue_free!)
+	# queue_free() is async - nodes aren't freed immediately, causing race conditions
+	# If user drags during refresh, they interact with "ghost" sprites queued for deletion
+	if inventory_grid and inventory_grid.item_layer:
+		for child in inventory_grid.item_layer.get_children():
+			child.free() # Synchronous deletion (Path of Exile / Diablo 2 style)
+
+	# Get ALL items from container
+	var all_items: Array[ItemInstance] = container.get_all_items()
 
 	# DEBUG: Log hero inventory details
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -189,51 +192,41 @@ func _refresh_inventory():
 	var displayed_count = 0
 	var filtered_count = 0
 
-	# Place items using spatial grid positions
-	for item_info in all_items:
-		var item_id = item_info.item_id
-		var item_data = item_info.item_data
+	# Create ItemSprite overlays for each item
+	for item_instance in all_items:
+		var uuid = item_instance.uuid
+		var item_id = item_instance.item_id
 
-		# Get item's grid position from hero inventory manager
-		var pos: Dictionary = HeroInventoryManager.get_grid_position(hero_id, item_id)
+		# Get item's grid position from container
+		var pos: Vector2i = container.get_item_position(uuid)
 
 		if pos.x == -1 or pos.y == -1:
 			filtered_count += 1
-			print("  ⚠️  FILTERED: %s (no grid position)" % item_id)
+			print("  ⚠️  FILTERED: %s (UUID: %s, no grid position)" % [item_id, uuid])
 			if debug_logging:
 				print("[InventoryView] Warning: Item not placed in grid: ", item_id)
 			continue
 
 		displayed_count += 1
 
-		# Find the root slot for this item
-		var root_slot = _get_slot_at_position(pos.x, pos.y)
-		if root_slot == null:
+		# Create ItemSprite overlay
+		var item_sprite = ItemSprite.new()
+		item_sprite.hero_id = hero_id # Set which inventory this belongs to
+		
+		# 🆕 UUID SYSTEM: Pass ItemInstance directly
+		item_sprite.set_item(item_instance)
+		item_sprite.set_grid_position(pos.x, pos.y)
+
+		# Add to item layer (renders on top of grid)
+		if inventory_grid and inventory_grid.item_layer:
+			inventory_grid.item_layer.add_child(item_sprite)
+
 			if debug_logging:
-				print("[InventoryView] Warning: No slot found at position (%d, %d)" % [pos.x, pos.y])
-			continue
+				print("[InventoryView] Created ItemSprite for '%s' at (%d, %d)" % [item_id, pos.x, pos.y])
 
-		# Set the root slot
-		root_slot.set_item(item_id, item_info.quantity, item_info.upgrade_level, item_info.get("rolled_affixes", {}))
-		root_slot.is_root_slot = true
-		if debug_logging:
-			print("[InventoryView] Placed item '%s' in slot at (%d, %d)" % [item_id, pos.x, pos.y])
-
-		# Mark occupied cells for multi-slot items
-		for dy in range(item_data.inventory_height):
-			for dx in range(item_data.inventory_width):
-				if dx == 0 and dy == 0:
-					continue  # Skip root cell
-
-				var occupied_slot = _get_slot_at_position(pos.x + dx, pos.y + dy)
-				if occupied_slot:
-					occupied_slot.is_root_slot = false
-					occupied_slot.occupied_by_item_id = item_id
-					occupied_slot.update_display()
-
-	# Update all slot displays
-	for slot in item_slots:
-		slot.update_display()
+	# Refresh debug grid visualization
+	if inventory_grid:
+		inventory_grid.refresh_items_display()
 
 	# Update labels
 	_update_labels()
@@ -265,8 +258,9 @@ func _update_labels():
 	# Update slots label for hero inventory
 	if slots_label:
 		if HeroInventoryManager and hero_id != "":
-			var all_items = HeroInventoryManager.get_all_items(hero_id)
-			slots_label.text = "My Items: %d / %d" % [all_items.size(), total_slots]
+			var container = InventoryRegistry.get_container(hero_id)
+			var count = container.get_all_items().size() if container else 0
+			slots_label.text = "My Items: %d / %d" % [count, total_slots]
 		else:
 			slots_label.text = "My Items: 0 / %d" % total_slots
 
@@ -277,41 +271,54 @@ func _on_inventory_changed():
 	pass
 
 
-func _on_item_slot_clicked(item_id: String, slot: ItemSlot):
+func _on_item_slot_clicked(_item: ItemInstance, slot: ItemSlot):
 	"""Called when an item slot is left-clicked - auto-equip for mobile, Ctrl+click for PC"""
 
-	# Get item data
-	var item_data = ItemDatabase.get_item(item_id)
+	# With ItemSprite overlay, this might not be called directly for items,
+	# but ItemSprite passes input to slots if configured correctly.
+	# Actually, ItemSprite handles its own input usually.
+	# But ItemSlot has signals connected.
+
+	# If slot is empty, ignore
+	if slot.is_empty:
+		return
+
+	var item_instance = slot.item_instance
+	if not item_instance:
+		return
+
+	var item_data = item_instance.get_data()
 	if not item_data:
 		return
 
 	# PC: Only equip with Ctrl+Click (drag-and-drop is primary)
 	# Mobile: Auto-equip on tap (drag is difficult on touch)
 	var is_pc = OS.has_feature("pc") or OS.get_name() in ["Windows", "Linux", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "BSD"]
-	var ctrl_held = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)  # Meta for Mac Command key
+	var ctrl_held = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META) # Meta for Mac Command key
 
 	# Auto-equip logic for equipment items
 	if item_data.item_type == ItemData.ItemType.WEAPON or item_data.item_type == ItemData.ItemType.ARMOR:
 		# PC: Only equip if Ctrl is held (otherwise rely on drag-and-drop)
 		# Mobile: Always equip on tap
 		if not is_pc or ctrl_held:
-			_try_auto_equip_item(item_id, item_data)
+			_try_auto_equip_item(item_instance)
 		else:
-			pass  # PC without Ctrl - show info only
+			pass # PC without Ctrl - show info only
 	else:
 		# Just show info for other items
 		pass
 
 
-func _on_item_slot_right_clicked(item_id: String, slot: ItemSlot):
+func _on_item_slot_right_clicked(_item: ItemInstance, slot: ItemSlot):
 	"""Called when an item slot is right-clicked"""
 	# Show context menu (sell, drop, etc.)
-	_show_item_context_menu(item_id, slot)
+	if slot.item_instance:
+		_show_item_context_menu(slot.item_instance, slot)
 
 
-func _show_item_context_menu(item_id: String, slot: ItemSlot):
+func _show_item_context_menu(item_instance: ItemInstance, slot: ItemSlot):
 	"""Show context menu for item actions"""
-	var item_data = ItemDatabase.get_item(item_id)
+	var item_data = item_instance.get_data()
 	if item_data == null:
 		return
 
@@ -320,18 +327,18 @@ func _show_item_context_menu(item_id: String, slot: ItemSlot):
 		return
 
 	# Store context for when menu item is selected
-	context_menu_item_id = item_id
+	context_menu_item_uuid = item_instance.uuid
 	context_menu_slot = slot
 
 	# Enable/disable menu items based on context
 	var can_equip = item_data.equip_slot != ItemData.EquipSlot.NONE
-	context_menu.set_item_disabled(0, not can_equip)  # Equip option
+	context_menu.set_item_disabled(0, not can_equip) # Equip option
 
 	# Set transfer menu text (always hero inventory -> shared stash)
 	context_menu.set_item_text(3, "📦 Transfer to Shared Stash")
 
 	# Disable transfer if hero_id is not set (can't transfer without knowing which hero)
-	var can_transfer = hero_id != "" and HeroInventoryManager != null and InventoryManager != null
+	var can_transfer = hero_id != "" and InventoryRegistry.get_container("stash") != null
 	context_menu.set_item_disabled(3, not can_transfer)
 
 	# Show menu at mouse position
@@ -344,26 +351,17 @@ func _on_item_slot_hovered(slot: ItemSlot):
 	if slot.is_empty or tooltip_panel == null or tooltip_label == null:
 		return
 
-	var item_data = slot.item_data
-	if item_data == null:
+	# Use slot's _generate_tooltip method if available or build it here
+	# ItemSlot has _generate_tooltip but it returns string.
+	# We can use that.
+	var tooltip_text = slot._generate_tooltip()
+	if tooltip_text == "":
 		return
-
-	# Build tooltip text
-	var tooltip_text = "[b][color=%s]%s[/color][/b]\n" % [item_data.get_rarity_color().to_html(), item_data.item_name]
-	tooltip_text += "[color=gray]%s[/color]\n\n" % item_data.get_rarity_name()
-	tooltip_text += item_data.description + "\n\n"
-
-	# Show stats
-	if item_data.damage_bonus > 0:
-		tooltip_text += "+%d Damage\n" % item_data.damage_bonus
-	if item_data.health_bonus > 0:
-		tooltip_text += "+%d Health\n" % item_data.health_bonus
-	if item_data.defense_bonus > 0:
-		tooltip_text += "+%d Defense\n" % item_data.defense_bonus
-	if item_data.attack_speed_multiplier != 1.0:
-		tooltip_text += "%.1f%% Attack Speed\n" % (item_data.attack_speed_multiplier * 100)
-
-	tooltip_text += "\n[color=yellow]Sell: %d gold[/color]" % item_data.sell_value
+		
+	# Add sell value
+	var item_data = slot.item_instance.get_data()
+	if item_data:
+		tooltip_text += "\n[color=yellow]Sell: %d gold[/color]" % item_data.sell_value
 
 	tooltip_label.text = tooltip_text
 	tooltip_panel.visible = true
@@ -379,9 +377,9 @@ func _on_item_slot_hovered(slot: ItemSlot):
 
 	# Clamp to viewport bounds (prevent clipping off screen)
 	if tooltip_pos.x + tooltip_size.x > viewport_size.x:
-		tooltip_pos.x = mouse_pos.x - tooltip_size.x - 20  # Show on left instead
+		tooltip_pos.x = mouse_pos.x - tooltip_size.x - 20 # Show on left instead
 	if tooltip_pos.y + tooltip_size.y > viewport_size.y:
-		tooltip_pos.y = viewport_size.y - tooltip_size.y - 10  # Push up
+		tooltip_pos.y = viewport_size.y - tooltip_size.y - 10 # Push up
 
 	tooltip_panel.global_position = tooltip_pos
 
@@ -392,13 +390,16 @@ func _on_item_slot_unhovered():
 		tooltip_panel.visible = false
 
 
-func _try_auto_equip_item(item_id: String, item_data: ItemData):
+func _try_auto_equip_item(item_instance: ItemInstance):
 	"""Try to auto-equip an item when tapped (mobile-friendly)"""
 	# Get hero_id from associated EquipmentView
 	var hero_id_val = _get_hero_id_from_equipment_view()
 	if hero_id_val == "":
 		print("[InventoryView] Error: Could not find associated hero ID")
 		return
+		
+	var item_data = item_instance.get_data()
+	if not item_data: return
 
 	# Determine which slot to equip to
 	var slot_name = _get_slot_name_for_item(item_data)
@@ -406,17 +407,9 @@ func _try_auto_equip_item(item_id: String, item_data: ItemData):
 		print("[InventoryView] Error: Could not determine slot for item")
 		return
 
-	# Check if there's already an item equipped in this slot
-	var equipped_item_id = HeroEquipmentRegistry.get_equipped_item(hero_id_val, slot_name)
-
-	if equipped_item_id != "":
-		# Item already equipped in this slot - show swap confirmation
-		_show_swap_confirmation(item_id, item_data, equipped_item_id, slot_name, hero_id_val)
-	else:
-		# No item equipped - equip from hero inventory
-		# TODO: Implement hero inventory equip logic
-		# For now, items in hero inventory can't be equipped directly
-		print("[InventoryView] Warning: Equipping from hero inventory not yet implemented")
+	# Use ItemTransactionService to equip
+	# It handles swapping automatically if implemented correctly
+	ItemTransactionService.equip_item(hero_id_val, item_instance.uuid, slot_name)
 
 
 func _get_slot_name_for_item(item_data: ItemData) -> String:
@@ -427,7 +420,7 @@ func _get_slot_name_for_item(item_data: ItemData) -> String:
 		if hero_id_val != "":
 			var acc1 = HeroEquipmentRegistry.get_equipped_item(hero_id_val, "accessory_1")
 			if acc1 != "":
-				return "accessory_2"  # First slot occupied, use second
+				return "accessory_2" # First slot occupied, use second
 
 	# Use shared static helper to avoid code duplication
 	return ItemData.equip_slot_to_name(item_data.equip_slot)
@@ -474,7 +467,7 @@ func _setup_context_menu():
 	context_menu.add_item("💰 Sell", 1)
 	context_menu.add_item("🗑️ Drop", 2)
 	context_menu.add_separator()
-	context_menu.add_item("📦 Transfer to...", 3)  # Will update text based on mode
+	context_menu.add_item("📦 Transfer to...", 3) # Will update text based on mode
 	context_menu.add_separator()
 	context_menu.add_item("ℹ️ Item Info", 4)
 	context_menu.add_separator()
@@ -486,81 +479,75 @@ func _setup_context_menu():
 
 func _on_context_menu_item_selected(index: int):
 	"""Handle context menu item selection"""
-	var item_id = context_menu_item_id
-	var item_data = ItemDatabase.get_item(item_id)
-
-	if item_data == null:
+	var uuid = context_menu_item_uuid
+	if uuid == "": return
+	
+	var container = InventoryRegistry.get_container(hero_id)
+	if not container: return
+	
+	var item_instance = container.remove_item(uuid) # Temporarily remove to get data? No, get from container.
+	# Actually, we should just get it.
+	# But for actions like sell/drop/transfer, we will act on the UUID.
+	
+	# Re-fetch item to ensure it still exists
+	item_instance = container._items.get(uuid)
+	if not item_instance:
 		return
+		
+	var item_data = item_instance.get_data()
 
 	match index:
-		0:  # Equip
-			_try_auto_equip_item(item_id, item_data)
-		1:  # Sell
-			_sell_item(item_id, item_data)
-		2:  # Drop
-			_drop_item(item_id, item_data)
-		3:  # Transfer
-			_transfer_item(item_id, item_data)
-		4:  # Item Info
-			_show_item_info(item_id, item_data)
-		5:  # Cancel
-			pass  # Do nothing
+		0: # Equip
+			_try_auto_equip_item(item_instance)
+		1: # Sell
+			_sell_item(item_instance)
+		2: # Drop
+			_drop_item(item_instance)
+		3: # Transfer
+			_transfer_item(item_instance)
+		4: # Item Info
+			_show_item_info(item_instance)
+		5: # Cancel
+			pass # Do nothing
 
 
-func _sell_item(item_id: String, item_data: ItemData):
+func _sell_item(item_instance: ItemInstance):
 	"""Sell an item for gold from hero inventory"""
+	var item_data = item_instance.get_data()
+	if not item_data: return
+	
 	# Check if item is rare or upgraded - require confirmation
 	var requires_confirmation = false
 	var confirmation_reason = ""
 
-	if item_data.rarity >= 2:  # Epic (2) or Legendary (3)
+	if item_data.rarity >= 2: # Epic (2) or Legendary (3)
 		requires_confirmation = true
 		confirmation_reason = "rare (%s)" % item_data.get_rarity_name()
 
-	# Hero inventory doesn't track upgrade levels separately yet
-	# TODO: Add upgrade tracking to HeroInventoryManager
-
-	# Check if item is equipped (use getter instead of direct dictionary access)
-	# DEFENSIVE: Verify item is actually equipped, not just missing from grid
-	var item_pos: Dictionary = HeroInventoryManager.get_grid_position(hero_id, item_id) if HeroInventoryManager else {"x": 0, "y": 0}
-
-	if item_pos.x == -1:  # Item not in grid - should be equipped
-		# Verify item is actually equipped on any hero (prevents false positives from data corruption)
-		var is_actually_equipped = false
-		if HeroEquipmentRegistry:
-			for hero_id_check in HeroEquipmentRegistry._equipment_registry.keys():
-				var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id_check)
-				for equipped_item_id in equipped_items.values():
-					if equipped_item_id == item_id:
-						is_actually_equipped = true
-						break
-				if is_actually_equipped:
-					break
-
-		if is_actually_equipped:
-			requires_confirmation = true
-			confirmation_reason += " equipped" if confirmation_reason != "" else "equipped"
-		else:
-			# Data corruption: item in inventory but not in grid and not equipped
-			push_error("[InventoryView] Data corruption detected: item '%s' not in grid and not equipped" % item_id)
+	if item_instance.upgrade_level > 0:
+		requires_confirmation = true
+		confirmation_reason += " upgraded (+%d)" % item_instance.upgrade_level
 
 	if requires_confirmation:
 		# Show confirmation dialog
-		_show_sell_confirmation(item_id, item_data, confirmation_reason)
+		_show_sell_confirmation(item_instance, confirmation_reason)
 	else:
 		# Sell immediately (Common/Uncommon items)
 		print("[InventoryView] Selling item: %s for %d gold" % [item_data.item_name, item_data.sell_value])
 
 		# Remove from hero inventory
-		if HeroInventoryManager:
-			HeroInventoryManager.remove_item_from_hero(hero_id, item_id, 1)
+		var container = InventoryRegistry.get_container(hero_id)
+		if container:
+			container.remove_item(item_instance.uuid)
 
 		# Add gold
 		SaveManager.add_gems(item_data.sell_value)
 
 
-func _show_sell_confirmation(item_id: String, item_data: ItemData, reason: String):
+func _show_sell_confirmation(item_instance: ItemInstance, reason: String):
 	"""Show confirmation dialog before selling valuable items"""
+	var item_data = item_instance.get_data()
+	
 	# Create simple ConfirmationDialog
 	var dialog = ConfirmationDialog.new()
 	dialog.title = "Sell Item?"
@@ -577,8 +564,9 @@ func _show_sell_confirmation(item_id: String, item_data: ItemData, reason: Strin
 		print("[InventoryView] Confirmed sell: %s for %d gold" % [item_data.item_name, item_data.sell_value])
 
 		# Remove from hero inventory
-		if HeroInventoryManager:
-			HeroInventoryManager.remove_item_from_hero(hero_id, item_id, 1)
+		var container = InventoryRegistry.get_container(hero_id)
+		if container:
+			container.remove_item(item_instance.uuid)
 
 		# Add gold
 		SaveManager.add_gems(item_data.sell_value)
@@ -595,46 +583,47 @@ func _show_sell_confirmation(item_id: String, item_data: ItemData, reason: Strin
 	dialog.popup_centered()
 
 
-func _drop_item(item_id: String, item_data: ItemData):
+func _drop_item(item_instance: ItemInstance):
 	"""Drop an item (remove from hero inventory permanently)"""
+	var item_data = item_instance.get_data()
 	print("[InventoryView] Dropping item: %s" % item_data.item_name)
 	# TODO: Add confirmation dialog for Epic+ items
 
 	# Remove from hero inventory
-	if HeroInventoryManager:
-		HeroInventoryManager.remove_item_from_hero(hero_id, item_id, 1)
+	var container = InventoryRegistry.get_container(hero_id)
+	if container:
+		container.remove_item(item_instance.uuid)
 
 
-func _transfer_item(item_id: String, item_data: ItemData):
+func _transfer_item(item_instance: ItemInstance):
 	"""Transfer an item from hero inventory to shared stash"""
 	if hero_id == "":
 		print("[InventoryView] Cannot transfer - no hero selected")
 		return
 
-	if not HeroInventoryManager or not InventoryManager:
-		print("[InventoryView] Cannot transfer - managers not available")
-		return
-
 	# Transfer from hero inventory to shared stash
-	var success: bool = HeroInventoryManager.transfer_to_shared_stash(hero_id, item_id, 1)
+	var success = ItemTransactionService.move_item(item_instance.uuid, hero_id, "stash")
 
 	if success:
+		var item_data = item_instance.get_data()
 		print("[InventoryView] ✅ Transferred '%s' from My Items to Shared Stash" % item_data.item_name)
 		# Refresh will happen automatically via signals
 	else:
+		var item_data = item_instance.get_data()
 		print("[InventoryView] ❌ Failed to transfer '%s' (shared stash may be full)" % item_data.item_name)
 		# Show error message to user
 		if slots_label:
 			var original_color = slots_label.modulate
-			slots_label.modulate = Color(1.0, 0.3, 0.3)  # Red
+			slots_label.modulate = Color(1.0, 0.3, 0.3) # Red
 			slots_label.text = "⚠️ Transfer failed - Shared Stash full!"
 			await get_tree().create_timer(2.0).timeout
 			slots_label.modulate = original_color
 			_update_labels()
 
 
-func _show_item_info(item_id: String, item_data: ItemData):
+func _show_item_info(item_instance: ItemInstance):
 	"""Show detailed item information modal"""
+	var item_data = item_instance.get_data()
 	print("[InventoryView] Showing info for: %s" % item_data.item_name)
 	# TODO: Create detailed item info modal
 	# For now, just print to console
@@ -657,7 +646,7 @@ func _on_swap_confirmed(new_item_id: String, slot_name: String):
 
 
 func _on_swap_cancelled():
-	pass  # Dialog dismissed
+	pass # Dialog dismissed
 	"""Handle cancelled swap from dialog"""
 
 
@@ -728,7 +717,7 @@ func _on_inventory_full(item_id: String):
 	# Show detailed error message in red temporarily
 	if slots_label:
 		var original_color = slots_label.modulate
-		slots_label.modulate = Color(1.0, 0.3, 0.3)  # Red
+		slots_label.modulate = Color(1.0, 0.3, 0.3) # Red
 
 		# Show helpful message with item name and size
 		if size_info != "":
