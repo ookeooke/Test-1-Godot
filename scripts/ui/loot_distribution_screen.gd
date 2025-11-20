@@ -304,21 +304,37 @@ func _display_stash():
 
 
 func _display_found_loot():
-	"""Display loot items in right panel (FOUND LOOT)"""
+	"""Display loot items in right panel (FOUND LOOT) - PHASE 2: Using loot_container"""
 	# Clear existing items (reset modulation first for defensive programming)
 	for child in loot_grid.get_children():
 		if child is PanelContainer:
 			child.modulate = Color.WHITE  # Safety reset before freeing
 		child.queue_free()
 
-	# Create draggable item slots for each loot item
-	for loot in loot_items:
-		var item_data: ItemData = loot.item_data
-		var item_panel = _create_item_display(item_data, loot.quantity, loot.item_id, true)
-		loot_grid.add_child(item_panel)
+	# PHASE 2: Get items from loot_container instead of loot_items array
+	if not loot_container:
+		push_warning("[LootDistScreen] loot_container not initialized")
+		return
+
+	var loot_item_instances = loot_container.get_all_items()
+
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[LootDistScreen] 📦 Displaying Found Loot")
+	print("  Items in container: %d" % loot_item_instances.size())
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+	# Create draggable item slots for each loot item instance
+	for item_instance in loot_item_instances:
+		var item_data = item_instance.get_data()
+		if item_data:
+			# Note: Each ItemInstance is unique (quantity is always 1 in spatial grid)
+			var item_panel = _create_item_display(item_data, 1, item_instance.item_id, true)
+			# Store UUID in metadata for future drag-drop integration
+			item_panel.set_meta("uuid", item_instance.uuid)
+			loot_grid.add_child(item_panel)
 
 	# Show empty message if no loot
-	if loot_items.is_empty():
+	if loot_item_instances.is_empty():
 		var empty_label = Label.new()
 		empty_label.text = "No items found"
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -700,17 +716,22 @@ func _is_point_over_control(point: Vector2, control: Control) -> bool:
 
 
 func _update_counters():
-	"""Update capacity and loot count labels"""
+	"""Update capacity and loot count labels - PHASE 2: Using containers"""
 	# Get hero's inventory count
 	var item_count = 0
-	if selected_hero_id != "":
+	if hero_container:
+		item_count = hero_container.get_item_count()
+	elif selected_hero_id != "":
+		# Fallback to legacy method
 		var hero_items = HeroInventoryManager.get_all_items(selected_hero_id)
 		item_count = hero_items.size()
 
 	var max_capacity = 64  # 8x8 grid = 64 slots max
 	capacity_label.text = "%d/%d" % [item_count, max_capacity]
 
-	loot_count_label.text = "%d items" % loot_items.size()
+	# PHASE 2: Get loot count from container
+	var loot_count = loot_container.get_item_count() if loot_container else loot_items.size()
+	loot_count_label.text = "%d items" % loot_count
 
 
 func _update_stars_display():
@@ -742,7 +763,8 @@ func _animate_entrance():
 
 func _on_leave_pressed():
 	"""Leave loot screen"""
-	print("[LootDistScreen] Leaving, destroying %d items..." % loot_items.size())
+	var remaining_items = loot_container.get_item_count() if loot_container else loot_items.size()
+	print("[LootDistScreen] Leaving, destroying %d items..." % remaining_items)
 
 	# PHASE 1: Cleanup - unregister temporary loot container
 	if loot_container:
