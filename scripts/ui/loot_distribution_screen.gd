@@ -622,13 +622,17 @@ func _start_drag(panel: PanelContainer):
 
 
 func _end_drag():
-	"""End drag and check for valid drop"""
+	"""End drag and check for valid drop - PHASE 3: Using ItemTransactionService"""
 	if dragged_item == null:
 		return
 
-	var item_id = dragged_item.get_meta("item_id")
-	var item_data = dragged_item.get_meta("item_data")
-	var quantity = dragged_item.get_meta("quantity")
+	# PHASE 3: Get UUID from metadata (added in Phase 2)
+	var uuid = dragged_item.get_meta("uuid", "")
+	if uuid == "":
+		push_error("[LootDistScreen] Drag failed - no UUID in item metadata!")
+		_reset_drag_visuals()
+		_clear_drag_state()
+		return
 
 	# Check if mouse is over stash panel
 	var mouse_pos = get_global_mouse_position()
@@ -639,14 +643,60 @@ func _end_drag():
 	_reset_drag_visuals()
 
 	if is_over_stash:
-		_add_item_to_inventory(item_id, item_data, quantity)
+		_move_item_to_hero(uuid)
 
 	# Clear state references
 	_clear_drag_state()
 
 
+func _move_item_to_hero(uuid: String):
+	"""PHASE 3: Move item from loot to hero using ItemTransactionService"""
+	# Safety check
+	if selected_hero_id == "":
+		push_error("[LootDistScreen] No hero selected!")
+		return
+
+	if not loot_container or not hero_container:
+		push_error("[LootDistScreen] Containers not initialized!")
+		return
+
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[LootDistScreen] 🔄 Moving item to hero")
+	print("  UUID: %s" % uuid)
+	print("  Hero: %s" % selected_hero_id)
+
+	# Use ItemTransactionService to move item (with Smart Nudge, Atomic Swap, etc.)
+	var success = ItemTransactionService.move_item(
+		uuid,
+		loot_container.container_id,  # source: loot
+		selected_hero_id,              # target: hero inventory
+		-1, -1                         # auto-placement
+	)
+
+	if success:
+		print("[LootDistScreen] ✅ Item moved successfully!")
+
+		# Also remove from LootManager's pending list (legacy cleanup)
+		var item = hero_container._items.get(uuid)
+		if item:
+			for i in range(LootManager.pending_wave_loot.size()):
+				if LootManager.pending_wave_loot[i].item_id == item.item_id:
+					LootManager.pending_wave_loot.remove_at(i)
+					break
+
+		# Refresh displays
+		_display_stash()
+		_display_found_loot()
+		_update_counters()
+	else:
+		print("[LootDistScreen] ❌ Move failed - inventory full or placement blocked")
+		# Item automatically rolled back by ItemTransactionService
+
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+
 func _add_item_to_inventory(item_id: String, item_data: ItemData, quantity: int):
-	"""Add item to selected hero's inventory"""
+	"""LEGACY: Add item to selected hero's inventory (used by Take All/Rare buttons)"""
 	# Safety check
 	if selected_hero_id == "":
 		print("[LootDistScreen] ERROR: No hero selected!")
