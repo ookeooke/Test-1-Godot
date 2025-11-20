@@ -731,26 +731,106 @@ func _add_item_to_inventory(item_id: String, item_data: ItemData, quantity: int)
 
 
 func _on_take_all_pressed():
-	"""Take all items from Found Loot"""
+	"""PHASE 4: Take all items from loot using ItemTransactionService"""
 	print("[LootDistScreen] Taking all items...")
 
-	var items_to_take = loot_items.duplicate()
-	for loot in items_to_take:
-		_add_item_to_inventory(loot.item_id, loot.item_data, loot.quantity)
+	if not loot_container or not hero_container:
+		push_error("[LootDistScreen] Containers not initialized!")
+		return
+
+	# Get all items from loot container
+	var all_loot = loot_container.get_all_items()
+	var success_count = 0
+	var failed_count = 0
+
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[LootDistScreen] 🎁 Taking All Items (%d total)" % all_loot.size())
+
+	for item in all_loot:
+		var moved = ItemTransactionService.move_item(
+			item.uuid,
+			loot_container.container_id,  # source
+			selected_hero_id,              # target
+			-1, -1                         # auto-placement
+		)
+
+		if moved:
+			success_count += 1
+			# Remove from LootManager's pending list (legacy cleanup)
+			for i in range(LootManager.pending_wave_loot.size()):
+				if LootManager.pending_wave_loot[i].item_id == item.item_id:
+					LootManager.pending_wave_loot.remove_at(i)
+					break
+		else:
+			failed_count += 1
+
+	print("[LootDistScreen] ✅ Took %d items, %d failed (inventory full?)" % [success_count, failed_count])
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+	# Refresh displays
+	_display_stash()
+	_display_found_loot()
+	_update_counters()
+
+	# Auto-close if all items taken
+	if loot_container.get_item_count() == 0:
+		print("[LootDistScreen] 🎉 All loot collected!")
+		await get_tree().create_timer(0.5).timeout
+		_on_leave_pressed()
 
 
 func _on_take_rare_pressed():
-	"""Take only Rare+ items"""
+	"""PHASE 4: Take only Rare+ items using ItemTransactionService"""
 	print("[LootDistScreen] Taking Rare+ items...")
 
-	var items_to_take = []
-	for loot in loot_items:
-		var item_data: ItemData = loot.item_data
-		if item_data.rarity >= ItemData.Rarity.RARE:
-			items_to_take.append(loot)
+	if not loot_container or not hero_container:
+		push_error("[LootDistScreen] Containers not initialized!")
+		return
 
-	for loot in items_to_take:
-		_add_item_to_inventory(loot.item_id, loot.item_data, loot.quantity)
+	# Get all items and filter for Rare+
+	var all_loot = loot_container.get_all_items()
+	var success_count = 0
+	var failed_count = 0
+	var rare_threshold = ItemData.Rarity.RARE
+
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[LootDistScreen] 💎 Taking Rare+ Items")
+
+	for item in all_loot:
+		var item_data = item.get_data()
+
+		# Only take Rare or higher
+		if item_data and item_data.rarity >= rare_threshold:
+			var moved = ItemTransactionService.move_item(
+				item.uuid,
+				loot_container.container_id,
+				selected_hero_id,
+				-1, -1  # auto-place
+			)
+
+			if moved:
+				success_count += 1
+				# Remove from LootManager's pending list (legacy cleanup)
+				for i in range(LootManager.pending_wave_loot.size()):
+					if LootManager.pending_wave_loot[i].item_id == item.item_id:
+						LootManager.pending_wave_loot.remove_at(i)
+						break
+			else:
+				failed_count += 1
+
+	print("[LootDistScreen] ✅ Took %d Rare+ items, %d failed" % [success_count, failed_count])
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+	# Refresh displays
+	_display_stash()
+	_display_found_loot()
+	_update_counters()
+
+	# Auto-close if all loot taken
+	if loot_container.get_item_count() == 0:
+		print("[LootDistScreen] 🎉 All loot collected!")
+		await get_tree().create_timer(0.5).timeout
+		_on_leave_pressed()
 
 
 func _process(_delta):
