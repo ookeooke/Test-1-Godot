@@ -44,6 +44,9 @@ var dragged_item: Control = null
 var drag_preview: Control = null
 var drag_start_parent: Control = null
 
+# 🔧 FIX HIGH #6: Mutex lock for button operations
+var _is_processing_buttons: bool = false
+
 
 func _reset_drag_visuals():
 	"""CRITICAL: Reset all drag visual states to normal.
@@ -78,6 +81,27 @@ func _clear_drag_state():
 	"""
 	dragged_item = null
 	drag_start_parent = null
+
+
+func _show_error_message(message: String):
+	"""🔧 FIX HIGH #1: Show error feedback to user"""
+	# Create floating error label
+	var error_label = Label.new()
+	error_label.text = message
+	error_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	error_label.add_theme_font_size_override("font_size", 18)
+	error_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))  # Red
+	error_label.position = Vector2(size.x / 2 - 150, size.y / 2 - 50)
+	error_label.size = Vector2(300, 50)
+	error_label.z_index = 200  # Above everything
+	add_child(error_label)
+
+	# Animate fade-out and remove
+	var tween = create_tween()
+	tween.tween_property(error_label, "modulate:a", 0.0, 1.5).set_delay(1.0)
+	tween.tween_callback(error_label.queue_free)
+
+	print("[LootDistScreen] ⚠️ Error shown to user: %s" % message)
 
 
 func _ready():
@@ -129,10 +153,16 @@ func _load_heroes():
 	selected_hero_id = selected_hero_info.hero_id
 	hero_dropdown.select(0)
 
-	# Register hero in HeroInventoryManager if not already registered
+	# 🔧 FIX HIGH #4: Validate hero registration
 	if not HeroInventoryManager.is_hero_registered(selected_hero_id):
 		HeroInventoryManager.register_hero(selected_hero_id)
 		print("[LootDistScreen] Registered new hero in inventory system: ", selected_hero_id)
+
+		# Validate registration succeeded
+		if not HeroInventoryManager.is_hero_registered(selected_hero_id):
+			push_error("[LootDistScreen] CRITICAL: Hero registration failed: " + selected_hero_id)
+			_show_error_message("Failed to register hero: " + selected_hero_id)
+			return
 
 	_update_hero_display()
 	print("[LootDistScreen] Loaded %d heroes, selected: %s" % [participating_heroes.size(), selected_hero_id])
@@ -140,19 +170,33 @@ func _load_heroes():
 
 func _on_hero_selected(index: int):
 	"""When user selects a different hero from dropdown"""
+	# 🔧 FIX HIGH #2: Cancel active drag when hero switches to prevent corruption
+	if dragged_item:
+		print("[LootDistScreen] ⚠️ Hero switch detected during drag - canceling drag")
+		_reset_drag_visuals()
+		_clear_drag_state()
+
 	if index < participating_heroes.size():
 		selected_hero_info = participating_heroes[index]
 		selected_hero_id = selected_hero_info.hero_id
 
-		# Register hero in HeroInventoryManager if not already registered
+		# 🔧 FIX HIGH #4: Validate hero registration
 		if not HeroInventoryManager.is_hero_registered(selected_hero_id):
 			HeroInventoryManager.register_hero(selected_hero_id)
 			print("[LootDistScreen] Registered new hero in inventory system: ", selected_hero_id)
 
+			# Validate registration succeeded
+			if not HeroInventoryManager.is_hero_registered(selected_hero_id):
+				push_error("[LootDistScreen] CRITICAL: Hero registration failed: " + selected_hero_id)
+				_show_error_message("Failed to register hero: " + selected_hero_id)
+				return
+
 		# PHASE 1: Update hero_container reference when hero changes
 		hero_container = InventoryRegistry.get_container(selected_hero_id)
 		if not hero_container:
-			push_warning("[LootDistScreen] Hero container not found: " + selected_hero_id)
+			push_error("[LootDistScreen] CRITICAL: Hero container not found after registration: " + selected_hero_id)
+			_show_error_message("Hero inventory not available!")
+			return
 
 		_update_hero_display()
 		_display_stash()  # Refresh inventory display
@@ -218,10 +262,17 @@ func _load_loot_data():
 	# Populate loot_container
 	_populate_loot_container(loot_data)
 
+	# 🔧 FIX CRITICAL #2: Clear pending_wave_loot immediately after loading
+	# loot_container is now the SINGLE SOURCE OF TRUTH (no dual-state)
+	LootManager.pending_wave_loot.clear()
+	print("[LootDistScreen] ✅ Cleared pending_wave_loot - loot_container is now single source of truth")
+
 
 func _populate_loot_container(loot_data: Array):
 	"""PHASE 5: Convert loot_data array into ItemInstances in loot_container"""
 	print("[LootDistScreen] 📦 Populating loot container...")
+
+	var invalid_count = 0  # 🔧 FIX HIGH #3: Track invalid items
 
 	for loot in loot_data:
 		var item_id = loot.item_id
@@ -236,6 +287,7 @@ func _populate_loot_container(loot_data: Array):
 
 			if not item_data:
 				push_warning("[LootDistScreen] Loot item not found in database: " + item_id)
+				invalid_count += 1  # 🔧 FIX HIGH #3: Count invalid items
 				continue
 
 			# Create ItemInstance (UUID auto-generated)
@@ -248,6 +300,12 @@ func _populate_loot_container(loot_data: Array):
 
 	var item_count = loot_container.get_item_count()
 	print("[LootDistScreen] ✅ Populated loot container with %d item instances" % item_count)
+
+	# 🔧 FIX HIGH #3: Warn user if invalid items were removed
+	if invalid_count > 0:
+		var warning = "%d invalid items removed (not in database)" % invalid_count
+		_show_error_message(warning)
+		push_error("[LootDistScreen] " + warning)
 
 
 func _display_stash():
@@ -306,11 +364,14 @@ func _display_stash():
 	for item_instance in hero_items:
 		var item_data = item_instance.get_data()
 
+		# 🔧 FIX HIGH #5: Defensive null check with error logging
 		if item_data:
 			# Note: ItemInstance doesn't have quantity in spatial grid architecture
 			# Each instance is unique (even if same item_id)
 			var item_panel = _create_item_display(item_data, 1, item_instance.item_id, false)
 			stash_grid.add_child(item_panel)
+		else:
+			push_warning("[LootDistScreen] Skipping hero item with invalid data: UUID %s" % item_instance.uuid)
 
 
 func _display_found_loot():
@@ -336,12 +397,16 @@ func _display_found_loot():
 	# Create draggable item slots for each loot item instance
 	for item_instance in loot_item_instances:
 		var item_data = item_instance.get_data()
+
+		# 🔧 FIX HIGH #5: Defensive null check with error logging
 		if item_data:
 			# Note: Each ItemInstance is unique (quantity is always 1 in spatial grid)
 			var item_panel = _create_item_display(item_data, 1, item_instance.item_id, true)
 			# Store UUID in metadata for future drag-drop integration
 			item_panel.set_meta("uuid", item_instance.uuid)
 			loot_grid.add_child(item_panel)
+		else:
+			push_warning("[LootDistScreen] Skipping loot item with invalid data: UUID %s" % item_instance.uuid)
 
 	# Show empty message if no loot
 	if loot_item_instances.is_empty():
@@ -686,13 +751,8 @@ func _move_item_to_hero(uuid: String):
 	if success:
 		print("[LootDistScreen] ✅ Item moved successfully!")
 
-		# Also remove from LootManager's pending list (legacy cleanup)
-		var item = hero_container._items.get(uuid)
-		if item:
-			for i in range(LootManager.pending_wave_loot.size()):
-				if LootManager.pending_wave_loot[i].item_id == item.item_id:
-					LootManager.pending_wave_loot.remove_at(i)
-					break
+		# 🔧 FIX CRITICAL #2: Removed dual-state cleanup loop
+		# pending_wave_loot is already cleared at load time (single source of truth)
 
 		# Refresh displays
 		_display_stash()
@@ -702,15 +762,25 @@ func _move_item_to_hero(uuid: String):
 		print("[LootDistScreen] ❌ Move failed - inventory full or placement blocked")
 		# Item automatically rolled back by ItemTransactionService
 
+		# 🔧 FIX HIGH #1: Show error feedback to user
+		_show_error_message("Inventory Full!")
+
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 
 func _on_take_all_pressed():
 	"""PHASE 4: Take all items from loot using ItemTransactionService"""
+	# 🔧 FIX HIGH #6: Prevent button spam with mutex lock
+	if _is_processing_buttons:
+		print("[LootDistScreen] ⚠️ Button spam detected - ignoring click")
+		return
+
+	_is_processing_buttons = true
 	print("[LootDistScreen] Taking all items...")
 
 	if not loot_container or not hero_container:
 		push_error("[LootDistScreen] Containers not initialized!")
+		_is_processing_buttons = false
 		return
 
 	# Get all items from loot container
@@ -731,21 +801,24 @@ func _on_take_all_pressed():
 
 		if moved:
 			success_count += 1
-			# Remove from LootManager's pending list (legacy cleanup)
-			for i in range(LootManager.pending_wave_loot.size()):
-				if LootManager.pending_wave_loot[i].item_id == item.item_id:
-					LootManager.pending_wave_loot.remove_at(i)
-					break
+			# 🔧 FIX CRITICAL #2: Removed dual-state cleanup loop
 		else:
 			failed_count += 1
 
 	print("[LootDistScreen] ✅ Took %d items, %d failed (inventory full?)" % [success_count, failed_count])
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
+	# 🔧 FIX HIGH #1: Show error feedback if some items failed
+	if failed_count > 0:
+		_show_error_message("%d items failed - Inventory Full!" % failed_count)
+
 	# Refresh displays
 	_display_stash()
 	_display_found_loot()
 	_update_counters()
+
+	# 🔧 FIX HIGH #6: Release mutex lock
+	_is_processing_buttons = false
 
 	# Auto-close if all items taken
 	if loot_container.get_item_count() == 0:
@@ -756,10 +829,17 @@ func _on_take_all_pressed():
 
 func _on_take_rare_pressed():
 	"""PHASE 4: Take only Rare+ items using ItemTransactionService"""
+	# 🔧 FIX HIGH #6: Prevent button spam with mutex lock
+	if _is_processing_buttons:
+		print("[LootDistScreen] ⚠️ Button spam detected - ignoring click")
+		return
+
+	_is_processing_buttons = true
 	print("[LootDistScreen] Taking Rare+ items...")
 
 	if not loot_container or not hero_container:
 		push_error("[LootDistScreen] Containers not initialized!")
+		_is_processing_buttons = false
 		return
 
 	# Get all items and filter for Rare+
@@ -774,8 +854,13 @@ func _on_take_rare_pressed():
 	for item in all_loot:
 		var item_data = item.get_data()
 
+		# 🔧 FIX HIGH #5: Defensive null check
+		if not item_data:
+			push_warning("[LootDistScreen] Skipping item with invalid data: UUID %s" % item.uuid)
+			continue
+
 		# Only take Rare or higher
-		if item_data and item_data.rarity >= rare_threshold:
+		if item_data.rarity >= rare_threshold:
 			var moved = ItemTransactionService.move_item(
 				item.uuid,
 				loot_container.container_id,
@@ -785,21 +870,24 @@ func _on_take_rare_pressed():
 
 			if moved:
 				success_count += 1
-				# Remove from LootManager's pending list (legacy cleanup)
-				for i in range(LootManager.pending_wave_loot.size()):
-					if LootManager.pending_wave_loot[i].item_id == item.item_id:
-						LootManager.pending_wave_loot.remove_at(i)
-						break
+				# 🔧 FIX CRITICAL #2: Removed dual-state cleanup loop
 			else:
 				failed_count += 1
 
 	print("[LootDistScreen] ✅ Took %d Rare+ items, %d failed" % [success_count, failed_count])
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
+	# 🔧 FIX HIGH #1: Show error feedback if some items failed
+	if failed_count > 0:
+		_show_error_message("%d Rare+ items failed - Inventory Full!" % failed_count)
+
 	# Refresh displays
 	_display_stash()
 	_display_found_loot()
 	_update_counters()
+
+	# 🔧 FIX HIGH #6: Release mutex lock
+	_is_processing_buttons = false
 
 	# Auto-close if all loot taken
 	if loot_container.get_item_count() == 0:
@@ -867,9 +955,41 @@ func _animate_entrance():
 
 
 func _on_leave_pressed():
-	"""Leave loot screen"""
+	"""Leave loot screen - 🔧 FIX CRITICAL #3: Auto-save remaining loot"""
 	var remaining_items = loot_container.get_item_count() if loot_container else loot_items.size()
-	print("[LootDistScreen] Leaving, destroying %d items..." % remaining_items)
+
+	# 🔧 FIX CRITICAL #3: Auto-transfer remaining loot to shared stash (prevent loot loss)
+	if loot_container and remaining_items > 0:
+		print("[LootDistScreen] ⚠️ WARNING: %d items remaining! Auto-transferring to shared stash..." % remaining_items)
+
+		var stash = InventoryRegistry.get_container("stash")
+		if stash:
+			var saved_count = 0
+			var lost_count = 0
+
+			# Get all remaining items and transfer to stash
+			var remaining = loot_container.get_all_items()
+			for item in remaining:
+				var moved = ItemTransactionService.move_item(
+					item.uuid,
+					loot_container.container_id,
+					"stash",
+					-1, -1  # auto-placement
+				)
+				if moved:
+					saved_count += 1
+				else:
+					lost_count += 1
+					push_warning("[LootDistScreen] Failed to save item to stash: " + item.item_id)
+
+			print("[LootDistScreen] ✅ Auto-saved %d items to stash, %d lost (stash full?)" % [saved_count, lost_count])
+
+			if lost_count > 0:
+				push_error("[LootDistScreen] LOOT LOSS: %d items could not be saved!" % lost_count)
+		else:
+			push_error("[LootDistScreen] CRITICAL: Stash not found! Cannot save %d remaining items!" % remaining_items)
+	else:
+		print("[LootDistScreen] Leaving with 0 items remaining - all loot collected!")
 
 	# PHASE 1: Cleanup - unregister temporary loot container
 	if loot_container:
@@ -877,7 +997,7 @@ func _on_leave_pressed():
 		print("[LootDistScreen] ✅ Unregistered loot container: %s" % loot_container.container_id)
 		loot_container = null
 
-	LootManager.pending_wave_loot.clear()
+	# No need to clear pending_wave_loot - already cleared at load time (single source of truth)
 	continue_to_victory.emit()
 	_transition_out()
 
