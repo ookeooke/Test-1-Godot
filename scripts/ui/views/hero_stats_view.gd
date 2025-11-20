@@ -114,12 +114,13 @@ func _update_stats_breakdown():
 		# Get equipment modifiers from registry
 		var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
 		var modifiers: Array[StatModifier] = []
-		for item_id in equipped_items.values():
-			if item_id != "":
-				var item_data = ItemDatabase.get_item(item_id)
+		for item in equipped_items.values():  # ItemInstance objects (NEW API)
+			if item != null and item is ItemInstance:
+				var item_data = item.get_data()
 				if item_data:
-					var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
-					modifiers.append_array(item_data.get_stat_modifiers(upgrade_level))
+					var upgrade_level = item.upgrade_level  # Direct property access
+					var rolled_affixes = item.rolled_affixes
+					modifiers.append_array(item_data.get_stat_modifiers(upgrade_level, rolled_affixes))
 		if not modifiers.is_empty():
 			text += "[color=green][b]EQUIPMENT MODIFIERS[/b][/color]\n"
 			for mod in modifiers:
@@ -144,12 +145,13 @@ func _update_stats_breakdown():
 		# Get equipment modifiers from registry
 		var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
 		var modifiers: Array[StatModifier] = []
-		for item_id in equipped_items.values():
-			if item_id != "":
-				var item_data = ItemDatabase.get_item(item_id)
+		for item in equipped_items.values():  # ItemInstance objects (NEW API)
+			if item != null and item is ItemInstance:
+				var item_data = item.get_data()
 				if item_data:
-					var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
-					modifiers.append_array(item_data.get_stat_modifiers(upgrade_level))
+					var upgrade_level = item.upgrade_level  # Direct property access
+					var rolled_affixes = item.rolled_affixes
+					modifiers.append_array(item_data.get_stat_modifiers(upgrade_level, rolled_affixes))
 		if not modifiers.is_empty():
 			text += "[color=green][b]EQUIPPED MODIFIERS[/b][/color]\n"
 			for mod in modifiers:

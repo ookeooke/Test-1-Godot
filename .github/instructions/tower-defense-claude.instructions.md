@@ -1,7 +1,8 @@
----
+If something is unclear, ask one short clarification question.  investigation of ALL sources of problem, not just the tweens and modulation.
+
 applyTo: '**'
 ---
-Provide project context and coding guidelines that AI should follow when generating code, answering questions, or reviewing changes. Don't create any documentation files. Just implement the code and explain changes in your message.Game is for mobile and steam platforms. Godot v4.5.stable.official 
+Provide project context and coding guidelines that AI should follow when generating code, answering questions, or reviewing changes. Don't create any documentation files. Just implement the code and explain changes in your message.Game is for mobile and steam platforms. Godot v4.5.1 stable.official 
 
 ## Code Style
 - Keep it simple
@@ -44,3 +45,20 @@ Never make quick workaround.
 If you need to check histyry data: 
 
 https://github.com/ookeooke/Test-1-Godot
+
+## Error Checking Protocol
+
+When checking for errors in the project:
+
+1. **Always check Godot's Output/Console** - Runtime and parse errors only appear when Godot loads scripts
+2. **Check VS Code Problems panel** - For LSP-detected issues
+3. **Static analysis** - Check file syntax and configuration
+4. **Git status** - Check for conflicts or uncommitted issues
+
+**IMPORTANT**: Static code analysis alone is NOT sufficient. Many GDScript errors (parse errors, missing identifiers, invalid UIDs) only appear when Godot actually loads the project.
+
+### How to Check Godot Errors:
+- Look for error count indicators in Godot's output panel (🔴 red X icon)
+- Check warning count (⚠️ yellow triangle icon)
+- Read the actual error messages in the output console
+- Pay attention to UID warnings for resources

@@ -30,7 +30,7 @@ class_name ItemSlot
 ## - Mobile: Tap to equip/use, long-press (0.5s) for context menu
 ## Built-in Godot tooltips work automatically on hover
 
-const DEBUG_DRAG_DROP = false # Set to true to enable verbose drag-drop logging
+const DEBUG_DRAG_DROP = true # Set to true to enable verbose drag-drop logging
 
 signal item_clicked(item: ItemInstance, slot: ItemSlot)
 signal item_right_clicked(item: ItemInstance, slot: ItemSlot)
@@ -103,11 +103,12 @@ func _ready():
 	mouse_exited.connect(_on_mouse_exited)
 	gui_input.connect(_on_gui_input)
 
-	# Enable tooltip
-	tooltip_text = ""
-
 	# Update visual
 	update_display()
+	
+	# CRITICAL: Set pivot offset to center for natural scaling
+	# Wait for next frame to ensure size is calculated if using layout
+	get_tree().process_frame.connect(func(): pivot_offset = size / 2)
 
 
 func _restore_default_style():
@@ -167,6 +168,7 @@ func set_item(new_item: ItemInstance):
 
 		custom_minimum_size = Vector2(total_width, total_height)
 		size = Vector2(total_width, total_height)
+		pivot_offset = size / 2 # Update pivot for multi-cell
 
 		# Set higher z_index so multi-cell items render on top
 		z_index = 10
@@ -193,6 +195,8 @@ func set_item(new_item: ItemInstance):
 	else:
 		# Reset to default size for single-cell items
 		custom_minimum_size = Vector2(80, 80)
+		size = Vector2(80, 80) # Force size update
+		pivot_offset = Vector2(40, 40) # Center of 80x80
 		z_index = 0
 
 		# Restore default panel styling (uses cached style for consistency)
@@ -280,7 +284,6 @@ func update_display():
 			rarity_border.visible = false
 			rarity_border.modulate = Color.WHITE # Reset to white
 		modulate = Color.WHITE # Keep borders at full opacity
-		tooltip_text = ""
 		return
 
 	# Item is present
@@ -322,9 +325,6 @@ func update_display():
 		rarity_border.visible = true # Show it
 		rarity_border.modulate = item_data.get_rarity_color()
 
-	# Update tooltip with comparison
-	tooltip_text = _generate_tooltip()
-
 
 ## Godot drag-and-drop: Get drag data
 func _get_drag_data(at_position: Vector2):
@@ -336,40 +336,10 @@ func _get_drag_data(at_position: Vector2):
 			print("[ItemSlot] ❌ Slot is empty, canceling drag")
 		return null
 
-	var item_data = item_instance.get_data()
-	if not item_data:
-		return null
-
-	# Calculate drag offset (where user clicked within slot) for natural grab feel
-	var drag_offset = at_position
-
-	# Create drag preview matching actual slot size
-	# CRITICAL: Root preview Control must be 0x0 so Godot anchors it exactly at mouse cursor
-	var preview = Control.new()
-	preview.custom_minimum_size = Vector2.ZERO
-	preview.size = Vector2.ZERO
-
-	var preview_icon = TextureRect.new()
-	preview_icon.texture = item_data.icon if item_data.icon else null
-	preview_icon.size = size
-	preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	preview_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	preview_icon.modulate = Color(1, 1, 1, 0.8) # Semi-transparent
-	# Offset icon so click position stays under cursor (natural grab feel)
-	preview_icon.position = Vector2.ZERO - drag_offset
-	
-	preview.add_child(preview_icon)
-	set_drag_preview(preview)
-
-	if DEBUG_DRAG_DROP:
-		print("[ItemSlot] ✅ Drag data created for item: %s" % item_instance.item_id)
-
-	# Return drag data
+	# Return drag data dictionary
 	return {
-		"uuid": item_instance.uuid,
 		"item_id": item_instance.item_id,
-		"quantity": item_instance.quantity,
-		"upgrade_level": item_instance.upgrade_level,
+		"uuid": item_instance.uuid,
 		"item_instance": item_instance,
 		"source_slot": self,
 		"source_slot_type": slot_type,
@@ -379,9 +349,9 @@ func _get_drag_data(at_position: Vector2):
 
 ## Godot drag-and-drop: Check if can drop here
 func _can_drop_data(at_position: Vector2, data) -> bool:
-	if DEBUG_DRAG_DROP:
-		print("[ItemSlot] 🔍 _can_drop_data - target slot: (%d,%d), slot_type: %s, is_root: %s" % [grid_x, grid_y, slot_type, is_root_slot])
-
+	# NOTE: Commented out to reduce console spam - this is called on EVERY mouse move during drag
+	# if DEBUG_DRAG_DROP:
+	# 	print("[ItemSlot] 🔍 _can_drop_data - target slot: (%d,%d), slot_type: %s, is_root: %s" % [grid_x, grid_y, slot_type, is_root_slot])
 	if not data is Dictionary:
 		return false
 
@@ -401,11 +371,12 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 		# Determine which inventory manager to use
 		var parent_view = _find_parent_inventory_view()
 		var target_inventory_id = "stash" # Default
-		
-		if parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
-			target_inventory_id = parent_view.hero_id
-		elif parent_view and "common_chest_mode" in parent_view and parent_view.common_chest_mode:
+
+		# CRITICAL: Check common_chest_mode FIRST (shared stash overrides hero inventory)
+		if parent_view and "common_chest_mode" in parent_view and parent_view.common_chest_mode:
 			target_inventory_id = "stash"
+		elif parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
+			target_inventory_id = parent_view.hero_id
 
 		# Check if item can be placed at this grid position
 		var container = InventoryRegistry.get_container(target_inventory_id)
@@ -492,70 +463,35 @@ func _drop_data(at_position: Vector2, data):
 		_handle_sprite_drop(data)
 		return
 
-	# Detect cross-panel transfers by checking if source and target are in different views
-	var target_parent_view = _find_parent_inventory_view()
-	var source_parent_view = source_slot._find_parent_inventory_view() if source_slot else null
+	# Unified Drop Logic
+	var source_inv_id = data.get("source_hero_id", "stash")
+	if source_inv_id == "": source_inv_id = "stash"
 
-	# Cross-panel transfer detection:
-	var is_cross_panel_transfer = false
-	if target_parent_view and source_parent_view and target_parent_view != source_parent_view:
-		var source_is_equipment = source_parent_view.has_method("_refresh_shared_stash")
-		var target_is_equipment = target_parent_view.has_method("_refresh_shared_stash")
-		var source_is_inventory = source_parent_view.has_method("_refresh_inventory")
-		var target_is_inventory = target_parent_view.has_method("_refresh_inventory")
+	# Determine Target Inventory ID
+	var target_inv_id = "stash"
+	var parent_view = _find_parent_inventory_view()
+	# CRITICAL: Check common_chest_mode FIRST (shared stash overrides hero inventory)
+	if parent_view and "common_chest_mode" in parent_view and parent_view.common_chest_mode:
+		target_inv_id = "stash"
+	elif parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
+		target_inv_id = parent_view.hero_id
 
-		is_cross_panel_transfer = (source_is_equipment and target_is_inventory) or \
-		                           (source_is_inventory and target_is_equipment)
-
-	if is_cross_panel_transfer:
-		# Use Transaction Service for cross-inventory moves
-		var source_inv_id = data.get("source_hero_id", "stash")
-		if source_inv_id == "": source_inv_id = "stash"
-		
-		var target_inv_id = "stash"
-		if target_parent_view and "hero_id" in target_parent_view and target_parent_view.hero_id != "":
-			target_inv_id = target_parent_view.hero_id
-			
-		ItemTransactionService.move_item(data.uuid, source_inv_id, target_inv_id)
+	# Case 1: Drop on Equipment Slot
+	if slot_type == "equipment":
+		_handle_equipment_drop(data, source_slot)
 		return
 
-	# For inventory slots with grid coordinates, use spatial placement
+	# Case 2: Drop on Inventory Slot (Grid)
 	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
-		var target_inv_id = "stash"
-		if target_parent_view and "hero_id" in target_parent_view and target_parent_view.hero_id != "":
-			target_inv_id = target_parent_view.hero_id
-			
-		# Use Transaction Service to move/place item
-		# If source is same inventory, it's a move. If different, it's a transfer.
-		# But ItemTransactionService.move_item handles both if we pass correct IDs.
-		
-		var source_inv_id = data.get("source_hero_id", "stash")
-		if source_inv_id == "": source_inv_id = "stash"
-		
-		# If it's the same inventory, we might want to use set_grid_position directly
-		# But move_item should handle it if we implement it right.
-		# Actually, ItemTransactionService.move_item doesn't take target coordinates yet?
-		# Let's check ItemTransactionService... 
-		# Wait, ItemTransactionService.move_item just moves between containers.
-		# For specific grid placement, we need to call container.move_item(uuid, x, y) directly!
-		
 		var container = InventoryRegistry.get_container(target_inv_id)
-		if container:
-			if source_inv_id == target_inv_id:
-				# Move within same container
-				container.move_item(data.uuid, grid_x, grid_y)
-			else:
-				# Move between containers (and place at specific spot?)
-				# ItemTransactionService currently doesn't support "move to specific slot".
-				# We might need to enhance it or do it manually.
-				# Manual: Remove from source, Add to target at (x,y)
-				var source_container = InventoryRegistry.get_container(source_inv_id)
-				if source_container:
-					var item = source_container.remove_item(data.uuid)
-					if item:
-						if not container.add_item_at(item, grid_x, grid_y):
-							# Failed to add, return to source
-							source_container.add_item(item)
+		if not container: return
+
+		if source_inv_id == target_inv_id:
+			# Same Container: Use container's internal move for safer rollback (restores position)
+			container.move_item(data.uuid, grid_x, grid_y)
+		else:
+			# Different Container: Use Transaction Service with specific coordinates
+			ItemTransactionService.move_item(data.uuid, source_inv_id, target_inv_id, grid_x, grid_y)
 		return
 
 
@@ -615,23 +551,89 @@ func _handle_equipment_drop(data: Dictionary, source_slot: ItemSlot):
 
 
 func _handle_sprite_drop(data: Dictionary):
-	"""Handle drop from ItemSprite (overlay mode)"""
-	# This is just a wrapper for _drop_data logic since we unified it
-	# But we need to ensure we don't infinite loop if we called this from _drop_data
-	# Actually, _drop_data calls this if source is sprite.
-	# But if we are here, we are likely in the target slot.
-	
-	# If we are here, it means we are dropping ONTO this slot.
-	# We should just run the logic in _drop_data, but since _drop_data calls this...
-	# Wait, the original code had _handle_sprite_drop doing the work.
-	# I moved the work to _drop_data.
-	# So I should remove this method or make it empty/deprecated?
-	# No, ItemSprite calls this directly.
-	
-	# Let's just call _drop_data with the data
-	# But _drop_data calls this... infinite loop risk.
-	# I will move the logic to a shared internal method `_process_drop`
-	pass
+	"""Handle drop from ItemSprite (overlay mode)
+
+	ItemSprites forward drops here because they don't know about inventory logic.
+	This method executes the actual item movement using container APIs.
+	"""
+	# Get source inventory ID from sprite drag data
+	var source_inv_id = data.get("source_hero_id", "stash")
+	if source_inv_id == "":
+		source_inv_id = "stash"
+
+	# Determine target inventory ID from parent view
+	var target_inv_id = "stash"
+	var parent_view = _find_parent_inventory_view()
+	# CRITICAL: Check common_chest_mode FIRST (shared stash overrides hero inventory)
+	if parent_view and "common_chest_mode" in parent_view and parent_view.common_chest_mode:
+		target_inv_id = "stash"
+	elif parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
+		target_inv_id = parent_view.hero_id
+
+	if DEBUG_DRAG_DROP:
+		print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		print("[ItemSlot] 🎯 Handling Sprite Drop")
+		print("  Item: %s (UUID: %s)" % [data.get("item_id"), data.get("uuid")])
+		print("  Source Container: '%s'" % source_inv_id)
+		print("  Target Container: '%s'" % target_inv_id)
+		print("  Target Grid Position: (%d, %d)" % [grid_x, grid_y])
+
+	# Only handle inventory slots with grid coordinates
+	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
+		# Get target container
+		var container = InventoryRegistry.get_container(target_inv_id)
+		if not container:
+			if DEBUG_DRAG_DROP:
+				print("  ❌ FAILED: Container not found: %s" % target_inv_id)
+				var available_containers = InventoryRegistry._containers.keys()
+				print("  Available containers: %s" % available_containers)
+				print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			return
+
+		if source_inv_id == target_inv_id:
+			# Same Container: Use container's internal move method
+			if DEBUG_DRAG_DROP:
+				print("  📦 Action: MOVE within container '%s'" % target_inv_id)
+
+			# ENHANCED DEBUG: Check if we can get the item to debug placement
+			var item = container._items.get(data.uuid)
+			if DEBUG_DRAG_DROP and item:
+				# Pre-check to understand why it might fail
+				var can_place = container.can_place_item(item, grid_x, grid_y)
+				print("  Pre-check can_place: %s" % ("✅" if can_place else "❌"))
+				if not can_place:
+					print("  ⚠️  Move will likely FAIL - showing debug info:")
+					container.debug_check_position(item, grid_x, grid_y)
+
+			var success = container.move_item(data.uuid, grid_x, grid_y)
+			if DEBUG_DRAG_DROP:
+				print("  Result: %s" % ("✅ SUCCESS" if success else "❌ FAILED"))
+				if not success:
+					print("  📊 Dumping target container grid state:")
+					container.debug_print_grid()
+				print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		else:
+			# Different Container: Use Transaction Service for cross-inventory transfer
+			if DEBUG_DRAG_DROP:
+				print("  📦 Action: TRANSFER '%s' → '%s'" % [source_inv_id, target_inv_id])
+				print("  📊 Source container state BEFORE transfer:")
+				var source_container = InventoryRegistry.get_container(source_inv_id)
+				if source_container:
+					source_container.debug_print_grid()
+				print("  📊 Target container state BEFORE transfer:")
+				container.debug_print_grid()
+
+			var success = ItemTransactionService.move_item(data.uuid, source_inv_id, target_inv_id, grid_x, grid_y)
+			if DEBUG_DRAG_DROP:
+				print("  Result: %s" % ("✅ SUCCESS" if success else "❌ FAILED"))
+				if not success:
+					print("  📊 Target container state AFTER failed transfer:")
+					container.debug_print_grid()
+				print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	else:
+		if DEBUG_DRAG_DROP:
+			print("  ❌ REJECTED: Not an inventory slot (type: %s) or invalid grid coords (%d, %d)" % [slot_type, grid_x, grid_y])
+			print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 func _get_equipment_slot_name() -> String:
 	"""Get the equipment slot name based on filter"""
@@ -657,7 +659,7 @@ func _get_equipment_slot_name() -> String:
 func _on_mouse_entered():
 	is_hovered = true
 
-	if not is_empty:
+	if not is_empty and item_instance:
 		# Kill existing tween first to prevent multiple simultaneous tweens
 		if _hover_tween and _hover_tween.is_valid():
 			_hover_tween.kill()
@@ -666,10 +668,16 @@ func _on_mouse_entered():
 		_hover_tween = create_tween()
 		_hover_tween.tween_property(self, "scale", Vector2(1.05, 1.05), 0.1)
 
+		# Show tooltip via TooltipManager
+		TooltipManager.show_tooltip(item_instance, self, hero_id)
+
 
 ## Handle mouse exit
 func _on_mouse_exited():
 	is_hovered = false
+
+	# Hide tooltip
+	TooltipManager.hide_tooltip()
 
 	# Clear visual feedback when mouse exits during drag
 	var grid_container = _find_parent_grid_container()
@@ -782,12 +790,12 @@ func _get_item_type_name(type: int) -> String:
 		ItemData.ItemType.MATERIAL: return "Material"
 	return "Item"
 
-func _format_stat_line(name: String, value: int) -> String:
+func _format_stat_line(stat_name: String, value: int) -> String:
 	if value > 0:
-		return "+%d %s\n" % [value, name]
+		return "+%d %s\n" % [value, stat_name]
 	return ""
 
-func _show_invalid_drop_feedback(data):
+func _show_invalid_drop_feedback(_data):
 	# TODO: Implement visual feedback for invalid drop
 	pass
 

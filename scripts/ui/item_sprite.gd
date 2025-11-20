@@ -26,6 +26,9 @@ class_name ItemSprite
 ## The grid slots beneath remain STATIC (never modified)
 ## Drag/drop business logic delegated to ItemSlot system
 
+# Debug mode
+const DEBUG_DRAG_DROP = true # Enable verbose drag-drop logging
+
 # Item data
 var item_instance: ItemInstance = null
 
@@ -129,6 +132,12 @@ func _ready():
 		if item_instance:
 			print("[ItemSprite] _ready() forcing size to %s for item '%s'" % [size, item_instance.item_id])
 
+	# CRITICAL: Set pivot offset to center for natural scaling/rotation
+	pivot_offset = size / 2
+
+	# Visual Polish: Settle animation
+	animate_settle()
+
 	# Connect hover signals for visual feedback
 	if not mouse_entered.is_connected(_on_mouse_entered):
 		mouse_entered.connect(_on_mouse_entered)
@@ -223,6 +232,9 @@ func set_item(new_item: ItemInstance):
 	var total_height = item_data.inventory_height * CELL_SIZE + (item_data.inventory_height - 1) * CELL_GAP
 	custom_minimum_size = Vector2(total_width, total_height)
 	size = Vector2(total_width, total_height)
+	
+	# CRITICAL: Update pivot offset when size changes
+	pivot_offset = size / 2
 
 	# Update visual display
 	update_display()
@@ -314,6 +326,25 @@ func _generate_tooltip() -> String:
 	return tooltip
 
 
+func animate_settle():
+	"""Visual Polish: Play a tiny 'settle' animation when item appears"""
+	# Start slightly larger
+	scale = Vector2(1.1, 1.1)
+	modulate.a = 0.5 # Fade in slightly
+	
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_BACK) # Bouncy effect
+	
+	# Scale back to 1.0
+	tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.3)
+	
+	# Fade to full opacity
+	tween.set_trans(Tween.TRANS_LINEAR)
+	tween.tween_property(self, "modulate:a", 1.0, 0.2)
+
+
 func set_grid_position(x: int, y: int):
 	"""Set the grid position and update absolute position
 
@@ -371,6 +402,19 @@ func _get_drag_data(at_position: Vector2):
 	set_drag_preview(preview)
 
 	print("[ItemSprite] 🎯 Drag started: %s (UUID: %s) from (%d,%d)" % [item_instance.item_id, item_instance.uuid, grid_x, grid_y])
+
+	# Calculate grab offset (which grid cell within the item was clicked?)
+	# This allows for "Anchor Point Correction" on drop
+	var local_click_pos = get_local_mouse_position()
+	var grab_offset_x = int(local_click_pos.x / CELL_SIZE)
+	var grab_offset_y = int(local_click_pos.y / CELL_SIZE)
+	
+	# Clamp offsets to be safe (shouldn't be needed if click is valid, but good practice)
+	grab_offset_x = clampi(grab_offset_x, 0, item_data.inventory_width - 1)
+	grab_offset_y = clampi(grab_offset_y, 0, item_data.inventory_height - 1)
+
+	if DEBUG_DRAG_DROP:
+		print("[ItemSprite] 🖱️ Drag started at local pos (%d, %d) -> Offset (%d, %d)" % [local_click_pos.x, local_click_pos.y, grab_offset_x, grab_offset_y])
 
 	# Return drag data (compatible with ItemSlot's expectations)
 	return {
@@ -430,20 +474,52 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 		if target_hero_id != "":
 			# Hero inventory - use HeroInventoryManager
 			# Note: We can't validate collision without modifying manager, so optimistically allow
-			print("[ItemSprite] ✅ Drop validation passed (hero inventory, optimistic)")
+			# print("[ItemSprite] ✅ Drop validation passed (hero inventory, optimistic)") # Commented to reduce spam
 			return true
 		else:
-			# Shared stash - use InventoryManager
-			# 🆕 UUID SYSTEM: Use UUID for validation if available
-			if data.has("uuid"):
-				var can_place = InventoryManager.can_place_item(data.uuid, grid_pos.x, grid_pos.y)
-				print("[ItemSprite] Drop validation: can_place=%s at (%d,%d)" % [can_place, grid_pos.x, grid_pos.y])
+			# Shared stash - get actual container from registry
+			var stash = InventoryRegistry.get_container("stash")
+			if not stash:
+				print("[ItemSprite] ❌ Stash container not found")
+				return false
+
+			# Get ItemInstance from drag data
+			if data.has("item_instance"):
+				var item_inst = data.item_instance
+
+				# Temporarily remove from grid to check if it can fit at new position
+				var old_pos = stash.get_item_position(item_inst.uuid)
+				stash._clear_from_grid(item_inst.uuid)
+
+				# Check if can place at new position
+				var can_place = stash.can_place_item(item_inst, grid_pos.x, grid_pos.y)
+
+				# Restore to original grid position
+				stash._place_on_grid(item_inst, old_pos.x, old_pos.y)
+
+				if DEBUG_DRAG_DROP:
+					print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+					print("[ItemSprite] 🎯 Drop Validation (Shared Stash)")
+					print("  Item: %s (UUID: %s)" % [item_inst.item_id, item_inst.uuid])
+					var item_data = item_inst.get_data()
+					print("  Item Size: %dx%d" % [item_data.inventory_width, item_data.inventory_height])
+					print("  Old Position: (%d, %d)" % [old_pos.x, old_pos.y])
+					print("  New Position: (%d, %d)" % [grid_pos.x, grid_pos.y])
+					print("  Can Place: %s" % ("✅ YES" if can_place else "❌ NO"))
+
+					# If validation fails, show WHY
+					if not can_place:
+						print("  ⚠️  Validation FAILED - showing debug info:")
+						stash.debug_check_position(item_inst, grid_pos.x, grid_pos.y)
+
+					print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 				return can_place
 			else:
+				print("[ItemSprite] ❌ No item_instance in drag data")
 				return false
 	else:
 		# Cross-inventory transfer - always allow (managers handle validation)
-		print("[ItemSprite] ✅ Drop validation passed (cross-inventory transfer)")
+		# print("[ItemSprite] ✅ Drop validation passed (cross-inventory transfer)") # Commented to reduce spam
 		return true
 
 
@@ -451,9 +527,16 @@ func _drop_data(at_position: Vector2, data):
 	"""Godot drag-and-drop: Handle drop
 
 	Forwards drop to ItemSlot system which already has comprehensive drop logic.
-	ItemSlot._handle_sprite_drop() handles all the business logic (lines 1138-1226 in item_slot.gd)
+	ItemSlot._handle_sprite_drop() handles all the business logic
 	"""
-	print("[ItemSprite] 📥 Drop received: %s at grid(%d,%d)" % [data.get("item_id"), grid_x, grid_y])
+	if DEBUG_DRAG_DROP:
+		print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		print("[ItemSprite] 📥 Drop Execution Started")
+		print("  Item: %s" % data.get("item_id"))
+		print("  Source: %s" % data.get("source_hero_id", "stash"))
+		print("  Target Grid: (%d, %d)" % [grid_x, grid_y])
+		print("  Forwarding to ItemSlot for execution...")
+		print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 	# Get parent grid container
 	var grid_container = get_parent().get_parent() as InventoryGridContainer

@@ -21,7 +21,8 @@
       "Bash(\"C:\\Users\\ollil\\Downloads\\Godot_v4.5.1-stable_win64.exe (1)\" --headless --check-only)",
       "Bash(where /R C:UsersollilDownloads Godot*.exe 2)",
       "Bash(del \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\\ffykryt.save\")",
-      "Bash(del \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\\ffykryt.save.bak\")"
+      "Bash(del \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\\ffykryt.save.bak\")",
+      "Bash(del \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\\fhkfuo.save\")"
     ],
     "deny": [],
     "ask": []

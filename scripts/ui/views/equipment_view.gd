@@ -387,10 +387,10 @@ func _calculate_tile_size(grid_dimensions: Vector2i) -> Vector2:
 	return Vector2(width, height)
 
 
-func _resize_slot_container(container: Control, size: Vector2):
+func _resize_slot_container(container: Control, target_size: Vector2):
 	"""Resize an equipment slot container to specified dimensions"""
 	if container:
-		container.custom_minimum_size = size
+		container.custom_minimum_size = target_size
 
 
 func _get_parent_panel() -> Control:

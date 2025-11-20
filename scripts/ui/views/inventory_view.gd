@@ -77,6 +77,9 @@ func _ready():
 	# Create context menu
 	_setup_context_menu()
 
+	# Create sort button
+	_setup_sort_button()
+
 
 func _input(event: InputEvent):
 	"""Handle keyboard shortcuts: F3 (grid debug)"""
@@ -419,7 +422,7 @@ func _get_slot_name_for_item(item_data: ItemData) -> String:
 		var hero_id_val = _get_hero_id_from_equipment_view()
 		if hero_id_val != "":
 			var acc1 = HeroEquipmentRegistry.get_equipped_item(hero_id_val, "accessory_1")
-			if acc1 != "":
+			if acc1 != null:  # Check for ItemInstance (get_equipped_item returns ItemInstance or null)
 				return "accessory_2" # First slot occupied, use second
 
 	# Use shared static helper to avoid code duplication
@@ -477,6 +480,52 @@ func _setup_context_menu():
 	context_menu.index_pressed.connect(_on_context_menu_item_selected)
 
 
+func _setup_sort_button():
+	"""Create and add a sort button to the footer"""
+	# Get the FooterContainer (HBoxContainer with SlotsLabel and GoldLabel)
+	var footer_container = $MarginContainer/VBoxContainer/FooterContainer if has_node("MarginContainer/VBoxContainer/FooterContainer") else null
+
+	if not footer_container:
+		print("[InventoryView] Warning: FooterContainer not found, cannot add sort button")
+		return
+
+	# Create sort button
+	var sort_button = Button.new()
+	sort_button.name = "SortButton"
+	sort_button.text = "🔄 Sort"
+	sort_button.tooltip_text = "Organize inventory by size, category, and rarity"
+	sort_button.custom_minimum_size = Vector2(80, 0)  # Minimum width
+
+	# Add button to footer (will appear after labels)
+	footer_container.add_child(sort_button)
+
+	# Connect signal
+	sort_button.pressed.connect(_on_sort_button_pressed)
+
+	print("[InventoryView] Sort button created and added to footer")
+
+
+func _on_sort_button_pressed():
+	"""Handle sort button press - organize inventory"""
+	print("[InventoryView] 📦 Sort button pressed")
+
+	# Get the hero's inventory container
+	var container = InventoryRegistry.get_container(hero_id)
+	if not container:
+		print("[InventoryView] ❌ Cannot sort: Container not found for hero '%s'" % hero_id)
+		return
+
+	# Call sort_inventory() on the container
+	if container.sort_inventory():
+		print("[InventoryView] ✅ Inventory sorted successfully!")
+		# Optional: Play success sound effect here
+		# AudioManager.play_sound("ui_sort_success")
+	else:
+		print("[InventoryView] ❌ Sort failed (inventory may be unchanged)")
+		# Optional: Show error feedback to user
+		# show_error_tooltip("Failed to sort inventory")
+
+
 func _on_context_menu_item_selected(index: int):
 	"""Handle context menu item selection"""
 	var uuid = context_menu_item_uuid
@@ -494,7 +543,7 @@ func _on_context_menu_item_selected(index: int):
 	if not item_instance:
 		return
 		
-	var item_data = item_instance.get_data()
+	# var item_data = item_instance.get_data() # Unused
 
 	match index:
 		0: # Equip
@@ -632,14 +681,14 @@ func _show_item_info(item_instance: ItemInstance):
 	print("  Sell Value: %d gold" % item_data.sell_value)
 
 
-func _show_swap_confirmation(new_item_id: String, new_item_data: ItemData, old_item_id: String, slot_name: String, hero_id_val: String):
+func _show_swap_confirmation(_new_item_id: String, _new_item_data: ItemData, _old_item_id: String, _slot_name: String, _hero_id_val: String):
 	"""Show confirmation dialog for swapping equipped item"""
 	# TODO: Implement equipping from hero inventory
 	print("[InventoryView] Warning: Equipping from hero inventory not yet implemented")
 	return
 
 
-func _on_swap_confirmed(new_item_id: String, slot_name: String):
+func _on_swap_confirmed(_new_item_id: String, _slot_name: String):
 	"""Handle confirmed swap from dialog"""
 	# TODO: Implement equipping from hero inventory
 	print("[InventoryView] Warning: Equipping from hero inventory not yet implemented")

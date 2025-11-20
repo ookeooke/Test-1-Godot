@@ -189,7 +189,14 @@ func _display_stash():
 
 	# Get items from hero's personal inventory (HeroInventoryManager)
 	# Returns Array of {item_id, item_data, quantity, upgrade_level}
-	var hero_items = HeroInventoryManager.get_all_items(selected_hero_id)
+	# Get the container for this hero
+	var container = InventoryRegistry.get_container(selected_hero_id)
+	if not container:
+		print("[LootDistScreen] ❌ No container found for hero: ", selected_hero_id)
+		return
+
+	# Get all items (returns Array[ItemInstance])
+	var hero_items = container.get_all_items()
 
 	# DEBUG: Log hero inventory details
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -199,9 +206,9 @@ func _display_stash():
 	print("  Items Found: %d" % hero_items.size())
 	if hero_items.size() > 0:
 		print("  Item List:")
-		for item_entry in hero_items:
-			var pos = HeroInventoryManager.get_grid_position(selected_hero_id, item_entry.item_id)
-			print("    - %s (qty: %d, pos: [%d, %d])" % [item_entry.item_id, item_entry.quantity, pos.x, pos.y])
+		for item_instance in hero_items:
+			var pos = container.get_item_position(item_instance.uuid)
+			print("    - %s (UUID: %s, pos: [%d, %d])" % [item_instance.item_id, item_instance.uuid, pos.x, pos.y])
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 	if hero_items.is_empty():
@@ -215,13 +222,13 @@ func _display_stash():
 		return
 
 	# Display hero's items
-	for item_entry in hero_items:
-		var item_id = item_entry.item_id
-		var item_data = item_entry.item_data
-		var quantity = item_entry.quantity
+	for item_instance in hero_items:
+		var item_data = item_instance.get_data()
 
 		if item_data:
-			var item_panel = _create_item_display(item_data, quantity, item_id, false)
+			# Note: ItemInstance doesn't have quantity in spatial grid architecture
+			# Each instance is unique (even if same item_id)
+			var item_panel = _create_item_display(item_data, 1, item_instance.item_id, false)
 			stash_grid.add_child(item_panel)
 
 

@@ -112,19 +112,26 @@ func create_new_profile(profile_name: String) -> bool:
 			InventoryManager.load_from_dict(new_profile["inventory"])
 			print("[SaveManager] Initialized InventoryManager for new profile")
 
+			# Add 4 starter items to shared stash for new players
+			InventoryManager.add_item_instance("basic_bow", 0, {})
+			InventoryManager.add_item_instance("leather_vest", 0, {})
+			InventoryManager.add_item_instance("leather_cap", 0, {})
+			InventoryManager.add_item_instance("power_ring", 0, {})
+			print("[SaveManager] ✅ Added 4 starter items to shared stash: basic_bow, leather_vest, leather_cap, power_ring")
+
 		# Initialize empty hero inventories
 		if HeroInventoryManager:
 			HeroInventoryManager.load_from_dict({})  # Empty dict = no heroes registered yet
 			print("[SaveManager] Initialized HeroInventoryManager for new profile")
 
-			# 🧪 TESTING: Add starter items to RANGER'S HERO INVENTORY for UUID system testing
-			# This allows us to test equip/unequip operations from hero inventory
+			# Add 4 starter items to ranger's hero inventory
+			# This gives the ranger hero starting equipment for immediate gameplay
 			HeroInventoryManager.register_hero("ranger")
 			HeroInventoryManager.add_item_instance_to_hero("ranger", "basic_bow", 0)
 			HeroInventoryManager.add_item_instance_to_hero("ranger", "leather_vest", 0)
 			HeroInventoryManager.add_item_instance_to_hero("ranger", "leather_cap", 0)
 			HeroInventoryManager.add_item_instance_to_hero("ranger", "power_ring", 0)
-			print("[SaveManager] ✅ Added starter items to ranger's hero inventory: basic_bow, leather_vest, leather_cap, power_ring")
+			print("[SaveManager] ✅ Added 4 starter items to ranger's hero inventory: basic_bow, leather_vest, leather_cap, power_ring")
 
 		# Load empty equipment registry
 		if HeroEquipmentRegistry and new_profile.has("equipment_registry"):
@@ -245,7 +252,7 @@ func load_profile(profile_name: String) -> bool:
 						var item_data = ItemDatabase.get_item(item_id)
 						# Only keep items if they exist and are equipment types
 						if item_data and (item_data.item_type == ItemData.ItemType.WEAPON or
-						                  item_data.item_type == ItemData.ItemType.ARMOR):
+										  item_data.item_type == ItemData.ItemType.ARMOR):
 							cleaned_inv[item_id] = inv_data["global_inventory"][item_id]
 					inv_data["global_inventory"] = cleaned_inv
 					print("[SaveManager] Migration: Removed consumables/materials from inventory")
@@ -273,7 +280,13 @@ func load_profile(profile_name: String) -> bool:
 			if InventoryManager:
 				var all_items = InventoryManager.get_all_items()
 				# Check if profile has empty inventory or is missing basic_bow
-				if all_items.is_empty() or not InventoryManager.has_item("basic_bow"):
+				var has_basic_bow = false
+				for item in all_items:
+					if item.item_id == "basic_bow":
+						has_basic_bow = true
+						break
+
+				if all_items.is_empty() or not has_basic_bow:
 					InventoryManager.add_item("basic_bow", 1)
 					print("[SaveManager] Migration: Added missing starter item (basic_bow)")
 					# Save the profile to persist the migration

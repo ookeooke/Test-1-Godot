@@ -260,16 +260,16 @@ func _recalculate_all_stats():
 	# Gather modifiers from equipment (via HeroEquipmentRegistry)
 	var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
 	for slot in equipped_items.keys():
-		var item_id = equipped_items[slot]
-		if item_id == "":
+		var item = equipped_items[slot]  # ItemInstance object (NEW API)
+		if item == null or not item is ItemInstance:
 			continue
-		var item_data = ItemDatabase.get_item(item_id)
+		var item_data = item.get_data()  # Get ItemData from ItemInstance
 		if not item_data:
 			continue
 
-		# Get upgrade level AND rolled affixes from inventory
-		var upgrade_level = InventoryManager.get_item_upgrade_level(item_id)
-		var rolled_affixes = InventoryManager.get_item_rolled_affixes(item_id)
+		# Get upgrade level AND rolled affixes directly from ItemInstance
+		var upgrade_level = item.upgrade_level
+		var rolled_affixes = item.rolled_affixes
 
 		# Generate modifiers from base stats + affixes
 		var modifiers = item_data.get_stat_modifiers(upgrade_level, rolled_affixes)
@@ -382,21 +382,39 @@ func _equip_starter_gear() -> void:
 	"""Ensure ranger has Basic Bow equipped (auto-equipped on first spawn)"""
 	var equipped_weapon = HeroEquipmentRegistry.get_equipped_item(hero_id, "hand_left")
 
-	if equipped_weapon == "":  # No weapon equipped
-		print("[RangerHero] No weapon equipped - equipping starter Basic Bow")
+	if equipped_weapon == null:  # No weapon equipped (get_equipped_item returns ItemInstance or null)
+		print("[RangerHero] No weapon equipped - checking for starter weapon...")
 
-		# Add Basic Bow to inventory if not exists
-		if not InventoryManager.has_item("basic_bow"):
-			InventoryManager.add_item("basic_bow", 1)
-			print("[RangerHero] Added Basic Bow to inventory")
+		# MODERN API: Check hero's inventory for any weapon
+		var hero_container = InventoryRegistry.get_container(hero_id)
+		if hero_container:
+			var all_items = hero_container.get_all_items()
+			var found_weapon: ItemInstance = null
 
-		# Auto-equip it
-		if InventoryManager.equip_item_atomic(hero_id, "hand_left", "basic_bow"):
-			print("[RangerHero] ✅ Starter weapon equipped: Basic Bow")
+			# Look for basic_bow in hero inventory
+			for item in all_items:
+				if item.item_id == "basic_bow":
+					found_weapon = item
+					break
+
+			# If no weapon in inventory, add one to hero inventory (not shared stash)
+			if found_weapon == null:
+				print("[RangerHero] No weapon in inventory - adding starter Basic Bow")
+				var uuid = HeroInventoryManager.add_item_instance_to_hero(hero_id, "basic_bow", 0)
+				if uuid != "":
+					found_weapon = hero_container._items.get(uuid)
+					print("[RangerHero] Added Basic Bow to hero inventory")
+
+			# Equip the weapon using ItemTransactionService
+			if found_weapon:
+				if ItemTransactionService.equip_item(hero_id, found_weapon.uuid, "hand_left"):
+					print("[RangerHero] ✅ Starter weapon equipped: Basic Bow")
+				else:
+					print("[RangerHero] ⚠️ Failed to equip starter weapon")
 		else:
-			print("[RangerHero] ⚠️ Failed to equip starter weapon")
+			print("[RangerHero] ⚠️ Hero container not found: %s" % hero_id)
 	else:
-		print("[RangerHero] Weapon already equipped: ", equipped_weapon)
+		print("[RangerHero] Weapon already equipped: %s" % equipped_weapon.item_id)
 
 func _on_equipment_transaction(transaction_hero_id: String, transaction_type: String, details: Dictionary) -> void:
 	"""Handle equipment transaction for this hero"""

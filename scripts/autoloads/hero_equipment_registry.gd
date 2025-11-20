@@ -248,7 +248,8 @@ func _execute_batch_refresh() -> void:
 		_transaction_mutex.unlock()
 		return
 		
-	var dirty_ids = _dirty_heroes.keys()
+	var dirty_ids: Array[String] = []
+	dirty_ids.assign(_dirty_heroes.keys())
 	for id in dirty_ids:
 		_equipment_registry[id]["dirty"] = false
 	_dirty_heroes.clear()
