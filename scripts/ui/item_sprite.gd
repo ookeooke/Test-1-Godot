@@ -63,14 +63,23 @@ func _on_mouse_entered():
 	"""Visual feedback when mouse enters item"""
 	if item_instance:
 		print("[ItemSprite] Mouse ENTERED - item: %s" % item_instance.item_id)
-	modulate = Color(1.2, 1.2, 1.2) # Brighten on hover
+		# Show tooltip via TooltipManager (desktop hover)
+		TooltipManager.show_tooltip(item_instance, self, "")
+
+	# Use self_modulate to only brighten background, not icon
+	self_modulate = Color(1.2, 1.2, 1.2)
 
 
 func _on_mouse_exited():
 	"""Reset visual when mouse leaves item"""
 	if item_instance:
 		print("[ItemSprite] Mouse EXITED - item: %s" % item_instance.item_id)
-	modulate = Color.WHITE # Reset to normal
+
+	# Hide tooltip
+	TooltipManager.hide_tooltip()
+
+	# Reset brightness
+	self_modulate = Color.WHITE
 
 
 func _on_gui_input(event: InputEvent):
@@ -101,9 +110,12 @@ func _on_gui_input(event: InputEvent):
 					print("[ItemSprite] 📱 Long press detected: %s (%.2fs)" % [item_instance.item_id, hold_duration])
 					item_long_pressed.emit(self)
 				else:
-					# Short tap - show tooltip
+					# Short tap - show tooltip via TooltipManager
 					print("[ItemSprite] 📱 Short tap detected: %s (%.2fs)" % [item_instance.item_id, hold_duration])
 					item_tapped.emit(self)
+					# Show tooltip for mobile
+					if item_instance:
+						TooltipManager.show_tooltip(item_instance, self, "")
 
 				is_touch_held = false
 
@@ -282,8 +294,7 @@ func update_display():
 		if rarity_border:
 			rarity_border.visible = false
 
-	# Set tooltip
-	tooltip_text = _generate_tooltip()
+	# Tooltip handled via TooltipManager on tap (mobile) or hover (desktop)
 
 
 func _generate_tooltip() -> String:

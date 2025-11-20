@@ -21,7 +21,9 @@ signal continue_to_victory
 @onready var leave_button: Button = $MainPanel/MarginContainer/VBoxContainer/ButtonsHBox/LeaveButton
 
 # Data
-var loot_items: Array = []  # Items in Found Loot panel
+var loot_items: Array = []  # LEGACY: Items in Found Loot panel (being replaced with loot_container)
+var loot_container: InventoryContainer  # NEW: Temporary loot container backend
+var hero_container: InventoryContainer  # NEW: Reference to selected hero's inventory container
 var stars_earned: int = 3
 var gems_earned: int = 0  # Gems earned from star bonus
 
@@ -81,6 +83,9 @@ func _ready():
 	# Load heroes and select first one
 	_load_heroes()
 
+	# PHASE 1: Initialize inventory containers
+	_initialize_containers()
+
 	# Load and display loot
 	_load_loot_data()
 	_display_stash()
@@ -137,6 +142,11 @@ func _on_hero_selected(index: int):
 			HeroInventoryManager.register_hero(selected_hero_id)
 			print("[LootDistScreen] Registered new hero in inventory system: ", selected_hero_id)
 
+		# PHASE 1: Update hero_container reference when hero changes
+		hero_container = InventoryRegistry.get_container(selected_hero_id)
+		if not hero_container:
+			push_warning("[LootDistScreen] Hero container not found: " + selected_hero_id)
+
 		_update_hero_display()
 		_display_stash()  # Refresh inventory display
 		_update_counters()
@@ -163,10 +173,71 @@ func _update_hero_display():
 			hero_portrait.color = Color(0.5, 0.5, 0.5)  # Gray
 
 
+func _initialize_containers():
+	"""PHASE 1: Initialize inventory containers for loot and hero"""
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	print("[LootDistScreen] 🔧 PHASE 1: Initializing Containers")
+
+	# Create temporary loot container (10x10 grid for large drops)
+	var container_id = "temp_loot_" + str(Time.get_ticks_msec())
+	loot_container = InventoryContainer.new(10, 10, container_id)
+	InventoryRegistry.register_container(container_id, loot_container)
+	print("  ✅ Created loot container: %s (10x10)" % container_id)
+
+	# Get hero container reference (will be updated when hero changes)
+	if selected_hero_id != "":
+		hero_container = InventoryRegistry.get_container(selected_hero_id)
+		if hero_container:
+			print("  ✅ Hero container found: %s" % selected_hero_id)
+		else:
+			push_warning("Hero container not found: " + selected_hero_id)
+
+	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+
 func _load_loot_data():
-	"""Load all pending loot from LootManager"""
+	"""Load all pending loot from LootManager and populate loot_container"""
+	# Load into legacy array first (for compatibility during transition)
 	loot_items = LootManager.get_pending_loot_with_data()
 	print("[LootDistScreen] Loaded %d items for distribution" % loot_items.size())
+
+	# PHASE 1: Also populate the new loot_container
+	_populate_loot_container()
+
+
+func _populate_loot_container():
+	"""PHASE 1: Convert loot_data array into ItemInstances in loot_container"""
+	if not loot_container:
+		push_error("[LootDistScreen] Cannot populate - loot_container not initialized!")
+		return
+
+	print("[LootDistScreen] 📦 Populating loot container...")
+
+	for loot in loot_items:
+		var item_id = loot.item_id
+		var item_data = loot.item_data
+		var quantity = loot.get("quantity", 1)
+
+		# Create ItemInstances (one per quantity)
+		for i in range(quantity):
+			# Get item data from database
+			if not item_data:
+				item_data = ItemDatabase.get_item(item_id)
+
+			if not item_data:
+				push_warning("[LootDistScreen] Loot item not found in database: " + item_id)
+				continue
+
+			# Create ItemInstance (UUID auto-generated)
+			var item_instance = ItemInstance.new(item_id)
+
+			# Add to loot container (auto-placement)
+			if not loot_container.add_item(item_instance):
+				push_error("[LootDistScreen] Loot container full! Cannot add: " + item_id)
+				break  # Stop adding more of this item
+
+	var item_count = loot_container.get_item_count()
+	print("[LootDistScreen] ✅ Populated loot container with %d item instances" % item_count)
 
 
 func _display_stash():
@@ -672,6 +743,12 @@ func _animate_entrance():
 func _on_leave_pressed():
 	"""Leave loot screen"""
 	print("[LootDistScreen] Leaving, destroying %d items..." % loot_items.size())
+
+	# PHASE 1: Cleanup - unregister temporary loot container
+	if loot_container:
+		InventoryRegistry.unregister_container(loot_container.container_id)
+		print("[LootDistScreen] ✅ Unregistered loot container: %s" % loot_container.container_id)
+		loot_container = null
 
 	LootManager.pending_wave_loot.clear()
 	continue_to_victory.emit()
