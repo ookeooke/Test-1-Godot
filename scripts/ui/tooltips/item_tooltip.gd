@@ -181,9 +181,6 @@ func _populate_main_stats(item: ItemInstance, equipped_item: ItemInstance) -> vo
 	for child in main_stats_container.get_children():
 		child.queue_free()
 
-	var item_data = item.get_data()
-	var equipped_data = equipped_item.get_data() if equipped_item else null
-
 	# Get total stats (base + affixes + upgrade)
 	var item_stats = _calculate_total_stats(item)
 	var equipped_stats = _calculate_total_stats(equipped_item) if equipped_item else {}
@@ -370,8 +367,6 @@ func _populate_footer(item: ItemInstance) -> void:
 	if not footer_container or not upgrade_label:
 		return
 
-	var item_data = item.get_data()
-
 	# Show upgrade level if upgraded
 	if item.upgrade_level > 0:
 		footer_container.visible = true
@@ -416,9 +411,11 @@ func _get_item_type_name(item_type: ItemData.ItemType) -> String:
 			return "Armor"
 		ItemData.ItemType.ACCESSORY:
 			return "Accessory"
-		ItemData.ItemType.HELMET:
-			return "Helmet"
 		ItemData.ItemType.CONSUMABLE:
 			return "Consumable"
+		ItemData.ItemType.MATERIAL:
+			return "Material"
+		ItemData.ItemType.CURRENCY:
+			return "Currency"
 		_:
 			return "Item"

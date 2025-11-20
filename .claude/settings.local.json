@@ -22,7 +22,9 @@
       "Bash(where /R C:UsersollilDownloads Godot*.exe 2)",
       "Bash(del \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\\ffykryt.save\")",
       "Bash(del \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\\ffykryt.save.bak\")",
-      "Bash(del \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\\fhkfuo.save\")"
+      "Bash(del \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\\fhkfuo.save\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix Critical: Add missing get_item_count() to InventoryContainer\n\n## Root Cause\nThe Phase 1-5 refactoring added 5 calls to `loot_container.get_item_count()`\nbut this method was never implemented in InventoryContainer class.\n\n## Error\n```\nInvalid call. Nonexistent function ''get_item_count'' in base ''RefCounted (InventoryContainer)''\nLocation: loot_distribution_screen.gd:301\n```\n\n## Investigation\n- InventoryContainer extends RefCounted (pure data container)\n- Internal storage: Dictionary (UUID → ItemInstance)\n- Public API had get_all_items() but no get_item_count()\n- Code assumed method existed but it was never added\n\n## Affected Code (5 locations)\n1. Line 257 - _populate_loot_container() - immediate crash\n2. Line 772 - _on_take_all_pressed() - auto-close check\n3. Line 841 - _on_take_rare_pressed() - auto-close check  \n4. Line 871 - _update_counters() - UI display\n5. Line 914 - _on_leave_pressed() - remaining items check\n\n## Fix\nAdded 3-line convenience method to InventoryContainer:\n```gdscript\nfunc get_item_count() -> int:\n    return _items.size()\n```\n\n## Impact\n- Fixes all 5 crash points\n- O(1) performance (dictionary size)\n- Makes public API complete and intuitive\n- No behavioral changes, just missing method\n\n## Testing\nScreen should now:\n✅ Load loot without crashing\n✅ Display correct item counts\n✅ Auto-close when all items taken\n✅ Show remaining items on leave\n\n🔧 Generated with Claude Code\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

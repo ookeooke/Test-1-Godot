@@ -58,7 +58,11 @@ func _ready() -> void:
 	set_process_input(true)
 
 
-func _input(event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
+	# Use _unhandled_input() instead of _input() to allow GUI controls
+	# (like ItemSlot drag-drop) to handle events first
+	# This follows the project's 4-stage input system (see INPUT_SYSTEM.md)
+
 	if not _is_visible:
 		return
 
@@ -84,7 +88,8 @@ func _check_click_outside(click_pos: Vector2) -> void:
 	# If click is outside tooltip, hide it
 	if not tooltip_rect.has_point(click_pos):
 		hide_tooltip()
-		get_viewport().set_input_as_handled()
+		# Don't consume the event - allow it to propagate for drag-drop
+		# and other interactions with items below the tooltip
 
 
 ## ============================================================================
