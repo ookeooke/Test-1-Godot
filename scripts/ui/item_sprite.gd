@@ -196,6 +196,16 @@ func _ready():
 	print("[ItemSprite] _ready() complete - mouse_filter=%s, size=%s" % [mouse_filter, size])
 
 
+func _notification(what):
+	"""Godot lifecycle notification handler
+
+	🎮 JUICE #1: Restore original item visibility when drag ends
+	Handles both successful drops and cancelled drags (ESC key, invalid drop, etc.)
+	"""
+	if what == NOTIFICATION_DRAG_END:
+		self.modulate.a = 1.0  # Restore original item visibility
+
+
 func _setup_ui():
 	"""Create child nodes for rendering"""
 
@@ -458,11 +468,26 @@ func _get_drag_data(at_position: Vector2):
 	preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	preview_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview_icon.modulate = Color(1, 1, 1, 0.7)
-	# Offset icon so click position stays under cursor (natural grab feel)
-	preview_icon.position = Vector2.ZERO - drag_offset
+
+	# 🎮 JUICE #3: Lift Animation - Scale up on drag start (professional "pick up" feel)
+	preview_icon.scale = Vector2(0.8, 0.8)  # Start small
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_BACK)  # Bouncy "spring" effect
+	tween.tween_property(preview_icon, "scale", Vector2(1.1, 1.1), 0.15)
+
+	# 🎮 JUICE #2: Mobile Finger Offset - Position preview above finger so user can see target
+	# Offset icon so click position stays under cursor (natural grab feel on desktop)
+	var preview_offset = Vector2.ZERO - drag_offset
+	if OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios"):
+		preview_offset.y -= 100  # Lift 100px above finger on mobile (Diablo Immortal pattern)
+	preview_icon.position = preview_offset
 
 	preview.add_child(preview_icon)
 	set_drag_preview(preview)
+
+	# 🎮 JUICE #1: Ghost Item - Hide original during drag (prevents "duplicate" illusion)
+	self.modulate.a = 0.0  # Fade out original, only preview visible during drag
 
 	print("[ItemSprite] 🎯 Drag started: %s (UUID: %s) from (%d,%d)" % [item_instance.item_id, item_instance.uuid, grid_x, grid_y])
 
@@ -621,6 +646,10 @@ func _drop_data(at_position: Vector2, data):
 	# Forward drop to ItemSlot system (uses existing _handle_sprite_drop logic)
 	print("[ItemSprite] → Forwarding drop to ItemSlot at (%d,%d)" % [grid_pos.x, grid_pos.y])
 	target_slot._handle_sprite_drop(data)
+
+	# 🎮 JUICE #4: Drop Bounce - Animate item settling into position after successful drop
+	# Use call_deferred to ensure ItemSprite position is updated before animation starts
+	call_deferred("animate_settle")
 
 
 func _find_slot_at_grid_position(target_x: int, target_y: int) -> ItemSlot:
