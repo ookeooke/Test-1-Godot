@@ -186,7 +186,8 @@ func _create_static_grid(grid: InventoryGridContainer, container_id: String, wid
 			slot.slot_type = "inventory"
 			slot.grid_x = x
 			slot.grid_y = y
-			slot.container_id = container_id
+			# Note: ItemSlot doesn't have container_id property
+			# Container is determined dynamically via parent view's hero_id
 
 			# Add to grid (NOT to item_layer - slots are base layer)
 			grid.add_child(slot)
