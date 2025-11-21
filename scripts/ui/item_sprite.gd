@@ -45,9 +45,10 @@ var quantity_label: Label
 var upgrade_label: Label
 var rarity_border: Panel
 
-# Constants (must match InventoryGridContainer!)
-const CELL_SIZE: int = 80
-const CELL_GAP: int = 5 # CRITICAL: Must match InventoryGridContainer.cell_gap (5px, not 4px!)
+# ⚠️ DEPRECATED: Hardcoded constants replaced by dynamic _get_grid_params()
+# These are kept as fallback defaults only. ItemSprite now reads cell_size from parent grid.
+const CELL_SIZE: int = 80 # Fallback default (now read dynamically from InventoryGridContainer)
+const CELL_GAP: int = 5 # Fallback default (now read dynamically from InventoryGridContainer)
 
 # Mobile touch support (long-press detection)
 var touch_start_time: float = 0.0
@@ -57,6 +58,33 @@ const LONG_PRESS_DURATION: float = 0.5 # 500ms
 # Signals for mobile interaction
 signal item_tapped(item_sprite: ItemSprite) # Short tap - show tooltip
 signal item_long_pressed(item_sprite: ItemSprite) # Long press - context menu
+
+
+func _get_grid_params() -> Dictionary:
+	"""Get cell size and gap from parent grid container dynamically
+
+	This replaces hardcoded CELL_SIZE/CELL_GAP constants to support flexible grid sizing.
+	ItemSprite now adapts to whatever grid it's placed in automatically.
+
+	Returns: {cell_size: Vector2, cell_gap: Vector2}
+	Fallback: {cell_size: Vector2(80, 80), cell_gap: Vector2(5, 5)} if parent not found
+	"""
+	# Navigate to parent grid: ItemSprite → item_layer → InventoryGridContainer
+	var item_layer_node = get_parent()
+	if item_layer_node:
+		var grid_container = item_layer_node.get_parent() as InventoryGridContainer
+		if grid_container:
+			return {
+				"cell_size": grid_container.cell_size,
+				"cell_gap": grid_container.cell_gap
+			}
+
+	# Fallback to default values (matches old hardcoded constants)
+	push_warning("[ItemSprite] Could not find parent InventoryGridContainer - using default cell size")
+	return {
+		"cell_size": Vector2(80, 80),
+		"cell_gap": Vector2(5, 5)
+	}
 
 
 func _on_mouse_entered():
@@ -239,9 +267,15 @@ func set_item(new_item: ItemInstance):
 		print("[ItemSprite] Warning: Item data not found for: ", item_instance.item_id)
 		return
 
-	# Update size based on item dimensions
-	var total_width = item_data.inventory_width * CELL_SIZE + (item_data.inventory_width - 1) * CELL_GAP
-	var total_height = item_data.inventory_height * CELL_SIZE + (item_data.inventory_height - 1) * CELL_GAP
+	# Update size based on item dimensions (read cell_size dynamically from parent grid)
+	var grid_params = _get_grid_params()
+	var cell_w = grid_params.cell_size.x
+	var cell_h = grid_params.cell_size.y
+	var gap_w = grid_params.cell_gap.x
+	var gap_h = grid_params.cell_gap.y
+
+	var total_width = item_data.inventory_width * cell_w + (item_data.inventory_width - 1) * gap_w
+	var total_height = item_data.inventory_height * cell_h + (item_data.inventory_height - 1) * gap_h
 	custom_minimum_size = Vector2(total_width, total_height)
 	size = Vector2(total_width, total_height)
 	
@@ -365,9 +399,15 @@ func set_grid_position(x: int, y: int):
 	grid_x = x
 	grid_y = y
 
-	# Calculate local position from grid coordinates (relative to item_layer origin at 0,0)
+	# Calculate local position from grid coordinates (read cell_size dynamically from parent grid)
 	# This works because item_layer has no anchors and is positioned at parent's origin
-	position = Vector2(grid_x * (CELL_SIZE + CELL_GAP), grid_y * (CELL_SIZE + CELL_GAP))
+	var grid_params = _get_grid_params()
+	var cell_w = grid_params.cell_size.x
+	var cell_h = grid_params.cell_size.y
+	var gap_w = grid_params.cell_gap.x
+	var gap_h = grid_params.cell_gap.y
+
+	position = Vector2(grid_x * (cell_w + gap_w), grid_y * (cell_h + gap_h))
 
 	# Debug: Verify positioning
 	if item_instance:
@@ -416,9 +456,11 @@ func _get_drag_data(at_position: Vector2):
 
 	# Calculate grab offset (which grid cell within the item was clicked?)
 	# This allows for "Anchor Point Correction" on drop
+	# Read cell_size dynamically to support flexible grid sizing
+	var grid_params = _get_grid_params()
 	var local_click_pos = get_local_mouse_position()
-	var grab_offset_x = int(local_click_pos.x / CELL_SIZE)
-	var grab_offset_y = int(local_click_pos.y / CELL_SIZE)
+	var grab_offset_x = int(local_click_pos.x / grid_params.cell_size.x)
+	var grab_offset_y = int(local_click_pos.y / grid_params.cell_size.y)
 	
 	# Clamp offsets to be safe (shouldn't be needed if click is valid, but good practice)
 	grab_offset_x = clampi(grab_offset_x, 0, item_data.inventory_width - 1)

@@ -10,7 +10,7 @@ class_name InventoryGridContainer
 @export var cell_size: Vector2 = Vector2(80, 80)
 @export var cell_gap: Vector2 = Vector2(5, 5)
 
-var show_grid: bool = true # Toggle for debug grid visualization (now visible in editor by default)
+var show_grid: bool = false # Toggle for debug grid visualization (disabled by default)
 var item_layer: Control = null # Layer for rendering items on top of static grid (z_index=10)
 
 ## Professional Feature #3: Visual Feedback (Diablo 2 / Path of Exile style)
