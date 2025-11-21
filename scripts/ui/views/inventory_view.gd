@@ -215,10 +215,16 @@ func _refresh_inventory():
 		# Create ItemSprite overlay
 		var item_sprite = ItemSprite.new()
 		item_sprite.hero_id = hero_id # Set which inventory this belongs to
-		
+
 		# 🆕 UUID SYSTEM: Pass ItemInstance directly
 		item_sprite.set_item(item_instance)
 		item_sprite.set_grid_position(pos.x, pos.y)
+
+		# 🔧 FIX CRITICAL: Connect ItemSprite signals for click interactions
+		# ItemSprite blocks input to ItemSlot (mouse_filter = STOP), so we must
+		# connect to ItemSprite's signals instead of ItemSlot's
+		item_sprite.item_tapped.connect(_on_item_sprite_tapped)
+		item_sprite.item_long_pressed.connect(_on_item_sprite_long_pressed)
 
 		# Add to item layer (renders on top of grid)
 		if inventory_grid and inventory_grid.item_layer:
@@ -317,6 +323,57 @@ func _on_item_slot_right_clicked(_item: ItemInstance, slot: ItemSlot):
 	# Show context menu (sell, drop, etc.)
 	if slot.item_instance:
 		_show_item_context_menu(slot.item_instance, slot)
+
+
+func _on_item_sprite_tapped(item_sprite: ItemSprite):
+	"""🔧 FIX CRITICAL: Adapter for ItemSprite tap events
+
+	ItemSprite blocks input to ItemSlot (overlay architecture), so we connect
+	to ItemSprite signals and forward to existing click logic.
+
+	This enables:
+	- Auto-equip on mobile (tap to equip)
+	- Auto-equip on PC (Ctrl+Click to equip)
+	"""
+	if not item_sprite or not item_sprite.item_instance:
+		return
+
+	var item_instance = item_sprite.item_instance
+	var item_data = item_instance.get_data()
+	if not item_data:
+		return
+
+	# PC: Only equip with Ctrl+Click (drag-and-drop is primary)
+	# Mobile: Auto-equip on tap (drag is difficult on touch)
+	var is_pc = OS.has_feature("pc") or OS.get_name() in ["Windows", "Linux", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "BSD"]
+	var ctrl_held = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META) # Meta for Mac Command key
+
+	# Auto-equip logic for equipment items
+	if item_data.item_type == ItemData.ItemType.WEAPON or item_data.item_type == ItemData.ItemType.ARMOR:
+		# PC: Only equip if Ctrl is held (otherwise rely on drag-and-drop)
+		# Mobile: Always equip on tap
+		if not is_pc or ctrl_held:
+			_try_auto_equip_item(item_instance)
+		else:
+			# PC without Ctrl - just show tooltip (already shown by ItemSprite hover)
+			pass
+
+
+func _on_item_sprite_long_pressed(item_sprite: ItemSprite):
+	"""🔧 FIX CRITICAL: Adapter for ItemSprite long-press events
+
+	ItemSprite blocks input to ItemSlot (overlay architecture), so we connect
+	to ItemSprite signals and forward to context menu logic.
+
+	This enables:
+	- Right-click context menu on PC
+	- Long-press context menu on mobile
+	"""
+	if not item_sprite or not item_sprite.item_instance:
+		return
+
+	# Show context menu (sell, transfer, etc.)
+	_show_item_context_menu(item_sprite.item_instance, null)
 
 
 func _show_item_context_menu(item_instance: ItemInstance, slot: ItemSlot):

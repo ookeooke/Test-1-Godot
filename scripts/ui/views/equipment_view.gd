@@ -505,6 +505,12 @@ func _refresh_shared_stash():
 		item_sprite.set_item(item_instance)
 		item_sprite.set_grid_position(pos.x, pos.y)
 
+		# 🔧 FIX CRITICAL: Connect ItemSprite signals for click interactions
+		# ItemSprite blocks input to ItemSlot (mouse_filter = STOP), so we must
+		# connect to ItemSprite's signals instead of ItemSlot's
+		item_sprite.item_tapped.connect(_on_stash_sprite_tapped)
+		item_sprite.item_long_pressed.connect(_on_stash_sprite_long_pressed)
+
 		# Add to item layer (renders on top of grid)
 		if shared_stash_grid and shared_stash_grid.item_layer:
 			shared_stash_grid.item_layer.add_child(item_sprite)
@@ -543,6 +549,58 @@ func _on_item_slot_right_clicked(_item: ItemInstance, slot: ItemSlot):
 		# For now, just trigger quick transfer on right-click as well
 		# TODO: Add context menu for more options (transfer, inspect, etc.)
 		_quick_transfer_item(slot.item_instance, slot)
+
+
+func _on_stash_sprite_tapped(item_sprite: ItemSprite):
+	"""🔧 FIX CRITICAL: Adapter for ItemSprite tap events in shared stash
+
+	ItemSprite blocks input to ItemSlot (overlay architecture), so we connect
+	to ItemSprite signals and forward to quick transfer logic.
+
+	This enables Ctrl+Click quick transfer from stash to hero inventory.
+	"""
+	if not item_sprite or not item_sprite.item_instance:
+		return
+
+	var ctrl_held = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)
+
+	if common_chest_mode and ctrl_held:
+		_quick_transfer_item_from_sprite(item_sprite.item_instance)
+
+
+func _on_stash_sprite_long_pressed(item_sprite: ItemSprite):
+	"""🔧 FIX CRITICAL: Adapter for ItemSprite long-press events in shared stash
+
+	ItemSprite blocks input to ItemSlot (overlay architecture), so we connect
+	to ItemSprite signals and forward to quick transfer logic.
+
+	This enables:
+	- Right-click quick transfer on PC
+	- Long-press quick transfer on mobile
+	"""
+	if not item_sprite or not item_sprite.item_instance:
+		return
+
+	if common_chest_mode:
+		_quick_transfer_item_from_sprite(item_sprite.item_instance)
+
+
+func _quick_transfer_item_from_sprite(item_instance: ItemInstance):
+	"""Quick transfer from shared stash to hero inventory (called from ItemSprite adapters)"""
+	if hero_id == "":
+		return
+
+	var item_data = item_instance.get_data()
+	if not item_data:
+		return
+
+	# Transfer from shared stash → hero inventory
+	var success = ItemTransactionService.move_item(item_instance.uuid, "stash", hero_id)
+
+	if success:
+		print("[EquipmentView] ⚡ Quick transferred '%s' to hero inventory" % item_data.item_name)
+		# Refresh will happen automatically via signals
+		_refresh_shared_stash()
 
 
 func _quick_transfer_item(item_instance: ItemInstance, slot: ItemSlot):
