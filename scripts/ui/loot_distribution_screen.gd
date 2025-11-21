@@ -108,52 +108,6 @@ func _show_error_message(message: String):
 
 
 ## ============================================
-## GODOT NATIVE DRAG-DROP (Phase 2)
-## ============================================
-
-func _can_drop_data(at_position: Vector2, data) -> bool:
-	"""Check if we can accept a drop from ItemSprite
-
-	Accepts drops if:
-	1. Data is from ItemSprite (has 'uuid' key)
-	2. Item is from loot container (not already in hero inventory)
-	3. Mouse is over the stash grid (left panel)
-	"""
-	if not data is Dictionary:
-		return false
-
-	if not data.has("uuid") or not data.has("source_hero_id"):
-		return false
-
-	# Only accept drops FROM loot TO hero inventory
-	var source_container_id = data.get("source_hero_id", "")
-	if source_container_id != loot_container.container_id:
-		return false  # Not from loot, ignore
-
-	# Check if mouse is over stash panel (hero inventory)
-	var stash_panel = stash_grid.get_parent().get_parent()  # ScrollContainer -> VBox
-	var is_over_stash = _is_point_over_control(at_position, stash_panel)
-
-	return is_over_stash
-
-
-func _drop_data(at_position: Vector2, data) -> void:
-	"""Handle drop from ItemSprite - move item to hero inventory"""
-	if not _can_drop_data(at_position, data):
-		return
-
-	var uuid = data.get("uuid", "")
-	if uuid == "":
-		push_error("[LootDistScreen] Drop failed - no UUID in drag data")
-		return
-
-	print("[LootDistScreen] 🎯 Dropped item UUID: %s at position: %v" % [uuid, at_position])
-
-	# Move item to hero using existing logic
-	_move_item_to_hero(uuid)
-
-
-## ============================================
 ## STATIC GRID CREATION (Diablo 2 / Path of Exile Style)
 ## ============================================
 
