@@ -39,6 +39,9 @@ var hero_id: String = "" # Empty string = shared stash, otherwise hero's ID
 var grid_x: int = 0
 var grid_y: int = 0
 
+# Animation control (prevents mass bouncing during inventory refresh)
+var _skip_intro_animation: bool = false
+
 # UI references (created programmatically)
 var icon: TextureRect
 var quantity_label: Label
@@ -175,8 +178,9 @@ func _ready():
 	# CRITICAL: Set pivot offset to center for natural scaling/rotation
 	pivot_offset = size / 2
 
-	# Visual Polish: Settle animation
-	animate_settle()
+	# Visual Polish: Settle animation (skip during refresh to prevent mass bouncing)
+	if not _skip_intro_animation:
+		animate_settle()
 
 	# Connect hover signals for visual feedback
 	if not mouse_entered.is_connected(_on_mouse_entered):
@@ -251,8 +255,16 @@ func _setup_ui():
 	add_child(rarity_border)
 
 
-func set_item(new_item: ItemInstance):
-	"""Set the item to display using ItemInstance"""
+func set_item(new_item: ItemInstance, skip_animation: bool = false):
+	"""Set the item to display using ItemInstance
+
+	Args:
+		new_item: The ItemInstance to display
+		skip_animation: If true, skips the intro bounce animation (used during refresh to prevent mass bouncing)
+	"""
+	# Store animation preference (read later in _ready())
+	_skip_intro_animation = skip_animation
+
 	# Ensure UI is set up before we try to use it (handles case where set_item() is called before _ready())
 	if icon == null:
 		_setup_ui()

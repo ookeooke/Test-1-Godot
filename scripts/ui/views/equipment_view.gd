@@ -502,7 +502,7 @@ func _refresh_shared_stash():
 		# Create ItemSprite overlay
 		var item_sprite = ItemSpriteScript.new()
 		item_sprite.hero_id = "" # Empty string = shared stash
-		item_sprite.set_item(item_instance)
+		item_sprite.set_item(item_instance, true)  # skip_animation=true prevents mass bouncing
 		item_sprite.set_grid_position(pos.x, pos.y)
 
 		# 🔧 FIX CRITICAL: Connect ItemSprite signals for click interactions

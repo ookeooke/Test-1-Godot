@@ -216,8 +216,8 @@ func _refresh_inventory():
 		var item_sprite = ItemSprite.new()
 		item_sprite.hero_id = hero_id # Set which inventory this belongs to
 
-		# 🆕 UUID SYSTEM: Pass ItemInstance directly
-		item_sprite.set_item(item_instance)
+		# 🆕 UUID SYSTEM: Pass ItemInstance directly (skip animation during refresh)
+		item_sprite.set_item(item_instance, true)  # skip_animation=true prevents mass bouncing
 		item_sprite.set_grid_position(pos.x, pos.y)
 
 		# 🔧 FIX CRITICAL: Connect ItemSprite signals for click interactions

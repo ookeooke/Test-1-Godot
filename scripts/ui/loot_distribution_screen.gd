@@ -429,7 +429,7 @@ func _display_stash():
 
 		# Create ItemSprite overlay (renders on top of static grid)
 		var item_sprite = ItemSprite.new()
-		item_sprite.set_item(item_instance)
+		item_sprite.set_item(item_instance, true)  # skip_animation=true prevents mass bouncing
 		item_sprite.hero_id = selected_hero_id  # Set context for drag-drop
 		item_sprite.set_grid_position(pos.x, pos.y)  # Spatial positioning
 
@@ -496,7 +496,7 @@ func _display_found_loot():
 
 		# Create ItemSprite overlay (renders on top of static grid)
 		var item_sprite = ItemSprite.new()
-		item_sprite.set_item(item_instance)
+		item_sprite.set_item(item_instance, true)  # skip_animation=true prevents mass bouncing
 		item_sprite.hero_id = loot_container.container_id  # Set context for drag-drop
 		item_sprite.set_grid_position(pos.x, pos.y)  # Spatial positioning
 
