@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://loot_distribution_screen"]
+[gd_scene load_steps=3 format=3 uid="uid://loot_distribution_screen"]
 
 [ext_resource type="Script" path="res://scripts/ui/loot_distribution_screen.gd" id="1_loot_dist"]
+[ext_resource type="Script" path="res://scripts/ui/inventory_grid_container.gd" id="2_grid"]
 
 [node name="LootDistributionScreen" type="Control"]
 process_mode = 3
@@ -133,12 +134,11 @@ custom_minimum_size = Vector2(0, 480)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="StashGrid" type="GridContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/ScrollContainer"]
+[node name="StashGrid" type="Control" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/h_separation = 5
-theme_override_constants/v_separation = 5
+script = ExtResource("2_grid")
 columns = 5
 
 [node name="MiddleButtons" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
@@ -190,12 +190,11 @@ custom_minimum_size = Vector2(0, 580)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="LootGrid" type="GridContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox/ScrollContainer"]
+[node name="LootGrid" type="Control" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/h_separation = 5
-theme_override_constants/v_separation = 5
+script = ExtResource("2_grid")
 columns = 5
 
 [node name="HSeparator2" type="HSeparator" parent="MainPanel/MarginContainer/VBoxContainer"]
