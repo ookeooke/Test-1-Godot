@@ -299,9 +299,9 @@ func _show_defeat_screen():
 	"""Show the defeat screen"""
 	var defeat_screen_scene = preload("res://scenes/ui/defeat_screen.tscn")
 
-	# Create canvas layer for defeat screen (matches victory screen pattern)
+	# Create canvas layer for defeat screen
 	var canvas_layer = CanvasLayer.new()
-	canvas_layer.layer = 100  # Above everything (higher than victory screen's 99)
+	canvas_layer.layer = 100  # Modal game over screen
 	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS  # Works while paused
 
 	# Instantiate defeat screen

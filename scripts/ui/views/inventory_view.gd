@@ -26,6 +26,11 @@ const BREAKPOINT_STANDARD: int = 1920 # 16:9 aspect ratio (8 columns)
 # Hero ID for per-hero inventory
 var hero_id: String = "" # Set by EquipmentView or hero selection
 
+# 🆕 LOOT MODE SUPPORT
+var container_id: String = "" # If set, overrides hero_id (for loot containers)
+var is_loot_view: bool = false # If true, hides gold/slots and changes context menu
+var _loot_container_ref: InventoryContainer = null # Reference for signal cleanup
+
 # Grid container (now InventoryGridContainer with absolute positioning)
 @onready var inventory_grid: InventoryGridContainer = $MarginContainer/VBoxContainer/ContentContainer/InventoryGrid if has_node("MarginContainer/VBoxContainer/ContentContainer/InventoryGrid") else null
 
@@ -114,11 +119,47 @@ func refresh_view():
 func set_hero_id(new_hero_id: String):
 	"""Set the hero ID for per-hero inventory tracking"""
 	hero_id = new_hero_id
+	container_id = "" # Clear container override
+	is_loot_view = false
+
+	# Update header label for hero inventory mode
+	var header_label = $MarginContainer/VBoxContainer/HeaderLabel if has_node("MarginContainer/VBoxContainer/HeaderLabel") else null
+	if header_label:
+		header_label.text = "🎒 Hero's Stash"
+
 	if hero_id != "" and HeroInventoryManager:
 		# Register hero if not already registered
 		HeroInventoryManager.register_hero(hero_id)
 
 	# Refresh inventory
+	_refresh_inventory()
+
+
+func set_loot_container(new_container_id: String):
+	"""Set a specific container ID (for loot mode)"""
+	container_id = new_container_id
+	is_loot_view = true
+
+	# 🔧 FIX CRITICAL: Connect to container's content_changed signal (MVC Observer Pattern)
+	# Disconnect from old container if switching
+	if _loot_container_ref and _loot_container_ref.content_changed.is_connected(_refresh_inventory):
+		_loot_container_ref.content_changed.disconnect(_refresh_inventory)
+		_loot_container_ref = null
+
+	# Connect to new container
+	var container = InventoryRegistry.get_container(container_id)
+	if container:
+		_loot_container_ref = container
+		if not container.content_changed.is_connected(_refresh_inventory):
+			container.content_changed.connect(_refresh_inventory)
+			if debug_logging:
+				print("[InventoryView] ✅ Connected to loot container '%s' content_changed signal" % container_id)
+
+	# Update header if possible
+	var header_label = $MarginContainer/VBoxContainer/HeaderLabel if has_node("MarginContainer/VBoxContainer/HeaderLabel") else null
+	if header_label:
+		header_label.text = "📦 Found Loot"
+
 	_refresh_inventory()
 
 
@@ -162,10 +203,20 @@ func _refresh_inventory():
 		return
 		
 	# Get container directly from registry
-	var container = InventoryRegistry.get_container(hero_id)
-	if not container:
-		if debug_logging:
+	var container = null
+	
+	if container_id != "":
+		# Direct container access (Loot Mode)
+		container = InventoryRegistry.get_container(container_id)
+		if not container and debug_logging:
+			print("[InventoryView] ❌ No container found for ID: ", container_id)
+	else:
+		# Hero inventory access
+		container = InventoryRegistry.get_container(hero_id)
+		if not container and debug_logging:
 			print("[InventoryView] ❌ No container found for hero: ", hero_id)
+			
+	if not container:
 		return
 
 	# REFACTOR: Static Grid + Item Overlay Architecture
@@ -215,9 +266,10 @@ func _refresh_inventory():
 		# Create ItemSprite overlay
 		var item_sprite = ItemSprite.new()
 		item_sprite.hero_id = hero_id # Set which inventory this belongs to
+		item_sprite.container_id = container_id # 🔧 FIX: Pass container ID directly (dependency injection)
 
 		# 🆕 UUID SYSTEM: Pass ItemInstance directly (skip animation during refresh)
-		item_sprite.set_item(item_instance, true)  # skip_animation=true prevents mass bouncing
+		item_sprite.set_item(item_instance, true) # skip_animation=true prevents mass bouncing
 		item_sprite.set_grid_position(pos.x, pos.y)
 
 		# 🔧 FIX CRITICAL: Connect ItemSprite signals for click interactions
@@ -266,12 +318,27 @@ func _update_labels():
 
 	# Update slots label for hero inventory
 	if slots_label:
-		if HeroInventoryManager and hero_id != "":
+		if is_loot_view:
+			# Loot Mode: Show simple count
+			var container = InventoryRegistry.get_container(container_id)
+			var count = container.get_all_items().size() if container else 0
+			slots_label.text = "%d items" % count
+		elif HeroInventoryManager and hero_id != "":
+			# Hero Mode: Show capacity
 			var container = InventoryRegistry.get_container(hero_id)
 			var count = container.get_all_items().size() if container else 0
 			slots_label.text = "My Items: %d / %d" % [count, total_slots]
 		else:
 			slots_label.text = "My Items: 0 / %d" % total_slots
+			
+	# Update gold label (Hide in Loot Mode)
+	if gold_label:
+		if is_loot_view:
+			gold_label.visible = false
+		else:
+			gold_label.visible = true
+			var gold = SaveManager.get_gems()
+			gold_label.text = "Gold: %d" % gold
 
 
 func _on_inventory_changed():
@@ -395,10 +462,27 @@ func _show_item_context_menu(item_instance: ItemInstance, slot: ItemSlot):
 	context_menu.set_item_disabled(0, not can_equip) # Equip option
 
 	# Set transfer menu text (always hero inventory -> shared stash)
-	context_menu.set_item_text(3, "📦 Transfer to Shared Stash")
+	if is_loot_view:
+		context_menu.set_item_text(3, "📥 Take Item")
+		context_menu.set_item_disabled(0, true) # Disable Equip in loot
+		context_menu.set_item_disabled(1, true) # Disable Sell in loot
+		context_menu.set_item_disabled(2, true) # Disable Drop in loot
+	else:
+		context_menu.set_item_text(3, "📦 Transfer to Shared Stash")
+		context_menu.set_item_disabled(0, not can_equip)
+		context_menu.set_item_disabled(1, false)
+		context_menu.set_item_disabled(2, false)
 
 	# Disable transfer if hero_id is not set (can't transfer without knowing which hero)
-	var can_transfer = hero_id != "" and InventoryRegistry.get_container("stash") != null
+	var can_transfer = false
+	if is_loot_view:
+		# Can take if we have a target hero
+		# We need a way to know the target hero... 
+		# For now, let's assume the parent screen handles the "Take" action via signal or we find the hero
+		can_transfer = true
+	else:
+		can_transfer = hero_id != "" and InventoryRegistry.get_container("stash") != null
+		
 	context_menu.set_item_disabled(3, not can_transfer)
 
 	# Show menu at mouse position
@@ -479,7 +563,7 @@ func _get_slot_name_for_item(item_data: ItemData) -> String:
 		var hero_id_val = _get_hero_id_from_equipment_view()
 		if hero_id_val != "":
 			var acc1 = HeroEquipmentRegistry.get_equipped_item(hero_id_val, "accessory_1")
-			if acc1 != null:  # Check for ItemInstance (get_equipped_item returns ItemInstance or null)
+			if acc1 != null: # Check for ItemInstance (get_equipped_item returns ItemInstance or null)
 				return "accessory_2" # First slot occupied, use second
 
 	# Use shared static helper to avoid code duplication
@@ -551,7 +635,7 @@ func _setup_sort_button():
 	sort_button.name = "SortButton"
 	sort_button.text = "🔄 Sort"
 	sort_button.tooltip_text = "Organize inventory by size, category, and rarity"
-	sort_button.custom_minimum_size = Vector2(80, 0)  # Minimum width
+	sort_button.custom_minimum_size = Vector2(80, 0) # Minimum width
 
 	# Add button to footer (will appear after labels)
 	footer_container.add_child(sort_button)
@@ -707,8 +791,27 @@ func _transfer_item(item_instance: ItemInstance):
 		print("[InventoryView] Cannot transfer - no hero selected")
 		return
 
+	# Declare success variable before if/else to ensure it's in scope for final check
+	var success: bool = false
+
 	# Transfer from hero inventory to shared stash
-	var success = ItemTransactionService.move_item(item_instance.uuid, hero_id, "stash")
+	if is_loot_view:
+		# In loot view, "Transfer" means "Take" (Loot -> Hero)
+		# We need to find the currently selected hero.
+		# This is tricky since InventoryView doesn't know about the outer screen.
+		# Best approach: Emit a signal and let the parent handle it.
+		# But for now, let's try to find the hero ID from the equipment view (if available)
+		var target_hero = _get_hero_id_from_equipment_view()
+		if target_hero == "":
+			print("[InventoryView] Cannot take item - no hero selected")
+			return
+
+		success = ItemTransactionService.move_item(item_instance.uuid, container_id, target_hero)
+		if success:
+			print("[InventoryView] ✅ Took item '%s'" % item_instance.item_id)
+	else:
+		# Hero -> Stash
+		success = ItemTransactionService.move_item(item_instance.uuid, hero_id, "stash")
 
 	if success:
 		var item_data = item_instance.get_data()
@@ -853,6 +956,11 @@ func cleanup():
 			HeroInventoryManager.hero_inventory_changed.disconnect(_on_hero_inventory_changed)
 		if HeroInventoryManager.hero_inventory_full.is_connected(_on_hero_inventory_full):
 			HeroInventoryManager.hero_inventory_full.disconnect(_on_hero_inventory_full)
+
+	# 🔧 FIX: Disconnect loot container signal
+	if _loot_container_ref and _loot_container_ref.content_changed.is_connected(_refresh_inventory):
+		_loot_container_ref.content_changed.disconnect(_refresh_inventory)
+		_loot_container_ref = null
 
 	if tooltip_panel:
 		tooltip_panel.visible = false

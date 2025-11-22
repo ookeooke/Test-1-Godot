@@ -98,7 +98,7 @@ func move_item(uuid: String, to_x: int, to_y: int) -> bool:
 			content_changed.emit()
 			# User feedback: Item was adjusted to nearby position
 			print("[InventoryContainer] 🧲 Smart Nudge: Item snapped to nearby position (%d, %d)" % [nudged_pos.x, nudged_pos.y])
-			return true  # ✅ Nudge succeeded
+			return true # ✅ Nudge succeeded
 
 		# Rollback: Put back at old position
 		_place_on_grid(item, old_pos.x, old_pos.y)
@@ -147,15 +147,15 @@ func find_nearest_valid_position(item: ItemInstance, target_x: int, target_y: in
 	# Orthogonal neighbors are preferred (feel more natural than diagonal snapping)
 	const NUDGE_OFFSETS = [
 		# Orthogonal (Manhattan distance 1)
-		Vector2i(0, -1),   # North
-		Vector2i(0, 1),    # South
-		Vector2i(-1, 0),   # West
-		Vector2i(1, 0),    # East
+		Vector2i(0, -1), # North
+		Vector2i(0, 1), # South
+		Vector2i(-1, 0), # West
+		Vector2i(1, 0), # East
 		# Diagonal (Euclidean distance ~1.41)
-		Vector2i(-1, -1),  # Northwest
-		Vector2i(1, -1),   # Northeast
-		Vector2i(-1, 1),   # Southwest
-		Vector2i(1, 1)     # Southeast
+		Vector2i(-1, -1), # Northwest
+		Vector2i(1, -1), # Northeast
+		Vector2i(-1, 1), # Southwest
+		Vector2i(1, 1) # Southeast
 	]
 
 	for offset in NUDGE_OFFSETS:
@@ -210,6 +210,16 @@ func get_all_items() -> Array[ItemInstance]:
 func get_item_count() -> int:
 	return _items.size()
 
+## Get count of free cells (approximate, for UI feedback)
+## Note: This counts total empty cells, not contiguous space for large items
+func get_free_space_count() -> int:
+	var free_count = 0
+	for y in range(height):
+		for x in range(width):
+			if _grid[y][x] == "":
+				free_count += 1
+	return free_count
+
 ## Get item position
 func get_item_position(uuid: String) -> Vector2i:
 	return _item_positions.get(uuid, Vector2i(-1, -1))
@@ -235,7 +245,7 @@ func get_items_in_area(item: ItemInstance, x: int, y: int) -> Array[String]:
 	if y + data.inventory_height > height: return []
 
 	# Scan all cells and collect unique blocking UUIDs
-	var blocking_items: Dictionary = {}  # Use Dictionary as a Set for O(1) deduplication
+	var blocking_items: Dictionary = {} # Use Dictionary as a Set for O(1) deduplication
 
 	for dy in range(data.inventory_height):
 		for dx in range(data.inventory_width):
@@ -424,7 +434,7 @@ func sort_inventory() -> bool:
 
 	if all_items.is_empty():
 		print("[InventoryContainer] ⚠️ No items to sort")
-		return true  # Success (nothing to do)
+		return true # Success (nothing to do)
 
 	# 2. Sort items by priority (largest first, then by category, rarity, name)
 	all_items.sort_custom(func(a: ItemInstance, b: ItemInstance) -> bool:
@@ -435,13 +445,13 @@ func sort_inventory() -> bool:
 		var area_a = data_a.inventory_width * data_a.inventory_height
 		var area_b = data_b.inventory_width * data_b.inventory_height
 		if area_a != area_b:
-			return area_a > area_b  # Larger items first (hardest to fit)
+			return area_a > area_b # Larger items first (hardest to fit)
 
 		# Priority 2: Category - Weapons > Armor > Accessories > Others
 		var cat_a = _get_category_score(data_a.item_type)
 		var cat_b = _get_category_score(data_b.item_type)
 		if cat_a != cat_b:
-			return cat_a < cat_b  # Lower score = higher priority
+			return cat_a < cat_b # Lower score = higher priority
 
 		# Priority 3: Rarity - Legendary > Epic > Rare > Uncommon > Common
 		if data_a.rarity != data_b.rarity:
@@ -452,8 +462,8 @@ func sort_inventory() -> bool:
 	)
 
 	# 3. Backup current positions AND grid state for rollback (defensive programming)
-	var backup_positions = _item_positions.duplicate(true)  # Deep copy
-	var backup_grid = _grid.duplicate(true)  # Deep copy of 2D array
+	var backup_positions = _item_positions.duplicate(true) # Deep copy
+	var backup_grid = _grid.duplicate(true) # Deep copy of 2D array
 
 	# 4. Clear grid (but keep items in _items dictionary)
 	for item in all_items:
@@ -481,8 +491,8 @@ func sort_inventory() -> bool:
 		# Note: Items are still in _items dictionary (never removed during sort)
 		# Grid and positions are fully restored
 
-		content_changed.emit()  # UI should refresh to show rollback
-		return false  # Sort failed
+		content_changed.emit() # UI should refresh to show rollback
+		return false # Sort failed
 
 	# 7. Success!
 	print("[InventoryContainer] ✅ Auto-Sort complete: %d items organized" % all_items.size())
@@ -495,8 +505,8 @@ func _get_category_score(item_type: int) -> int:
 	# Assuming ItemData.ItemType enum values
 	# WEAPON = 0, ARMOR = 1, ACCESSORY = 2, CONSUMABLE = 3, etc.
 	match item_type:
-		0: return 1   # WEAPON - highest priority
-		1: return 2   # ARMOR - second priority
-		2: return 3   # ACCESSORY - third priority
-		3: return 4   # CONSUMABLE - fourth priority
-		_: return 99  # Unknown types - lowest priority
+		0: return 1 # WEAPON - highest priority
+		1: return 2 # ARMOR - second priority
+		2: return 3 # ACCESSORY - third priority
+		3: return 4 # CONSUMABLE - fourth priority
+		_: return 99 # Unknown types - lowest priority

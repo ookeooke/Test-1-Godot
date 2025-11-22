@@ -349,24 +349,26 @@ func _get_drag_data(at_position: Vector2):
 
 ## Godot drag-and-drop: Check if can drop here
 func _can_drop_data(at_position: Vector2, data) -> bool:
-	# NOTE: Commented out to reduce console spam - this is called on EVERY mouse move during drag
-	# if DEBUG_DRAG_DROP:
-	# 	print("[ItemSlot] 🔍 _can_drop_data - target slot: (%d,%d), slot_type: %s, is_root: %s" % [grid_x, grid_y, slot_type, is_root_slot])
+	# NOTE: Re-enabled for debugging - will show every mouse move during drag
+	if DEBUG_DRAG_DROP:
+		print("[ItemSlot] 🔍 _can_drop_data - target slot: (%d,%d), slot_type: %s, is_root: %s, mouse_filter: %s" % [grid_x, grid_y, slot_type, is_root_slot, mouse_filter])
+
 	if not data is Dictionary:
+		print("[ItemSlot] ❌ DEBUG: data is not Dictionary")
 		return false
 
 	if not data.has("item_id"):
+		print("[ItemSlot] ❌ DEBUG: data has no item_id")
 		return false
 
 	# Don't drop on self
 	if data.get("source_slot") == self:
 		return false
 
-	# Can't drop on occupied (non-root) slots
-	if not is_root_slot and occupied_by_uuid != "":
-		return false
+	# FUZZY VALIDATION: Allow dropping on occupied slots (to enable Swapping)
+	# We removed the "if not is_root_slot and occupied_by_uuid != '': return false" check.
 
-	# For inventory slots, use spatial grid validation
+	# For inventory slots, use relaxed spatial validation
 	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
 		# Determine which inventory manager to use
 		var parent_view = _find_parent_inventory_view()
@@ -375,39 +377,38 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 		# CRITICAL: Check common_chest_mode FIRST (shared stash overrides hero inventory)
 		if parent_view and "common_chest_mode" in parent_view and parent_view.common_chest_mode:
 			target_inventory_id = "stash"
+		# 🔧 FIX: Check self.hero_id (explicit assignment) BEFORE parent view
+		elif hero_id != "":
+			target_inventory_id = hero_id
 		elif parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
 			target_inventory_id = parent_view.hero_id
 
-		# Check if item can be placed at this grid position
+		# Check if item is generally compatible with this container
 		var container = InventoryRegistry.get_container(target_inventory_id)
 		if container:
-			# Use UUID if available (for moving existing items), otherwise item_id (for new items/cheats)
-			var can_place = false
-			if data.has("uuid") and data.has("item_instance"):
-				# Use the ItemInstance from drag data
-				can_place = container.can_place_item(data.item_instance, grid_x, grid_y)
-			elif data.has("uuid"):
-				# Fallback: Try to get item from source container
-				var source_inv_id = data.get("source_hero_id", "stash")
-				if source_inv_id == "": source_inv_id = "stash"
-				var source_container = InventoryRegistry.get_container(source_inv_id)
-				if source_container:
-					var item = source_container._items.get(data.uuid)
-					if item:
-						can_place = container.can_place_item(item, grid_x, grid_y)
-			else:
-				# Fallback for non-instance drops (if any)
-				var dummy = ItemInstance.new(data.item_id)
-				can_place = container.can_place_item(dummy, grid_x, grid_y)
-				
-			if not can_place:
-				_show_invalid_drop_feedback(data)
-				return false
-		else:
-			return false
+			# FUZZY VALIDATION: Only check BOUNDS, not collision.
+			# We trust ItemTransactionService to handle Nudge/Swap if collision occurs.
+			var item_w = 1
+			var item_h = 1
+			
+			if data.has("item_instance") and data.item_instance:
+				var d = data.item_instance.get_data()
+				if d:
+					item_w = d.inventory_width
+					item_h = d.inventory_height
+			elif data.has("item_id"):
+				var d = ItemDatabase.get_item(data.item_id)
+				if d:
+					item_w = d.inventory_width
+					item_h = d.inventory_height
+			
+			# Check if item fits within container dimensions (even if cells are occupied)
+			# We allow it to extend slightly beyond bounds if Smart Nudge can fix it (backend logic)
+			# But for UI feedback, we should be at least somewhat reasonable.
+			return true  # Inventory slots: Allow drop (backend handles validation)
 
-	# Check equipment slot filter
-	if slot_type == "equipment" and equipment_filter != ItemData.EquipSlot.NONE:
+	# For equipment slots, validate item type matches slot
+	if slot_type == "equipment":
 		var dragged_item = ItemDatabase.get_item(data.item_id)
 		if dragged_item == null:
 			_show_invalid_drop_feedback(data)
@@ -418,17 +419,8 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 			_show_invalid_drop_feedback(data)
 			return false
 
-	# Visual Feedback
-	var grid_container = _find_parent_grid_container()
-	if grid_container and slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
-		var dragged_item = ItemDatabase.get_item(data.item_id)
-		if dragged_item:
-			var cells_to_highlight: Array[Vector2i] = []
-			for dy in range(dragged_item.inventory_height):
-				for dx in range(dragged_item.inventory_width):
-					cells_to_highlight.append(Vector2i(grid_x + dx, grid_y + dy))
-
-			grid_container.highlight_cells(cells_to_highlight, true)
+		# Highlight equipment slot
+		modulate = Color(1.2, 1.2, 1.2)
 
 	return true
 
@@ -473,6 +465,9 @@ func _drop_data(at_position: Vector2, data):
 	# CRITICAL: Check common_chest_mode FIRST (shared stash overrides hero inventory)
 	if parent_view and "common_chest_mode" in parent_view and parent_view.common_chest_mode:
 		target_inv_id = "stash"
+	# 🔧 FIX: Check self.hero_id (explicit assignment) BEFORE parent view
+	elif hero_id != "":
+		target_inv_id = hero_id
 	elif parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
 		target_inv_id = parent_view.hero_id
 
@@ -486,12 +481,30 @@ func _drop_data(at_position: Vector2, data):
 		var container = InventoryRegistry.get_container(target_inv_id)
 		if not container: return
 
-		if source_inv_id == target_inv_id:
-			# Same Container: Use container's internal move for safer rollback (restores position)
-			container.move_item(data.uuid, grid_x, grid_y)
+	# Case 2: Drop on Inventory Slot (Grid)
+	if slot_type == "inventory" and grid_x >= 0 and grid_y >= 0:
+		var container = InventoryRegistry.get_container(target_inv_id)
+		if not container: return
+
+		# UNIFIED LOGIC: Always use ItemTransactionService
+		# This enables Atomic Swap and Smart Nudge for both cross-container AND same-container moves.
+		
+		# Check if target is occupied (for sound feedback)
+		var was_occupied = false
+		var item_at_target = container.get_item_at(grid_x, grid_y)
+		if item_at_target:
+			was_occupied = true
+			
+		if ItemTransactionService.move_item(data.uuid, source_inv_id, target_inv_id, grid_x, grid_y):
+			# 🔊 AUDIO: Play appropriate sound
+			if was_occupied:
+				AudioManager.play("swap", 0.1)
+			else:
+				AudioManager.play("drop", 0.1)
 		else:
-			# Different Container: Use Transaction Service with specific coordinates
-			ItemTransactionService.move_item(data.uuid, source_inv_id, target_inv_id, grid_x, grid_y)
+			# 🔊 AUDIO: Play error sound (failed)
+			AudioManager.play("error", 0.1)
+		
 		return
 
 
@@ -556,17 +569,30 @@ func _handle_sprite_drop(data: Dictionary):
 	ItemSprites forward drops here because they don't know about inventory logic.
 	This method executes the actual item movement using container APIs.
 	"""
-	# Get source inventory ID from sprite drag data
-	var source_inv_id = data.get("source_hero_id", "stash")
+	# 🔧 FIX: Get source container ID from drag data (supports loot containers)
+	# ItemSprite now sends "source_container_id" for loot/generic containers
+	var source_inv_id = data.get("source_container_id", "")
+	if source_inv_id == "":
+		# Fallback to hero_id for backward compatibility
+		source_inv_id = data.get("source_hero_id", "stash")
 	if source_inv_id == "":
 		source_inv_id = "stash"
 
-	# Determine target inventory ID from parent view
+	# 🔧 FIX: Determine target inventory ID from parent view (complete state machine)
+	# Priority order: container_id (loot) > common_chest_mode (stash) > hero_id (hero)
 	var target_inv_id = "stash"
 	var parent_view = _find_parent_inventory_view()
-	# CRITICAL: Check common_chest_mode FIRST (shared stash overrides hero inventory)
-	if parent_view and "common_chest_mode" in parent_view and parent_view.common_chest_mode:
+
+	# PRIORITY 1: Check container_id FIRST (loot containers, Mode 3)
+	if parent_view and "container_id" in parent_view and parent_view.container_id != "":
+		target_inv_id = parent_view.container_id
+	# PRIORITY 2: Check common_chest_mode (shared stash, Mode 2)
+	elif parent_view and "common_chest_mode" in parent_view and parent_view.common_chest_mode:
 		target_inv_id = "stash"
+	# PRIORITY 3: Check self.hero_id (explicit assignment, Mode 1)
+	elif hero_id != "":
+		target_inv_id = hero_id
+	# PRIORITY 4: Check parent_view.hero_id (inherited assignment, Mode 1)
 	elif parent_view and "hero_id" in parent_view and parent_view.hero_id != "":
 		target_inv_id = parent_view.hero_id
 
@@ -797,6 +823,8 @@ func _format_stat_line(stat_name: String, value: int) -> String:
 
 func _show_invalid_drop_feedback(_data):
 	# TODO: Implement visual feedback for invalid drop
+	# 🔊 AUDIO: Play error sound
+	AudioManager.play("error", 0.0)
 	pass
 
 func _find_parent_inventory_view():

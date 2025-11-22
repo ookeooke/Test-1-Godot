@@ -130,19 +130,30 @@ func _get_minimum_size() -> Vector2:
 ## Professional Feature #1: World-to-Cell Conversion (Diablo 2 / Path of Exile style)
 ## Converts screen coordinates to grid coordinates for real-time feedback during drag
 
-func screen_to_grid(screen_pos: Vector2) -> Vector2i:
-	"""Convert screen position to grid coordinates
+func screen_to_grid(screen_pos: Vector2, grab_offset: Vector2i = Vector2i(0, 0)) -> Vector2i:
+	"""Convert screen position to grid coordinates with anchor point correction
 
 	Used during drag operations to show which cell the cursor is over.
 	Returns clamped coordinates (always within valid grid bounds).
 
+	🔧 FIX: Added grab_offset parameter for anchor point correction (Diablo 2 / PoE style)
+	When user drags a multi-cell item by clicking on a non-top-left cell, we subtract
+	the offset to calculate the correct top-left landing position.
+
 	Args:
 		screen_pos: Global screen position (from get_global_mouse_position())
+		grab_offset: Which cell within the item was clicked (0,0 = top-left)
 	"""
 	# Convert global position to local coordinates (relative to item_layer)
 	var local_pos = screen_pos - global_position
 	var grid_x = int(local_pos.x / (cell_size.x + cell_gap.x))
 	var grid_y = int(local_pos.y / (cell_size.y + cell_gap.y))
+
+	# 🔧 FIX: Apply anchor point correction (subtract cells clicked within item)
+	# This ensures item's TOP-LEFT corner lands at the correct position regardless
+	# of where user clicked to grab the item
+	grid_x -= grab_offset.x
+	grid_y -= grab_offset.y
 
 	# Clamp to valid grid bounds
 	grid_x = clamp(grid_x, 0, columns - 1)

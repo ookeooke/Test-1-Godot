@@ -59,9 +59,8 @@ var use_lane_system = true  # Enable/disable lane-based spawning
 var spawn_timer: Timer
 var wave_break_timer: Timer
 
-# VICTORY SCREENS
+# LOOT DISTRIBUTION SCREEN
 var loot_distribution_scene = preload("res://scenes/ui/loot_distribution_screen.tscn")
-var victory_screen_scene = preload("res://scenes/ui/victory_screen.tscn")
 
 # CALL WAVE BUTTON SYSTEM (Kingdom Rush style)
 var call_wave_button_scene = preload("res://scenes/ui/call_wave_button.tscn")
@@ -485,7 +484,7 @@ func _show_victory_screen():
 
 	if loot_count > 0:
 		print("[WaveManager] Showing loot distribution screen (%d items pending)" % loot_count)
-		await _show_loot_distribution_screen(stars, gems_earned)
+		await _show_loot_distribution_screen(gems_earned)
 	else:
 		print("[WaveManager] No loot to distribute, skipping loot screen")
 
@@ -495,13 +494,18 @@ func _show_victory_screen():
 	# Unpause the game before changing scenes
 	get_tree().paused = false
 
+	# 🔧 FIX CRITICAL: Save before scene change to prevent data loss
+	# Ensures all item movements, equipment changes, and loot distribution are persisted
+	SaveManager.save_current_profile()
+	print("[WaveManager] Profile saved before scene transition")
+
 	# Change to world map scene
 	get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
 
 	print("[WaveManager] Scene change to world map initiated")
 
 
-func _show_loot_distribution_screen(stars: int, gems_earned: int):
+func _show_loot_distribution_screen(gems_earned: int):
 	"""Show loot distribution screen and wait for user to continue"""
 	# Get heroes who participated in this level
 	var participating_heroes = _get_participating_heroes()
@@ -512,14 +516,13 @@ func _show_loot_distribution_screen(stars: int, gems_earned: int):
 
 	# Create canvas layer for loot screen
 	var canvas_layer = CanvasLayer.new()
-	canvas_layer.layer = 99  # Below victory screen but above gameplay
+	canvas_layer.layer = 100  # Modal loot screen above gameplay
 	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 
 	# Instantiate loot distribution screen
 	var loot_screen = loot_distribution_scene.instantiate()
 
-	# Set stars earned and gems (must set BEFORE adding to tree)
-	loot_screen.stars_earned = stars
+	# Set gems earned (must set BEFORE adding to tree)
 	if loot_screen.has_method("set_gems_earned") or "gems_earned" in loot_screen:
 		loot_screen.gems_earned = gems_earned
 

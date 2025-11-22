@@ -173,9 +173,12 @@ func commit_transaction() -> bool:
 	_dirty_heroes[hero_id] = true
 	_equipment_registry[hero_id]["dirty"] = true
 	_pending_transaction.clear()
-	
+
 	_transaction_mutex.unlock()
-	
+
+	# 🔧 FIX CRITICAL: Mark save data as dirty so auto-save persists equipment changes
+	SaveManager.mark_dirty()
+
 	equipment_transaction_completed.emit(hero_id, transaction_type, details)
 	_schedule_batch_refresh()
 	return true

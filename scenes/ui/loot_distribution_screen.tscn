@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/ui/loot_distribution_screen.gd" id="1_loot_dist"]
 [ext_resource type="Script" path="res://scripts/ui/inventory_grid_container.gd" id="2_grid"]
+[ext_resource type="PackedScene" uid="uid://b8g4j5j5j5j5j" path="res://scenes/ui/views/inventory_view.tscn" id="3_inventory_view"]
 
 [node name="LootDistributionScreen" type="Control"]
 process_mode = 3
@@ -31,9 +32,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -640.0
-offset_top = -400.0
+offset_top = -480.0
 offset_right = 640.0
-offset_bottom = 400.0
+offset_bottom = 480.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -53,19 +54,6 @@ theme_override_constants/margin_bottom = 20
 layout_mode = 2
 theme_override_constants/separation = 15
 
-[node name="TitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 32
-text = "VICTORY"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="StarsLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "★★★ (3 Stars Earned)"
-horizontal_alignment = 1
-
 [node name="SubtitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
@@ -80,10 +68,14 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 15
 
-[node name="StashPanel" type="PanelContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
+[node name="StashPanel" type="MarginContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
 custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Panel" type="Panel" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel"]
+layout_mode = 2
 
 [node name="VBox" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel"]
 layout_mode = 2
@@ -113,33 +105,13 @@ theme_override_font_sizes/font_size = 14
 text = "Select Hero"
 alignment = 1
 
-[node name="Header" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox"]
-layout_mode = 2
-
-[node name="TitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 20
-text = "HERO INVENTORY"
-horizontal_alignment = 1
-
-[node name="CapacityLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/Header"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "0/20"
-horizontal_alignment = 2
-
-[node name="ScrollContainer" type="ScrollContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox"]
-custom_minimum_size = Vector2(0, 480)
+[node name="HeroInventoryView" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox" instance=ExtResource("3_inventory_view")]
 layout_mode = 2
 size_flags_vertical = 3
-
-[node name="StashGrid" type="Control" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/ScrollContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-script = ExtResource("2_grid")
-columns = 5
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
 
 [node name="MiddleButtons" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
 layout_mode = 2
@@ -161,41 +133,25 @@ text = "Take
 Rare+
 →"
 
-[node name="LootPanel" type="PanelContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
+[node name="LootPanel" type="MarginContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
 custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Panel" type="Panel" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel"]
+layout_mode = 2
 
 [node name="VBox" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel"]
 layout_mode = 2
 
-[node name="Header" type="HBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox"]
-layout_mode = 2
-
-[node name="TitleLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 20
-text = "FOUND LOOT"
-horizontal_alignment = 1
-
-[node name="CountLabel" type="Label" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox/Header"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "0 items"
-horizontal_alignment = 2
-
-[node name="ScrollContainer" type="ScrollContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox"]
-custom_minimum_size = Vector2(0, 580)
+[node name="LootInventoryView" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox" instance=ExtResource("3_inventory_view")]
 layout_mode = 2
 size_flags_vertical = 3
-
-[node name="LootGrid" type="Control" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox/ScrollContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-script = ExtResource("2_grid")
-columns = 5
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
 
 [node name="HSeparator2" type="HSeparator" parent="MainPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2

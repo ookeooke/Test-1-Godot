@@ -45,8 +45,8 @@ const ANCHOR_OFFSET: Vector2 = Vector2(20, 20)
 
 
 func _ready() -> void:
-	# Set as top layer for tooltips
-	layer = 100
+	# Set as top layer for tooltips (above all modal screens)
+	layer = 101
 
 	# Load tooltip scene
 	var tooltip_scene = preload("res://scenes/ui/tooltips/item_tooltip.tscn")

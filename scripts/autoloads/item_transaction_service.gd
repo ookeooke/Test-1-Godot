@@ -44,10 +44,13 @@ func move_item(uuid: String, source_id: String, target_id: String, target_x: int
 	if not item:
 		if DEBUG_TRANSACTIONS:
 			print("  ❌ FAILED: Item not found in source container")
+			print("  Searched UUID: %s" % uuid)
 			print("  Items in source: %d" % source._items.size())
 			var item_uuids = source._items.keys()
 			if item_uuids.size() > 0:
-				print("  Sample UUIDs in source: %s" % item_uuids.slice(0, 3))
+				print("  Sample UUIDs in source: %s" % str(item_uuids.slice(0, 3)))
+			else:
+				print("  Source container is EMPTY")
 			print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		push_error("Item not found in source: " + uuid)
 		return false
@@ -157,6 +160,10 @@ func move_item(uuid: String, source_id: String, target_id: String, target_x: int
 	if DEBUG_TRANSACTIONS:
 		print("  ✅ TRANSACTION SUCCESSFUL")
 		print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+	# 🔧 FIX CRITICAL: Mark save data as dirty so auto-save persists item movements
+	SaveManager.mark_dirty()
+
 	return true
 
 ## Equip an item from ANY container to a Hero
@@ -201,6 +208,9 @@ func equip_item(hero_id: String, uuid: String, slot_name: String) -> bool:
 					source.add_item(item) # Restore new to source
 					print("Transaction failed: No space for swapped item")
 					return false
+
+		# 🔧 FIX CRITICAL: Mark save data as dirty so auto-save persists equipment changes
+		SaveManager.mark_dirty()
 		return true
 	else:
 		# Rollback
@@ -336,11 +346,13 @@ func unequip_item(hero_id: String, slot_name: String, target_id: String = "") ->
 	if HeroEquipmentRegistry.clear_slot(hero_id, slot_name):
 		# 4. Add to target
 		if target.add_item(item):
+			# 🔧 FIX CRITICAL: Mark save data as dirty so auto-save persists unequip operations
+			SaveManager.mark_dirty()
 			return true
 		else:
 			# CRITICAL: Add failed despite space check? (Race condition?)
 			# Rollback: Re-equip
 			HeroEquipmentRegistry.equip_item(hero_id, slot_name, item)
 			return false
-	
+
 	return false

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(git commit:*)",
-      "Bash(\"C:\\Users\\ollil\\Downloads\\Godot_v4.5.1-stable_win64.exe (1)\" --headless --check-only --path \"c:\\Users\\ollil\\Test-1-Godot\")"
+      "Bash(\"C:\\Users\\ollil\\Downloads\\Godot_v4.5.1-stable_win64.exe (1)\" --headless --check-only --path \"c:\\Users\\ollil\\Test-1-Godot\")",
+      "Bash(cmd /c \"\"\"C:\\Users\\ollil\\Downloads\\Godot_v4.5.1-stable_win64.exe (1)\"\" --headless --check-only --path \"\"c:\\Users\\ollil\\Test-1-Godot\"\"\")"
     ],
     "deny": [],
     "ask": []

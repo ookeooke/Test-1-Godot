@@ -34,6 +34,7 @@ var item_instance: ItemInstance = null
 
 # Inventory context (which inventory this item belongs to)
 var hero_id: String = "" # Empty string = shared stash, otherwise hero's ID
+var container_id: String = "" # 🔧 FIX: Explicit container ID (dependency injection, replaces tree navigation)
 
 # Grid positioning
 var grid_x: int = 0
@@ -72,18 +73,27 @@ func _get_grid_params() -> Dictionary:
 	Returns: {cell_size: Vector2, cell_gap: Vector2}
 	Fallback: {cell_size: Vector2(80, 80), cell_gap: Vector2(5, 5)} if parent not found
 	"""
-	# Navigate to parent grid: ItemSprite → item_layer → InventoryGridContainer
-	var item_layer_node = get_parent()
-	if item_layer_node:
-		var grid_container = item_layer_node.get_parent() as InventoryGridContainer
-		if grid_container:
-			return {
-				"cell_size": grid_container.cell_size,
-				"cell_gap": grid_container.cell_gap
-			}
+	# 🔧 FIX: Only navigate tree if we're attached (fixes Godot lifecycle violation)
+	# ItemSprite may call this during set_item() BEFORE add_child() is called
+	if is_inside_tree():
+		# Navigate to parent grid: ItemSprite → item_layer → InventoryGridContainer
+		var item_layer_node = get_parent()
+		if item_layer_node:
+			var grid_container = item_layer_node.get_parent() as InventoryGridContainer
+			if grid_container:
+				var actual_params = {
+					"cell_size": grid_container.cell_size,
+					"cell_gap": grid_container.cell_gap
+				}
+				if DEBUG_DRAG_DROP:
+					print("[ItemSprite] 🔍 _get_grid_params() → ACTUAL from grid: cell_size=%s, cell_gap=%s" % [actual_params.cell_size, actual_params.cell_gap])
+				return actual_params
 
 	# Fallback to default values (matches old hardcoded constants)
-	push_warning("[ItemSprite] Could not find parent InventoryGridContainer - using default cell size")
+	# NOTE: No warning during initialization - this is expected behavior
+	# _ready() will recalculate size after tree attachment
+	if DEBUG_DRAG_DROP:
+		print("[ItemSprite] ⚠️ _get_grid_params() → FALLBACK (not in tree yet): cell_size=(80,80), cell_gap=(5,5)")
 	return {
 		"cell_size": Vector2(80, 80),
 		"cell_gap": Vector2(5, 5)
@@ -143,6 +153,7 @@ func _on_gui_input(event: InputEvent):
 				else:
 					# Short tap - show tooltip via TooltipManager
 					print("[ItemSprite] 📱 Short tap detected: %s (%.2fs)" % [item_instance.item_id, hold_duration])
+					AudioManager.play("click", 0.1)
 					item_tapped.emit(self)
 					# Show tooltip for mobile
 					if item_instance:
@@ -168,12 +179,20 @@ func _ready():
 	# ItemSlots are empty in overlay architecture - only ItemSprites have item data!
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
+	print("[ItemSprite] 🔍 DEBUG: _ready() START - is_inside_tree=%s" % is_inside_tree())
+
 	# CRITICAL: Ensure size is applied (must happen after node is in tree)
 	# Force the Control to use the size we calculated in set_item()
 	if custom_minimum_size != Vector2.ZERO:
 		size = custom_minimum_size # Force size to match minimum
 		if item_instance:
 			print("[ItemSprite] _ready() forcing size to %s for item '%s'" % [size, item_instance.item_id])
+	else:
+		print("[ItemSprite] ⚠️ DEBUG: custom_minimum_size is ZERO in _ready()!")
+
+	# Debug: Check grid params now that we're in tree
+	var grid_params = _get_grid_params()
+	print("[ItemSprite] 🔍 DEBUG: _get_grid_params() in _ready() = cell_size:%s, cell_gap:%s" % [grid_params.cell_size, grid_params.cell_gap])
 
 	# CRITICAL: Set pivot offset to center for natural scaling/rotation
 	pivot_offset = size / 2
@@ -203,7 +222,7 @@ func _notification(what):
 	Handles both successful drops and cancelled drags (ESC key, invalid drop, etc.)
 	"""
 	if what == NOTIFICATION_DRAG_END:
-		self.modulate.a = 1.0  # Restore original item visibility
+		self.modulate.a = 1.0 # Restore original item visibility
 
 
 func _setup_ui():
@@ -445,11 +464,16 @@ func set_grid_position(x: int, y: int):
 
 func _get_drag_data(at_position: Vector2):
 	"""Godot drag-and-drop: Get drag data when user starts dragging"""
+	print("[ItemSprite] 🔍 DEBUG: _get_drag_data() CALLED at position %s" % at_position)
+	print("[ItemSprite] 🔍 DEBUG: mouse_filter=%s, is_inside_tree=%s" % [mouse_filter, is_inside_tree()])
+
 	if not item_instance:
+		print("[ItemSprite] ❌ DEBUG: _get_drag_data() returning NULL - no item_instance!")
 		return null
 
 	var item_data = item_instance.get_data()
 	if not item_data:
+		print("[ItemSprite] ❌ DEBUG: _get_drag_data() returning NULL - no item_data!")
 		return null
 
 	# Calculate drag offset (where user clicked within the item)
@@ -470,24 +494,27 @@ func _get_drag_data(at_position: Vector2):
 	preview_icon.modulate = Color(1, 1, 1, 0.7)
 
 	# 🎮 JUICE #3: Lift Animation - Scale up on drag start (professional "pick up" feel)
-	preview_icon.scale = Vector2(0.8, 0.8)  # Start small
+	preview_icon.scale = Vector2(0.8, 0.8) # Start small
 	var tween = create_tween()
 	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_BACK)  # Bouncy "spring" effect
+	tween.set_trans(Tween.TRANS_BACK) # Bouncy "spring" effect
 	tween.tween_property(preview_icon, "scale", Vector2(1.1, 1.1), 0.15)
 
 	# 🎮 JUICE #2: Mobile Finger Offset - Position preview above finger so user can see target
 	# Offset icon so click position stays under cursor (natural grab feel on desktop)
 	var preview_offset = Vector2.ZERO - drag_offset
 	if OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios"):
-		preview_offset.y -= 100  # Lift 100px above finger on mobile (Diablo Immortal pattern)
+		preview_offset.y -= 100 # Lift 100px above finger on mobile (Diablo Immortal pattern)
 	preview_icon.position = preview_offset
 
 	preview.add_child(preview_icon)
 	set_drag_preview(preview)
 
 	# 🎮 JUICE #1: Ghost Item - Hide original during drag (prevents "duplicate" illusion)
-	self.modulate.a = 0.0  # Fade out original, only preview visible during drag
+	self.modulate.a = 0.0 # Fade out original, only preview visible during drag
+
+	# 🔊 AUDIO: Play pickup sound
+	AudioManager.play("pickup", 0.1)
 
 	print("[ItemSprite] 🎯 Drag started: %s (UUID: %s) from (%d,%d)" % [item_instance.item_id, item_instance.uuid, grid_x, grid_y])
 
@@ -516,9 +543,12 @@ func _get_drag_data(at_position: Vector2):
 		"item_instance": item_instance, # Pass the full object for convenience
 		"source_sprite": self,
 		"source_hero_id": hero_id, # Which inventory (empty = shared stash)
+		"source_container_id": _get_source_container_id(), # 🔧 FIX: Explicit container ID for validation
 		"source_grid_x": grid_x, # Source grid position
 		"source_grid_y": grid_y,
-		"drag_offset": drag_offset # Where user clicked within item (for natural feel)
+		"drag_offset": drag_offset, # Where user clicked within item (for natural feel)
+		"grab_offset_x": grab_offset_x, # 🔧 FIX UX: Which cell within item was clicked (for anchor point correction)
+		"grab_offset_y": grab_offset_y
 	}
 
 
@@ -528,7 +558,10 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 	FIX: This now properly validates drops to EMPTY slots using grid coordinates!
 	The original bug was here - it returned false for all drops, blocking empty slot placement.
 	"""
+	print("[ItemSprite] 🔍 DEBUG: _can_drop_data() CALLED at position %s" % at_position)
+
 	if not data.has("item_id"):
+		print("[ItemSprite] ❌ DEBUG: No item_id in drag data")
 		return false
 
 	# Get parent grid container for coordinate conversion
@@ -537,12 +570,21 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 		print("[ItemSprite] ❌ No grid container found")
 		return false
 
-	# Convert mouse position to grid coordinates
-	var grid_pos = grid_container.screen_to_grid(get_global_mouse_position())
+	print("[ItemSprite] 🔍 DEBUG: Grid container found: %s" % grid_container.name)
+
+	# 🔧 FIX UX: Get grab offset from drag data for anchor point correction
+	var grab_offset_x = data.get("grab_offset_x", 0)
+	var grab_offset_y = data.get("grab_offset_y", 0)
+
+	# Convert mouse position to grid coordinates (with anchor point correction)
+	var mouse_pos = get_global_mouse_position()
+	var grid_pos = grid_container.screen_to_grid(mouse_pos, Vector2i(grab_offset_x, grab_offset_y))
+	print("[ItemSprite] 🔍 DEBUG: Mouse pos: %s → Grid pos: (%d, %d) | Grab offset: (%d, %d)" % [mouse_pos, grid_pos.x, grid_pos.y, grab_offset_x, grab_offset_y])
 
 	# Get item data to check dimensions
 	var dragged_item = ItemDatabase.get_item(data.item_id)
 	if not dragged_item:
+		print("[ItemSprite] ❌ DEBUG: Item not found in database: %s" % data.item_id)
 		return false
 
 	# Validate using grid bounds
@@ -567,10 +609,11 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 			# print("[ItemSprite] ✅ Drop validation passed (hero inventory, optimistic)") # Commented to reduce spam
 			return true
 		else:
-			# Shared stash - get actual container from registry
-			var stash = InventoryRegistry.get_container("stash")
-			if not stash:
-				print("[ItemSprite] ❌ Stash container not found")
+			# 🔧 FIX: Get actual source container from drag data instead of hardcoding "stash"
+			var source_container_id = data.get("source_container_id", "stash")
+			var source_container = InventoryRegistry.get_container(source_container_id)
+			if not source_container:
+				print("[ItemSprite] ❌ Source container not found: %s" % source_container_id)
 				return false
 
 			# Get ItemInstance from drag data
@@ -578,32 +621,61 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 				var item_inst = data.item_instance
 
 				# Temporarily remove from grid to check if it can fit at new position
-				var old_pos = stash.get_item_position(item_inst.uuid)
-				stash._clear_from_grid(item_inst.uuid)
+				var old_pos = source_container.get_item_position(item_inst.uuid)
+				source_container._clear_from_grid(item_inst.uuid)
 
-				# Check if can place at new position
-				var can_place = stash.can_place_item(item_inst, grid_pos.x, grid_pos.y)
+				# 🔧 FIX UX: FUZZY VALIDATION (Diablo 2 / Path of Exile style)
+				# Instead of strict pixel-perfect validation, check if drop is FEASIBLE via:
+				# 1. Exact placement
+				# 2. Smart Nudge (magnetism to nearby valid position)
+				# 3. Atomic Swap (swap with exactly 1 blocking item)
+				var validation_method = ""
+				var can_drop = false
+
+				# METHOD 1: Exact Placement (fastest check)
+				if source_container.can_place_item(item_inst, grid_pos.x, grid_pos.y):
+					can_drop = true
+					validation_method = "EXACT"
+				# METHOD 2: Smart Nudge (1-cell radius magnetism)
+				elif source_container.has_method("find_nearest_valid_position"):
+					var nudged_pos = source_container.find_nearest_valid_position(item_inst, grid_pos.x, grid_pos.y)
+					if nudged_pos != Vector2i(-1, -1):
+						can_drop = true
+						validation_method = "SMART_NUDGE (→ %d,%d)" % [nudged_pos.x, nudged_pos.y]
+
+				# METHOD 3: Atomic Swap (exactly 1 blocking item that fits in source)
+				if not can_drop and source_container.has_method("get_items_in_area"):
+					var blocking_uuids = source_container.get_items_in_area(item_inst, grid_pos.x, grid_pos.y)
+					if blocking_uuids.size() == 1:
+						# Check if the blocking item could fit in the source's old position
+						var blocking_item = source_container._items.get(blocking_uuids[0])
+						if blocking_item:
+							# Would the blocking item fit anywhere in this container?
+							# (More lenient than checking exact swap - backend handles optimal placement)
+							if source_container.has_space_for(blocking_item):
+								can_drop = true
+								validation_method = "ATOMIC_SWAP (with %s)" % blocking_item.item_id
 
 				# Restore to original grid position
-				stash._place_on_grid(item_inst, old_pos.x, old_pos.y)
+				source_container._place_on_grid(item_inst, old_pos.x, old_pos.y)
 
 				if DEBUG_DRAG_DROP:
 					print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-					print("[ItemSprite] 🎯 Drop Validation (Shared Stash)")
+					print("[ItemSprite] 🎯 FUZZY Drop Validation (Container: %s)" % source_container_id)
 					print("  Item: %s (UUID: %s)" % [item_inst.item_id, item_inst.uuid])
 					var item_data = item_inst.get_data()
 					print("  Item Size: %dx%d" % [item_data.inventory_width, item_data.inventory_height])
 					print("  Old Position: (%d, %d)" % [old_pos.x, old_pos.y])
-					print("  New Position: (%d, %d)" % [grid_pos.x, grid_pos.y])
-					print("  Can Place: %s" % ("✅ YES" if can_place else "❌ NO"))
-
-					# If validation fails, show WHY
-					if not can_place:
-						print("  ⚠️  Validation FAILED - showing debug info:")
-						stash.debug_check_position(item_inst, grid_pos.x, grid_pos.y)
-
+					print("  Target Position: (%d, %d)" % [grid_pos.x, grid_pos.y])
+					print("  Result: %s" % ("✅ DROP ALLOWED" if can_drop else "❌ DROP BLOCKED"))
+					if can_drop:
+						print("  Method: %s" % validation_method)
+					else:
+						print("  ⚠️  All methods failed - showing debug info:")
+						source_container.debug_check_position(item_inst, grid_pos.x, grid_pos.y)
 					print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-				return can_place
+
+				return can_drop
 			else:
 				print("[ItemSprite] ❌ No item_instance in drag data")
 				return false
@@ -643,13 +715,17 @@ func _drop_data(at_position: Vector2, data):
 		print("[ItemSprite] ❌ No ItemSlot found at grid position (%d,%d)" % [grid_pos.x, grid_pos.y])
 		return
 
+	# 🔊 AUDIO: Play drop sound (Play BEFORE drop logic, as self might be freed during refresh)
+	AudioManager.play("drop", 0.1)
+
 	# Forward drop to ItemSlot system (uses existing _handle_sprite_drop logic)
 	print("[ItemSprite] → Forwarding drop to ItemSlot at (%d,%d)" % [grid_pos.x, grid_pos.y])
 	target_slot._handle_sprite_drop(data)
 
-	# 🎮 JUICE #4: Drop Bounce - Animate item settling into position after successful drop
-	# Use call_deferred to ensure ItemSprite position is updated before animation starts
-	call_deferred("animate_settle")
+	# NOTE: Do NOT call animate_settle() here.
+	# _handle_sprite_drop() likely triggers a full inventory refresh, causing this ItemSprite
+	# to be queue_free()'d immediately. Calling methods on it afterwards causes a crash.
+	# The NEW ItemSprite created by the refresh will handle its own entry animation if configured.
 
 
 func _find_slot_at_grid_position(target_x: int, target_y: int) -> ItemSlot:
@@ -670,3 +746,28 @@ func _find_slot_at_grid_position(target_x: int, target_y: int) -> ItemSlot:
 
 	print("[ItemSprite] ⚠️  No ItemSlot found at grid position (%d,%d)" % [target_x, target_y])
 	return null
+
+
+func _get_source_container_id() -> String:
+	"""Get the container ID for this item's inventory using dependency injection
+
+	🔧 FIX: Now uses explicit container_id property instead of fragile tree navigation.
+	The container_id is passed directly when the ItemSprite is created (dependency injection),
+	eliminating the need to navigate 6 levels up the scene tree.
+
+	This fixes the bug where temporary loot containers ("temp_loot_XXX") were not being
+	properly identified, causing UUID lookup failures.
+
+	Returns:
+		Container ID string (hero_id, "temp_loot_XXX", "stash", etc.)
+	"""
+	# Priority 1: Explicit container_id (for loot containers and any explicit container)
+	if container_id != "":
+		return container_id
+
+	# Priority 2: Hero inventory (for hero-specific items)
+	if hero_id != "":
+		return hero_id
+
+	# Priority 3: Shared stash (default fallback)
+	return "stash"
