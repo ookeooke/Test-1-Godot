@@ -6,17 +6,18 @@ extends Node
 signal profile_loaded(profile_data: Dictionary)
 signal profile_saved(profile_name: String)
 signal profile_created(profile_name: String)
+signal hero_attributes_changed(hero_id: String) # Emitted when attribute points change
 
 const SAVE_DIR = "user://saves/"
 const SAVE_EXTENSION = ".save"
-const AUTO_SAVE_INTERVAL = 5.0  # Auto-save every 5 seconds if dirty
+const AUTO_SAVE_INTERVAL = 5.0 # Auto-save every 5 seconds if dirty
 
 var current_profile: Dictionary = {}
 var current_profile_name: String = ""
 
 # Auto-save system
-var _is_dirty: bool = false  # Track if data needs saving
-var _is_saving: bool = false  # Prevent concurrent saves
+var _is_dirty: bool = false # Track if data needs saving
+var _is_saving: bool = false # Prevent concurrent saves
 var _auto_save_timer: Timer = null
 
 func _ready():
@@ -74,19 +75,20 @@ func create_new_profile(profile_name: String) -> bool:
 		"last_played": Time.get_datetime_string_from_system(),
 		"completed_levels": [],
 		"level_stars": {}, # level_id: stars_earned (1-3)
-		"gems": 1000,  # Starting gems for skill purchases / hero unlocks
-		"hero_skills": {},  # hero_id: { skill_id: level }
-		"inventory": {  # Shared stash inventory (account-wide, spatial grid)
+		"gems": 1000, # Starting gems for skill purchases / hero unlocks
+		"hero_skills": {}, # hero_id: { skill_id: level }
+		"hero_meta_progression": {}, # hero_id: {meta_level, meta_xp, attributes, branch_choice}
+		"inventory": { # Shared stash inventory (account-wide, spatial grid)
 			"global_inventory": {},
 			"item_positions": {}
 		},
-		"hero_inventories": {},  # Per-hero inventories (hero_id: {items, positions})
-		"equipment_registry": {  # Hero equipment slots (per-hero persistence)
+		"hero_inventories": {}, # Per-hero inventories (hero_id: {items, positions})
+		"equipment_registry": { # Hero equipment slots (per-hero persistence)
 			"heroes": {}
 		},
-		"tower_loadout": ["archer", "barracks", "mage", "artillery"],  # Phase 1: Global tower loadout (3-4 tower IDs)
-		"unlocked_towers": ["archer", "barracks", "mage", "artillery"],  # Phase 1: All unlocked towers
-		"user_preferences": {},  # UI preferences (panel tabs, etc.)
+		"tower_loadout": ["archer", "barracks", "mage", "artillery"], # Phase 1: Global tower loadout (3-4 tower IDs)
+		"unlocked_towers": ["archer", "barracks", "mage", "artillery"], # Phase 1: All unlocked towers
+		"user_preferences": {}, # UI preferences (panel tabs, etc.)
 		"settings": {
 			"master_volume": 1.0,
 			"music_volume": 1.0,
@@ -121,7 +123,7 @@ func create_new_profile(profile_name: String) -> bool:
 
 		# Initialize empty hero inventories
 		if HeroInventoryManager:
-			HeroInventoryManager.load_from_dict({})  # Empty dict = no heroes registered yet
+			HeroInventoryManager.load_from_dict({}) # Empty dict = no heroes registered yet
 			print("[SaveManager] Initialized HeroInventoryManager for new profile")
 
 			# Add 4 starter items to ranger's hero inventory
@@ -186,7 +188,7 @@ func save_profile(profile_data: Dictionary) -> bool:
 		return false
 
 	file.store_string(json_string)
-	file.flush()  # Force OS to write to disk
+	file.flush() # Force OS to write to disk
 	file.close()
 
 	# Create backup of existing save (if it exists)
@@ -205,7 +207,7 @@ func save_profile(profile_data: Dictionary) -> bool:
 		var error = dir.rename(temp_path, save_path)
 		if error == OK:
 			print("[SaveManager] Profile saved: ", profile_name)
-			_is_dirty = false  # Clear dirty flag after successful save
+			_is_dirty = false # Clear dirty flag after successful save
 			_is_saving = false
 			profile_saved.emit(profile_name)
 			return true
@@ -447,7 +449,7 @@ func get_gems() -> int:
 		# Migrate old 'currency' field if it exists
 		if current_profile.has("currency"):
 			current_profile["gems"] = current_profile["currency"]
-			current_profile.erase("currency")  # Remove old field
+			current_profile.erase("currency") # Remove old field
 			print("💎 SaveManager: Migrated 'currency' → 'gems' (%d)" % current_profile["gems"])
 		else:
 			current_profile["gems"] = 0
@@ -464,7 +466,7 @@ func add_gems(amount: int) -> void:
 		current_profile["gems"] = 0
 
 	current_profile["gems"] += amount
-	current_profile["gems"] = maxi(current_profile["gems"], 0)  # Don't go negative
+	current_profile["gems"] = maxi(current_profile["gems"], 0) # Don't go negative
 
 	print("💎 Gems: ", current_profile["gems"], " (", "+%d" % amount if amount > 0 else str(amount), ")")
 
@@ -621,7 +623,7 @@ func get_user_preference(key: String, default_value: Variant = null) -> Variant:
 # HERO LOADOUT MANAGEMENT (Diablo 2 style)
 # ============================================
 
-const MAX_LOADOUT_SLOTS: int = 3  # Build A, B, C
+const MAX_LOADOUT_SLOTS: int = 3 # Build A, B, C
 
 func save_hero_loadout(hero_id: String, slot: int, loadout_data: Dictionary) -> void:
 	"""Save a loadout preset for a hero (equipment + skills)"""
@@ -671,7 +673,7 @@ func get_hero_loadouts(hero_id: String) -> Array[Dictionary]:
 
 	for i in MAX_LOADOUT_SLOTS:
 		var loadout = load_hero_loadout(hero_id, i)
-		loadouts.append(loadout)  # Empty dict if no loadout
+		loadouts.append(loadout) # Empty dict if no loadout
 
 	return loadouts
 
@@ -955,4 +957,151 @@ func save_setting(key: String, value) -> void:
 		current_profile["settings"] = {}
 
 	current_profile["settings"][key] = value
-	mark_dirty()  # Queue auto-save
+	mark_dirty() # Queue auto-save
+
+# ============================================
+# HERO META PROGRESSION (Permanent Attributes)
+# ============================================
+# Meta progression is PERMANENT and carries between missions
+# Includes: meta_level, meta_xp, attributes (MIGHT/AGILITY/VITALITY/WISDOM), branch_choice
+
+const META_MAX_LEVEL: int = 50
+const META_FREE_STARTING_POINTS: int = 10
+const META_SOFT_CAP: int = 30
+
+func get_hero_meta_data(hero_id: String) -> Dictionary:
+	"""Get meta progression data for a hero (creates default if not exists)"""
+	if not has_current_profile():
+		return _get_default_meta_data()
+
+	if not current_profile.has("hero_meta_progression"):
+		current_profile["hero_meta_progression"] = {}
+
+	if not current_profile["hero_meta_progression"].has(hero_id):
+		current_profile["hero_meta_progression"][hero_id] = _get_default_meta_data()
+		mark_dirty()
+
+	return current_profile["hero_meta_progression"][hero_id]
+
+func _get_default_meta_data() -> Dictionary:
+	"""Default meta data for a new hero"""
+	return {
+		"meta_level": 1,
+		"meta_xp": 0,
+		"attributes": {
+			"might": 0,
+			"agility": 0,
+			"vitality": 0,
+			"wisdom": 0
+		},
+		"branch_choice": "" # "multishot" or "sniper" or "" (not chosen)
+	}
+
+func get_meta_level(hero_id: String) -> int:
+	"""Get hero's current meta level (1-50)"""
+	return get_hero_meta_data(hero_id)["meta_level"]
+
+func get_meta_xp(hero_id: String) -> int:
+	"""Get hero's current meta XP"""
+	return get_hero_meta_data(hero_id)["meta_xp"]
+
+func get_meta_xp_required(level: int) -> int:
+	"""XP needed to level up from 'level' to 'level+1'
+	Formula: 200 * level^1.3
+	Level 1→2: 200, Level 10→11: ~3,981, Level 50: ~55,107
+	"""
+	return int(200 * pow(level, 1.3))
+
+func get_meta_xp_progress(hero_id: String) -> Dictionary:
+	"""Get XP progress info for UI display"""
+	var meta = get_hero_meta_data(hero_id)
+	return {
+		"current_xp": meta["meta_xp"],
+		"required_xp": get_meta_xp_required(meta["meta_level"]),
+		"level": meta["meta_level"],
+		"is_max_level": meta["meta_level"] >= META_MAX_LEVEL
+	}
+
+
+func get_hero_attributes(hero_id: String) -> Dictionary:
+	"""Get all attribute values for a hero"""
+	return get_hero_meta_data(hero_id)["attributes"].duplicate()
+
+func get_attribute_value(hero_id: String, attribute: String) -> int:
+	"""Get a specific attribute value"""
+	var attrs = get_hero_attributes(hero_id)
+	return attrs.get(attribute, 0)
+
+func get_total_attribute_points(hero_id: String) -> int:
+	"""Get total attribute points available at current meta level"""
+	var meta_level = get_meta_level(hero_id)
+	return META_FREE_STARTING_POINTS + (meta_level - 1) # 10 free + 1 per level after 1
+
+func get_spent_attribute_points(hero_id: String) -> int:
+	"""Get total attribute points spent"""
+	var attrs = get_hero_attributes(hero_id)
+	var total = 0
+	for value in attrs.values():
+		total += value
+	return total
+
+func get_unspent_attribute_points(hero_id: String) -> int:
+	"""Get number of unspent attribute points"""
+	return get_total_attribute_points(hero_id) - get_spent_attribute_points(hero_id)
+
+func set_attribute_points(hero_id: String, might: int, agility: int, vitality: int, wisdom: int) -> bool:
+	"""Set all attribute points at once (for UI bulk allocation). Validates total doesn't exceed available."""
+	var total_requested = might + agility + vitality + wisdom
+	var total_available = get_total_attribute_points(hero_id)
+
+	if total_requested > total_available:
+		push_error("SaveManager: Requested %d points but only %d available" % [total_requested, total_available])
+		return false
+
+	if might < 0 or agility < 0 or vitality < 0 or wisdom < 0:
+		push_error("SaveManager: Attribute values cannot be negative")
+		return false
+
+	var meta = get_hero_meta_data(hero_id)
+	meta["attributes"] = {
+		"might": might,
+		"agility": agility,
+		"vitality": vitality,
+		"wisdom": wisdom
+	}
+	current_profile["hero_meta_progression"][hero_id] = meta
+	save_current_profile()
+
+	print("✅ %s attributes set: M%d A%d V%d W%d" % [hero_id, might, agility, vitality, wisdom])
+	hero_attributes_changed.emit(hero_id)
+	return true
+
+func get_branch_choice(hero_id: String) -> String:
+	"""Get the skill branch choice ('multishot', 'sniper', or '' if not chosen)"""
+	return get_hero_meta_data(hero_id)["branch_choice"]
+
+func set_branch_choice(hero_id: String, branch: String) -> bool:
+	"""Set the skill branch choice. Can only be changed if not already set (or via respec)."""
+	var meta = get_hero_meta_data(hero_id)
+
+	# Validate branch name
+	var valid_branches = ["multishot", "sniper", ""]
+	if not branch in valid_branches:
+		push_error("SaveManager: Invalid branch '%s'" % branch)
+		return false
+
+	# Check if already chosen (can unlock second at meta level 35)
+	if meta["branch_choice"] != "" and branch != "" and meta["meta_level"] < 35:
+		push_warning("SaveManager: Branch already chosen. Reach meta level 35 to unlock both.")
+		return false
+
+	meta["branch_choice"] = branch
+	current_profile["hero_meta_progression"][hero_id] = meta
+	save_current_profile()
+
+	print("🌿 %s branch choice: %s" % [hero_id, branch if branch != "" else "(none)"])
+	return true
+
+func can_unlock_second_branch(hero_id: String) -> bool:
+	"""Check if hero can unlock the second skill branch (meta level 35+)"""
+	return get_meta_level(hero_id) >= 35

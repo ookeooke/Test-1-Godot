@@ -43,6 +43,15 @@ const SCREEN_MARGIN: int = 16
 ## Offset from anchor node (px)
 const ANCHOR_OFFSET: Vector2 = Vector2(20, 20)
 
+## Hover delay before showing tooltip (industry standard: 100-200ms)
+const HOVER_DELAY: float = 0.15 # 150ms - prevents tooltip flicker during rapid mouse scanning
+
+## Timer for hover delay
+var _hover_timer: SceneTreeTimer = null
+
+## Cancellation token - incremented each show_tooltip() call to cancel outdated async operations
+var _show_request_id: int = 0
+
 
 func _ready() -> void:
 	# Set as top layer for tooltips (above all modal screens)
@@ -60,9 +69,8 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Use _unhandled_input() instead of _input() to allow GUI controls
-	# (like ItemSlot drag-drop) to handle events first
+	# (like EquipmentSlot drag-drop) to handle events first
 	# This follows the project's 4-stage input system (see INPUT_SYSTEM.md)
-
 	if not _is_visible:
 		return
 
@@ -77,7 +85,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _check_click_outside(click_pos: Vector2) -> void:
 	"""Check if click is outside tooltip bounds, hide if so."""
-	if not _tooltip_instance:
+	if not _tooltip_instance or not _anchor_node:
 		return
 
 	var tooltip_rect = Rect2(
@@ -85,7 +93,18 @@ func _check_click_outside(click_pos: Vector2) -> void:
 		_tooltip_instance.size
 	)
 
-	# If click is outside tooltip, hide it
+	# Check if click is on the anchor node (the item itself)
+	# Don't hide tooltip when clicking on the item to start dragging
+	if is_instance_valid(_anchor_node) and _anchor_node.is_inside_tree():
+		var anchor_rect = Rect2(
+			_anchor_node.global_position,
+			_anchor_node.size
+		)
+		if anchor_rect.has_point(click_pos):
+			# Click is on the item itself - don't hide tooltip (allow drag to start)
+			return
+
+	# If click is outside both tooltip and anchor, hide it
 	if not tooltip_rect.has_point(click_pos):
 		hide_tooltip()
 		# Don't consume the event - allow it to propagate for drag-drop
@@ -105,9 +124,44 @@ func show_tooltip(item: ItemInstance, anchor_node: Control, hero_id: String = ""
 	    anchor_node: Control node to position tooltip near
 	    hero_id: Hero ID for equipment comparison (empty = no comparison)
 	"""
+	# Validate inputs
 	if not item or not anchor_node:
 		push_warning("TooltipManager: Invalid item or anchor_node")
 		return
+
+	# Validate anchor node is in scene tree and visible
+	if not anchor_node.is_inside_tree() or not anchor_node.visible:
+		return
+
+	# Increment request ID to cancel any previous async show operations
+	_show_request_id += 1
+	var my_request_id = _show_request_id
+
+	# Cancel any existing hover timer (just discard reference, SceneTreeTimer will auto-complete)
+	_hover_timer = null
+
+	# Hide existing tooltip if showing (prevents competing tooltips)
+	if _is_visible:
+		hide_tooltip()
+
+	# Apply hover delay to prevent tooltip flicker during rapid mouse scanning
+	_hover_timer = get_tree().create_timer(HOVER_DELAY)
+	await _hover_timer.timeout
+	_hover_timer = null
+
+	# Check if this request was cancelled by a newer show_tooltip() call or hide_tooltip()
+	if _show_request_id != my_request_id:
+		return # Cancelled - don't show tooltip
+
+	# Revalidate anchor is still valid after delay (user might have moved mouse)
+	if not is_instance_valid(anchor_node) or not anchor_node.is_inside_tree():
+		return
+
+	# Check if mouse is still over the anchor node (prevents showing after mouse exits)
+	var mouse_pos = anchor_node.get_local_mouse_position()
+	var anchor_rect = Rect2(Vector2.ZERO, anchor_node.size)
+	if not anchor_rect.has_point(mouse_pos):
+		return # Mouse has moved away - don't show tooltip
 
 	_current_item = item
 	_anchor_node = anchor_node
@@ -129,8 +183,12 @@ func show_tooltip(item: ItemInstance, anchor_node: Control, hero_id: String = ""
 	if _tooltip_instance.has_method("set_item"):
 		_tooltip_instance.set_item(item, equipped_item)
 
-	# Position tooltip
-	_position_tooltip()
+	# Position tooltip (await to prevent race condition)
+	await _position_tooltip()
+
+	# Final cancellation check after positioning (in case hide was called during positioning)
+	if _show_request_id != my_request_id:
+		return # Cancelled - don't show tooltip
 
 	# Show with fade-in
 	_tooltip_instance.visible = true
@@ -146,6 +204,9 @@ func hide_tooltip() -> void:
 	"""Hide the tooltip with fade-out animation."""
 	if not _is_visible:
 		return
+
+	# Increment request ID to cancel any pending show_tooltip() async operations
+	_show_request_id += 1
 
 	_is_visible = false
 

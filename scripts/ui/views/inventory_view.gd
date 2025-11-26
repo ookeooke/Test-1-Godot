@@ -10,7 +10,7 @@ class_name InventoryView
 ## - ItemSprites: Render items as overlays on top (z_index=10)
 ## - See item_sprite.gd for full architecture explanation
 
-@export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
+# NOTE: item_slot_scene removed - InventoryGridSlot.new() used directly in _create_item_slots()
 @export var swap_dialog_scene: PackedScene = preload("res://scenes/ui/swap_confirmation_dialog.tscn")
 @export var total_slots: int = 64 # Total inventory capacity (8×8 grid)
 
@@ -42,8 +42,8 @@ var _loot_container_ref: InventoryContainer = null # Reference for signal cleanu
 @onready var tooltip_panel: PanelContainer = $TooltipPanel if has_node("TooltipPanel") else null
 @onready var tooltip_label: RichTextLabel = $TooltipPanel/MarginContainer/TooltipLabel if has_node("TooltipPanel/MarginContainer/TooltipLabel") else null
 
-# Item slots
-var item_slots: Array[ItemSlot] = []
+# Item slots (now InventoryGridSlot)
+var item_slots: Array = []
 
 # Swap confirmation dialog
 var swap_dialog: SwapConfirmationDialog = null
@@ -51,7 +51,7 @@ var swap_dialog: SwapConfirmationDialog = null
 # Context menu
 var context_menu: PopupMenu = null
 var context_menu_item_uuid: String = "" # Track which item the menu is for
-var context_menu_slot: ItemSlot = null
+var context_menu_slot: Control = null
 
 
 func _ready():
@@ -122,6 +122,12 @@ func set_hero_id(new_hero_id: String):
 	container_id = "" # Clear container override
 	is_loot_view = false
 
+	# 🔧 FIX: Sync existing slots with new hero_id (for drag-drop source/target lookup)
+	if inventory_grid:
+		for child in inventory_grid.get_children():
+			if child is InventoryGridSlot:
+				child.hero_id = hero_id
+
 	# Update header label for hero inventory mode
 	var header_label = $MarginContainer/VBoxContainer/HeaderLabel if has_node("MarginContainer/VBoxContainer/HeaderLabel") else null
 	if header_label:
@@ -174,21 +180,21 @@ func _create_item_slots():
 
 	for y in grid_height:
 		for x in grid_width:
-			var slot = item_slot_scene.instantiate() as ItemSlot
+			# Use lightweight InventoryGridSlot instead of full ItemSlot
+			var slot = InventoryGridSlot.new()
 			var i = y * grid_width + x
 			slot.slot_index = i
 			slot.slot_type = "inventory"
 			slot.grid_x = x
 			slot.grid_y = y
+			slot.hero_id = hero_id # Pass hero_id
 
-			# Connect signals
-			slot.item_clicked.connect(_on_item_slot_clicked)
-			slot.item_right_clicked.connect(_on_item_slot_right_clicked)
-			slot.mouse_entered.connect(_on_item_slot_hovered.bind(slot))
-			slot.mouse_exited.connect(_on_item_slot_unhovered)
+			# Note: We don't need to connect item_clicked/etc signals 
+			# because InventoryGridSlot doesn't emit them (ItemSprite does)
 
 			inventory_grid.add_child(slot)
-			item_slots.append(slot)
+			# We don't add to item_slots array anymore as it was typed as Array[ItemSlot]
+			# If we need to track them, we should change the array type or use get_children()
 
 
 func _refresh_inventory():
@@ -219,6 +225,10 @@ func _refresh_inventory():
 	if not container:
 		return
 
+	# Pass container reference to grid for collision checking during drag highlight
+	if inventory_grid:
+		inventory_grid.set_container(container)
+
 	# REFACTOR: Static Grid + Item Overlay Architecture
 	# Grid slots remain STATIC (never modified)
 	# Items are rendered as ItemSprite overlays on top of the grid
@@ -226,18 +236,19 @@ func _refresh_inventory():
 	# CRITICAL FIX: Clear old item sprites SYNCHRONOUSLY (not queue_free!)
 	# queue_free() is async - nodes aren't freed immediately, causing race conditions
 	# If user drags during refresh, they interact with "ghost" sprites queued for deletion
-	if inventory_grid and inventory_grid.item_layer:
-		for child in inventory_grid.item_layer.get_children():
+	if inventory_grid and inventory_grid.has_node("ItemLayer"):
+		for child in inventory_grid.get_node("ItemLayer").get_children():
 			child.free() # Synchronous deletion (Path of Exile / Diablo 2 style)
 
 	# Get ALL items from container
 	var all_items: Array[ItemInstance] = container.get_all_items()
 
 	# DEBUG: Log hero inventory details
-	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	print("[InventoryView] 🎒 Refreshing Gear Screen Inventory")
-	print("  Hero ID: '%s' (type: %s)" % [hero_id, typeof(hero_id)])
-	print("  Items Found: %d" % all_items.size())
+	if debug_logging:
+		print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		print("[InventoryView] 🎒 Refreshing Gear Screen Inventory")
+		print("  Hero ID: '%s' (type: %s)" % [hero_id, typeof(hero_id)])
+		print("  Items Found: %d" % all_items.size())
 
 	if debug_logging:
 		print("[InventoryView] Found %d items in inventory" % all_items.size())
@@ -256,9 +267,8 @@ func _refresh_inventory():
 
 		if pos.x == -1 or pos.y == -1:
 			filtered_count += 1
-			print("  ⚠️  FILTERED: %s (UUID: %s, no grid position)" % [item_id, uuid])
 			if debug_logging:
-				print("[InventoryView] Warning: Item not placed in grid: ", item_id)
+				print("  ⚠️  FILTERED: %s (UUID: %s, no grid position)" % [item_id, uuid])
 			continue
 
 		displayed_count += 1
@@ -279,8 +289,8 @@ func _refresh_inventory():
 		item_sprite.item_long_pressed.connect(_on_item_sprite_long_pressed)
 
 		# Add to item layer (renders on top of grid)
-		if inventory_grid and inventory_grid.item_layer:
-			inventory_grid.item_layer.add_child(item_sprite)
+		if inventory_grid and inventory_grid.has_node("ItemLayer"):
+			inventory_grid.get_node("ItemLayer").add_child(item_sprite)
 
 			if debug_logging:
 				print("[InventoryView] Created ItemSprite for '%s' at (%d, %d)" % [item_id, pos.x, pos.y])
@@ -293,19 +303,25 @@ func _refresh_inventory():
 	_update_labels()
 
 	# DEBUG: Summary
-	print("  ✅ Displayed: %d items" % displayed_count)
-	print("  ❌ Filtered: %d items (no grid position)" % filtered_count)
-	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	if debug_logging:
+		print("  ✅ Displayed: %d items" % displayed_count)
+		print("  ❌ Filtered: %d items (no grid position)" % filtered_count)
+		print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 
 ## Get slot at specific grid coordinates
-func _get_slot_at_position(x: int, y: int) -> ItemSlot:
+func _get_slot_at_position(x: int, y: int) -> Control:
 	var grid_width = InventoryManager.GRID_WIDTH
 	var index = y * grid_width + x
-
-	if index >= 0 and index < item_slots.size():
-		return item_slots[index]
-
+	
+	# If item_slots is empty (we stopped populating it in _create_item_slots),
+	# we should find the child directly from inventory_grid
+	if inventory_grid:
+		for child in inventory_grid.get_children():
+			if "grid_x" in child and "grid_y" in child:
+				if child.grid_x == x and child.grid_y == y:
+					return child
+	
 	return null
 
 
@@ -347,7 +363,7 @@ func _on_inventory_changed():
 	pass
 
 
-func _on_item_slot_clicked(_item: ItemInstance, slot: ItemSlot):
+func _on_item_slot_clicked(_item: ItemInstance, slot: Control):
 	"""Called when an item slot is left-clicked - auto-equip for mobile, Ctrl+click for PC"""
 
 	# With ItemSprite overlay, this might not be called directly for items,
@@ -385,7 +401,7 @@ func _on_item_slot_clicked(_item: ItemInstance, slot: ItemSlot):
 		pass
 
 
-func _on_item_slot_right_clicked(_item: ItemInstance, slot: ItemSlot):
+func _on_item_slot_right_clicked(_item: ItemInstance, slot: Control):
 	"""Called when an item slot is right-clicked"""
 	# Show context menu (sell, drop, etc.)
 	if slot.item_instance:
@@ -443,7 +459,7 @@ func _on_item_sprite_long_pressed(item_sprite: ItemSprite):
 	_show_item_context_menu(item_sprite.item_instance, null)
 
 
-func _show_item_context_menu(item_instance: ItemInstance, slot: ItemSlot):
+func _show_item_context_menu(item_instance: ItemInstance, slot: Control):
 	"""Show context menu for item actions"""
 	var item_data = item_instance.get_data()
 	if item_data == null:
@@ -490,7 +506,7 @@ func _show_item_context_menu(item_instance: ItemInstance, slot: ItemSlot):
 	context_menu.popup()
 
 
-func _on_item_slot_hovered(slot: ItemSlot):
+func _on_item_slot_hovered(slot: Control):
 	"""Show tooltip when hovering over item"""
 	if slot.is_empty or tooltip_panel == null or tooltip_label == null:
 		return
@@ -643,28 +659,28 @@ func _setup_sort_button():
 	# Connect signal
 	sort_button.pressed.connect(_on_sort_button_pressed)
 
-	print("[InventoryView] Sort button created and added to footer")
-
 
 func _on_sort_button_pressed():
 	"""Handle sort button press - organize inventory"""
-	print("[InventoryView] 📦 Sort button pressed")
+	if debug_logging:
+		print("[InventoryView] 📦 Sort button pressed")
 
 	# Get the hero's inventory container
 	var container = InventoryRegistry.get_container(hero_id)
 	if not container:
-		print("[InventoryView] ❌ Cannot sort: Container not found for hero '%s'" % hero_id)
+		if debug_logging:
+			print("[InventoryView] ❌ Cannot sort: Container not found for hero '%s'" % hero_id)
 		return
 
 	# Call sort_inventory() on the container
 	if container.sort_inventory():
-		print("[InventoryView] ✅ Inventory sorted successfully!")
-		# Optional: Play success sound effect here
-		# AudioManager.play_sound("ui_sort_success")
+		if debug_logging:
+			print("[InventoryView] ✅ Inventory sorted successfully!")
+		AudioManager.play("drop", 0.1) # Success sound
 	else:
-		print("[InventoryView] ❌ Sort failed (inventory may be unchanged)")
-		# Optional: Show error feedback to user
-		# show_error_tooltip("Failed to sort inventory")
+		if debug_logging:
+			print("[InventoryView] ❌ Sort failed (inventory may be unchanged)")
+		AudioManager.play("error", 0.1) # Failure sound
 
 
 func _on_context_menu_item_selected(index: int):

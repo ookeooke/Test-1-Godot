@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="HeroSkillData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/hero_skill_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+skill_id = "ranger_poison_arrow"
+skill_name = "Poison Arrow"
+description = "Fire a poison-tipped arrow that deals damage over time and slows enemies. Creates poison cloud on impact.\n\nInitial: 150-300% | DoT: 20-60/sec | Duration: {duration}s | Slow: 20-40%\nCooldown: {cooldown}s\n\nAttribute Scaling: MIGHT +10% init dmg/10pts, WISDOM +1s dur/15pts"
+skill_type = 1
+category = 3
+unlock_cost = 300
+max_upgrade_level = 5
+upgrade_costs = [300, 450, 600, 800]
+required_hero_level = 5
+required_skills = ["ranger_rapid_fire"]
+cooldown = 30.0
+duration = 4.0
+mana_cost = 0
+cast_range = 0.0
+damage_multiplier = 1.5
+melee_damage_multiplier = 1.0
+attack_speed_multiplier = 1.0
+movement_speed_multiplier = 0.8
+cooldown_reduction = 0.0
+max_health_bonus = 0.0
+range_bonus = 0.0
+armor_bonus = 0.0
+crit_chance = 0.0
+lifesteal_percent = 0.0
+dodge_chance = 0.0
+damage_multiplier_per_level = [1.5, 1.8, 2.1, 2.5, 3.0]
+cooldown_per_level = [30.0, 27.0, 24.0, 21.0, 18.0]
+duration_per_level = [4.0, 5.0, 6.0, 7.0, 8.0]
+animation_name = "poison_arrow"

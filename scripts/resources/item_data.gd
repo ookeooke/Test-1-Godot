@@ -35,7 +35,6 @@ enum EquipSlot {
 @export var base_item_name: String = "" ## Base item name without affixes (e.g., "Sword", "Ring"). If empty, uses item_name
 @export_multiline var description: String = ""
 @export var icon: Texture2D
-@export var emoji: String = "" ## Unicode emoji symbol (e.g., "🏹", "🛡️", "💍") - shown if no icon texture
 @export var item_type: ItemType = ItemType.WEAPON
 @export var rarity: Rarity = Rarity.NORMAL
 @export var equip_slot: EquipSlot = EquipSlot.NONE

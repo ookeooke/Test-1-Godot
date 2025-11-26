@@ -14,7 +14,7 @@ signal equipment_slot_clicked(slot_name: String)
 signal switch_hero_requested
 signal hero_changed(new_hero_id: String)
 
-@export var item_slot_scene: PackedScene = preload("res://scenes/ui/item_slot.tscn")
+@export var item_slot_scene: PackedScene = preload("res://scenes/ui/equipment_slot.tscn")
 @export var hero_id: String = "ranger"
 
 # Common chest mode (toggle between equipment and shared stash display)
@@ -24,7 +24,8 @@ var common_chest_mode: bool = false
 static var _saved_chest_mode_preference: bool = false
 
 # Shared stash grid references (for common chest mode)
-var stash_item_slots: Array[ItemSlot] = []
+# REFACTORED: Now uses lightweight InventoryGridSlot instead of bloated EquipmentSlot
+var stash_item_slots: Array[InventoryGridSlot] = []
 
 # Tile-based sizing constants (matching inventory grid system)
 const TILE_SIZE: int = 80 # Base size of one tile in pixels
@@ -36,13 +37,13 @@ const HAND_GRID: Vector2i = Vector2i(2, 4) # 2×4 tiles for weapons (bows, sword
 const ARMOR_GRID: Vector2i = Vector2i(2, 3) # 2×3 tiles for body armor
 const ACCESSORY_GRID: Vector2i = Vector2i(1, 1) # 1×1 tiles for rings/amulets
 
-# Equipment slots (ItemSlot instances)
-var hand_left_slot: ItemSlot
-var hand_right_slot: ItemSlot
-var helmet_slot: ItemSlot
-var armor_slot: ItemSlot
-var accessory1_slot: ItemSlot
-var accessory2_slot: ItemSlot
+# Equipment slots (EquipmentSlot instances)
+var hand_left_slot: EquipmentSlot
+var hand_right_slot: EquipmentSlot
+var helmet_slot: EquipmentSlot
+var armor_slot: EquipmentSlot
+var accessory1_slot: EquipmentSlot
+var accessory2_slot: EquipmentSlot
 
 # UI References
 @onready var hand_left_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer") else null
@@ -51,6 +52,14 @@ var accessory2_slot: ItemSlot
 @onready var armor_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer") else null
 @onready var accessory1_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container") else null
 @onready var accessory2_container: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container") else null
+
+# GridBackground references (InventoryGridContainer - for ItemSprite rendering)
+@onready var helmet_grid: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/HelmetSlot/HelmetContainer/GridBackground if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/HelmetSlot/HelmetContainer/GridBackground") else null
+@onready var hand_left_grid: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer/GridBackground if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer/GridBackground") else null
+@onready var hand_right_grid: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot/RightHandContainer/GridBackground if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot/RightHandContainer/GridBackground") else null
+@onready var armor_grid: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer/GridBackground if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer/GridBackground") else null
+@onready var accessory1_grid: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container/GridBackground if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container/GridBackground") else null
+@onready var accessory2_grid: Control = $MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container/GridBackground if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container/GridBackground") else null
 
 @onready var stats_label: Label = $MarginContainer/VBoxContainer/StatsFooter if has_node("MarginContainer/VBoxContainer/StatsFooter") else null
 
@@ -142,61 +151,73 @@ func set_hero_id(p_hero_id: String):
 func _create_equipment_slots():
 	"""Create ItemSlot instances for each equipment slot"""
 	# Left Hand slot
-	hand_left_slot = item_slot_scene.instantiate() as ItemSlot
+	hand_left_slot = item_slot_scene.instantiate() as EquipmentSlot
 	hand_left_slot.slot_type = "equipment"
 	hand_left_slot.equipment_filter = ItemData.EquipSlot.WEAPON
 	hand_left_slot.equipment_slot_name = "hand_left"
 	hand_left_slot.hero_id = hero_id
+	hand_left_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hand_left_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	hand_left_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("hand_left"))
 	if hand_left_container:
 		hand_left_container.add_child(hand_left_slot)
 
 	# Right Hand slot
-	hand_right_slot = item_slot_scene.instantiate() as ItemSlot
+	hand_right_slot = item_slot_scene.instantiate() as EquipmentSlot
 	hand_right_slot.slot_type = "equipment"
 	hand_right_slot.equipment_filter = ItemData.EquipSlot.WEAPON
 	hand_right_slot.equipment_slot_name = "hand_right"
 	hand_right_slot.hero_id = hero_id
+	hand_right_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hand_right_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	hand_right_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("hand_right"))
 	if hand_right_container:
 		hand_right_container.add_child(hand_right_slot)
 
 	# Helmet slot
-	helmet_slot = item_slot_scene.instantiate() as ItemSlot
+	helmet_slot = item_slot_scene.instantiate() as EquipmentSlot
 	helmet_slot.slot_type = "equipment"
 	helmet_slot.equipment_filter = ItemData.EquipSlot.HELMET
 	helmet_slot.equipment_slot_name = "helmet"
 	helmet_slot.hero_id = hero_id
+	helmet_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	helmet_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	helmet_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("helmet"))
 	if helmet_container:
 		helmet_container.add_child(helmet_slot)
 
 	# Armor slot
-	armor_slot = item_slot_scene.instantiate() as ItemSlot
+	armor_slot = item_slot_scene.instantiate() as EquipmentSlot
 	armor_slot.slot_type = "equipment"
 	armor_slot.equipment_filter = ItemData.EquipSlot.ARMOR
 	armor_slot.equipment_slot_name = "armor"
 	armor_slot.hero_id = hero_id
+	armor_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	armor_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	armor_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("armor"))
 	if armor_container:
 		armor_container.add_child(armor_slot)
 
 	# Accessory 1 slot
-	accessory1_slot = item_slot_scene.instantiate() as ItemSlot
+	accessory1_slot = item_slot_scene.instantiate() as EquipmentSlot
 	accessory1_slot.slot_type = "equipment"
 	accessory1_slot.equipment_filter = ItemData.EquipSlot.ACCESSORY
 	accessory1_slot.equipment_slot_name = "accessory_1"
 	accessory1_slot.hero_id = hero_id
+	accessory1_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	accessory1_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	accessory1_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("accessory_1"))
 	if accessory1_container:
 		accessory1_container.add_child(accessory1_slot)
 
 	# Accessory 2 slot
-	accessory2_slot = item_slot_scene.instantiate() as ItemSlot
+	accessory2_slot = item_slot_scene.instantiate() as EquipmentSlot
 	accessory2_slot.slot_type = "equipment"
 	accessory2_slot.equipment_filter = ItemData.EquipSlot.ACCESSORY
 	accessory2_slot.equipment_slot_name = "accessory_2"
 	accessory2_slot.hero_id = hero_id
+	accessory2_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	accessory2_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	accessory2_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("accessory_2"))
 	if accessory2_container:
 		accessory2_container.add_child(accessory2_slot)
@@ -217,33 +238,58 @@ func _setup_equipment_manager():
 
 
 func _refresh_equipment():
-	"""Refresh all equipment slots from HeroEquipmentRegistry"""
+	"""Refresh all equipment slots from HeroEquipmentRegistry
+
+	Uses Static Grid + ItemSprite Overlay architecture (Diablo 2 style):
+	- EquipmentSlot: Drop target only (no rendering)
+	- GridBackground: Draws tile texture
+	- ItemSprite: Renders item at actual size on grid's item_layer
+	"""
 	var equipped_items = HeroEquipmentRegistry.get_all_equipped_items(hero_id)
 
-	# Helper to update a slot
-	var update_slot = func(slot: ItemSlot, slot_name: String):
+	# Helper to update a slot and render item via ItemSprite
+	var update_slot = func(slot: EquipmentSlot, grid: Control, slot_name: String):
 		var content = equipped_items.get(slot_name)
-		
+
+		# Clear old ItemSprites from this grid
+		if grid and grid.has_node("ItemLayer"):
+			var item_layer = grid.get_node("ItemLayer")
+			for child in item_layer.get_children():
+				child.free()  # Synchronous deletion
+
 		if content is ItemInstance:
+			# Update slot reference (for drag-drop source tracking)
 			slot.set_item(content)
 			slot.modulate = Color.WHITE
+
+			# Create ItemSprite overlay on the grid
+			if grid and grid.has_node("ItemLayer"):
+				var item_sprite = ItemSpriteScript.new()
+				item_sprite.hero_id = hero_id
+				item_sprite.container_id = hero_id  # Equipment uses hero_id as container
+				item_sprite.set_item(content, true)  # skip_animation=true
+				item_sprite.set_grid_position(0, 0)  # Equipment items start at (0,0)
+
+				# Connect signals for click interactions
+				item_sprite.item_tapped.connect(_on_equipment_sprite_tapped.bind(slot_name))
+				item_sprite.item_long_pressed.connect(_on_equipment_sprite_long_pressed.bind(slot_name))
+
+				grid.get_node("ItemLayer").add_child(item_sprite)
+
 		elif content is String and content.begins_with("__2H_OCCUPIED__"):
-			# 2H Marker
-			# Extract actual item ID if possible, or just dim
-			# Ideally we show the ghost of the 2H weapon here
-			# For now, just clear and dim
+			# 2H Marker - slot is occupied by 2H weapon in other hand
 			slot.clear_slot()
-			slot.modulate = Color(0.5, 0.5, 0.5, 0.5) # Dimmed
+			slot.modulate = Color(0.5, 0.5, 0.5, 0.5)  # Dimmed
 		else:
 			slot.clear_slot()
 			slot.modulate = Color.WHITE
 
-	update_slot.call(hand_left_slot, "hand_left")
-	update_slot.call(hand_right_slot, "hand_right")
-	update_slot.call(helmet_slot, "helmet")
-	update_slot.call(armor_slot, "armor")
-	update_slot.call(accessory1_slot, "accessory_1")
-	update_slot.call(accessory2_slot, "accessory_2")
+	update_slot.call(hand_left_slot, hand_left_grid, "hand_left")
+	update_slot.call(hand_right_slot, hand_right_grid, "hand_right")
+	update_slot.call(helmet_slot, helmet_grid, "helmet")
+	update_slot.call(armor_slot, armor_grid, "armor")
+	update_slot.call(accessory1_slot, accessory1_grid, "accessory_1")
+	update_slot.call(accessory2_slot, accessory2_grid, "accessory_2")
 
 	# Update stats display
 	_update_stats_display()
@@ -346,8 +392,26 @@ func _on_batch_update(dirty_hero_ids: Array[String]) -> void:
 	_refresh_equipment()
 
 
-func _on_equipment_slot_right_clicked(_item: ItemInstance, _slot: ItemSlot, slot_name: String):
+func _on_equipment_slot_right_clicked(_item: ItemInstance, _slot: EquipmentSlot, slot_name: String):
 	"""Called when an equipment slot is right-clicked (unequip)"""
+	ItemTransactionService.unequip_item(hero_id, slot_name)
+
+
+func _on_equipment_sprite_tapped(item_sprite: ItemSprite, slot_name: String):
+	"""Handle ItemSprite tap on equipment slot (Ctrl+Click = unequip)"""
+	if not item_sprite or not item_sprite.item_instance:
+		return
+
+	var ctrl_held = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)
+	if ctrl_held:
+		ItemTransactionService.unequip_item(hero_id, slot_name)
+
+
+func _on_equipment_sprite_long_pressed(item_sprite: ItemSprite, slot_name: String):
+	"""Handle ItemSprite long-press on equipment slot (unequip on mobile/right-click)"""
+	if not item_sprite or not item_sprite.item_instance:
+		return
+
 	ItemTransactionService.unequip_item(hero_id, slot_name)
 
 
@@ -423,21 +487,28 @@ func _create_stash_grid_slots():
 	var grid_height = InventoryManager.GRID_HEIGHT
 
 	# Create shared stash grid slots
+	# REFACTORED: Use lightweight InventoryGridSlot instead of bloated EquipmentSlot
+	# ItemSprite handles input (item_clicked signals), not the grid slots
 	for y in grid_height:
 		for x in grid_width:
-			var slot = item_slot_scene.instantiate() as ItemSlot
+			var slot = InventoryGridSlot.new()
 			var i = y * grid_width + x
 			slot.slot_index = i
 			slot.slot_type = "inventory"
 			slot.grid_x = x
 			slot.grid_y = y
 
-			# Connect signals
-			slot.item_clicked.connect(_on_item_slot_clicked)
-			slot.item_right_clicked.connect(_on_item_slot_right_clicked)
+			# NOTE: InventoryGridSlot doesn't emit item_clicked/item_right_clicked
+			# ItemSprite handles input and signals are connected in _refresh_shared_stash()
 
 			shared_stash_grid.add_child(slot)
 			stash_item_slots.append(slot)
+
+	# Wire up stash container for drag highlight collision checking (3-state highlighting)
+	if shared_stash_grid.has_method("set_container"):
+		var stash = InventoryRegistry.get_container("stash")
+		if stash:
+			shared_stash_grid.set_container(stash)
 
 	print("[EquipmentView] Created %d shared stash slots" % stash_item_slots.size())
 
@@ -484,8 +555,8 @@ func _refresh_shared_stash():
 
 	# CRITICAL FIX: Clear old item sprites SYNCHRONOUSLY (not queue_free!)
 	# queue_free() is async - nodes aren't freed immediately, causing race conditions
-	if shared_stash_grid and shared_stash_grid.item_layer:
-		for child in shared_stash_grid.item_layer.get_children():
+	if shared_stash_grid and shared_stash_grid.has_node("ItemLayer"):
+		for child in shared_stash_grid.get_node("ItemLayer").get_children():
 			child.free() # Synchronous deletion (Path of Exile / Diablo 2 style)
 
 	# Load shared stash items
@@ -502,7 +573,8 @@ func _refresh_shared_stash():
 		# Create ItemSprite overlay
 		var item_sprite = ItemSpriteScript.new()
 		item_sprite.hero_id = "" # Empty string = shared stash
-		item_sprite.set_item(item_instance, true)  # skip_animation=true prevents mass bouncing
+		item_sprite.container_id = "stash" # 🔧 FIX: Set explicitly for drag-drop source lookup
+		item_sprite.set_item(item_instance, true) # skip_animation=true prevents mass bouncing
 		item_sprite.set_grid_position(pos.x, pos.y)
 
 		# 🔧 FIX CRITICAL: Connect ItemSprite signals for click interactions
@@ -512,8 +584,8 @@ func _refresh_shared_stash():
 		item_sprite.item_long_pressed.connect(_on_stash_sprite_long_pressed)
 
 		# Add to item layer (renders on top of grid)
-		if shared_stash_grid and shared_stash_grid.item_layer:
-			shared_stash_grid.item_layer.add_child(item_sprite)
+		if shared_stash_grid and shared_stash_grid.has_node("ItemLayer"):
+			shared_stash_grid.get_node("ItemLayer").add_child(item_sprite)
 
 	# Refresh debug grid visualization
 	if shared_stash_grid:
@@ -534,22 +606,9 @@ func _on_inventory_changed():
 		print("[EquipmentView] Common chest mode OFF - ignoring signal")
 
 
-func _on_item_slot_clicked(_item: ItemInstance, slot: ItemSlot):
-	"""Called when an item slot is clicked in common chest mode - handle Ctrl+Click transfers"""
-	var ctrl_held = Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)
-
-	if common_chest_mode and ctrl_held:
-		if slot.item_instance:
-			_quick_transfer_item(slot.item_instance, slot)
-
-
-func _on_item_slot_right_clicked(_item: ItemInstance, slot: ItemSlot):
-	"""Called when an item slot is right-clicked in common chest mode - show context menu"""
-	if common_chest_mode and slot.item_instance:
-		# For now, just trigger quick transfer on right-click as well
-		# TODO: Add context menu for more options (transfer, inspect, etc.)
-		_quick_transfer_item(slot.item_instance, slot)
-
+# NOTE: _on_item_slot_clicked and _on_item_slot_right_clicked REMOVED
+# After migration to InventoryGridSlot, ItemSprite handles input instead.
+# See _on_stash_sprite_tapped and _on_stash_sprite_long_pressed below.
 
 func _on_stash_sprite_tapped(item_sprite: ItemSprite):
 	"""🔧 FIX CRITICAL: Adapter for ItemSprite tap events in shared stash
@@ -603,7 +662,7 @@ func _quick_transfer_item_from_sprite(item_instance: ItemInstance):
 		_refresh_shared_stash()
 
 
-func _quick_transfer_item(item_instance: ItemInstance, slot: ItemSlot):
+func _quick_transfer_item(item_instance: ItemInstance, slot: EquipmentSlot):
 	"""Ctrl+Click quick transfer in common chest mode (stash → hero inventory)"""
 	if hero_id == "":
 		return

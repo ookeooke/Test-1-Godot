@@ -1,131 +1,140 @@
-[gd_scene load_steps=9 format=3 uid="uid://detc10envwuf"]
+[gd_scene load_steps=18 format=3 uid="uid://detc10envwuf"]
 
 [ext_resource type="Script" uid="uid://dhbpq6hpw151g" path="res://scenes/enemies/goblin_scout.gd" id="1_gndxd"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
+[ext_resource type="Texture2D" uid="uid://djpi0o8x7temw" path="res://assets/sprites/enemies/goblin/goblin.png" id="3_goblin_sprite"]
 
-[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_goblin"]
-size = Vector2(32, 32)
+[sub_resource type="AtlasTexture" id="AtlasTexture_q5iri"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(0, 0, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8jgap"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(130, 0, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lypu3"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(260, 0, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lu3tv"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(390, 0, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_death0"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(520, 0, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_death1"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(650, 0, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_death2"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(780, 0, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5h6ko"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(130, 128, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sfrk0"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(260, 128, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hc66d"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(390, 128, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tc7nm"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(520, 128, 130, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_02nkm"]
+atlas = ExtResource("3_goblin_sprite")
+region = Rect2(650, 128, 130, 128)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_goblin"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_q5iri")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8jgap")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lypu3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lu3tv")
+}],
+"loop": false,
+"name": &"attack",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_death0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_death1")
+}, {
+"duration": 2.0,
+"texture": SubResource("AtlasTexture_death2")
+}],
+"loop": false,
+"name": &"death",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5h6ko")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_sfrk0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hc66d")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tc7nm")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_02nkm")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 7.0
+}]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_af0go"]
 radius = 15.0
-
-[sub_resource type="Animation" id="Animation_attack"]
-resource_name = "attack"
-length = 0.4
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Sprite:scale")
-tracks/0/interp = 2
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.2, 0.4),
-"transitions": PackedFloat32Array(1, 1, 1),
-"update": 0,
-"values": [Vector2(1, 1), Vector2(1.1, 1.1), Vector2(1, 1)]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Sprite:rotation")
-tracks/1/interp = 2
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.2, 0.4),
-"transitions": PackedFloat32Array(1, 1, 1),
-"update": 0,
-"values": [0.0, 0.174533, 0.0]
-}
-
-[sub_resource type="Animation" id="Animation_hit"]
-resource_name = "hit"
-length = 0.3
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Sprite:modulate")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.1, 0.3),
-"transitions": PackedFloat32Array(1, 1, 1),
-"update": 0,
-"values": [Color(1, 1, 1, 1), Color(10, 10, 10, 1), Color(1, 1, 1, 1)]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Sprite:scale")
-tracks/1/interp = 2
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.1, 0.3),
-"transitions": PackedFloat32Array(1, 1, 1),
-"update": 0,
-"values": [Vector2(1, 1), Vector2(0.9, 0.9), Vector2(1, 1)]
-}
-
-[sub_resource type="Animation" id="Animation_idle"]
-resource_name = "idle"
-length = 2.0
-loop_mode = 1
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Sprite:position")
-tracks/0/interp = 2
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 1, 2),
-"transitions": PackedFloat32Array(1, 1, 1),
-"update": 0,
-"values": [Vector2(0, 0), Vector2(0, -2), Vector2(0, 0)]
-}
-
-[sub_resource type="AnimationLibrary" id="AnimationLibrary_goblin"]
-_data = {
-&"attack": SubResource("Animation_attack"),
-&"hit": SubResource("Animation_hit"),
-&"idle": SubResource("Animation_idle")
-}
 
 [node name="GoblinScout" type="CharacterBody2D" groups=["enemy"]]
 collision_mask = 0
 script = ExtResource("1_gndxd")
 
 [node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
+visible = false
 offset_left = -25.0
 offset_top = -5.0
 offset_right = 25.0
 offset_bottom = 0.0
 
-[node name="Sprite" type="Sprite2D" parent="."]
-modulate = Color(0.4, 0.6, 0.2, 1)
-texture_filter = 1
-texture = SubResource("PlaceholderTexture2D_goblin")
-
-[node name="Label" type="Label" parent="Sprite"]
-offset_left = -20.0
-offset_top = 18.0
-offset_right = 20.0
-offset_bottom = 32.0
-theme_override_font_sizes/font_size = 10
-text = "Goblin"
-horizontal_alignment = 1
-vertical_alignment = 1
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="."]
+scale = Vector2(0.4, 0.4)
+sprite_frames = SubResource("SpriteFrames_goblin")
+animation = &"walk"
+autoplay = "walk"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+visible = false
 shape = SubResource("CapsuleShape2D_af0go")
 
 [node name="HitPoint" type="Marker2D" parent="."]
-
-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_goblin")
-}
-autoplay = "idle"
+visible = false
 
 [node name="HitParticles" type="CPUParticles2D" parent="."]
+visible = false
 emitting = false
 one_shot = true
 explosiveness = 1.0

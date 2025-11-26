@@ -3,7 +3,17 @@
     "allow": [
       "Bash(git commit:*)",
       "Bash(\"C:\\Users\\ollil\\Downloads\\Godot_v4.5.1-stable_win64.exe (1)\" --headless --check-only --path \"c:\\Users\\ollil\\Test-1-Godot\")",
-      "Bash(cmd /c \"\"\"C:\\Users\\ollil\\Downloads\\Godot_v4.5.1-stable_win64.exe (1)\"\" --headless --check-only --path \"\"c:\\Users\\ollil\\Test-1-Godot\"\"\")"
+      "Bash(cmd /c \"\"\"C:\\Users\\ollil\\Downloads\\Godot_v4.5.1-stable_win64.exe (1)\"\" --headless --check-only --path \"\"c:\\Users\\ollil\\Test-1-Godot\"\"\")",
+      "Bash(powershell -Command \"Get-Content ''scripts/autoloads/item_transaction_service.gd'' -TotalCount 210 | Select-Object -Skip 190\")",
+      "Bash(dir /s /b *.gd.bak *.gd.tmp *item_transaction*.* 2)",
+      "Bash(nul)",
+      "Bash(findstr:*)",
+      "Bash(dir /s /b 2)",
+      "Bash(powershell -Command:*)",
+      "Bash(cmd /c:*)",
+      "Bash(git rm:*)",
+      "Bash(del \"c:\\Users\\ollil\\Test-1-Godot\\scripts\\ui\\views\\hero_progression_view.gd\")",
+      "Bash(del \"c:\\Users\\ollil\\Test-1-Godot\\scenes\\ui\\views\\hero_progression_view.tscn\")"
     ],
     "deny": [],
     "ask": []

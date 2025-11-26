@@ -5,7 +5,7 @@ extends Node
 ## Acts as the "Controller" in the MVC pattern.
 
 # Debug mode
-const DEBUG_TRANSACTIONS = true # Enable verbose transaction logging
+const DEBUG_TRANSACTIONS = false # Enable verbose transaction logging
 
 ## Move an item from one container to another
 ## Returns true if successful
@@ -185,12 +185,44 @@ func equip_item(hero_id: String, uuid: String, slot_name: String) -> bool:
 	# 1. Remove from source
 	var item = source.remove_item(uuid)
 	if not item: return false
-	
+
+	# Get item data for 2H check
+	var item_data = item.get_data()
+
+	# 🏹 2H WEAPON LOGIC: Handle two-handed weapons
+	if item_data and item_data.is_two_handed and slot_name == "hand_left":
+		# 2H weapon going to left hand - must clear right hand first
+		var right_item = HeroEquipmentRegistry.get_equipped_item(hero_id, "hand_right")
+		if right_item:
+			# Unequip right hand item to inventory first
+			if not unequip_item(hero_id, "hand_right", source_id):
+				# Can't unequip right hand - rollback
+				source.add_item(item)
+				return false
+
+	# 🏹 2H WEAPON LOGIC: If equipping to right hand, check if left has 2H
+	if slot_name == "hand_right":
+		var left_item = HeroEquipmentRegistry.get_equipped_item(hero_id, "hand_left")
+		if left_item:
+			var left_data = left_item.get_data()
+			if left_data and left_data.is_two_handed:
+				# Left hand has 2H weapon - must unequip it first
+				if not unequip_item(hero_id, "hand_left", source_id):
+					# Can't unequip 2H - rollback
+					source.add_item(item)
+					return false
+
 	# 2. Check if slot is occupied (Swap logic)
 	var current_equipped = HeroEquipmentRegistry.get_equipped_item(hero_id, slot_name)
-	
+
 	# 3. Equip new item
 	if HeroEquipmentRegistry.equip_item(hero_id, slot_name, item):
+		# 🏹 2H WEAPON: Set marker on right hand if equipping 2H to left
+		if item_data and item_data.is_two_handed and slot_name == "hand_left":
+			# Use transaction API to set string marker (equip_item only accepts ItemInstance)
+			HeroEquipmentRegistry.begin_transaction(hero_id, "2h_marker")
+			HeroEquipmentRegistry.equip_item_in_transaction("hand_right", "__2H_OCCUPIED__")
+			HeroEquipmentRegistry.commit_transaction()
 		# 4. If there was an item equipped, move it to source container (Swap)
 		if current_equipped:
 			if not source.add_item(current_equipped):
@@ -320,32 +352,51 @@ func try_atomic_swap(item_a: ItemInstance, source: InventoryContainer, target: I
 	return true
 
 ## Unequip an item from a Hero to a specific container (default: hero inventory)
-func unequip_item(hero_id: String, slot_name: String, target_id: String = "") -> bool:
+func unequip_item(hero_id: String, slot_name: String, target_id: String = "", target_x: int = -1, target_y: int = -1) -> bool:
 	if target_id == "":
 		target_id = hero_id # Default to hero's inventory
-		
+
 	var target = InventoryRegistry.get_container(target_id)
 	if not target: return false
-	
+
 	# 1. Get equipped item
 	var item = HeroEquipmentRegistry.get_equipped_item(hero_id, slot_name)
 	if not item: return false # Nothing to unequip
-	
-	# 2. Check if target has space
-	if not target.has_space_for(item):
-		print("Cannot unequip: Target inventory full")
+
+	# 2. Check if target has space (at specific position if provided, otherwise anywhere)
+	var has_space = false
+	if target_x >= 0 and target_y >= 0:
+		has_space = target.can_place_item(item, target_x, target_y)
+	else:
+		has_space = target.has_space_for(item)
+
+	if not has_space:
+		print("Cannot unequip: Target inventory full or position blocked")
 		return false
-		
+
+	# 🏹 2H WEAPON LOGIC: Check if unequipping a 2H weapon from hand_left
+	var item_data = item.get_data()
+	var is_2h_weapon = item_data and item_data.is_two_handed and slot_name == "hand_left"
+
 	# 3. Unequip (Clear slot)
 	# We use clear_slot which returns success/fail
 	# But we need to be careful not to lose the item if add fails (though we checked space)
-	
+
 	# Actually, HeroEquipmentRegistry.clear_slot just sets to null.
 	# We already have the 'item' reference.
-	
+
 	if HeroEquipmentRegistry.clear_slot(hero_id, slot_name):
-		# 4. Add to target
-		if target.add_item(item):
+		# 4. Add to target (at specific position if provided)
+		var add_success = false
+		if target_x >= 0 and target_y >= 0:
+			add_success = target.add_item_at(item, target_x, target_y)
+		else:
+			add_success = target.add_item(item)
+
+		if add_success:
+			# 🏹 2H WEAPON: Clear the __2H_OCCUPIED__ marker from hand_right
+			if is_2h_weapon:
+				HeroEquipmentRegistry.clear_slot(hero_id, "hand_right")
 			# 🔧 FIX CRITICAL: Mark save data as dirty so auto-save persists unequip operations
 			SaveManager.mark_dirty()
 			return true

@@ -6,14 +6,14 @@ class_name ItemSprite
 ##
 ## ⚠️ ARCHITECTURE NOTE:
 ## This class is used ONLY in Inventory Grids (InventoryView, EquipmentView common chest).
-## Equipment slots use ItemSlot rendering directly (see item_slot.gd MODE 1).
+## Equipment slots use EquipmentSlot rendering directly (see equipment_slot.gd MODE 1).
 ##
 ## How it works:
-## 1. ItemSlots form a STATIC grid (never modified, no item data)
+## 1. InventoryGridSlots form a STATIC grid (never modified, no item data)
 ## 2. ItemSprites render as overlays on top (z_index=10)
 ## 3. ItemSprites handle drag initiation (_get_drag_data)
 ## 4. ItemSprites validate drops (_can_drop_data)
-## 5. ItemSprites forward drop logic to ItemSlot._handle_sprite_drop()
+## 5. ItemSprites forward drop logic to InventoryGridSlot._handle_sprite_drop()
 ##
 ## This class handles:
 ## - Rendering item icon, quantity, upgrade level
@@ -24,10 +24,10 @@ class_name ItemSprite
 ## - Mobile touch input (tap/long-press)
 ##
 ## The grid slots beneath remain STATIC (never modified)
-## Drag/drop business logic delegated to ItemSlot system
+## Drag/drop business logic delegated to InventoryGridSlot/EquipmentSlot system
 
 # Debug mode
-const DEBUG_DRAG_DROP = true # Enable verbose drag-drop logging
+const DEBUG_DRAG_DROP = false # Enable verbose drag-drop logging
 
 # Item data
 var item_instance: ItemInstance = null
@@ -103,7 +103,6 @@ func _get_grid_params() -> Dictionary:
 func _on_mouse_entered():
 	"""Visual feedback when mouse enters item"""
 	if item_instance:
-		print("[ItemSprite] Mouse ENTERED - item: %s" % item_instance.item_id)
 		# Show tooltip via TooltipManager (desktop hover)
 		TooltipManager.show_tooltip(item_instance, self, "")
 
@@ -113,9 +112,6 @@ func _on_mouse_entered():
 
 func _on_mouse_exited():
 	"""Reset visual when mouse leaves item"""
-	if item_instance:
-		print("[ItemSprite] Mouse EXITED - item: %s" % item_instance.item_id)
-
 	# Hide tooltip
 	TooltipManager.hide_tooltip()
 
@@ -124,49 +120,9 @@ func _on_mouse_exited():
 
 
 func _on_gui_input(event: InputEvent):
-	"""Handle touch input for mobile support
-
-	Mobile interaction patterns:
-	- Short tap (< 0.5s): Show tooltip/item details
-	- Long press (≥ 0.5s): Show context menu
-	- Drag: Handled by _get_drag_data() (Godot's built-in system)
-	"""
-	if not item_instance:
-		return
-
-	# Handle touch events (mobile)
-	if event is InputEventScreenTouch:
-		if event.pressed:
-			# Touch started - begin long-press timer
-			touch_start_time = Time.get_ticks_msec() / 1000.0
-			is_touch_held = true
-			print("[ItemSprite] Touch started on: %s" % item_instance.item_id)
-		else:
-			# Touch ended - check if it was short tap or long press
-			if is_touch_held:
-				var hold_duration = (Time.get_ticks_msec() / 1000.0) - touch_start_time
-
-				if hold_duration >= LONG_PRESS_DURATION:
-					# Long press - show context menu
-					print("[ItemSprite] 📱 Long press detected: %s (%.2fs)" % [item_instance.item_id, hold_duration])
-					item_long_pressed.emit(self)
-				else:
-					# Short tap - show tooltip via TooltipManager
-					print("[ItemSprite] 📱 Short tap detected: %s (%.2fs)" % [item_instance.item_id, hold_duration])
-					AudioManager.play("click", 0.1)
-					item_tapped.emit(self)
-					# Show tooltip for mobile
-					if item_instance:
-						TooltipManager.show_tooltip(item_instance, self, "")
-
-				is_touch_held = false
-
-	# Handle mouse events (PC) - right-click for context menu
-	elif event is InputEventMouseButton:
-		if event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-			print("[ItemSprite] 🖱️ Right-click detected: %s" % item_instance.item_id)
-			item_long_pressed.emit(self)
-			accept_event() # Prevent click from reaching world
+	"""Handle input via unified InputDelegate"""
+	# Use unified InputDelegate
+	InputDelegate.handle_gui_input(self, event, item_instance)
 
 
 func _ready():
@@ -179,20 +135,10 @@ func _ready():
 	# ItemSlots are empty in overlay architecture - only ItemSprites have item data!
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-	print("[ItemSprite] 🔍 DEBUG: _ready() START - is_inside_tree=%s" % is_inside_tree())
-
 	# CRITICAL: Ensure size is applied (must happen after node is in tree)
 	# Force the Control to use the size we calculated in set_item()
 	if custom_minimum_size != Vector2.ZERO:
 		size = custom_minimum_size # Force size to match minimum
-		if item_instance:
-			print("[ItemSprite] _ready() forcing size to %s for item '%s'" % [size, item_instance.item_id])
-	else:
-		print("[ItemSprite] ⚠️ DEBUG: custom_minimum_size is ZERO in _ready()!")
-
-	# Debug: Check grid params now that we're in tree
-	var grid_params = _get_grid_params()
-	print("[ItemSprite] 🔍 DEBUG: _get_grid_params() in _ready() = cell_size:%s, cell_gap:%s" % [grid_params.cell_size, grid_params.cell_gap])
 
 	# CRITICAL: Set pivot offset to center for natural scaling/rotation
 	pivot_offset = size / 2
@@ -210,9 +156,6 @@ func _ready():
 	# Connect touch input for mobile support
 	if not gui_input.is_connected(_on_gui_input):
 		gui_input.connect(_on_gui_input)
-
-	# Debug: Verify mouse input is configured
-	print("[ItemSprite] _ready() complete - mouse_filter=%s, size=%s" % [mouse_filter, size])
 
 
 func _notification(what):
@@ -336,98 +279,27 @@ func update_display():
 	if not item_data:
 		return
 
-	# Set icon texture or emoji
-	if item_data.icon:
-		icon.texture = item_data.icon
-		icon.modulate = Color.WHITE
-	elif item_data.emoji != "":
-		# Create emoji label (similar to ItemSlot approach)
-		icon.texture = null
-		# TODO: Add emoji label support if needed
-	else:
-		icon.texture = null
-
-	# Set quantity label
-	if quantity_label:
-		if item_data.item_type != ItemData.ItemType.CURRENCY and item_instance.quantity > 1:
-			quantity_label.text = "×%d" % item_instance.quantity
-		else:
-			quantity_label.text = ""
-
-	# Set upgrade label
-	if upgrade_label:
-		if item_data.can_upgrade and item_instance.upgrade_level > 0:
-			upgrade_label.text = "+%d" % item_instance.upgrade_level
-		else:
-			upgrade_label.text = ""
-
-	# Set rarity border (upper-left corner indicator)
-	if rarity_border and item_data.rarity != ItemData.Rarity.NORMAL:
-		rarity_border.visible = true
-		rarity_border.modulate = item_data.get_rarity_color()
-	else:
-		if rarity_border:
-			rarity_border.visible = false
+	# Use Helper for visual setup
+	ItemVisualHelper.setup_item_visuals(self, icon, quantity_label, upgrade_label, rarity_border, item_instance)
 
 	# Tooltip handled via TooltipManager on tap (mobile) or hover (desktop)
 
 
 func _generate_tooltip() -> String:
-	"""Generate tooltip text for this item"""
-	if not item_instance:
-		return ""
-		
-	var item_data = item_instance.get_data()
-	if not item_data:
-		return ""
-
-	var tooltip = "[b]%s[/b]\n" % item_data.item_name
-	tooltip += "[color=gray]%s[/color]\n\n" % item_data.get_rarity_name()
-
-	# Add description
-	if item_data.description != "":
-		tooltip += "%s\n\n" % item_data.description
-
-	# Add stat bonuses
-	var stats_lines: Array = []
-	if item_data.damage_bonus > 0:
-		stats_lines.append("+%d Damage" % item_data.damage_bonus)
-	if item_data.range_bonus > 0:
-		stats_lines.append("+%d Range" % item_data.range_bonus)
-	if item_data.attack_speed_multiplier > 1.0:
-		var speed_percent = (item_data.attack_speed_multiplier - 1.0) * 100
-		stats_lines.append("+%d%% Attack Speed" % speed_percent)
-	if item_data.health_bonus > 0:
-		stats_lines.append("+%d Health" % item_data.health_bonus)
-	if item_data.defense_bonus > 0:
-		stats_lines.append("+%d Defense" % item_data.defense_bonus)
-
-	if not stats_lines.is_empty():
-		tooltip += "\n".join(stats_lines) + "\n"
-
-	# Add upgrade level
-	if item_instance.upgrade_level > 0:
-		tooltip += "\n[color=green]+%d Upgrade Level[/color]" % item_instance.upgrade_level
-
-	return tooltip
+	return ItemVisualHelper.generate_tooltip(item_instance)
 
 
 func animate_settle():
 	"""Visual Polish: Play a tiny 'settle' animation when item appears"""
-	# Start slightly larger
-	scale = Vector2(1.1, 1.1)
+	# Keep at normal size (no scaling effect)
+	scale = Vector2(1.0, 1.0)
 	modulate.a = 0.5 # Fade in slightly
-	
+
 	var tween = create_tween()
-	tween.set_parallel(true)
 	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_BACK) # Bouncy effect
-	
-	# Scale back to 1.0
-	tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.3)
-	
-	# Fade to full opacity
 	tween.set_trans(Tween.TRANS_LINEAR)
+
+	# Fade to full opacity (no scale animation)
 	tween.tween_property(self, "modulate:a", 1.0, 0.2)
 
 
@@ -450,31 +322,22 @@ func set_grid_position(x: int, y: int):
 
 	position = Vector2(grid_x * (cell_w + gap_w), grid_y * (cell_h + gap_h))
 
-	# Debug: Verify positioning
-	if item_instance:
-		print("[ItemSprite] Positioned '%s' at grid(%d,%d) → pos(%d,%d)" % [
-			item_instance.item_id, grid_x, grid_y,
-			int(position.x), int(position.y)
-		])
-
 
 ## Drag/Drop Implementation (ItemSprite Handles Input)
-## ItemSprites MUST handle drag/drop because ItemSlots are empty in overlay architecture
-## Only ItemSprites have item data - ItemSlots are just static grid placeholders
+## ItemSprites MUST handle drag/drop because InventoryGridSlots are empty in overlay architecture
+## Only ItemSprites have item data - InventoryGridSlots are just static grid placeholders
 
 func _get_drag_data(at_position: Vector2):
 	"""Godot drag-and-drop: Get drag data when user starts dragging"""
-	print("[ItemSprite] 🔍 DEBUG: _get_drag_data() CALLED at position %s" % at_position)
-	print("[ItemSprite] 🔍 DEBUG: mouse_filter=%s, is_inside_tree=%s" % [mouse_filter, is_inside_tree()])
-
 	if not item_instance:
-		print("[ItemSprite] ❌ DEBUG: _get_drag_data() returning NULL - no item_instance!")
 		return null
 
 	var item_data = item_instance.get_data()
 	if not item_data:
-		print("[ItemSprite] ❌ DEBUG: _get_drag_data() returning NULL - no item_data!")
 		return null
+
+	# Hide tooltip when drag starts (prevents tooltip + preview visual conflict)
+	TooltipManager.hide_tooltip()
 
 	# Calculate drag offset (where user clicked within the item)
 	# This creates a "natural grab" feel - item follows cursor from where you clicked
@@ -487,18 +350,14 @@ func _get_drag_data(at_position: Vector2):
 	preview.size = Vector2.ZERO
 
 	var preview_icon = TextureRect.new()
-	preview_icon.texture = icon.texture
-	preview_icon.size = size
 	preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	preview_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview_icon.texture = icon.texture
+	preview_icon.size = size
 	preview_icon.modulate = Color(1, 1, 1, 0.7)
 
-	# 🎮 JUICE #3: Lift Animation - Scale up on drag start (professional "pick up" feel)
-	preview_icon.scale = Vector2(0.8, 0.8) # Start small
-	var tween = create_tween()
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_BACK) # Bouncy "spring" effect
-	tween.tween_property(preview_icon, "scale", Vector2(1.1, 1.1), 0.15)
+	# Keep preview at normal size (no scaling effect)
+	preview_icon.scale = Vector2(1.0, 1.0)
 
 	# 🎮 JUICE #2: Mobile Finger Offset - Position preview above finger so user can see target
 	# Offset icon so click position stays under cursor (natural grab feel on desktop)
@@ -516,8 +375,6 @@ func _get_drag_data(at_position: Vector2):
 	# 🔊 AUDIO: Play pickup sound
 	AudioManager.play("pickup", 0.1)
 
-	print("[ItemSprite] 🎯 Drag started: %s (UUID: %s) from (%d,%d)" % [item_instance.item_id, item_instance.uuid, grid_x, grid_y])
-
 	# Calculate grab offset (which grid cell within the item was clicked?)
 	# This allows for "Anchor Point Correction" on drop
 	# Read cell_size dynamically to support flexible grid sizing
@@ -533,7 +390,7 @@ func _get_drag_data(at_position: Vector2):
 	if DEBUG_DRAG_DROP:
 		print("[ItemSprite] 🖱️ Drag started at local pos (%d, %d) -> Offset (%d, %d)" % [local_click_pos.x, local_click_pos.y, grab_offset_x, grab_offset_y])
 
-	# Return drag data (compatible with ItemSlot's expectations)
+	# Return drag data (compatible with EquipmentSlot's expectations)
 	return {
 		"uuid": item_instance.uuid, # 🆕 UUID SYSTEM: Primary identifier for item instance
 		"item_id": item_instance.item_id, # Legacy/display
@@ -552,42 +409,39 @@ func _get_drag_data(at_position: Vector2):
 	}
 
 
-func _can_drop_data(at_position: Vector2, data) -> bool:
+func _can_drop_data(_at_position: Vector2, data) -> bool:
 	"""Godot drag-and-drop: Check if drop is valid
 
 	FIX: This now properly validates drops to EMPTY slots using grid coordinates!
 	The original bug was here - it returned false for all drops, blocking empty slot placement.
 	"""
-	print("[ItemSprite] 🔍 DEBUG: _can_drop_data() CALLED at position %s" % at_position)
-
 	if not data.has("item_id"):
-		print("[ItemSprite] ❌ DEBUG: No item_id in drag data")
 		return false
 
 	# Get parent grid container for coordinate conversion
 	var grid_container = get_parent().get_parent() as InventoryGridContainer
 	if not grid_container:
-		print("[ItemSprite] ❌ No grid container found")
 		return false
 
-	print("[ItemSprite] 🔍 DEBUG: Grid container found: %s" % grid_container.name)
+	# Get item data to check dimensions
+	var dragged_item = ItemDatabase.get_item(data.item_id)
+	if not dragged_item:
+		return false
 
 	# 🔧 FIX UX: Get grab offset from drag data for anchor point correction
 	var grab_offset_x = data.get("grab_offset_x", 0)
 	var grab_offset_y = data.get("grab_offset_y", 0)
 
-	# Convert mouse position to grid coordinates (with anchor point correction)
-	var mouse_pos = get_global_mouse_position()
-	var grid_pos = grid_container.screen_to_grid(mouse_pos, Vector2i(grab_offset_x, grab_offset_y))
-	print("[ItemSprite] 🔍 DEBUG: Mouse pos: %s → Grid pos: (%d, %d) | Grab offset: (%d, %d)" % [mouse_pos, grid_pos.x, grid_pos.y, grab_offset_x, grab_offset_y])
+	# Convert mouse position to grid coordinates with smart clamping
+	# Pass item dimensions so edge drops auto-snap to valid positions (Diablo 2 / PoE style)
+	var grid_pos = grid_container.screen_to_grid(
+		get_global_mouse_position(),
+		Vector2i(grab_offset_x, grab_offset_y),
+		dragged_item.inventory_width,
+		dragged_item.inventory_height
+	)
 
-	# Get item data to check dimensions
-	var dragged_item = ItemDatabase.get_item(data.item_id)
-	if not dragged_item:
-		print("[ItemSprite] ❌ DEBUG: Item not found in database: %s" % data.item_id)
-		return false
-
-	# Validate using grid bounds
+	# Validate using grid bounds (should always pass now due to smart clamping, but check anyway)
 	if not grid_container.is_valid_grid_position(grid_pos, dragged_item.inventory_width, dragged_item.inventory_height):
 		print("[ItemSprite] ❌ Invalid grid position: (%d,%d)" % [grid_pos.x, grid_pos.y])
 		return false
@@ -688,8 +542,8 @@ func _can_drop_data(at_position: Vector2, data) -> bool:
 func _drop_data(at_position: Vector2, data):
 	"""Godot drag-and-drop: Handle drop
 
-	Forwards drop to ItemSlot system which already has comprehensive drop logic.
-	ItemSlot._handle_sprite_drop() handles all the business logic
+	Forwards drop to InventoryGridSlot/EquipmentSlot system which already has comprehensive drop logic.
+	InventoryGridSlot._handle_sprite_drop() handles all the business logic
 	"""
 	if DEBUG_DRAG_DROP:
 		print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -706,20 +560,43 @@ func _drop_data(at_position: Vector2, data):
 		print("[ItemSprite] ❌ No grid container found for drop")
 		return
 
-	# Convert mouse position to grid coordinates
-	var grid_pos = grid_container.screen_to_grid(get_global_mouse_position())
+	# Get item dimensions for smart clamping
+	var item_data = ItemDatabase.get_item(data.get("item_id", ""))
+	var item_w = item_data.inventory_width if item_data else 1
+	var item_h = item_data.inventory_height if item_data else 1
 
-	# Find ItemSlot at target grid position
+	# Get grab offset from drag data (if available)
+	var grab_offset_x = data.get("grab_offset_x", 0)
+	var grab_offset_y = data.get("grab_offset_y", 0)
+
+	# Convert mouse position to grid coordinates with smart clamping
+	var grid_pos = grid_container.screen_to_grid(
+		get_global_mouse_position(),
+		Vector2i(grab_offset_x, grab_offset_y),
+		item_w,
+		item_h
+	)
+
+	# Find InventoryGridSlot at target grid position
 	var target_slot = _find_slot_at_grid_position(grid_pos.x, grid_pos.y)
 	if not target_slot:
-		print("[ItemSprite] ❌ No ItemSlot found at grid position (%d,%d)" % [grid_pos.x, grid_pos.y])
+		print("[ItemSprite] ❌ No InventoryGridSlot found at grid position (%d,%d)" % [grid_pos.x, grid_pos.y])
 		return
 
 	# 🔊 AUDIO: Play drop sound (Play BEFORE drop logic, as self might be freed during refresh)
 	AudioManager.play("drop", 0.1)
 
-	# Forward drop to ItemSlot system (uses existing _handle_sprite_drop logic)
-	print("[ItemSprite] → Forwarding drop to ItemSlot at (%d,%d)" % [grid_pos.x, grid_pos.y])
+	# 🔧 FIX: Pass calculated grid_pos to slot (fixes coordinate mismatch bug)
+	# Slot was using its own grid_x/y instead of the calculated drop position
+	data["target_grid_x"] = grid_pos.x
+	data["target_grid_y"] = grid_pos.y
+
+	# DEBUG: Show where item actually drops (compare to green highlight)
+	grid_container.show_debug_drop_marker(grid_pos, item_w, item_h)
+
+	# Forward drop to slot system (uses existing _handle_sprite_drop logic)
+	if DEBUG_DRAG_DROP:
+		print("[ItemSprite] → Forwarding drop to slot at (%d,%d)" % [grid_pos.x, grid_pos.y])
 	target_slot._handle_sprite_drop(data)
 
 	# NOTE: Do NOT call animate_settle() here.
@@ -728,10 +605,10 @@ func _drop_data(at_position: Vector2, data):
 	# The NEW ItemSprite created by the refresh will handle its own entry animation if configured.
 
 
-func _find_slot_at_grid_position(target_x: int, target_y: int) -> ItemSlot:
-	"""Find ItemSlot at the specified grid coordinates
-
-	Searches through InventoryGridContainer children to find ItemSlot with matching grid_x/grid_y
+func _find_slot_at_grid_position(target_x: int, target_y: int) -> Control:
+	"""Find slot at the specified grid coordinates
+	
+	Searches through InventoryGridContainer children to find slot with matching grid_x/grid_y
 	"""
 	var grid_container = get_parent().get_parent() as InventoryGridContainer
 	if not grid_container:
@@ -739,12 +616,12 @@ func _find_slot_at_grid_position(target_x: int, target_y: int) -> ItemSlot:
 
 	# Search through grid container's children (not item_layer children!)
 	for child in grid_container.get_children():
-		if child is ItemSlot:
-			var slot = child as ItemSlot
-			if slot.grid_x == target_x and slot.grid_y == target_y:
-				return slot
+		# Check for grid_x/grid_y properties (duck typing to support both ItemSlot and InventoryGridSlot)
+		if "grid_x" in child and "grid_y" in child:
+			if child.grid_x == target_x and child.grid_y == target_y:
+				return child
 
-	print("[ItemSprite] ⚠️  No ItemSlot found at grid position (%d,%d)" % [target_x, target_y])
+	print("[ItemSprite] ⚠️  No slot found at grid position (%d,%d)" % [target_x, target_y])
 	return null
 
 

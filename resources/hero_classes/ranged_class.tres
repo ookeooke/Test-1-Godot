@@ -1,6 +1,11 @@
-[gd_resource type="Resource" script_class="HeroClassConfig" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="HeroClassConfig" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/hero_class_config.gd" id="1_ranged_class"]
+[ext_resource type="Resource" path="res://resources/skills/ranger/eagle_eye.tres" id="2_eagle_eye"]
+[ext_resource type="Resource" path="res://resources/skills/ranger/rapid_fire.tres" id="3_rapid_fire"]
+[ext_resource type="Resource" path="res://resources/skills/ranger/poison_arrow.tres" id="4_poison_arrow"]
+[ext_resource type="Resource" path="res://resources/skills/ranger/multishot.tres" id="5_multishot"]
+[ext_resource type="Resource" path="res://resources/skills/ranger/sniper_shot.tres" id="6_sniper_shot"]
 
 [resource]
 script = ExtResource("1_ranged_class")
@@ -18,5 +23,9 @@ base_defense_multiplier = 0.8
 health_per_level = 15.0
 damage_per_level = 2.5
 defense_per_level = 0.5
-available_skill_pool = []
+might_scaling = 1.0
+agility_scaling = 1.3
+vitality_scaling = 0.9
+wisdom_scaling = 1.0
+available_skill_pool = [ExtResource("2_eagle_eye"), ExtResource("3_rapid_fire"), ExtResource("4_poison_arrow"), ExtResource("5_multishot"), ExtResource("6_sniper_shot")]
 class_color = Color(0.2, 0.8, 0.2, 1)

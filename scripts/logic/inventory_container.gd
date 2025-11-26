@@ -11,6 +11,9 @@ signal item_added(uuid: String, item_id: String)
 signal item_removed(uuid: String, item_id: String)
 signal size_changed(width: int, height: int)
 
+# Debug mode
+const DEBUG_SORT = false # Enable verbose logging for sort operations
+
 # Configuration
 var width: int = 8
 var height: int = 8
@@ -97,7 +100,8 @@ func move_item(uuid: String, to_x: int, to_y: int) -> bool:
 			_place_on_grid(item, nudged_pos.x, nudged_pos.y)
 			content_changed.emit()
 			# User feedback: Item was adjusted to nearby position
-			print("[InventoryContainer] 🧲 Smart Nudge: Item snapped to nearby position (%d, %d)" % [nudged_pos.x, nudged_pos.y])
+			if DEBUG_SORT:
+				print("[InventoryContainer] 🧲 Smart Nudge: Item snapped to nearby position (%d, %d)" % [nudged_pos.x, nudged_pos.y])
 			return true # ✅ Nudge succeeded
 
 		# Rollback: Put back at old position
@@ -427,13 +431,15 @@ func debug_check_position(item: ItemInstance, x: int, y: int):
 ## Optimizes for: Large items first, then by category, rarity, and name
 ## Uses rollback if any item fails to fit (should never happen unless grid changed)
 func sort_inventory() -> bool:
-	print("[InventoryContainer] 📦 Starting Auto-Sort for '%s'..." % container_id)
+	if DEBUG_SORT:
+		print("[InventoryContainer] 📦 Starting Auto-Sort for '%s'..." % container_id)
 
 	# 1. Collect all items (keep in _items dict for now)
 	var all_items = get_all_items()
 
 	if all_items.is_empty():
-		print("[InventoryContainer] ⚠️ No items to sort")
+		if DEBUG_SORT:
+			print("[InventoryContainer] ⚠️ No items to sort")
 		return true # Success (nothing to do)
 
 	# 2. Sort items by priority (largest first, then by category, rarity, name)
@@ -482,7 +488,8 @@ func sort_inventory() -> bool:
 
 	# 6. Handle failures (rollback if ANY item failed)
 	if not failed_items.is_empty():
-		print("[InventoryContainer] ❌ ROLLBACK: %d items failed to fit - restoring original state" % failed_items.size())
+		if DEBUG_SORT:
+			print("[InventoryContainer] ❌ ROLLBACK: %d items failed to fit - restoring original state" % failed_items.size())
 
 		# Restore original grid state (defensive programming)
 		_grid = backup_grid
@@ -495,7 +502,8 @@ func sort_inventory() -> bool:
 		return false # Sort failed
 
 	# 7. Success!
-	print("[InventoryContainer] ✅ Auto-Sort complete: %d items organized" % all_items.size())
+	if DEBUG_SORT:
+		print("[InventoryContainer] ✅ Auto-Sort complete: %d items organized" % all_items.size())
 	content_changed.emit()
 	return true
 

@@ -29,6 +29,15 @@ extends Resource
 @export var damage_per_level: float = 2.0  ## How much damage gained per level
 @export var defense_per_level: float = 1.0  ## How much defense gained per level
 
+# Attribute Scaling Multipliers (for Hero Progression System)
+# Each class benefits differently from attributes
+# Default 1.0x = normal, higher = better scaling, lower = diminished
+@export_group("Attribute Scaling")
+@export var might_scaling: float = 1.0  ## MELEE: 1.4, RANGED: 1.0, MAGIC: 0.6, SUPPORT: 0.8
+@export var agility_scaling: float = 1.0  ## MELEE: 0.8, RANGED: 1.3, MAGIC: 1.0, SUPPORT: 0.8
+@export var vitality_scaling: float = 1.0  ## MELEE: 1.2, RANGED: 0.9, MAGIC: 0.8, SUPPORT: 1.2
+@export var wisdom_scaling: float = 1.0  ## MELEE: 0.6, RANGED: 1.0, MAGIC: 1.5, SUPPORT: 1.2
+
 # Skill Pool (All skills available to this class)
 @export_group("Skills")
 @export var available_skill_pool: Array[HeroSkillData] = []  ## Pool of skills this class can learn
@@ -80,3 +89,47 @@ func get_stat_multiplier(stat_name: String) -> float:
 ## Get recommended starting health for a hero of this class
 func get_recommended_health() -> int:
 	return (base_health_range.x + base_health_range.y) / 2
+
+
+## Get attribute scaling multiplier for a specific attribute
+func get_attribute_scaling(attribute: String) -> float:
+	match attribute.to_lower():
+		"might":
+			return might_scaling
+		"agility":
+			return agility_scaling
+		"vitality":
+			return vitality_scaling
+		"wisdom":
+			return wisdom_scaling
+		_:
+			return 1.0
+
+
+## Get all attribute scaling values as a dictionary
+func get_all_attribute_scaling() -> Dictionary:
+	return {
+		"might": might_scaling,
+		"agility": agility_scaling,
+		"vitality": vitality_scaling,
+		"wisdom": wisdom_scaling
+	}
+
+
+## Calculate scaled attribute bonus (applies class multiplier)
+## attribute_points: Number of points in the attribute
+## base_bonus_per_point: The base bonus per point (before class scaling)
+## soft_cap: Point threshold where diminishing returns begin (default 30)
+func calculate_scaled_attribute_bonus(attribute: String, attribute_points: int, base_bonus_per_point: float, soft_cap: int = 30) -> float:
+	var scaling = get_attribute_scaling(attribute)
+
+	# Apply soft cap (50% effectiveness after cap)
+	var effective_bonus: float
+	if attribute_points <= soft_cap:
+		effective_bonus = attribute_points * base_bonus_per_point
+	else:
+		var over = attribute_points - soft_cap
+		effective_bonus = (soft_cap * base_bonus_per_point) + (over * base_bonus_per_point * 0.5)
+
+	# Apply class scaling
+	return effective_bonus * scaling

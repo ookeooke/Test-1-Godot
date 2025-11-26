@@ -534,6 +534,53 @@ Simple tower defense game doesn't need event bus complexity. Enemy dies → `cam
 4. ❌ NEVER create separate mobile and PC codebases - unified dual input only
 5. ❌ NEVER use separate inventories per category - single `get_all_items()`
 
+### Inventory Grid Architecture (Diablo 2 / Path of Exile Style)
+
+**Pattern:** Static Grid + ItemSprite Overlay
+- `ItemSlot` nodes form a STATIC 8×8 grid (never modified, no item data)
+- `ItemSprite` nodes render items as overlays on top (z_index=10)
+- Items can span multiple cells (e.g., 2×4 armor, 1×2 weapons)
+
+**Key Components:**
+| Component | File | Role |
+|-----------|------|------|
+| `InventoryContainer` | `scripts/logic/inventory_container.gd` | Tetris logic, grid state, UUID tracking |
+| `InventoryGridContainer` | `scripts/ui/inventory_grid_container.gd` | Visual grid, drag highlighting, coordinate conversion |
+| `ItemSprite` | `scripts/ui/item_sprite.gd` | Item rendering, drag initiation, tooltip |
+| `ItemSlot` | `scripts/ui/item_slot.gd` | Static grid cell, drop handling |
+| `InventoryRegistry` | `scripts/autoloads/inventory_registry.gd` | Container lookup by ID |
+| `ItemTransactionService` | `scripts/autoloads/item_transaction_service.gd` | Move/equip/swap operations |
+
+### Professional UX Features
+
+#### Real-Time Drag Highlighting
+- Green overlay shows valid drop positions during drag
+- Updates every frame via `_process()` + `NOTIFICATION_DRAG_BEGIN/END`
+- File: `inventory_grid_container.gd:58-107`
+
+#### Smart Edge Clamping
+- `screen_to_grid()` clamps coordinates considering item dimensions
+- Prevents multi-cell items from extending outside grid
+- Creates "magnetic snap to edge" feel (Diablo 2 style)
+- File: `inventory_grid_container.gd:203-246`
+
+#### Auto-Sort with Audio
+- Greedy bin-packing: largest items first
+- Priority: Size > Category > Rarity > Name
+- Rollback safety if sort fails
+- Audio feedback on success/failure
+- File: `inventory_container.gd:429-502`
+
+### Debug Flags (All default to `false`)
+
+| Flag | File | Purpose |
+|------|------|---------|
+| `DEBUG_TRANSACTIONS` | `item_transaction_service.gd` | Move/equip operation logging |
+| `DEBUG_DRAG_DROP` | `item_sprite.gd`, `item_slot.gd` | Drag-drop event logging |
+| `DEBUG_LOGGING` | `inventory_grid_container.gd` | Grid resize/gap drop logging |
+| `DEBUG_SORT` | `inventory_container.gd` | Sort operation logging |
+| `debug_logging` | `inventory_view.gd` | Inventory refresh logging (F3 toggle) |
+
 ### File Locations
 ```
 scenes/ui/
@@ -546,14 +593,21 @@ scenes/ui/
 scripts/ui/
   ├── dual_panel_screen.gd         # Responsive logic
   ├── flexible_panel.gd            # Single view loader
-  ├── item_slot.gd                 # Dual input, tooltips, drag-drop
+  ├── inventory_grid_container.gd  # Grid layout, drag highlighting
+  ├── item_slot.gd                 # Static grid cell, drop handling
+  ├── item_sprite.gd               # Item overlay rendering, drag initiation
   └── views/
       ├── equipment_view.gd        # Equipment display, stats
-      └── inventory_view.gd        # Unified inventory, auto-equip
+      └── inventory_view.gd        # Unified inventory, sort button
+
+scripts/logic/
+  └── inventory_container.gd       # Tetris grid logic (RefCounted)
 
 scripts/autoloads/
   ├── inventory_manager.gd         # Global inventory storage
+  ├── inventory_registry.gd        # Container lookup by ID
   ├── item_database.gd             # Item definitions
+  ├── item_transaction_service.gd  # Item movement controller
   └── hero_database.gd             # Hero definitions
 ```
 

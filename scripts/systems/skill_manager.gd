@@ -314,13 +314,21 @@ func recalculate_all_passives():
 			_apply_passive_skill(skill_id, skill_data, upgrade_level)
 
 func _get_total_cooldown_reduction() -> float:
-	"""Calculate total cooldown reduction from all passive skills"""
+	"""Calculate total cooldown reduction from all sources:
+	1. Passive skills (cooldown_reduction property)
+	2. WISDOM attribute bonus (from hero's _attribute_cdr_bonus)
+	"""
 	var total_reduction = 0.0
 
+	# CDR from passive skills
 	for skill_id in owned_skills.keys():
 		var skill_data = get_skill_data(skill_id)
 		if skill_data and skill_data.skill_type == HeroSkillData.SkillType.PASSIVE:
 			total_reduction += skill_data.cooldown_reduction
+
+	# CDR from WISDOM attribute (if hero has it)
+	if hero and "_attribute_cdr_bonus" in hero:
+		total_reduction += hero._attribute_cdr_bonus
 
 	return min(total_reduction, 0.8)  # Cap at 80% reduction
 

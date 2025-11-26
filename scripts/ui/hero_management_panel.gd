@@ -6,19 +6,22 @@ class_name HeroManagementPanel
 ## ============================================
 ##
 ## Accessible from world map, allows players to:
-## - View hero stats
+## - View hero meta level and XP progress
+## - Allocate attribute points (MIGHT/AGILITY/VITALITY/WISDOM)
 ## - Unlock and upgrade skills
 ## - Spend currency earned from completing levels
 
 signal skill_purchased(hero_id: String, skill_id: String)
 signal skill_upgraded(hero_id: String, skill_id: String)
+signal attribute_spent(hero_id: String, attribute: String)
 signal closed()
 
 # ============================================
 # EXPORTS
 # ============================================
 
-@export var hero_id: String = "ranger"  # Which hero this panel manages
+@export var hero_id: String = "ranger" # Which hero this panel manages
+@export var class_type: int = 1 # HeroClassConfig type (1 = Ranged)
 
 # ============================================
 # UI REFERENCES
@@ -32,6 +35,23 @@ signal closed()
 @onready var stats_label: Label = $Panel/VBox/HeroInfo/VBox/StatsLabel
 @onready var currency_label: Label = $Panel/VBox/TitleBar/CurrencyLabel
 
+# Meta Level UI
+@onready var meta_level_label: Label = $Panel/VBox/MetaLevelSection/MetaLevelLabel
+@onready var xp_progress_bar: ProgressBar = $Panel/VBox/MetaLevelSection/XPProgressBar
+@onready var xp_label: Label = $Panel/VBox/MetaLevelSection/XPLabel
+
+# Attribute UI
+@onready var attribute_title_label: Label = $Panel/VBox/AttributeSection/AttributeTitle
+@onready var might_value: Label = $Panel/VBox/AttributeSection/AttributeGrid/MightValue
+@onready var might_plus: Button = $Panel/VBox/AttributeSection/AttributeGrid/MightPlus
+@onready var agility_value: Label = $Panel/VBox/AttributeSection/AttributeGrid/AgilityValue
+@onready var agility_plus: Button = $Panel/VBox/AttributeSection/AttributeGrid/AgilityPlus
+@onready var vitality_value: Label = $Panel/VBox/AttributeSection/AttributeGrid/VitalityValue
+@onready var vitality_plus: Button = $Panel/VBox/AttributeSection/AttributeGrid/VitalityPlus
+@onready var wisdom_value: Label = $Panel/VBox/AttributeSection/AttributeGrid/WisdomValue
+@onready var wisdom_plus: Button = $Panel/VBox/AttributeSection/AttributeGrid/WisdomPlus
+@onready var respec_button: Button = $Panel/VBox/AttributeSection/RespecButton
+
 # Skill sections
 @onready var active_skills_container: VBoxContainer = $Panel/VBox/ScrollContainer/SkillsVBox/ActiveSkillsSection/SkillsContainer
 @onready var passive_skills_container: VBoxContainer = $Panel/VBox/ScrollContainer/SkillsVBox/PassiveSkillsSection/SkillsContainer
@@ -40,8 +60,9 @@ signal closed()
 # DATA
 # ============================================
 
-var available_skills: Array[HeroSkillData] = []  # All skills for this hero
+var available_skills: Array[HeroSkillData] = [] # All skills for this hero
 var current_currency: int = 0
+var current_class_config: HeroClassConfig = null
 
 # ============================================
 # INITIALIZATION
@@ -61,15 +82,53 @@ func _ready():
 		# Overlay mode - hide and wait for open_panel() call
 		hide()
 
-func _initialize_standalone():
-	"""Initialize panel in standalone mode with default skills"""
-	var ranger_skills = _load_ranger_skills()
-	open_panel("ranger", ranger_skills)
+	# Connect attribute buttons
+	_connect_attribute_buttons()
 
-func open_panel(p_hero_id: String, skills: Array[HeroSkillData]):
+func _connect_attribute_buttons():
+	if might_plus:
+		might_plus.pressed.connect(_on_attribute_plus.bind("might"))
+	if agility_plus:
+		agility_plus.pressed.connect(_on_attribute_plus.bind("agility"))
+	if vitality_plus:
+		vitality_plus.pressed.connect(_on_attribute_plus.bind("vitality"))
+	if wisdom_plus:
+		wisdom_plus.pressed.connect(_on_attribute_plus.bind("wisdom"))
+	if respec_button:
+		respec_button.pressed.connect(_on_respec_pressed)
+
+func _initialize_standalone():
+	"""Initialize panel in standalone mode with skills from class config"""
+	_load_class_skills()
+	open_panel(hero_id, available_skills)
+
+func _load_class_skills():
+	"""Load skills from HeroClassDatabase instead of hardcoded values"""
+	if HeroClassDatabase:
+		current_class_config = HeroClassDatabase.get_class_config(class_type)
+		if current_class_config and current_class_config.available_skill_pool.size() > 0:
+			available_skills = current_class_config.available_skill_pool
+			print("[HeroPanel] Loaded %d skills from HeroClassDatabase" % available_skills.size())
+			return
+
+	# Fallback to hardcoded skills if database not available
+	print("[HeroPanel] HeroClassDatabase not available, using fallback skills")
+	available_skills = _load_ranger_skills_fallback()
+
+func open_panel(p_hero_id: String, skills: Array[HeroSkillData] = []):
 	"""Open the panel with hero data"""
+	# SAFETY CHECK: Ensure we have an active profile
+	if not SaveManager.has_current_profile():
+		push_error("[HeroPanel] Cannot open - no active profile loaded")
+		return
+
 	hero_id = p_hero_id
-	available_skills = skills
+
+	# Use provided skills or load from class config
+	if skills.is_empty():
+		_load_class_skills()
+	else:
+		available_skills = skills
 
 	# Update currency
 	current_currency = SaveManager.get_gems()
@@ -79,10 +138,10 @@ func open_panel(p_hero_id: String, skills: Array[HeroSkillData]):
 
 	# Show panel
 	show()
-	print("📋 HeroManagementPanel opened for: ", hero_id)
+	print("[HeroPanel] Opened for: ", hero_id)
 
-func _load_ranger_skills() -> Array[HeroSkillData]:
-	"""Load all available skills for the ranger hero"""
+func _load_ranger_skills_fallback() -> Array[HeroSkillData]:
+	"""Fallback hardcoded skills if HeroClassDatabase unavailable"""
 	var skills: Array[HeroSkillData] = []
 
 	# ACTIVE SKILL 1: Rapid Fire
@@ -97,19 +156,6 @@ func _load_ranger_skills() -> Array[HeroSkillData]:
 	rapid_fire.cooldown = 30.0
 	skills.append(rapid_fire)
 
-	# ACTIVE SKILL 2: Power Shot
-	var power_shot = HeroSkillData.new()
-	power_shot.skill_id = "power_shot"
-	power_shot.skill_name = "Power Shot"
-	power_shot.description = "Charge up a powerful shot that deals 300% damage and pierces enemies"
-	power_shot.skill_type = HeroSkillData.SkillType.ACTIVE
-	power_shot.unlock_cost = 150
-	power_shot.max_upgrade_level = 3
-	power_shot.upgrade_costs.assign([75, 150])
-	power_shot.cooldown = 45.0
-	power_shot.damage_multiplier = 3.0
-	skills.append(power_shot)
-
 	# PASSIVE SKILL 1: Eagle Eye
 	var eagle_eye = HeroSkillData.new()
 	eagle_eye.skill_id = "eagle_eye"
@@ -122,31 +168,6 @@ func _load_ranger_skills() -> Array[HeroSkillData]:
 	eagle_eye.range_bonus = 60.0
 	skills.append(eagle_eye)
 
-	# PASSIVE SKILL 2: Critical Strike
-	var crit_strike = HeroSkillData.new()
-	crit_strike.skill_id = "critical_strike"
-	crit_strike.skill_name = "Critical Strike"
-	crit_strike.description = "+5% critical hit chance per level (double damage)"
-	crit_strike.skill_type = HeroSkillData.SkillType.PASSIVE
-	crit_strike.unlock_cost = 120
-	crit_strike.max_upgrade_level = 5
-	crit_strike.upgrade_costs.assign([60, 120, 180, 240])
-	crit_strike.crit_chance = 0.05
-	skills.append(crit_strike)
-
-	# PASSIVE SKILL 3: Attack Speed
-	var attack_speed = HeroSkillData.new()
-	attack_speed.skill_id = "attack_speed"
-	attack_speed.skill_name = "Quick Draw"
-	attack_speed.description = "+10% attack speed per level"
-	attack_speed.skill_type = HeroSkillData.SkillType.PASSIVE
-	attack_speed.unlock_cost = 100
-	attack_speed.max_upgrade_level = 4
-	attack_speed.upgrade_costs.assign([50, 100, 150])
-	attack_speed.attack_speed_multiplier = 1.1
-	skills.append(attack_speed)
-
-	print("✅ Loaded %d skills for Ranger" % skills.size())
 	return skills
 
 func _refresh_display():
@@ -157,7 +178,13 @@ func _refresh_display():
 
 	# Update currency
 	if currency_label:
-		currency_label.text = "💰 " + str(current_currency)
+		currency_label.text = str(current_currency) + " Gems"
+
+	# Update meta level display
+	_update_meta_level_display()
+
+	# Update attributes display
+	_update_attributes_display()
 
 	# Update hero info
 	_update_hero_info()
@@ -166,16 +193,110 @@ func _refresh_display():
 	_update_skill_list(active_skills_container, HeroSkillData.SkillType.ACTIVE)
 	_update_skill_list(passive_skills_container, HeroSkillData.SkillType.PASSIVE)
 
+# ============================================
+# META LEVEL DISPLAY
+# ============================================
+
+func _update_meta_level_display():
+	"""Update meta level and XP progress bar"""
+	var progress = SaveManager.get_meta_xp_progress(hero_id)
+
+	if meta_level_label:
+		meta_level_label.text = "Meta Level %d" % progress["level"]
+		if progress["is_max_level"]:
+			meta_level_label.text += " (MAX)"
+
+	if xp_progress_bar:
+		if progress["is_max_level"]:
+			xp_progress_bar.value = 100
+			xp_progress_bar.max_value = 100
+		else:
+			xp_progress_bar.max_value = progress["required_xp"]
+			xp_progress_bar.value = progress["current_xp"]
+
+	if xp_label:
+		if progress["is_max_level"]:
+			xp_label.text = "MAX LEVEL"
+		else:
+			xp_label.text = "%d / %d XP" % [progress["current_xp"], progress["required_xp"]]
+
+# ============================================
+# ATTRIBUTE DISPLAY
+# ============================================
+
+func _update_attributes_display():
+	"""Update attribute values and buttons"""
+	var attrs = SaveManager.get_hero_attributes(hero_id)
+	var unspent = SaveManager.get_unspent_attribute_points(hero_id)
+
+	# Update title with available points
+	if attribute_title_label:
+		attribute_title_label.text = "ATTRIBUTES (%d points available)" % unspent
+		if unspent > 0:
+			attribute_title_label.add_theme_color_override("font_color", Color.GOLD)
+		else:
+			attribute_title_label.remove_theme_color_override("font_color")
+
+	# Update attribute values
+	if might_value:
+		might_value.text = str(attrs.get("might", 0))
+	if agility_value:
+		agility_value.text = str(attrs.get("agility", 0))
+	if vitality_value:
+		vitality_value.text = str(attrs.get("vitality", 0))
+	if wisdom_value:
+		wisdom_value.text = str(attrs.get("wisdom", 0))
+
+	# Enable/disable plus buttons based on available points
+	var can_spend = unspent > 0
+	if might_plus:
+		might_plus.disabled = not can_spend
+	if agility_plus:
+		agility_plus.disabled = not can_spend
+	if vitality_plus:
+		vitality_plus.disabled = not can_spend
+	if wisdom_plus:
+		wisdom_plus.disabled = not can_spend
+
+	# Update respec button
+	_update_respec_button()
+
+func _update_respec_button():
+	"""Update respec button text and enabled state"""
+	if not respec_button:
+		return
+
+	var meta_level = SaveManager.get_meta_level(hero_id)
+	var spent = SaveManager.get_spent_attribute_points(hero_id)
+
+	if meta_level < 10:
+		respec_button.text = "Respec (Free)"
+		respec_button.disabled = spent == 0
+	else:
+		respec_button.text = "Respec (Free)" # Always free now
+		respec_button.disabled = spent == 0
+
 func _update_hero_info():
 	"""Update hero portrait and stats"""
-	# TODO: Get actual hero stats from save data or hero definition
 	if hero_name_label:
 		hero_name_label.text = hero_id.capitalize()
 
 	if stats_label:
-		# For now, show placeholder stats
-		# In full implementation, load from HeroData resource
-		stats_label.text = "Level: 1\nHealth: 200\nDamage: 25\nRange: 300"
+		# Show computed stats based on attributes
+		var attrs = SaveManager.get_hero_attributes(hero_id)
+		var base_hp = 200
+		var base_dmg = 25
+
+		# Apply attribute bonuses (simplified display)
+		var hp_bonus = attrs.get("might", 0) * 5 + attrs.get("vitality", 0) * 10
+		var dmg_bonus = attrs.get("might", 0) * 2
+		var as_bonus = attrs.get("agility", 0) * 0.5
+
+		stats_label.text = "HP: %d  |  DMG: %d  |  AS: +%.0f%%" % [
+			base_hp + hp_bonus,
+			base_dmg + dmg_bonus,
+			as_bonus
+		]
 
 	if hero_portrait:
 		# Set color based on hero type
@@ -194,38 +315,35 @@ func _update_skill_list(container: VBoxContainer, skill_type: HeroSkillData.Skil
 	for child in container.get_children():
 		child.queue_free()
 
-	# Filter skills by type
-	var filtered_skills = available_skills.filter(func(skill): return skill.skill_type == skill_type)
+	# Handle empty skill pool gracefully
+	if available_skills.is_empty():
+		var empty_label = Label.new()
+		empty_label.text = "No skills available for this class"
+		empty_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		container.add_child(empty_label)
+		return
+
+	# Filter skills by type (with null check)
+	var filtered_skills = available_skills.filter(func(skill): return skill != null and skill.skill_type == skill_type)
 
 	# Create skill rows
 	for skill_data in filtered_skills:
+		if skill_data == null:
+			continue
 		var skill_row = _create_skill_row(skill_data)
-		container.add_child(skill_row)
+		if skill_row:
+			container.add_child(skill_row)
 
 func _create_skill_row(skill_data: HeroSkillData) -> Control:
 	"""Create a row UI for a single skill"""
 	var row = HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0, 60)
+	row.custom_minimum_size = Vector2(0, 50)
 
-	# Icon
-	var icon = TextureRect.new()
-	icon.custom_minimum_size = Vector2(50, 50)
-	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-
-	if skill_data.icon:
-		icon.texture = skill_data.icon
-	else:
-		# Placeholder colored rectangle
-		var placeholder = ColorRect.new()
-		placeholder.custom_minimum_size = Vector2(50, 50)
-		placeholder.color = Color(0.3, 0.5, 0.7)
-		row.add_child(placeholder)
-		icon.queue_free()
-		icon = null
-
-	if icon:
-		row.add_child(icon)
+	# Icon placeholder
+	var placeholder = ColorRect.new()
+	placeholder.custom_minimum_size = Vector2(40, 40)
+	placeholder.color = Color(0.3, 0.5, 0.7) if skill_data.skill_type == HeroSkillData.SkillType.ACTIVE else Color(0.5, 0.7, 0.3)
+	row.add_child(placeholder)
 
 	# Info section
 	var info_vbox = VBoxContainer.new()
@@ -233,13 +351,13 @@ func _create_skill_row(skill_data: HeroSkillData) -> Control:
 
 	var name_label = Label.new()
 	name_label.text = skill_data.skill_name
-	name_label.add_theme_font_size_override("font_size", 16)
+	name_label.add_theme_font_size_override("font_size", 14)
 	info_vbox.add_child(name_label)
 
 	var desc_label = Label.new()
 	desc_label.text = skill_data.description
-	desc_label.add_theme_font_size_override("font_size", 12)
-	desc_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+	desc_label.add_theme_font_size_override("font_size", 11)
+	desc_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	desc_label.custom_minimum_size = Vector2(200, 0)
 	info_vbox.add_child(desc_label)
@@ -253,17 +371,28 @@ func _create_skill_row(skill_data: HeroSkillData) -> Control:
 	var skill_level = SaveManager.get_hero_skill_level(hero_id, skill_data.skill_id)
 	var is_owned = skill_level > 0
 
+	# Check meta level requirement
+	var meta_level = SaveManager.get_meta_level(hero_id)
+	var meets_level_req = meta_level >= skill_data.required_hero_level
+
 	if not is_owned:
 		# Show unlock button
 		var unlock_button = Button.new()
-		unlock_button.text = "Unlock: " + str(skill_data.unlock_cost) + " 💰"
-		unlock_button.custom_minimum_size = Vector2(120, 30)
+		unlock_button.custom_minimum_size = Vector2(100, 28)
 
-		# Check if player can afford
-		if current_currency >= skill_data.unlock_cost:
-			unlock_button.disabled = false
+		if skill_data.unlock_cost == 0:
+			unlock_button.text = "Unlock Free"
 		else:
-			unlock_button.disabled = true
+			unlock_button.text = "Unlock: %d" % skill_data.unlock_cost
+
+		# Check requirements
+		var can_unlock = meets_level_req and current_currency >= skill_data.unlock_cost
+		unlock_button.disabled = not can_unlock
+
+		if not meets_level_req:
+			unlock_button.text = "Lv %d Req" % skill_data.required_hero_level
+			unlock_button.modulate = Color(0.5, 0.5, 0.5)
+		elif not can_unlock:
 			unlock_button.modulate = Color(0.6, 0.6, 0.6)
 
 		unlock_button.pressed.connect(_on_unlock_skill_pressed.bind(skill_data))
@@ -271,15 +400,16 @@ func _create_skill_row(skill_data: HeroSkillData) -> Control:
 	else:
 		# Show current level and upgrade button
 		var level_label = Label.new()
-		level_label.text = "Level: " + str(skill_level) + "/" + str(skill_data.max_upgrade_level)
+		level_label.text = "Lv %d/%d" % [skill_level, skill_data.max_upgrade_level]
 		level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		level_label.add_theme_color_override("font_color", Color.GREEN)
 		button_vbox.add_child(level_label)
 
 		if skill_level < skill_data.max_upgrade_level:
 			var upgrade_cost = skill_data.get_upgrade_cost(skill_level)
 			var upgrade_button = Button.new()
-			upgrade_button.text = "Upgrade: " + str(upgrade_cost) + " 💰"
-			upgrade_button.custom_minimum_size = Vector2(120, 30)
+			upgrade_button.text = "+" + str(upgrade_cost)
+			upgrade_button.custom_minimum_size = Vector2(80, 26)
 
 			# Check if player can afford
 			if current_currency >= upgrade_cost:
@@ -292,7 +422,7 @@ func _create_skill_row(skill_data: HeroSkillData) -> Control:
 			button_vbox.add_child(upgrade_button)
 		else:
 			var max_label = Label.new()
-			max_label.text = "MAX LEVEL"
+			max_label.text = "MAX"
 			max_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			max_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
 			button_vbox.add_child(max_label)
@@ -302,65 +432,77 @@ func _create_skill_row(skill_data: HeroSkillData) -> Control:
 	return row
 
 # ============================================
-# BUTTON HANDLERS
+# ATTRIBUTE HANDLERS
+# ============================================
+
+func _on_attribute_plus(attribute: String):
+	"""Handle attribute + button press"""
+	if HeroMetaManager.spend_attribute_point(hero_id, attribute):
+		attribute_spent.emit(hero_id, attribute)
+		_refresh_display()
+		_show_purchase_feedback()
+		print("[HeroPanel] Spent point on %s" % attribute)
+
+func _on_respec_pressed():
+	"""Handle respec button press"""
+	# Free respec (Proposal 2)
+	if HeroMetaManager.respec_attributes(hero_id):
+		current_currency = SaveManager.get_gems()
+		_refresh_display()
+		print("[HeroPanel] Respecced attributes (Free)")
+
+# ============================================
+# SKILL BUTTON HANDLERS
 # ============================================
 
 func _on_unlock_skill_pressed(skill_data: HeroSkillData):
 	"""Handle unlock skill button press"""
-	var cost = skill_data.unlock_cost
+	
+	# HeroMetaManager handles cost check and deduction
+	if HeroMetaManager.unlock_hero_skill(hero_id, skill_data):
+		current_currency = SaveManager.get_gems()
+		
+		# Handle branch choice for multishot/sniper (Legacy check - should be moved to manager eventually)
+		if skill_data.skill_id == "ranger_multishot":
+			SaveManager.set_branch_choice(hero_id, "multishot")
+		elif skill_data.skill_id == "ranger_sniper_shot":
+			SaveManager.set_branch_choice(hero_id, "sniper")
 
-	# Check if player can afford
-	if current_currency < cost:
-		print("❌ Not enough currency to unlock ", skill_data.skill_name)
-		_show_error_feedback("Not enough gold!")
-		return
+		# Emit signal
+		skill_purchased.emit(hero_id, skill_data.skill_id)
 
-	# Deduct currency
-	SaveManager.add_gems(-cost)
-	current_currency = SaveManager.get_gems()
+		print("[HeroPanel] Unlocked skill: ", skill_data.skill_name)
 
-	# Unlock skill in save data
-	SaveManager.unlock_hero_skill(hero_id, skill_data.skill_id)
+		# Refresh display
+		_refresh_display()
 
-	# Emit signal
-	skill_purchased.emit(hero_id, skill_data.skill_id)
-
-	print("✅ Unlocked skill: ", skill_data.skill_name, " for ", cost, " gold")
-
-	# Refresh display
-	_refresh_display()
-
-	# Visual feedback
-	_show_purchase_feedback()
+		# Visual feedback
+		_show_purchase_feedback()
+	else:
+		print("[HeroPanel] Failed to unlock ", skill_data.skill_name)
+		_show_error_feedback("Cannot unlock!")
 
 func _on_upgrade_skill_pressed(skill_data: HeroSkillData):
 	"""Handle upgrade skill button press"""
-	var current_level = SaveManager.get_hero_skill_level(hero_id, skill_data.skill_id)
-	var cost = skill_data.get_upgrade_cost(current_level)
+	
+	# HeroMetaManager handles cost check and deduction
+	if HeroMetaManager.upgrade_hero_skill(hero_id, skill_data):
+		current_currency = SaveManager.get_gems()
 
-	# Check if player can afford
-	if current_currency < cost:
-		print("❌ Not enough currency to upgrade ", skill_data.skill_name)
-		_show_error_feedback("Not enough gold!")
-		return
+		# Emit signal
+		skill_upgraded.emit(hero_id, skill_data.skill_id)
 
-	# Deduct currency
-	SaveManager.add_gems(-cost)
-	current_currency = SaveManager.get_gems()
+		var current_level = SaveManager.get_hero_skill_level(hero_id, skill_data.skill_id)
+		print("[HeroPanel] Upgraded skill: ", skill_data.skill_name, " to level ", current_level)
 
-	# Upgrade skill in save data
-	SaveManager.upgrade_hero_skill(hero_id, skill_data.skill_id)
+		# Refresh display
+		_refresh_display()
 
-	# Emit signal
-	skill_upgraded.emit(hero_id, skill_data.skill_id)
-
-	print("⬆️ Upgraded skill: ", skill_data.skill_name, " to level ", current_level + 1)
-
-	# Refresh display
-	_refresh_display()
-
-	# Visual feedback
-	_show_purchase_feedback()
+		# Visual feedback
+		_show_purchase_feedback()
+	else:
+		print("[HeroPanel] Failed to upgrade ", skill_data.skill_name)
+		_show_error_feedback("Cannot upgrade!")
 
 func _on_close_pressed():
 	"""Handle close button press"""
@@ -369,7 +511,7 @@ func _on_close_pressed():
 
 func _on_back_button_pressed():
 	"""Return to world map (used in standalone scene mode)"""
-	print("⬅️ [HeroScreen] Back button pressed - returning to world map")
+	print("[HeroPanel] Back button pressed - returning to world map")
 	get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
 
 # ============================================
@@ -383,14 +525,9 @@ func _show_purchase_feedback():
 	tween.tween_property(self, "modulate", Color(1.2, 1.2, 1.0), 0.1)
 	tween.tween_property(self, "modulate", Color.WHITE, 0.2)
 
-	# Could also play a sound here
-	print("💫 Purchase successful!")
-
 func _show_error_feedback(message: String):
 	"""Show error message to player"""
-	# For now, just print
-	# In full implementation, could show a popup or toast
-	print("⚠️ ", message)
+	print("[HeroPanel] Error: ", message)
 
 	# Shake animation
 	var original_pos = position

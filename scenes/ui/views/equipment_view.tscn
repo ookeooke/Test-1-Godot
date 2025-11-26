@@ -1,8 +1,8 @@
 [gd_scene load_steps=3 format=3 uid="uid://bx6pjbyo47rdu"]
 
 [ext_resource type="Script" uid="uid://btxf6atnysjcb" path="res://scripts/ui/views/equipment_view.gd" id="1_equipment"]
-[ext_resource type="Script" uid="uid://buvrv5toexi6b" path="res://scripts/ui/equipment_slot_grid.gd" id="2_slot_grid"]
 [ext_resource type="Script" uid="uid://wjxvey514yc0" path="res://scripts/ui/inventory_grid_container.gd" id="3_inventory_grid"]
+[ext_resource type="Texture2D" path="res://assets/ui/inventory/inventory_grid_tile.png" id="4_bg"]
 
 [node name="EquipmentView" type="Control"]
 layout_mode = 3
@@ -84,7 +84,11 @@ layout_mode = 2
 [node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/HelmetSlot/HelmetContainer"]
 custom_minimum_size = Vector2(165, 165)
 layout_mode = 2
-script = ExtResource("2_slot_grid")
+script = ExtResource("3_inventory_grid")
+columns = 2
+rows = 2
+background_texture = ExtResource("4_bg")
+show_grid = false
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/HelmetSlot/HelmetContainer"]
 layout_mode = 2
@@ -109,8 +113,11 @@ layout_mode = 2
 [node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer"]
 custom_minimum_size = Vector2(165, 335)
 layout_mode = 2
-script = ExtResource("2_slot_grid")
-grid_height = 4
+script = ExtResource("3_inventory_grid")
+columns = 2
+rows = 4
+background_texture = ExtResource("4_bg")
+show_grid = false
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/LeftHandSlot/LeftHandContainer"]
 layout_mode = 2
@@ -135,8 +142,11 @@ layout_mode = 2
 [node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot/RightHandContainer"]
 custom_minimum_size = Vector2(165, 335)
 layout_mode = 2
-script = ExtResource("2_slot_grid")
-grid_height = 4
+script = ExtResource("3_inventory_grid")
+columns = 2
+rows = 4
+background_texture = ExtResource("4_bg")
+show_grid = false
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot/RightHandContainer"]
 layout_mode = 2
@@ -161,8 +171,11 @@ layout_mode = 2
 [node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer"]
 custom_minimum_size = Vector2(165, 250)
 layout_mode = 2
-script = ExtResource("2_slot_grid")
-grid_height = 3
+script = ExtResource("3_inventory_grid")
+columns = 2
+rows = 3
+background_texture = ExtResource("4_bg")
+show_grid = false
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/ArmorSlot/ArmorContainer"]
 layout_mode = 2
@@ -187,9 +200,11 @@ layout_mode = 2
 [node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container"]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
-script = ExtResource("2_slot_grid")
-grid_width = 1
-grid_height = 1
+script = ExtResource("3_inventory_grid")
+background_texture = ExtResource("4_bg")
+columns = 1
+rows = 1
+show_grid = false
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory1Slot/Accessory1Container"]
 layout_mode = 2
@@ -214,9 +229,11 @@ layout_mode = 2
 [node name="GridBackground" type="Control" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container"]
 custom_minimum_size = Vector2(80, 80)
 layout_mode = 2
-script = ExtResource("2_slot_grid")
-grid_width = 1
-grid_height = 1
+script = ExtResource("3_inventory_grid")
+background_texture = ExtResource("4_bg")
+columns = 1
+rows = 1
+show_grid = false
 
 [node name="SlotTypeIcon" type="Label" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot/Accessory2Container"]
 layout_mode = 2
@@ -241,6 +258,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/default_color = Color(0.2, 0.25, 0.3, 0.3)
 script = ExtResource("3_inventory_grid")
+background_texture = ExtResource("4_bg")
 
 [node name="StatsFooter" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2

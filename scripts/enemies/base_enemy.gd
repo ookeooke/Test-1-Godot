@@ -39,6 +39,11 @@ signal enemy_died
 ## Detection range to check if blocking hero is still close
 @export var melee_detection_range: float = 100.0
 
+## BLOCKING WEIGHT (New)
+## How much "capacity" this enemy takes up when blocked.
+## 1 = Standard, 2 = Heavy, 10 = Unblockable (Boss)
+@export var weight: int = 1
+
 ## Camera shake intensity when enemy dies
 @export_enum("None", "Small", "Medium", "Large") var death_shake: String = "None"
 
@@ -58,22 +63,22 @@ var current_health: float
 var is_blocked := false
 var blocking_hero = null
 var attack_timer := 0.0
-var debug_highlight: Polygon2D  # Visual target indicator (F4 debug)
-var hit_point_marker: Marker2D  # Dynamic target spot for projectiles
-var hit_point_visual: Polygon2D  # Visual indicator for hit point in editor
+var debug_highlight: Polygon2D # Visual target indicator (F4 debug)
+var hit_point_marker: Marker2D # Dynamic target spot for projectiles
+var hit_point_visual: Polygon2D # Visual indicator for hit point in editor
 
 # Balance tracking
 var spawn_time: float = 0.0
 var last_damage_source = null
 var last_damage_source_type = "unknown"
-var _has_died: bool = false  # Guard to prevent die() from being called multiple times
+var _has_died: bool = false # Guard to prevent die() from being called multiple times
 
 # WAYPOINT NAVIGATION SYSTEM (new)
-var use_waypoint_navigation: bool = false  # Set by wave_manager when spawning
+var use_waypoint_navigation: bool = false # Set by wave_manager when spawning
 var current_waypoint: PathWaypoint = null
 var target_position: Vector2 = Vector2.ZERO
 var waypoint_reached_distance: float = 30.0
-var lateral_wander: Vector2 = Vector2.ZERO  # Random drift within road
+var lateral_wander: Vector2 = Vector2.ZERO # Random drift within road
 var wander_timer: float = 0.0
 
 # ============================================
@@ -111,7 +116,7 @@ func _ready():
 		var angle = (i / 32.0) * TAU
 		points.append(Vector2(cos(angle), sin(angle)) * 30)
 	debug_highlight.polygon = PackedVector2Array(points)
-	debug_highlight.color = Color(1, 0, 0, 0.3)  # Red, transparent
+	debug_highlight.color = Color(1, 0, 0, 0.3) # Red, transparent
 	debug_highlight.visible = false
 
 	# Setup HitPoint marker system for projectile targeting
@@ -154,11 +159,11 @@ func _setup_hit_point_marker():
 	var crosshair_size = 8.0
 	var crosshair_points = PackedVector2Array([
 		Vector2(-crosshair_size, 0), Vector2(crosshair_size, 0),
-		Vector2(0, 0),  # Center point to connect lines
+		Vector2(0, 0), # Center point to connect lines
 		Vector2(0, -crosshair_size), Vector2(0, crosshair_size)
 	])
 	hit_point_visual.polygon = crosshair_points
-	hit_point_visual.color = Color(1, 1, 0, 0.8)  # Bright yellow, mostly opaque
+	hit_point_visual.color = Color(1, 1, 0, 0.8) # Bright yellow, mostly opaque
 
 	# Add small circle at center
 	var circle_points = []
@@ -170,7 +175,7 @@ func _setup_hit_point_marker():
 	var circle_visual = Polygon2D.new()
 	hit_point_marker.add_child(circle_visual)
 	circle_visual.polygon = PackedVector2Array(circle_points)
-	circle_visual.color = Color(1, 0.5, 0, 0.6)  # Orange, semi-transparent
+	circle_visual.color = Color(1, 0.5, 0, 0.6) # Orange, semi-transparent
 	circle_visual.z_index = 101
 
 # ============================================
@@ -185,6 +190,10 @@ func set_debug_targeted(is_targeted: bool):
 # ============================================
 # MAIN LOOP
 # ============================================
+
+func _process(_delta):
+	# Dynamic Depth Sorting
+	z_index = int(global_position.y)
 
 func _physics_process(delta):
 	# Handle blocking state first (same for both systems)
@@ -372,7 +381,7 @@ func die():
 	if camera and camera.has_method("add_shake"):
 		match death_shake:
 			"None":
-				pass  # No shake
+				pass # No shake
 			"Small":
 				camera.add_shake(5.0)
 			"Medium":
@@ -423,10 +432,48 @@ func set_waypoint_navigation(start_waypoint: PathWaypoint):
 	if current_waypoint:
 		# Set initial target to random position within first waypoint's road width
 		target_position = current_waypoint.get_random_position_in_road()
-		global_position = target_position  # Start at first waypoint
+		global_position = target_position # Start at first waypoint
 		print(get_enemy_name(), " starting waypoint navigation at: ", current_waypoint.name)
 	else:
 		print("ERROR: No start waypoint provided!")
+
+# ============================================
+# COMBAT ANCHOR SYSTEM (New)
+# ============================================
+
+func get_current_path_offset() -> float:
+	"""Get current progress along the path (pixels)"""
+	if path_follower:
+		return path_follower.progress
+	return 0.0
+
+func get_position_at_path_offset(offset: float) -> Vector2:
+	"""Get world position for a specific distance along the path"""
+	if path_follower:
+		# Save current offset
+		var current = path_follower.progress
+		
+		# Sample new position
+		# Note: This is a bit hacky but the most reliable way in Godot 4
+		# without direct Curve2D access if using PathFollow2D
+		path_follower.progress = offset
+		var pos = path_follower.global_position
+		
+		# Restore offset
+		path_follower.progress = current
+		return pos
+	return global_position
+
+func get_combat_anchor_position(distance_ahead: float = 30.0) -> Vector2:
+	"""Get the ideal position for a hero to stand to block this enemy"""
+	if use_waypoint_navigation:
+		# Waypoint system: Just project vector towards target
+		var to_target = (target_position - global_position).normalized()
+		return global_position + (to_target * distance_ahead)
+	else:
+		# Path2D system: Get exact point on curve
+		var current = get_current_path_offset()
+		return get_position_at_path_offset(current + distance_ahead)
 
 # ============================================
 # HELPER METHODS
@@ -479,7 +526,7 @@ func _spawn_impact_particles(damage_source):
 	# Visuals - smaller, darker red
 	particles.scale_amount_min = 0.8
 	particles.scale_amount_max = 1.5
-	particles.color = Color(0.6, 0.1, 0.1, 0.9)  # Dark blood color
+	particles.color = Color(0.6, 0.1, 0.1, 0.9) # Dark blood color
 
 	# Fade out naturally
 	var gradient = Gradient.new()
@@ -497,7 +544,7 @@ func _play_hit_flash():
 	"""Flash enemy white briefly when hit - instant visual feedback"""
 	# Quick white flash to show damage
 	var original_modulate = modulate
-	modulate = Color(2.0, 2.0, 2.0, 1.0)  # Bright white flash
+	modulate = Color(2.0, 2.0, 2.0, 1.0) # Bright white flash
 
 	# Return to normal color after 0.1 seconds
 	await get_tree().create_timer(0.1).timeout
@@ -521,15 +568,15 @@ func _spawn_damage_number(damage: float):
 	damage_label.add_theme_font_size_override("font_size", 14)
 	damage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	damage_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	damage_label.z_index = 100  # Above everything
+	damage_label.z_index = 100 # Above everything
 
 	# Color based on damage amount (visual feedback for damage size)
 	if damage >= 20:
-		damage_label.modulate = Color(1.0, 0.3, 0.3)  # Red for high damage
+		damage_label.modulate = Color(1.0, 0.3, 0.3) # Red for high damage
 	elif damage >= 10:
-		damage_label.modulate = Color(1.0, 0.7, 0.2)  # Orange for medium damage
+		damage_label.modulate = Color(1.0, 0.7, 0.2) # Orange for medium damage
 	else:
-		damage_label.modulate = Color(1.0, 1.0, 0.5)  # Yellow for low damage
+		damage_label.modulate = Color(1.0, 1.0, 0.5) # Yellow for low damage
 
 	# Animate: float upward and fade out
 	var tween = create_tween()
@@ -610,7 +657,7 @@ func _spawn_gold_coin_effect():
 	# Find the gold label in UI
 	var gold_label = get_tree().get_first_node_in_group("gold_label")
 	if not gold_label:
-		return  # No UI target, skip effect
+		return # No UI target, skip effect
 
 	# Create small particle burst
 	var particles = CPUParticles2D.new()
@@ -620,28 +667,28 @@ func _spawn_gold_coin_effect():
 	# Subtle gold particles
 	particles.emitting = true
 	particles.one_shot = true
-	particles.amount = 3  # Very few particles - subtle
-	particles.lifetime = 0.4  # Quick animation
+	particles.amount = 3 # Very few particles - subtle
+	particles.lifetime = 0.4 # Quick animation
 	particles.explosiveness = 1.0
 	particles.randomness = 0.3
 
 	# Small upward arc
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
 	particles.emission_sphere_radius = 5.0
-	particles.direction = Vector2(0, -1)  # Upward
+	particles.direction = Vector2(0, -1) # Upward
 	particles.spread = 30.0
 
 	# Movement - gentle upward float
 	particles.initial_velocity_min = 40.0
 	particles.initial_velocity_max = 70.0
-	particles.gravity = Vector2(0, -50)  # Float up
+	particles.gravity = Vector2(0, -50) # Float up
 	particles.damping_min = 3.0
 	particles.damping_max = 5.0
 
 	# Visuals - dark gold color (subtle)
 	particles.scale_amount_min = 1.5
 	particles.scale_amount_max = 2.5
-	particles.color = Color(0.7, 0.6, 0.2, 0.9)  # Dark gold
+	particles.color = Color(0.7, 0.6, 0.2, 0.9) # Dark gold
 
 	# Fade out gracefully
 	var gradient = Gradient.new()
@@ -657,9 +704,9 @@ func _spawn_gold_coin_effect():
 
 func _play_death_animation():
 	"""Play death animation with corpse lingering - fast-paced like Kingdom Rush"""
-	const DEATH_DURATION = 0.25  # Initial death animation
-	const CORPSE_LINGER_TIME = 0.6  # How long corpse stays visible (fast-paced)
-	const FADE_OUT_TIME = 0.4  # Final fade out duration
+	const DEATH_DURATION = 0.25 # Initial death animation
+	const CORPSE_LINGER_TIME = 0.6 # How long corpse stays visible (fast-paced)
+	const FADE_OUT_TIME = 0.4 # Final fade out duration
 
 	# Spawn particles first
 	_spawn_death_particles()
@@ -670,12 +717,12 @@ func _play_death_animation():
 
 	# Stop movement - FREEZE in place
 	set_physics_process(false)
-	velocity = Vector2.ZERO  # Stop any momentum
+	velocity = Vector2.ZERO # Stop any momentum
 
 	# CRITICAL: Disable collisions so corpse is PURELY VISUAL
 	# Arrows and other attacks pass through the corpse
-	collision_layer = 0  # Remove from all collision layers
-	collision_mask = 0   # Don't detect any collisions
+	collision_layer = 0 # Remove from all collision layers
+	collision_mask = 0 # Don't detect any collisions
 
 	# Disable all Area2D children (detection zones) so towers don't target corpses
 	for child in get_children():
@@ -734,7 +781,7 @@ func _set_combat_state_visual(in_combat: bool):
 # STATUS EFFECTS (Slow & Knockback)
 # ============================================
 
-var current_slow: float = 0.0  # 0.0-1.0 (speed reduction percentage)
+var current_slow: float = 0.0 # 0.0-1.0 (speed reduction percentage)
 var slow_timer: Timer = null
 
 func apply_slow(slow_percent: float, duration: float):
@@ -766,7 +813,7 @@ func apply_knockback(force: float, explosion_pos: Vector2):
 	"""Push enemy backward from explosion (artillery cannon path)"""
 	# Get direction away from explosion
 	var knockback_dir = (global_position - explosion_pos).normalized()
-	var knockback_distance = force / 10.0  # Scale force to pixels
+	var knockback_distance = force / 10.0 # Scale force to pixels
 
 	# Apply knockback by moving enemy backward
 	if use_waypoint_navigation:
