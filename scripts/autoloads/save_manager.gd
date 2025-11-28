@@ -86,6 +86,7 @@ func create_new_profile(profile_name: String) -> bool:
 		"equipment_registry": { # Hero equipment slots (per-hero persistence)
 			"heroes": {}
 		},
+		"unlocked_heroes": ["ranger", "warrior", "mage"], # Default starter heroes
 		"tower_loadout": ["archer", "barracks", "mage", "artillery"], # Phase 1: Global tower loadout (3-4 tower IDs)
 		"unlocked_towers": ["archer", "barracks", "mage", "artillery"], # Phase 1: All unlocked towers
 		"user_preferences": {}, # UI preferences (panel tabs, etc.)
