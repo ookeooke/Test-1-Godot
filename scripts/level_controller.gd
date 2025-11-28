@@ -10,7 +10,8 @@ extends Node2D
 # 4. inventory_panel - Closes inventory (only if visible and not paused)
 
 ## Optional: LevelConfig resource for this level (defines camera bounds, waves, etc.)
-@export var level_config: LevelConfig
+# NOTE: Removed @export to prevent cyclic dependency with LevelConfig (which references this scene)
+var level_config: LevelConfig
 
 @onready var wave_manager = $WaveManager if has_node("WaveManager") else null
 @onready var dual_panel_screen = $DualPanelScreen if has_node("DualPanelScreen") else null
@@ -18,6 +19,14 @@ extends Node2D
 
 
 func _ready():
+	# Load config dynamically if not set by LevelManager (e.g. F6 testing)
+	if LevelManager.current_level:
+		level_config = LevelManager.current_level
+	else:
+		# Fallback: Load default config for this level
+		# Use load() to avoid cyclic dependency at parse time
+		level_config = load("res://data/level_configs/level_01_config.tres")
+		
 	# Set camera bounds from level config
 	_setup_camera_bounds()
 	# Connect WaveManager to DualPanelScreen for combat lockout
@@ -25,6 +34,26 @@ func _ready():
 		wave_manager.combat_started.connect(_on_combat_started)
 		wave_manager.combat_ended.connect(_on_combat_ended)
 		print("[LevelController] Connected WaveManager to DualPanelScreen")
+
+	# DEBUG: Print visual hierarchy
+	# _print_visual_debug()
+
+func _print_visual_debug():
+	print("\n=== VISUAL DEBUG: SCENE HIERARCHY & DRAW ORDER ===")
+	print("Level: ", name)
+	var children = get_children()
+	for child in children:
+		if child is Node2D or child is Control:
+			var z = child.z_index if "z_index" in child else 0
+			print("  - Node: %-20s | Type: %-15s | Z-Index: %d | Visible: %s" % [child.name, child.get_class(), z, child.visible])
+			
+			# Check for background specifically
+			if child.name == "LevelBackground":
+				var sprite = child.get_node("Sprite2D")
+				var tex = sprite.texture if sprite else null
+				print("    -> BACKGROUND FOUND! Texture Resource: ", tex.resource_path if tex else "NULL")
+					
+	print("==================================================\n")
 
 
 func _on_combat_started():
@@ -138,7 +167,7 @@ func _calculate_bounds_from_content() -> Rect2:
 
 	# If no content found, use safe fallback bounds
 	if not found_content:
-		var fallback = Rect2(-500, -500, 2000, 1500)  # Safe default fallback
+		var fallback = Rect2(-500, -500, 2000, 1500) # Safe default fallback
 		push_warning("[LevelController] ⚠️ WARNING: No content found for auto-calculation")
 		push_warning("[LevelController] → Using fallback bounds: " + str(fallback))
 		push_warning("[LevelController] → Tip: Check that TowerSpots, Path, Spawners, or Goals nodes exist")
@@ -203,7 +232,7 @@ func debug_print_bounds_info():
 
 func _input(event):
 	# DEBUG: Press F9 to print bounds info
-	if event.is_action_pressed("ui_text_completion_replace"):  # F9 key
+	if event.is_action_pressed("ui_text_completion_replace"): # F9 key
 		debug_print_bounds_info()
 		get_viewport().set_input_as_handled()
 
@@ -212,13 +241,26 @@ func _input(event):
 		_spawn_debug_items()
 		get_viewport().set_input_as_handled()
 
+	# Toggle Inventory / Hero Management
+	if event.is_action_pressed("toggle_inventory"):
+		# Don't toggle if pause menu is open
+		if get_tree().root.has_node("PauseMenu"):
+			return
+
+		if dual_panel_screen:
+			if dual_panel_screen.visible:
+				dual_panel_screen.hide_screen()
+			else:
+				dual_panel_screen.show_screen()
+			get_viewport().set_input_as_handled()
+
 	# ESC key to pause (highest priority - runs before other UI handlers)
 	# Check if pause menu already exists to avoid conflicts
 	if event.is_action_pressed("ui_cancel"):
 		var root = get_tree().root
 		if not root.has_node("PauseMenu"):
 			_show_pause_menu()
-			get_viewport().set_input_as_handled()  # Consume to prevent other handlers
+			get_viewport().set_input_as_handled() # Consume to prevent other handlers
 
 func _spawn_debug_items():
 	"""DEBUG: Spawn test items into inventory (F7 key)"""

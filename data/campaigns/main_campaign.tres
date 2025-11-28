@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="CampaignData" load_steps=3 format=3 uid="uid://campaign_main"]
 
 [ext_resource type="Script" path="res://scripts/resources/campaign_data.gd" id="1_campaign"]
-[ext_resource type="Resource" uid="uid://config_level_01" path="res://data/level_configs/level_01_config.tres" id="2_level01"]
+[ext_resource type="Resource" path="res://data/level_configs/level_01_config.tres" id="2_level01"]
 
 [resource]
 script = ExtResource("1_campaign")

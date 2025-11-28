@@ -60,7 +60,10 @@ var is_touch_held: bool = false
 const LONG_PRESS_DURATION: float = 0.5 # 500ms
 
 # Signals for mobile interaction
+# Signals for mobile interaction
+@warning_ignore("unused_signal")
 signal item_tapped(item_sprite: ItemSprite) # Short tap - show tooltip
+@warning_ignore("unused_signal")
 signal item_long_pressed(item_sprite: ItemSprite) # Long press - context menu
 
 
@@ -539,7 +542,7 @@ func _can_drop_data(_at_position: Vector2, data) -> bool:
 		return true
 
 
-func _drop_data(at_position: Vector2, data):
+func _drop_data(_at_position: Vector2, data):
 	"""Godot drag-and-drop: Handle drop
 
 	Forwards drop to InventoryGridSlot/EquipmentSlot system which already has comprehensive drop logic.

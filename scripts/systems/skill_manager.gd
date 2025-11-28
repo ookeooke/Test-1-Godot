@@ -143,6 +143,8 @@ func get_skill_data(skill_id: String) -> HeroSkillData:
 
 func activate_skill(skill_id: String) -> bool:
 	"""Attempt to activate an active skill"""
+	print("⚡ SkillManager: Request to activate skill: ", skill_id)
+	
 	if not is_skill_owned(skill_id):
 		push_warning("SkillManager: Cannot activate unowned skill: ", skill_id)
 		return false
@@ -170,6 +172,7 @@ func activate_skill(skill_id: String) -> bool:
 	active_cooldowns[skill_id] = cooldown_time
 
 	# Emit signal for hero to handle the actual skill effect
+	print("⚡ SkillManager: Emitting skill_activated signal for: ", skill_id)
 	skill_activated.emit(skill_id)
 
 	print("🎯 SkillManager: Activated skill: ", skill_id, " (cooldown: ", cooldown_time, "s)")
@@ -227,7 +230,7 @@ func get_passive_skill_modifiers() -> Array[StatModifier]:
 func _generate_modifiers_from_skill(skill_id: String, skill_data: HeroSkillData, upgrade_level: int) -> Array[StatModifier]:
 	"""Convert skill bonuses into StatModifier objects"""
 	var modifiers: Array[StatModifier] = []
-	var source_id = "skill:" + skill_id  # Namespaced to prevent collision with equipment
+	var source_id = "skill:" + skill_id # Namespaced to prevent collision with equipment
 
 	# Damage multiplier
 	var damage_mult = skill_data.get_current_damage_multiplier(upgrade_level)
@@ -330,7 +333,7 @@ func _get_total_cooldown_reduction() -> float:
 	if hero and "_attribute_cdr_bonus" in hero:
 		total_reduction += hero._attribute_cdr_bonus
 
-	return min(total_reduction, 0.8)  # Cap at 80% reduction
+	return min(total_reduction, 0.8) # Cap at 80% reduction
 
 # ============================================
 # SAVE/LOAD

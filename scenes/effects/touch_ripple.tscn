@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3 uid="uid://touch_ripple_effect"]
+
+[ext_resource type="Script" path="res://scripts/effects/touch_ripple.gd" id="1_ripple"]
+
+[sub_resource type="Gradient" id="Gradient_ripple"]
+colors = PackedColorArray(1, 1, 1, 0.8, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ripple"]
+gradient = SubResource("Gradient_ripple")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_ripple"]
+particle_flag_disable_z = true
+gravity = Vector3(0, 0, 0)
+scale_min = 0.5
+scale_max = 1.5
+color_ramp = SubResource("GradientTexture1D_ripple")
+
+[node name="TouchRipple" type="Node2D"]
+script = ExtResource("1_ripple")
+
+[node name="GPUParticles2D" type="GPUParticles2D" parent="."]
+emitting = false
+amount = 1
+process_material = SubResource("ParticleProcessMaterial_ripple")
+texture = null
+one_shot = true
+explosiveness = 1.0

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/ui/loot_distribution_screen.gd" id="1_loot_dist"]
 [ext_resource type="Script" path="res://scripts/ui/inventory_grid_container.gd" id="2_grid"]
-[ext_resource type="PackedScene" uid="uid://b8g4j5j5j5j5j" path="res://scenes/ui/views/inventory_view.tscn" id="3_inventory_view"]
+[ext_resource type="PackedScene" path="res://scenes/ui/views/inventory_view.tscn" id="3_inventory_view"]
 
 [node name="LootDistributionScreen" type="Control"]
 process_mode = 3

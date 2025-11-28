@@ -40,7 +40,7 @@ func cleanup_for_restart() -> void:
 
 	# Clear pending loot (items waiting to be distributed)
 	if LootManager:
-		var loot_count = LootManager.get_pending_loot_count() if LootManager.has_method("get_pending_loot_count") else "unknown"
+		var loot_count = str(LootManager.get_pending_loot_count()) if LootManager.has_method("get_pending_loot_count") else "unknown"
 		LootManager.clear_pending_loot()
 		print("[RestartManager] ✓ LootManager cleared (had %s pending items)" % loot_count)
 	else:

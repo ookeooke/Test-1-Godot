@@ -1,0 +1,66 @@
+[gd_scene load_steps=2 format=3 uid="uid://mage_visuals_l1"]
+
+[ext_resource type="Texture2D" uid="uid://d0ngu23x1ql7v" path="res://assets/sprites/towers/archer_level1/archer1.png" id="1_sprite"]
+
+[node name="MageVisualsL1" type="Node2D"]
+
+[node name="TowerSprite" type="Sprite2D" parent="."]
+position = Vector2(0, -20)
+scale = Vector2(0.08, 0.08)
+texture = ExtResource("1_sprite")
+modulate = Color(0.7, 0.7, 1.0, 1)
+
+[node name="Mage" type="Node2D" parent="."]
+position = Vector2(-1, -56)
+
+[node name="Body" type="ColorRect" parent="Mage"]
+offset_left = -8.0
+offset_top = -12.0
+offset_right = 8.0
+offset_bottom = 12.0
+color = Color(0.2, 0.2, 0.8, 1)
+
+[node name="Head" type="ColorRect" parent="Mage"]
+offset_left = -6.0
+offset_top = -18.0
+offset_right = 6.0
+offset_bottom = -6.0
+color = Color(0.9, 0.7, 0.5, 1)
+
+[node name="Hat" type="Polygon2D" parent="Mage/Head"]
+position = Vector2(6, 6)
+color = Color(0.1, 0.1, 0.6, 1)
+polygon = PackedVector2Array(-8, -8, 0, -20, 8, -8)
+
+[node name="Weapon" type="Node2D" parent="Mage"]
+
+[node name="Staff" type="ColorRect" parent="Mage/Weapon"]
+offset_top = -5.0
+offset_right = 20.0
+offset_bottom = -2.0
+color = Color(0.4, 0.25, 0.1, 1)
+
+[node name="Gem" type="ColorRect" parent="Mage/Weapon"]
+offset_left = 18.0
+offset_top = -7.0
+offset_right = 24.0
+offset_bottom = 0.0
+color = Color(0.2, 0.8, 1.0, 1)
+
+[node name="MuzzleFlash" type="CPUParticles2D" parent="Mage/Weapon"]
+position = Vector2(22, -3)
+emitting = false
+amount = 8
+lifetime = 0.3
+one_shot = true
+explosiveness = 1.0
+randomness = 0.3
+emission_shape = 1
+emission_sphere_radius = 4.0
+spread = 180.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 20.0
+initial_velocity_max = 50.0
+scale_amount_min = 2.0
+scale_amount_max = 4.0
+color = Color(0.2, 0.8, 1.0, 1)

@@ -126,7 +126,7 @@ func spend_attribute_point(hero_id: String, attribute: String) -> bool:
 	SaveManager.mark_dirty()
 	SaveManager.save_current_profile()
 	
-	print("⬆️ %s: %s +1 (now %d)" % [hero_id, attribute.to_upper(), meta["attributes"][attribute]])
+	# print("⬆️ %s: %s +1 (now %d)" % [hero_id, attribute.to_upper(), meta["attributes"][attribute]])
 	attribute_changed.emit(hero_id, attribute, meta["attributes"][attribute])
 	return true
 
@@ -144,7 +144,7 @@ func respec_attributes(hero_id: String, _gem_cost: int = 0) -> bool:
 	SaveManager.mark_dirty()
 	SaveManager.save_current_profile()
 	
-	print("🔄 %s attributes reset (Free)" % hero_id)
+	# print("🔄 %s attributes reset (Free)" % hero_id)
 	respec_completed.emit(hero_id, "attributes")
 	return true
 

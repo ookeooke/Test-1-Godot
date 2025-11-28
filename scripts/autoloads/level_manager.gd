@@ -120,7 +120,7 @@ func load_level_config(level_config: LevelConfig, campaign: CampaignData = null)
 	current_level = level_config
 	current_campaign = campaign
 
-	print("LevelManager: Loading level '", level_config.level_id, "' (", level_config.level_name, ")")
+	# print("LevelManager: Loading level '", level_config.level_id, "' (", level_config.level_name, ")")
 
 	# Initialize game state with level config (calculates starting values with modifiers)
 	GameStateManager.initialize_level(level_config)

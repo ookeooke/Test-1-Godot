@@ -25,9 +25,9 @@ var debug_status_label: Label
 # STATE
 # ============================================
 
-var is_visible: bool = false
+var is_hud_visible: bool = false
 var update_timer: float = 0.0
-const UPDATE_INTERVAL: float = 0.1  # Update every 0.1 seconds
+const UPDATE_INTERVAL: float = 0.1 # Update every 0.1 seconds
 
 # ============================================
 # INITIALIZATION
@@ -120,7 +120,7 @@ func _create_ui():
 
 func _process(delta):
 	# Update HUD if visible
-	if is_visible:
+	if is_hud_visible:
 		update_timer += delta
 		if update_timer >= UPDATE_INTERVAL:
 			update_timer = 0.0
@@ -222,13 +222,13 @@ func _update_tower_detection(boss):
 	else:
 		tower_detection_label.add_theme_color_override("font_color", Color.RED)
 
-func _update_damage_sources(boss):
+func _update_damage_sources(_boss):
 	"""Update damage sources from BalanceTracker"""
 	if not BalanceTracker:
 		damage_sources_label.text = "Damage Sources: N/A"
 		return
 
-	var boss_type = "troll_boss"  # Could make this dynamic
+	var boss_type = "troll_boss" # Could make this dynamic
 	if not BalanceTracker.boss_fights.has(boss_type):
 		damage_sources_label.text = "Damage Sources: No tracking data"
 		return
@@ -286,20 +286,20 @@ func _update_debug_status(boss):
 
 func _toggle_hud():
 	"""Toggle HUD visibility"""
-	if is_visible:
+	if is_hud_visible:
 		_hide_hud()
 	else:
 		_show_hud()
 
 func _show_hud():
 	"""Show the HUD"""
-	is_visible = true
+	is_hud_visible = true
 	hud_container.visible = true
 	print("[BossDebugHUD] Shown - Press F6 to hide")
 
 func _hide_hud():
 	"""Hide the HUD"""
-	is_visible = false
+	is_hud_visible = false
 	hud_container.visible = false
 
 # ============================================

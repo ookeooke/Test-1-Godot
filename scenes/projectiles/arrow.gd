@@ -6,36 +6,36 @@ extends Area2D
 
 # INSPECTOR SETTINGS - Adjust these to tune arrow behavior!
 @export_group("Trajectory")
-@export var arc_height: float = 50.0  ## Arc intensity: 0=flat/direct, 50=normal, 100=high arc, 200=very high arc
-@export var use_ballistic: bool = true  ## Use arc trajectory (true) or homing (false)
+@export var arc_height: float = 50.0 ## Arc intensity: 0=flat/direct, 50=normal, 100=high arc, 200=very high arc
+@export var use_ballistic: bool = true ## Use arc trajectory (true) or homing (false)
 
 @export_group("Targeting")
-@export var use_prediction: bool = true  ## Predict enemy movement
-@export var prediction_time: float = 0.6  ## How far ahead to predict (seconds) - matches typical arrow flight time
+@export var use_prediction: bool = true ## Predict enemy movement
+@export var prediction_time: float = 0.6 ## How far ahead to predict (seconds) - matches typical arrow flight time
 
 @export_group("Flight")
-@export var flight_speed: float = 500.0  ## Speed of projectile
+@export var flight_speed: float = 500.0 ## Speed of projectile
 
 @export_group("Rotation")
-@export var rotation_smoothing: bool = true  ## Enable smooth rotation for realistic "gravity facing"
-@export var rotation_decay_rate: float = 15.0  ## Rotation smoothing speed (5=gentle, 15=balanced, 30=instant)
+@export var rotation_smoothing: bool = true ## Enable smooth rotation for realistic "gravity facing"
+@export var rotation_decay_rate: float = 15.0 ## Rotation smoothing speed (5=gentle, 15=balanced, 30=instant)
 
 # RUNTIME PROPERTIES
-var damage = 10  # Will be set by tower
-var target = null  # The enemy we're targeting
-var direction = Vector2.ZERO  # Direction we're flying
-var source = null  # The tower/hero that fired this arrow (for balance tracking)
+var damage = 10 # Will be set by tower
+var target = null # The enemy we're targeting
+var direction = Vector2.ZERO # Direction we're flying
+var source = null # The tower/hero that fired this arrow (for balance tracking)
 
 # TRAJECTORY VARIABLES
 var start_position: Vector2
 var target_position: Vector2
 var travel_time: float = 0.0
-var flight_time: float = 0.0  # Total calculated flight time
-var previous_position: Vector2  # For continuous collision detection
+var flight_time: float = 0.0 # Total calculated flight time
+var previous_position: Vector2 # For continuous collision detection
 
 # VISUAL GRAVITY SIMULATION (for realistic arc feel)
-var visual_z_velocity: float = 0.0  # Initial upward velocity
-var visual_gravity: float = 980.0   # Gravity strength (980 = Earth gravity)
+var visual_z_velocity: float = 0.0 # Initial upward velocity
+var visual_gravity: float = 980.0 # Gravity strength (980 = Earth gravity)
 
 # ============================================
 # SETUP
@@ -47,7 +47,7 @@ func setup(enemy, projectile_damage, projectile_source = null):
 	damage = projectile_damage
 	source = projectile_source
 	start_position = global_position
-	previous_position = global_position  # Initialize for collision detection
+	previous_position = global_position # Initialize for collision detection
 
 	if not target or not is_instance_valid(target):
 		queue_free()
@@ -75,7 +75,7 @@ func _calculate_target_position() -> Vector2:
 	# DYNAMIC PREDICTION: Calculate actual arrow flight time based on distance
 	# This prevents over-prediction for close shots and under-prediction for far shots
 	var distance_to_target = global_position.distance_to(base_position)
-	var actual_flight_time = distance_to_target / flight_speed  # Real time arrow takes to arrive
+	var actual_flight_time = distance_to_target / flight_speed # Real time arrow takes to arrive
 
 	# Cap flight time to prevent extreme predictions (0.05s min, 1.0s max)
 	actual_flight_time = clamp(actual_flight_time, 0.05, 1.0)
@@ -90,7 +90,7 @@ func _calculate_target_position() -> Vector2:
 			if "speed" in target:
 				# FIXED: Get actual path direction, not arrow-to-enemy direction
 				# Use PathFollow2D's transform to get forward direction along path
-				var path_direction = Vector2.RIGHT  # Default fallback
+				var path_direction = Vector2.RIGHT # Default fallback
 
 				# Method 1: Use PathFollow2D's rotation (most reliable)
 				if parent.has_method("get_transform"):
@@ -144,7 +144,8 @@ func _setup_ballistic_trajectory():
 func _ready():
 	# Get shadow reference if it exists
 	if has_node("Shadow"):
-		var shadow = get_node("Shadow")
+		# var shadow = get_node("Shadow") # Unused
+		pass
 		# Shadow stays at relative position (0,0) = ground level
 
 func _physics_process(delta):
@@ -178,8 +179,8 @@ func _update_ballistic_movement(_delta):
 	# Arc height is proportional to distance (longer shots = higher arcs)
 	# The arc_height export variable controls the arc intensity
 	var distance = start_position.distance_to(target_position)
-	var arc_multiplier = arc_height / 200.0  # Convert arc_height to multiplier (default 50/200 = 0.25)
-	var dynamic_arc_height = distance * arc_multiplier  # Arc peak height based on distance
+	var arc_multiplier = arc_height / 200.0 # Convert arc_height to multiplier (default 50/200 = 0.25)
+	var dynamic_arc_height = distance * arc_multiplier # Arc peak height based on distance
 
 	# Parabolic formula: height = 4h * progress * (1 - progress)
 	# This creates a parabola that: starts at 0, peaks at 0.5 progress, ends at 0
@@ -197,17 +198,17 @@ func _update_ballistic_movement(_delta):
 
 	# CALCULATE CURRENT VELOCITY for rotation (derivative of parabola)
 	# Horizontal velocity: constant forward speed
-	var direction = (target_position - start_position).normalized()
-	var horizontal_velocity = direction * flight_speed
+	var flight_dir = (target_position - start_position).normalized()
+	var horizontal_velocity = flight_dir * flight_speed
 
 	# Vertical velocity: derivative of parabolic arc
 	# d/dt[4h * t * (1-t)] = 4h * (1 - 2t) / flight_time
 	# This gives upward velocity at start, zero at peak, downward at end
 	var vertical_velocity_factor = 4.0 * dynamic_arc_height * (1.0 - 2.0 * progress) / flight_time
-	var vertical_velocity = vertical_velocity_factor  # Negative = downward
+	var vertical_velocity = vertical_velocity_factor # Negative = downward
 
 	# VISUAL ENHANCEMENTS: Scale and shadow (optional, based on height)
-	var visual_height = arc_offset_y  # Current height above ground
+	var visual_height = arc_offset_y # Current height above ground
 	var expected_peak = dynamic_arc_height
 	var height_ratio = visual_height / max(expected_peak, 1.0)
 
@@ -215,7 +216,7 @@ func _update_ballistic_movement(_delta):
 	var scale_factor = 1.0 + height_ratio * 0.4
 	if has_node("ColorRect"):
 		get_node("ColorRect").scale = Vector2(scale_factor, scale_factor)
-		get_node("ColorRect").position = Vector2.ZERO  # No sprite offset needed - position IS the arc!
+		get_node("ColorRect").position = Vector2.ZERO # No sprite offset needed - position IS the arc!
 
 	# Shadow gets smaller when arrow is higher
 	if has_node("Shadow"):
@@ -230,7 +231,7 @@ func _update_ballistic_movement(_delta):
 	# Vertical: parabolic velocity (up at start, zero at peak, down at end)
 	var velocity_2d = Vector2(
 		horizontal_velocity.x,
-		horizontal_velocity.y - vertical_velocity  # Subtract because -Y is up in Godot
+		horizontal_velocity.y - vertical_velocity # Subtract because -Y is up in Godot
 	)
 
 	# Calculate rotation from velocity direction
@@ -268,7 +269,7 @@ func _update_homing_movement(delta):
 	_check_collision_along_path(previous_position, new_position)
 
 	# Move forward
-	previous_position = global_position  # Store old position
+	previous_position = global_position # Store old position
 	global_position = new_position
 
 func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
@@ -284,8 +285,8 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 	# CRITICAL: Rotate collision offset to match arrow's current orientation!
 	# CollisionShape2D is at (10, 0) in LOCAL space (arrow tip)
 	# But we need to transform it to WORLD space using arrow's rotation
-	var local_offset = Vector2(10, 0)  # Tip offset in arrow's local space
-	var rotated_offset = local_offset.rotated(rotation)  # Transform to world space
+	var local_offset = Vector2(10, 0) # Tip offset in arrow's local space
+	var rotated_offset = local_offset.rotated(rotation) # Transform to world space
 
 	# NEW: Calculate visual height offset at previous and current frame
 	# This makes the raycast follow the visual arc instead of ground level!
@@ -303,11 +304,11 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 	# Collision radius from CircleShape2D is now 12.0 (doubled from 6.0)
 	var collision_radius = 12.0
 	var check_points = [
-		Vector2.ZERO,  # Center ray
-		Vector2(collision_radius * 0.7, 0),  # Right
-		Vector2(-collision_radius * 0.7, 0),  # Left
-		Vector2(0, collision_radius * 0.7),  # Down
-		Vector2(0, -collision_radius * 0.7)  # Up
+		Vector2.ZERO, # Center ray
+		Vector2(collision_radius * 0.7, 0), # Right
+		Vector2(-collision_radius * 0.7, 0), # Left
+		Vector2(0, collision_radius * 0.7), # Down
+		Vector2(0, -collision_radius * 0.7) # Up
 	]
 
 	# Check each point for collision
@@ -324,8 +325,8 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 			_debug_draw_raycast(check_from, check_to, Color.CYAN)
 
 		var query = PhysicsRayQueryParameters2D.create(check_from, check_to)
-		query.collision_mask = 1  # Layer 1 = enemies
-		query.collide_with_areas = false  # Only check bodies, not areas
+		query.collision_mask = 1 # Layer 1 = enemies
+		query.collide_with_areas = false # Only check bodies, not areas
 		query.collide_with_bodies = true
 
 		# Perform the raycast
@@ -344,7 +345,7 @@ func _check_collision_along_path(from_pos: Vector2, to_pos: Vector2):
 					_debug_draw_raycast(check_from, check_to, Color.GREEN)
 
 				_hit_enemy(hit_body)
-				return  # Stop checking once we hit something
+				return # Stop checking once we hit something
 
 func _hit_enemy(enemy):
 	"""Deal damage to enemy"""
@@ -375,7 +376,7 @@ func _hit_enemy(enemy):
 # HELPER FUNCTIONS
 # ============================================
 
-func _get_visual_offset_at_time(time: float) -> Vector2:
+func _get_visual_offset_at_time(_time: float) -> Vector2:
 	"""Calculate the arc Y-offset at a specific time in the flight
 	This is used to make collision detection follow the parabolic arc
 	NOTE: With the new system, the arc is built into global_position, so this returns ZERO"""
@@ -392,7 +393,7 @@ func _debug_draw_raycast(from: Vector2, to: Vector2, color: Color):
 	debug_line.add_point(to)
 	debug_line.width = 1.0
 	debug_line.default_color = color
-	debug_line.z_index = 1000  # Draw on top
+	debug_line.z_index = 1000 # Draw on top
 
 	# Remove after 1 frame (0.016s at 60 FPS)
 	await get_tree().create_timer(0.016).timeout

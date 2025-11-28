@@ -11,7 +11,7 @@ extends CharacterBody2D
 signal soldier_died(respawn_time)
 
 # STATES
-enum State { IDLE, MELEE_COMBAT, RETURNING, WALKING }
+enum State {IDLE, MELEE_COMBAT, RETURNING, WALKING}
 var current_state = State.IDLE
 
 # STATS
@@ -22,28 +22,28 @@ var current_health = 100.0
 var melee_damage = 10.0
 var melee_range = 100.0
 var melee_attack_speed = 1.0
-var combat_distance = 50.0  # How close to get before attacking (visual improvement)
+var combat_distance = 50.0 # How close to get before attacking (visual improvement)
 
 # MOVEMENT
 var movement_speed = 120.0
-var home_position = Vector2.ZERO  # Tower spawn location
-var flag_position = Vector2.ZERO  # Rally point to march to
-var home_offset = Vector2.ZERO    # Unique offset for formation
+var home_position = Vector2.ZERO # Tower spawn location
+var flag_position = Vector2.ZERO # Rally point to march to
+var home_offset = Vector2.ZERO # Unique offset for formation
 
 # ENEMY MANAGEMENT
-var max_melee_enemies = 1  # Block only 1 enemy at a time (Kingdom Rush style)
+var max_melee_enemies = 1 # Block only 1 enemy at a time (Kingdom Rush style)
 var enemies_in_melee_range = []
 var current_melee_targets = []
 
 # TIMERS
 var melee_timer: Timer
-var respawn_delay = 5.0  # Set by tower
+var respawn_delay = 5.0 # Set by tower
 
 # REGENERATION SYSTEM (Kingdom Rush style)
 var time_since_last_damage: float = 0.0
 var is_regenerating: bool = false
-var regen_delay: float = 1.0  # 1 second delay for soldiers
-var regen_rate: float = 5.0   # 5 HP per second
+var regen_delay: float = 1.0 # 1 second delay for soldiers
+var regen_rate: float = 5.0 # 5 HP per second
 
 # REFERENCES
 @onready var melee_detection = $MeleeDetection
@@ -158,7 +158,7 @@ func handle_melee_combat_state():
 				if not enemy.is_blocked or enemy.blocking_hero != self:
 					enemy.set_blocked_by_hero(self)
 
-func handle_returning_state(delta):
+func handle_returning_state(_delta):
 	# Calculate MY formation position at rally flag (spread out, not stacked!)
 	var target_pos = get_rally_formation_position()
 
@@ -174,7 +174,7 @@ func handle_returning_state(delta):
 	if not enemies_in_melee_range.is_empty():
 		enter_melee_combat()
 
-func handle_walking_state(delta):
+func handle_walking_state(_delta):
 	# Calculate MY formation position at rally flag (spread out, not stacked!)
 	var target_pos = get_rally_formation_position()
 
@@ -263,7 +263,7 @@ func assign_unique_enemy(soldiers: Array, enemies: Array) -> Array:
 	# This soldier fights enemy at their index
 	return [enemies[my_index]]
 
-func assign_gang_up_targets(soldiers: Array, enemies: Array) -> Array:
+func assign_gang_up_targets(_soldiers: Array, enemies: Array) -> Array:
 	"""All soldiers gang up on closest enemy (or distribute if multiple enemies)"""
 	# Find closest enemy to tower
 	var closest_enemy = enemies[0]
@@ -302,7 +302,7 @@ func _play_attack_flash():
 	"""Visual feedback for attack - flash white"""
 	if sprite:
 		var original_modulate = sprite.modulate
-		sprite.modulate = Color(1.5, 1.5, 1.5)  # Flash bright white
+		sprite.modulate = Color(1.5, 1.5, 1.5) # Flash bright white
 
 		# Reset after 0.1 seconds
 		await get_tree().create_timer(0.1).timeout
@@ -399,12 +399,29 @@ func set_home_position(pos: Vector2, offset: Vector2 = Vector2.ZERO):
 	global_position = pos + offset
 
 func set_flag_position(pos: Vector2):
-	"""Update rally point - soldier will march here when idle"""
+	"""Update rally point - soldier will march here immediately"""
+	print("⚔️ [SoldierUnit] Received new flag position: ", pos)
 	flag_position = pos
 
-	# If currently idle or returning, start walking to new position
-	if current_state == State.IDLE or current_state == State.RETURNING:
-		enter_walking_state(pos)
+	# FORCE MOVE: Always obey rally command (Kingdom Rush style)
+	# If in combat, disengage first
+	if current_state == State.MELEE_COMBAT:
+		print("⚔️ [SoldierUnit] Disengaging from combat to move!")
+		_disengage_from_combat()
+	
+	print("⚔️ [SoldierUnit] Switching to WALKING state")
+	enter_walking_state(pos)
+
+func _disengage_from_combat():
+	"""Stop fighting and unblock enemies"""
+	for enemy in enemies_in_melee_range:
+		if is_instance_valid(enemy) and enemy.has_method("unblock"):
+			if enemy.is_blocked and enemy.blocking_hero == self:
+				enemy.unblock()
+	
+	current_melee_targets.clear()
+	melee_timer.stop()
+	_set_combat_state_visual(false)
 
 func _set_combat_state_visual(in_combat: bool):
 	"""Visual indicator when soldier is in melee combat"""
@@ -461,7 +478,7 @@ func align_to_formation_position():
 
 func calculate_formation_position(enemy_pos: Vector2, soldier_index: int, total_soldiers: int) -> Vector2:
 	"""Calculate position in semi-circle formation (soldiers spread out, not stacked)"""
-	var formation_radius = 60.0  # Increased from 50 to 60 (more space in combat!)
+	var formation_radius = 60.0 # Increased from 50 to 60 (more space in combat!)
 
 	if total_soldiers == 1:
 		# Solo soldier: face enemy from tower direction
@@ -470,8 +487,8 @@ func calculate_formation_position(enemy_pos: Vector2, soldier_index: int, total_
 
 	# Multiple soldiers: spread in semi-circle
 	# Calculate angle for this soldier
-	var arc_width = PI * 0.8  # 144° arc (not full circle, looks better in isometric)
-	var start_angle = -arc_width / 2.0
+	var arc_width = PI * 0.8 # 144° arc (not full circle, looks better in isometric)
+	var start_angle = - arc_width / 2.0
 
 	# Angle step between soldiers
 	var angle_step = arc_width / max(1, total_soldiers - 1)
@@ -512,7 +529,7 @@ func get_rally_formation_position() -> Vector2:
 	# Find my index
 	var my_index = tower_soldiers.find(self)
 	if my_index < 0:
-		return rally_pos  # Fallback: just use rally position
+		return rally_pos # Fallback: just use rally position
 
 	# Spread soldiers in circle formation (Kingdom Rush style)
 	if num_soldiers == 1:
@@ -520,8 +537,8 @@ func get_rally_formation_position() -> Vector2:
 		return rally_pos
 
 	# Multiple soldiers: spread in ring (INCREASED spacing to prevent shaking)
-	var formation_radius = 40.0  # Increased from 30 to 40 (more space!)
-	var angle_step = TAU / num_soldiers  # TAU = 2*PI (full circle)
+	var formation_radius = 40.0 # Increased from 30 to 40 (more space!)
+	var angle_step = TAU / num_soldiers # TAU = 2*PI (full circle)
 	var my_angle = my_index * angle_step
 
 	# Calculate offset from flag center

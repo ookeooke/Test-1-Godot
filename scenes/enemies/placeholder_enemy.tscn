@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3 uid="uid://6ltbcv5ofqu7"]
+
+[ext_resource type="Script" path="res://scenes/enemies/placeholder_enemy.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
+[ext_resource type="PackedScene" uid="uid://tokenplaceholder001" path="res://scenes/ui/placeholder_token.tscn" id="3_token"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_placeholder"]
+radius = 20.0
+
+[node name="PlaceholderEnemy" type="CharacterBody2D" groups=["enemy"]]
+collision_mask = 0
+script = ExtResource("1_script")
+
+[node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
+offset_left = -25.0
+offset_top = -40.0
+offset_right = 25.0
+offset_bottom = -34.0
+
+[node name="PlaceholderToken" parent="." instance=ExtResource("3_token")]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_placeholder")
+
+[node name="HitPoint" type="Marker2D" parent="."]

@@ -269,6 +269,25 @@ Tiered drop rates:
 
 ---
 
+## 🏰 Tower Upgrade Architecture
+
+### Split Path System (Level 3 → 4)
+Towers branch into two distinct paths at Level 3. This is handled by the `RingUpgradeMenu` and `BaseTower` logic.
+
+**Requirements for New Towers:**
+1. **`needs_path_choice()`**: Must return `true` at Level 3.
+2. **`get_path_choices()`**: Must return Array of 2 dictionaries:
+   ```gdscript
+   [
+       {"id": "path_a", "emoji": "🔥", "name": "Inferno"},
+       {"id": "path_b", "emoji": "❄️", "name": "Frost"}
+   ]
+   ```
+3. **Path Methods**: Must implement `choose_path_a()` and `choose_path_b()` returning `bool`.
+4. **Stats**: `TowerData` must have `path_a_path` and `path_b_path` entries for Level 4+.
+
+---
+
 ## 📁 File Organization
 
 ```

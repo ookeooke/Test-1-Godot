@@ -35,7 +35,7 @@ func _ready():
 	await get_tree().create_timer(0.1).timeout
 	_validate_button_state()
 
-func _input(event):
+func _input(_event):
 	# WORKAROUND: For Godot web export on mobile browsers
 	# text_changed signal doesn't fire reliably on Android Chrome/mobile browsers
 	# This is a known issue: https://github.com/godotengine/godot/issues/64590
@@ -49,7 +49,7 @@ func _validate_button_state():
 	var current_text = name_input.text.strip_edges()
 	create_button.disabled = current_text.is_empty()
 
-func _on_name_changed(new_text: String):
+func _on_name_changed(_new_text: String):
 	# Clear error when user types
 	error_label.visible = false
 
@@ -92,8 +92,8 @@ func _on_create_pressed():
 
 	if SaveManager.create_new_profile(profile_name):
 		print("ProfileCreation: Profile created successfully!")
-		# Go to world map select (Node2D version)
-		get_tree().change_scene_to_file("res://scenes/ui/world_map_select_node2d.tscn")
+		# Go to Hero Selection Screen (to choose starter hero)
+		get_tree().change_scene_to_file("res://scenes/ui/hero_selection_screen.tscn")
 	else:
 		_show_error("Failed to create profile")
 

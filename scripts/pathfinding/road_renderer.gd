@@ -12,13 +12,13 @@ class_name RoadRenderer
 
 @export_group("Road Visual Settings")
 ## Road texture/color
-@export var road_color: Color = Color(0.5, 0.4, 0.3, 1.0):  # Brighter brown dirt road
+@export var road_color: Color = Color(0.5, 0.4, 0.3, 1.0): # Brighter brown dirt road
 	set(value):
 		road_color = value
 		queue_redraw()
 
 ## Road border color
-@export var road_border_color: Color = Color(0.25, 0.2, 0.15, 1.0):  # Darker brown border
+@export var road_border_color: Color = Color(0.25, 0.2, 0.15, 1.0): # Darker brown border
 	set(value):
 		road_border_color = value
 		queue_redraw()
@@ -29,7 +29,7 @@ class_name RoadRenderer
 		use_highlight_overlay = value
 		queue_redraw()
 
-@export var highlight_color: Color = Color(0.6, 0.5, 0.4, 0.3):  # Subtle highlight
+@export var highlight_color: Color = Color(0.6, 0.5, 0.4, 0.3): # Subtle highlight
 	set(value):
 		highlight_color = value
 		queue_redraw()
@@ -120,7 +120,7 @@ class_name RoadRenderer
 @export var animate_arrows: bool = false:
 	set(value):
 		animate_arrows = value
-		set_process(value)  # Only process if animating
+		set_process(value) # Only process if animating
 
 ## Animation speed (pixels per second)
 @export var animation_speed: float = 50.0
@@ -131,7 +131,7 @@ class_name RoadRenderer
 
 var waypoints: Array[PathWaypoint] = []
 var road_segments: Array[Dictionary] = []
-var animation_offset: float = 0.0  # For animated arrows
+var animation_offset: float = 0.0 # For animated arrows
 
 # ============================================
 # BUILT-IN FUNCTIONS
@@ -272,7 +272,7 @@ func _draw_road_segment(segment: Dictionary):
 		for i in range(segments_per_connection + 1):
 			var t = float(i) / segments_per_connection
 			var pos = start_pos.lerp(end_pos, t)
-			var width = lerp(start_width, end_width, t) * 0.6  # 60% width for highlight
+			var width = lerp(start_width, end_width, t) * 0.6 # 60% width for highlight
 			highlight_polygon.append(pos + perpendicular * width / 2.0)
 
 		for i in range(segments_per_connection, -1, -1):
@@ -303,7 +303,7 @@ func _draw_road_segment(segment: Dictionary):
 
 			draw_line(left, right, Color(0, 0, 0, 0.2), 1.0)
 
-func _draw_center_line(start_pos: Vector2, end_pos: Vector2, perpendicular: Vector2):
+func _draw_center_line(start_pos: Vector2, end_pos: Vector2, _perpendicular: Vector2):
 	"""Draw dashed center line down the middle of the road"""
 	var total_distance = start_pos.distance_to(end_pos)
 	var dash_and_gap = dash_length + gap_length
@@ -321,13 +321,13 @@ func _draw_center_line(start_pos: Vector2, end_pos: Vector2, perpendicular: Vect
 
 		draw_line(dash_start, dash_end, center_line_color, 3.0)
 
-func _draw_direction_arrows(start_pos: Vector2, end_pos: Vector2, direction: Vector2, perpendicular: Vector2, start_width: float, end_width: float):
+func _draw_direction_arrows(start_pos: Vector2, end_pos: Vector2, direction: Vector2, perpendicular: Vector2, _start_width: float, _end_width: float):
 	"""Draw directional arrows showing enemy movement direction"""
 	var total_distance = start_pos.distance_to(end_pos)
 	var num_arrows = max(1, int(total_distance / arrow_spacing))
 
 	for i in range(num_arrows):
-		var base_t = (float(i) + 0.5) / num_arrows  # Center arrows in segments
+		var base_t = (float(i) + 0.5) / num_arrows # Center arrows in segments
 
 		# Apply animation offset if enabled
 		var offset_distance = 0.0
@@ -340,18 +340,18 @@ func _draw_direction_arrows(start_pos: Vector2, end_pos: Vector2, direction: Vec
 		var t = arrow_distance / total_distance
 
 		var arrow_pos = start_pos.lerp(end_pos, t)
-		var width_at_arrow = lerp(start_width, end_width, t)
+		# var width_at_arrow = lerp(start_width, end_width, t) # Unused
 
 		# Draw arrow chevron pointing in direction of travel
 		var arrow_forward = direction * arrow_size
-		var arrow_back = -direction * arrow_size * 0.6
+		var arrow_back = - direction * arrow_size * 0.6
 		var arrow_side = perpendicular * arrow_size * 0.5
 
 		# Create chevron shape (> pointing forward)
 		var arrow_points = PackedVector2Array([
-			arrow_pos + arrow_back + arrow_side,  # Top left
-			arrow_pos + arrow_forward,             # Point
-			arrow_pos + arrow_back - arrow_side   # Bottom left
+			arrow_pos + arrow_back + arrow_side, # Top left
+			arrow_pos + arrow_forward, # Point
+			arrow_pos + arrow_back - arrow_side # Bottom left
 		])
 
 		# Draw filled chevron

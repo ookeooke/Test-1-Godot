@@ -10,19 +10,19 @@ signal tower_selected(tower_id: String)
 signal menu_closed()
 
 # LAYOUT SETTINGS
-const RING_RADIUS = 140.0  # Distance from center to buttons (increased for KR-style spacing)
-const BUTTON_SIZE = 90.0   # Size of each tower button (larger like KR)
-const ANIMATION_SPEED = 0.15  # How fast menu appears (seconds)
+const RING_RADIUS = 140.0 # Distance from center to buttons (increased for KR-style spacing)
+const BUTTON_SIZE = 90.0 # Size of each tower button (larger like KR)
+const ANIMATION_SPEED = 0.15 # How fast menu appears (seconds)
 
 # VISUAL SETTINGS
-const BACKGROUND_RADIUS = 170.0  # Size of background circle (adjusted for larger ring)
-const BACKGROUND_COLOR = Color(0.08, 0.08, 0.12, 0.95)  # Darker, more opaque (KR-style)
-const BORDER_COLOR = Color(0.8, 0.7, 0.4, 1.0)  # Golden border
+const BACKGROUND_RADIUS = 170.0 # Size of background circle (adjusted for larger ring)
+const BACKGROUND_COLOR = Color(0.08, 0.08, 0.12, 0.95) # Darker, more opaque (KR-style)
+const BORDER_COLOR = Color(0.8, 0.7, 0.4, 1.0) # Golden border
 const BORDER_WIDTH = 3.0
 
 # STATE
-var tower_spot_position: Vector2 = Vector2.ZERO  # Where the tower spot is
-var available_towers: Array = []  # Tower IDs to show in menu
+var tower_spot_position: Vector2 = Vector2.ZERO # Where the tower spot is
+var available_towers: Array = [] # Tower IDs to show in menu
 var is_open: bool = false
 
 # REFERENCES
@@ -51,7 +51,7 @@ func _ready():
 	buttons_container.name = "ButtonsContainer"
 	add_child(buttons_container)
 
-	print("[RingMenu] Initialized")
+	# print("[RingMenu] Initialized")
 
 # ============================================
 # PUBLIC API
@@ -83,7 +83,7 @@ func open_at_position(spot_position: Vector2, tower_ids: Array):
 	# Show with animation
 	_show_animated()
 
-	print("[RingMenu] Opened at %s with towers: %s" % [spot_position, tower_ids])
+	# print("[RingMenu] Opened at %s with towers: %s" % [spot_position, tower_ids])
 
 func close():
 	"""Close the ring menu with animation"""
@@ -92,7 +92,7 @@ func close():
 
 	_hide_animated()
 	menu_closed.emit()
-	print("[RingMenu] Closed")
+	# print("[RingMenu] Closed")
 
 # ============================================
 # VISUAL CREATION
@@ -108,12 +108,12 @@ func _create_center_label():
 	"""Create center label for menu"""
 	center_label = Label.new()
 	center_label.name = "CenterLabel"
-	center_label.text = "⚔️"  # Sword icon
+	center_label.text = "⚔️" # Sword icon
 	center_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	center_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 	# Position at center (0,0 relative to this Control)
-	center_label.position = Vector2(-20, -20)  # Offset to center the label
+	center_label.position = Vector2(-20, -20) # Offset to center the label
 	center_label.custom_minimum_size = Vector2(40, 40)
 
 	# Style the label
@@ -151,8 +151,8 @@ func _create_ring_buttons():
 		return
 
 	# Calculate angle between each button
-	var angle_step = TAU / button_count  # TAU = 2*PI = full circle
-	var start_angle = -PI / 2  # Start at top (-90 degrees)
+	var angle_step = TAU / button_count # TAU = 2*PI = full circle
+	var start_angle = - PI / 2 # Start at top (-90 degrees)
 
 	for i in range(button_count):
 		var tower_id = available_towers[i]
@@ -187,7 +187,7 @@ func _create_tower_button(tower_id: String, offset: Vector2) -> Button:
 
 	# Get tower data
 	var tower_data = TowerData.get_tower_data(tower_id)
-	var tower_name = tower_data.get("name", "???")
+	# var tower_name = tower_data.get("name", "???") # Unused
 	var tower_icon = tower_data.get("icon", "?")
 	var tower_cost = tower_data.get("build_cost", 0)
 
@@ -212,23 +212,23 @@ func _style_tower_button(button: Button):
 	"""Apply visual styling to tower button (Kingdom Rush inspired)"""
 	# Create StyleBox for normal state
 	var style_normal = StyleBoxFlat.new()
-	style_normal.bg_color = Color(0.15, 0.15, 0.2, 0.95)  # Darker, more opaque
+	style_normal.bg_color = Color(0.15, 0.15, 0.2, 0.95) # Darker, more opaque
 	style_normal.set_border_width_all(3)
-	style_normal.border_color = Color(0.5, 0.4, 0.25, 1.0)  # Brown border
-	style_normal.set_corner_radius_all(12)  # More rounded like KR
+	style_normal.border_color = Color(0.5, 0.4, 0.25, 1.0) # Brown border
+	style_normal.set_corner_radius_all(12) # More rounded like KR
 
 	# Create StyleBox for hover state
 	var style_hover = StyleBoxFlat.new()
-	style_hover.bg_color = Color(0.25, 0.25, 0.3, 1.0)  # Lighter on hover
+	style_hover.bg_color = Color(0.25, 0.25, 0.3, 1.0) # Lighter on hover
 	style_hover.set_border_width_all(4)
-	style_hover.border_color = Color(0.9, 0.8, 0.5, 1.0)  # Bright golden border on hover
+	style_hover.border_color = Color(0.9, 0.8, 0.5, 1.0) # Bright golden border on hover
 	style_hover.set_corner_radius_all(12)
 
 	# Create StyleBox for pressed state
 	var style_pressed = StyleBoxFlat.new()
-	style_pressed.bg_color = Color(0.1, 0.1, 0.15, 1.0)  # Even darker when pressed
+	style_pressed.bg_color = Color(0.1, 0.1, 0.15, 1.0) # Even darker when pressed
 	style_pressed.set_border_width_all(3)
-	style_pressed.border_color = Color(1.0, 0.9, 0.6, 1.0)  # Very bright golden border
+	style_pressed.border_color = Color(1.0, 0.9, 0.6, 1.0) # Very bright golden border
 	style_pressed.set_corner_radius_all(12)
 
 	# Apply styles
@@ -249,7 +249,7 @@ func _on_tower_button_pressed(tower_id: String):
 	Args:
 		tower_id: The tower that was selected
 	"""
-	print("[RingMenu] Tower selected: %s" % tower_id)
+	# print("[RingMenu] Tower selected: %s" % tower_id)
 	tower_selected.emit(tower_id)
 	close()
 
@@ -274,7 +274,7 @@ func _show_animated():
 		var button = tower_buttons[i]
 		button.scale = Vector2.ZERO
 
-		var delay = i * 0.05  # Stagger each button by 50ms
+		var delay = i * 0.05 # Stagger each button by 50ms
 		var button_tween = create_tween()
 		button_tween.tween_property(button, "scale", Vector2.ONE, ANIMATION_SPEED).set_delay(delay)
 
@@ -285,7 +285,7 @@ func _hide_animated():
 	tween.tween_callback(func():
 		visible = false
 		is_open = false
-		queue_redraw()  # Clear the drawn circle
+		queue_redraw() # Clear the drawn circle
 	)
 
 # ============================================

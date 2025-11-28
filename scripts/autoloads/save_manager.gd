@@ -44,7 +44,7 @@ func _setup_auto_save_timer() -> void:
 func _on_auto_save_tick() -> void:
 	"""Timer callback - saves if data is dirty"""
 	if _is_dirty and has_current_profile():
-		print("[SaveManager] Auto-save triggered (dirty flag set)")
+		# print("[SaveManager] Auto-save triggered (dirty flag set)")
 		save_current_profile()
 
 func mark_dirty() -> void:
@@ -202,9 +202,9 @@ func save_profile(profile_data: Dictionary) -> bool:
 			dir.copy(save_path, backup_path)
 
 	# ATOMIC RENAME: Replace save file with temp file
-	var dir = DirAccess.open(SAVE_DIR)
-	if dir:
-		var error = dir.rename(temp_path, save_path)
+	var directory = DirAccess.open(SAVE_DIR)
+	if directory:
+		var error = directory.rename(temp_path, save_path)
 		if error == OK:
 			print("[SaveManager] Profile saved: ", profile_name)
 			_is_dirty = false # Clear dirty flag after successful save
@@ -714,7 +714,10 @@ func get_current_squad() -> Array[String]:
 	if not has_current_profile():
 		return []
 
-	return current_profile.get("current_squad", [])
+	var raw_squad = current_profile.get("current_squad", [])
+	var typed_squad: Array[String] = []
+	typed_squad.assign(raw_squad)
+	return typed_squad
 
 
 func add_hero_to_squad(hero_id: String) -> bool:
@@ -782,6 +785,16 @@ func is_hero_unlocked(hero_id: String) -> bool:
 		return false
 
 	return current_profile["unlocked_heroes"].has(hero_id)
+
+func get_unlocked_heroes() -> Array:
+	"""Get list of all unlocked hero IDs"""
+	if not has_current_profile():
+		return []
+		
+	if not current_profile.has("unlocked_heroes"):
+		return []
+		
+	return current_profile["unlocked_heroes"]
 
 # ============================================
 # TOWER LOADOUT SYSTEM (Phase 3A)

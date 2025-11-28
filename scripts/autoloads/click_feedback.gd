@@ -18,7 +18,8 @@ var ripple_effect_scene: PackedScene = null
 
 func _ready():
 	print("ClickFeedback system ready")
-	# TODO: Load audio and visual effects when available
+	# Load default ripple effect
+	ripple_effect_scene = load("res://scenes/effects/touch_ripple.tscn")
 
 ## ============================================
 ## PUBLIC API

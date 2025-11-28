@@ -23,7 +23,7 @@ class_name PathWaypoint
 
 @export_group("Visual Settings")
 ## Color of the waypoint marker in editor
-@export var waypoint_color: Color = Color(1.0, 0.8, 0.0, 1.0):  # Yellow
+@export var waypoint_color: Color = Color(1.0, 0.8, 0.0, 1.0): # Yellow
 	set(value):
 		waypoint_color = value
 		queue_redraw()
@@ -86,7 +86,7 @@ func _draw():
 		var font = ThemeDB.fallback_font
 		var font_size = 12
 		var text_size = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
-		draw_string(font, Vector2(-text_size.x / 2, font_size / 2), text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.BLACK)
+		draw_string(font, Vector2(-text_size.x / 2.0, font_size / 2.0), text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.BLACK)
 
 		# Draw connections to next waypoints
 		for next_wp in next_waypoints:

@@ -14,7 +14,7 @@ var tower = null
 var spot = null
 
 # Upgrade costs (dynamic based on tower level)
-var upgrade_cost = 60  # Default, will be updated from tower
+var upgrade_cost = 60 # Default, will be updated from tower
 
 # Path selection state (for level 3 → level 4 choice)
 var is_damage_path_preview = false
@@ -47,7 +47,7 @@ var enemy_list_visible = false
 
 # Upgrade preview state (two-click upgrade system)
 var is_preview_mode = false
-var preview_stats = {}  # Stores what stats will be after upgrade
+var preview_stats = {} # Stores what stats will be after upgrade
 
 # Rally button for garrison towers (created dynamically)
 var rally_button: Button = null
@@ -82,17 +82,17 @@ func _ready():
 
 	# Set smaller font sizes for better UI (reduced for cleaner look)
 	if tower_name_label:
-		tower_name_label.add_theme_font_size_override("font_size", 12)  # Was 14
+		tower_name_label.add_theme_font_size_override("font_size", 12) # Was 14
 	if stats_label:
-		stats_label.add_theme_font_size_override("font_size", 10)  # Was 11
+		stats_label.add_theme_font_size_override("font_size", 10) # Was 11
 	if enemies_label:
-		enemies_label.add_theme_font_size_override("font_size", 9)  # Was 10
+		enemies_label.add_theme_font_size_override("font_size", 9) # Was 10
 	if enemy_list_toggle:
-		enemy_list_toggle.add_theme_font_size_override("font_size", 9)  # Was 10
+		enemy_list_toggle.add_theme_font_size_override("font_size", 9) # Was 10
 	if upgrade_button:
-		upgrade_button.add_theme_font_size_override("font_size", 9)  # Was 11
+		upgrade_button.add_theme_font_size_override("font_size", 9) # Was 11
 	if sell_button:
-		sell_button.add_theme_font_size_override("font_size", 9)  # Was 11
+		sell_button.add_theme_font_size_override("font_size", 9) # Was 11
 	if first_button:
 		first_button.add_theme_font_size_override("font_size", 8)
 	if last_button:
@@ -109,7 +109,7 @@ func _ready():
 		range_path_button.add_theme_font_size_override("font_size", 9)
 
 	# Load enemy list visibility preference (removed - was GameManager feature)
-	enemy_list_visible = false  # Default to hidden
+	enemy_list_visible = false # Default to hidden
 
 	# Apply initial visibility state
 	_update_enemy_list_visibility()
@@ -121,7 +121,7 @@ func _ready():
 
 	# Create update timer for enemy list
 	update_timer = Timer.new()
-	update_timer.wait_time = 0.1  # Update 10 times per second
+	update_timer.wait_time = 0.1 # Update 10 times per second
 	update_timer.timeout.connect(_on_update_timer_timeout)
 	add_child(update_timer)
 	update_timer.start()
@@ -145,7 +145,7 @@ func _ensure_all_targeting_buttons_exist():
 			new_button.name = button_name
 			new_button.text = label
 			new_button.custom_minimum_size = Vector2(60, 30)
-			new_button.add_theme_font_size_override("font_size", 12)  # Smaller font
+			new_button.add_theme_font_size_override("font_size", 12) # Smaller font
 			targeting_container.add_child(new_button)
 			return new_button
 		return existing_button
@@ -226,7 +226,7 @@ func update_display():
 	var needs_path_choice = tower and tower.has_method("needs_path_choice") and tower.needs_path_choice()
 	var tower_level = tower.tower_level if tower and "tower_level" in tower else 1
 	var upgrade_path = tower.upgrade_path if tower and "upgrade_path" in tower else ""
-	var is_max_level = (tower_level >= 5)  # Level 5+ = MAX LEVEL
+	var is_max_level = (tower_level >= 5) # Level 5+ = MAX LEVEL
 
 	if is_max_level:
 		print("🔧 [TowerInfoMenu] Tower is MAX LEVEL (Level 4, path: %s)" % upgrade_path)
@@ -307,7 +307,7 @@ func update_button_states():
 	if upgrade_button:
 		# Check if tower is at max level first
 		var tower_level = tower.tower_level if tower and "tower_level" in tower else 1
-		var is_max_level = (tower_level >= 5)  # Level 5+ = MAX LEVEL
+		var is_max_level = (tower_level >= 5) # Level 5+ = MAX LEVEL
 
 		if is_max_level:
 			# Keep button disabled at max level (don't check affordability)
@@ -368,13 +368,13 @@ func _calculate_preview_stats():
 	var current_damage = tower.damage if "damage" in tower else 0
 	var current_attack_speed = tower.attack_speed if "attack_speed" in tower else 0
 	var current_range = tower.range_radius if "range_radius" in tower else 0
-	var current_level = tower.tower_level if "tower_level" in tower else 1
+	var _current_level = tower.tower_level if "tower_level" in tower else 1
 
 	# Simple upgrade formula (50% damage, 25% attack speed per level)
 	# This is a fallback - towers should implement get_upgrade_stats()
 	var damage_bonus = int(current_damage * 0.5)
 	var attack_speed_bonus = current_attack_speed * 0.25
-	var range_bonus = 0  # Usually range doesn't change
+	var range_bonus = 0 # Usually range doesn't change
 
 	preview_stats = {
 		"damage": current_damage,
@@ -469,7 +469,7 @@ func _confirm_upgrade():
 		if tower_name_label:
 			print("🔧 [TowerInfoMenu] Showing \'✓ UPGRADED!\' confirmation")
 			tower_name_label.text = "✓ UPGRADED!"
-			tower_name_label.modulate = Color(0, 1, 0)  # Green
+			tower_name_label.modulate = Color(0, 1, 0) # Green
 			await get_tree().create_timer(0.3).timeout
 			print("🔧 [TowerInfoMenu] Confirmation shown, closing menu")
 
@@ -519,7 +519,7 @@ func update_targeting_buttons():
 		return
 
 	var mode = tower.targeting_mode
-	var inactive_color = Color(0.6, 0.6, 0.6)  # Gray
+	var inactive_color = Color(0.6, 0.6, 0.6) # Gray
 
 	# Update button colors to show active mode
 	if first_button:
@@ -536,35 +536,35 @@ func update_targeting_buttons():
 func _on_first_button_pressed():
 	"""Set tower to FIRST targeting mode"""
 	if tower and tower.has_method("set_targeting_mode"):
-		tower.set_targeting_mode(0)  # TargetingMode.FIRST
+		tower.set_targeting_mode(0) # TargetingMode.FIRST
 		update_targeting_buttons()
 		DebugConfig.log_targeting("Player selected FIRST mode")
 
 func _on_last_button_pressed():
 	"""Set tower to LAST targeting mode"""
 	if tower and tower.has_method("set_targeting_mode"):
-		tower.set_targeting_mode(1)  # TargetingMode.LAST
+		tower.set_targeting_mode(1) # TargetingMode.LAST
 		update_targeting_buttons()
 		DebugConfig.log_targeting("Player selected LAST mode")
 
 func _on_close_button_pressed():
 	"""Set tower to CLOSE targeting mode"""
 	if tower and tower.has_method("set_targeting_mode"):
-		tower.set_targeting_mode(2)  # TargetingMode.CLOSE
+		tower.set_targeting_mode(2) # TargetingMode.CLOSE
 		update_targeting_buttons()
 		DebugConfig.log_targeting("Player selected CLOSE mode")
 
 func _on_strong_button_pressed():
 	"""Set tower to STRONG targeting mode"""
 	if tower and tower.has_method("set_targeting_mode"):
-		tower.set_targeting_mode(3)  # TargetingMode.STRONG
+		tower.set_targeting_mode(3) # TargetingMode.STRONG
 		update_targeting_buttons()
 		DebugConfig.log_targeting("Player selected STRONG mode")
 
 func _on_weak_button_pressed():
 	"""Set tower to WEAK targeting mode"""
 	if tower and tower.has_method("set_targeting_mode"):
-		tower.set_targeting_mode(4)  # TargetingMode.WEAK
+		tower.set_targeting_mode(4) # TargetingMode.WEAK
 		update_targeting_buttons()
 		DebugConfig.log_targeting("Player selected WEAK mode")
 
@@ -654,31 +654,31 @@ func update_enemy_list():
 	var targeting_mode = tower.targeting_mode if "targeting_mode" in tower else 0
 
 	match targeting_mode:
-		0:  # FIRST - sort by progress (descending)
+		0: # FIRST - sort by progress (descending)
 			enemies.sort_custom(func(a, b):
 				return _get_enemy_progress(a) > _get_enemy_progress(b)
 			)
-		1:  # LAST - sort by progress (ascending)
+		1: # LAST - sort by progress (ascending)
 			enemies.sort_custom(func(a, b):
 				return _get_enemy_progress(a) < _get_enemy_progress(b)
 			)
-		2:  # CLOSE - sort by distance to tower (ascending)
+		2: # CLOSE - sort by distance to tower (ascending)
 			enemies.sort_custom(func(a, b):
 				var dist_a = tower.global_position.distance_to(a.global_position)
 				var dist_b = tower.global_position.distance_to(b.global_position)
 				return dist_a < dist_b
 			)
-		3:  # STRONG - sort by health (descending)
+		3: # STRONG - sort by health (descending)
 			enemies.sort_custom(func(a, b):
 				return _get_enemy_health(a) > _get_enemy_health(b)
 			)
-		4:  # WEAK - sort by health (ascending)
+		4: # WEAK - sort by health (ascending)
 			enemies.sort_custom(func(a, b):
 				return _get_enemy_health(a) < _get_enemy_health(b)
 			)
 
 	# Create labels for each enemy
-	var position = 1
+	var rank_position = 1
 	for enemy in enemies:
 		var enemy_label = Label.new()
 
@@ -693,27 +693,27 @@ func update_enemy_list():
 		var armor_percent = int(armor * 100)
 
 		# Format with armor and gold indicators: [1st] Goblin [⛨20%] (HP: 45/100, 💰10g, 78%)
-		var position_suffix = _get_position_suffix(position)
+		var position_suffix = _get_position_suffix(rank_position)
 		var armor_text = " [⛨%d%%]" % armor_percent if armor > 0.0 else ""
 		enemy_label.text = "[%d%s] %s%s (HP: %d/%d, 💰%dg, %d%%)" % [
-			position, position_suffix, enemy_name, armor_text, health, max_health, gold, progress_percent
+			rank_position, position_suffix, enemy_name, armor_text, health, max_health, gold, progress_percent
 		]
 
 		# Set smaller font size
-		enemy_label.add_theme_font_size_override("font_size", 8)  # Was 9
+		enemy_label.add_theme_font_size_override("font_size", 8) # Was 9
 
 		# Color code by priority + boss highlighting
 		if _is_enemy_boss(enemy):
-			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.4, 1.0))  # Magenta for bosses
-		elif position == 1:
-			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))  # Red for current target
-		elif position == 2:
-			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3))  # Orange
+			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.4, 1.0)) # Magenta for bosses
+		elif rank_position == 1:
+			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3)) # Red for current target
+		elif rank_position == 2:
+			enemy_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3)) # Orange
 		else:
-			enemy_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))  # Gray
+			enemy_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8)) # Gray
 
 		enemy_list_container.add_child(enemy_label)
-		position += 1
+		rank_position += 1
 
 func _get_position_suffix(pos: int) -> String:
 	"""Get suffix for position (1st, 2nd, 3rd, etc.)"""
@@ -732,8 +732,8 @@ func _is_enemy_boss(enemy) -> bool:
 		return false
 	if "is_boss" in enemy:
 		return enemy.is_boss
-	var name = enemy.get_enemy_name() if enemy.has_method("get_enemy_name") else ""
-	return "boss" in name.to_lower()
+	var enemy_name = enemy.get_enemy_name() if enemy.has_method("get_enemy_name") else ""
+	return "boss" in enemy_name.to_lower()
 
 func _get_enemy_progress(enemy) -> float:
 	"""Get enemy's progress along path"""
@@ -896,7 +896,7 @@ func _update_tower_type_ui():
 func _create_rally_button():
 	"""Create the rally point button for garrison towers (Kingdom Rush style)"""
 	if rally_button:
-		return  # Already created
+		return # Already created
 
 	# Find the targeting buttons container
 	var targeting_container = first_button.get_parent() if first_button else null
@@ -914,7 +914,7 @@ func _create_rally_button():
 	rally_button.pressed.connect(_on_rally_button_pressed)
 
 	# Visual styling
-	rally_button.modulate = Color(1.0, 0.9, 0.3)  # Gold tint
+	rally_button.modulate = Color(1.0, 0.9, 0.3) # Gold tint
 
 func _on_rally_button_pressed():
 	"""Called when player clicks Rally Point button - enters placement mode"""
@@ -1020,10 +1020,10 @@ func _enter_damage_path_preview():
 
 	# Visual feedback - highlight selected button (Kingdom Rush orange)
 	if damage_path_button:
-		damage_path_button.modulate = Color(1.2, 1.0, 0.8)  # Orange tint
+		damage_path_button.modulate = Color(1.2, 1.0, 0.8) # Orange tint
 		damage_path_button.text = "🔥 DAMAGE PATH\n(Click to Confirm)\n150g - Glass Cannon"
 	if range_path_button:
-		range_path_button.modulate = Color(0.7, 0.7, 0.7)  # Dim the other
+		range_path_button.modulate = Color(0.7, 0.7, 0.7) # Dim the other
 
 	# Get damage path stats preview from tower (single source of truth!)
 	if tower and tower.has_method("get_upgrade_stats"):
@@ -1051,10 +1051,10 @@ func _enter_range_path_preview():
 
 	# Visual feedback - highlight selected button (Kingdom Rush blue)
 	if range_path_button:
-		range_path_button.modulate = Color(0.8, 1.0, 1.2)  # Blue tint
+		range_path_button.modulate = Color(0.8, 1.0, 1.2) # Blue tint
 		range_path_button.text = "🎯 RANGE PATH\n(Click to Confirm)\n150g - Long-range Sniper"
 	if damage_path_button:
-		damage_path_button.modulate = Color(0.7, 0.7, 0.7)  # Dim the other
+		damage_path_button.modulate = Color(0.7, 0.7, 0.7) # Dim the other
 
 	# Get range path stats preview from tower (single source of truth!)
 	if tower and tower.has_method("get_upgrade_stats"):
@@ -1106,7 +1106,7 @@ func _confirm_damage_path():
 		if tower_name_label:
 			print("🔥 [TowerInfoMenu] Showing \'✓ DAMAGE PATH!\' confirmation")
 			tower_name_label.text = "✓ DAMAGE PATH!"
-			tower_name_label.modulate = Color(1.0, 0.6, 0.3)  # Orange
+			tower_name_label.modulate = Color(1.0, 0.6, 0.3) # Orange
 			await get_tree().create_timer(0.3).timeout
 			print("🔥 [TowerInfoMenu] Confirmation shown, closing menu")
 
@@ -1152,7 +1152,7 @@ func _confirm_range_path():
 		if tower_name_label:
 			print("🎯 [TowerInfoMenu] Showing \'✓ RANGE PATH!\' confirmation")
 			tower_name_label.text = "✓ RANGE PATH!"
-			tower_name_label.modulate = Color(0.3, 0.8, 1.0)  # Blue
+			tower_name_label.modulate = Color(0.3, 0.8, 1.0) # Blue
 			await get_tree().create_timer(0.3).timeout
 			print("🎯 [TowerInfoMenu] Confirmation shown, closing menu")
 

@@ -23,7 +23,7 @@ var ability_buttons: Array[AbilityButton] = []
 var stats_popup: HeroStatsPopup = null
 
 # STATE
-var hero_reference = null  # Reference to the actual hero in the game world
+var hero_reference = null # Reference to the actual hero in the game world
 var is_selected = false
 
 ## ============================================
@@ -58,7 +58,7 @@ func _setup_abilities_container():
 	add_child(abilities_container)
 
 	# Position above the hero button panel
-	abilities_container.position = Vector2(0, -70)  # Above the hero panel
+	abilities_container.position = Vector2(0, -70) # Above the hero panel
 
 	print("✅ Abilities container created")
 
@@ -69,7 +69,7 @@ func _setup_stats_popup():
 	add_child(stats_popup)
 
 	# Position to the right of the hero button
-	stats_popup.position = Vector2(100, 0)  # To the right
+	stats_popup.position = Vector2(100, 0) # To the right
 
 	print("✅ Stats popup created")
 
@@ -92,7 +92,7 @@ func _apply_ui_scale():
 
 	print("HeroButton scaled to: ", scaled_size, " (scale factor: ", UIScaleManager.ui_scale, ")")
 
-func _on_ui_scale_changed(new_scale: float):
+func _on_ui_scale_changed(_new_scale: float):
 	"""Handle UI scale changes (e.g., window resize)"""
 	_apply_ui_scale()
 
@@ -114,8 +114,8 @@ func set_hero(hero):
 		# Update display
 		_update_hero_info()
 
-		# Setup ability buttons
-		_setup_ability_buttons()
+	# Setup ability buttons
+		_setup_active_ability_button()
 
 		# Set hero for stats popup
 		if stats_popup:
@@ -138,12 +138,18 @@ func _update_hero_info():
 	# Update level and XP
 	_update_level_display()
 	_update_xp_display()
+	
+	# Update portrait
+	if "hero_id" in hero_reference:
+		var data = HeroDatabase.get_hero(hero_reference.hero_id)
+		if data and data.portrait and portrait:
+			portrait.texture = data.portrait
 
 ## ============================================
 ## UPDATE LOOP
 ## ============================================
 
-func _process(delta):
+func _process(_delta):
 	# Update health bar every frame (simple approach)
 	if hero_reference and is_instance_valid(hero_reference):
 		if "current_health" in hero_reference and "max_health" in hero_reference:
@@ -231,10 +237,10 @@ func _update_selection_visual():
 	"""Update visual appearance based on selection state"""
 	if is_selected:
 		# Highlighted border or glow
-		modulate = Color(1.3, 1.3, 1.0)  # Yellow tint
+		self_modulate = Color(1.3, 1.3, 1.0) # Yellow tint
 	else:
 		# Normal appearance
-		modulate = Color(1.0, 1.0, 1.0)
+		self_modulate = Color(1.0, 1.0, 1.0)
 
 ## ============================================
 ## CALLBACKS
@@ -249,15 +255,19 @@ func _on_hero_health_changed(current_health, max_health):
 ## ABILITY BUTTONS
 ## ============================================
 
-func _setup_ability_buttons():
-	"""Create ability buttons for hero's active skills"""
+func _setup_active_ability_button():
+	"""Configure the single active ability button"""
+	var active_btn = $ActiveAbilityButton
+	if not active_btn:
+		return
+	
+	# Move button above the hero portrait
+	active_btn.position = Vector2(15, -95)
+		
+	# active_btn.visible = false # Hide by default until we find a skill
+	
 	if not hero_reference or not is_instance_valid(hero_reference):
 		return
-
-	# Clear existing buttons
-	for btn in ability_buttons:
-		btn.queue_free()
-	ability_buttons.clear()
 
 	# Get skill manager from hero
 	if not hero_reference.has_node("SkillManager"):
@@ -269,31 +279,19 @@ func _setup_ability_buttons():
 	# Get all owned skills
 	var owned_skills = skill_manager.owned_skills
 	if owned_skills.is_empty():
-		print("📝 HeroButton: No skills owned yet")
 		return
 
-	# Create button for each active skill
-	var hotkey_index = 1
+	# Find the FIRST active skill
 	for skill_id in owned_skills.keys():
 		var skill_data = skill_manager.get_skill_data(skill_id)
 
 		if not skill_data:
 			continue
 
-		# Only create buttons for active skills
-		if skill_data.skill_type != HeroSkillData.SkillType.ACTIVE:
-			continue
-
-		# Create ability button
-		var ability_btn = AbilityButton.new()
-		abilities_container.add_child(ability_btn)
-
-		# Setup button
-		ability_btn.setup(skill_id, skill_manager, skill_data, str(hotkey_index))
-
-		# Add to tracking array
-		ability_buttons.append(ability_btn)
-
-		hotkey_index += 1
-
-	print("🎮 HeroButton: Created ", ability_buttons.size(), " ability buttons")
+		# Only care about ACTIVE skills
+		if skill_data.skill_type == HeroSkillData.SkillType.ACTIVE:
+			# Found one! Setup the button
+			active_btn.visible = true
+			active_btn.setup(skill_id, skill_manager, skill_data, "1")
+			print("🎮 HeroButton: Bound active skill button to: ", skill_id)
+			return # Stop after finding the first one

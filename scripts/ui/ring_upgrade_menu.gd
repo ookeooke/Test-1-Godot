@@ -17,11 +17,11 @@ signal enemy_list_toggled(visible: bool)
 
 # LAYOUT SETTINGS (matches ring_menu.gd)
 const RING_RADIUS = 140.0
-const BUTTON_SIZE_LARGE = 100.0    # Upgrade/Path buttons
-const BUTTON_SIZE_MEDIUM = 90.0    # Sell/Rally/Targeting buttons
-const BUTTON_SIZE_SMALL = 70.0     # Targeting mode buttons (in submenu)
-const BUTTON_SIZE_SUBMENU = 60.0   # Targeting submenu buttons (smaller)
-const SUBMENU_RADIUS = 80.0        # Targeting submenu circle radius
+const BUTTON_SIZE_LARGE = 100.0 # Upgrade/Path buttons
+const BUTTON_SIZE_MEDIUM = 90.0 # Sell/Rally/Targeting buttons
+const BUTTON_SIZE_SMALL = 70.0 # Targeting mode buttons (in submenu)
+const BUTTON_SIZE_SUBMENU = 60.0 # Targeting submenu buttons (smaller)
+const SUBMENU_RADIUS = 80.0 # Targeting submenu circle radius
 const ANIMATION_SPEED = 0.15
 
 # VISUAL SETTINGS
@@ -36,19 +36,19 @@ const CENTER_BG_COLOR = Color(0.08, 0.08, 0.12, 0.95)
 const CENTER_BORDER_COLOR = Color(0.8, 0.7, 0.4, 1.0)
 
 # ENEMY LIST PANEL
-const ENEMY_LIST_OFFSET = Vector2(200, 0)  # To right of ring
+const ENEMY_LIST_OFFSET = Vector2(200, 0) # To right of ring
 const ENEMY_LIST_SIZE = Vector2(180, 300)
 
 # BUTTON COLORS
-const COLOR_UPGRADE = Color(0.5, 1.0, 0.5)      # Green
-const COLOR_SELL = Color(1.0, 0.5, 0.5)         # Red
-const COLOR_DAMAGE_PATH = Color(1.2, 1.0, 0.8)  # Orange
-const COLOR_RANGE_PATH = Color(0.8, 1.0, 1.2)   # Blue
-const COLOR_RALLY = Color(1.0, 0.9, 0.3)        # Gold
-const COLOR_TARGETING_ACTIVE = Color(0.5, 0.8, 1.0)    # Blue
-const COLOR_TARGETING_INACTIVE = Color(0.6, 0.6, 0.6)  # Gray
-const COLOR_DISABLED = Color(0.3, 0.3, 0.3)     # Dark gray
-const COLOR_CONFIRM = Color(1.0, 1.0, 0.5)      # Yellow glow
+const COLOR_UPGRADE = Color(0.5, 1.0, 0.5) # Green
+const COLOR_SELL = Color(1.0, 0.5, 0.5) # Red
+const COLOR_DAMAGE_PATH = Color(1.2, 1.0, 0.8) # Orange
+const COLOR_RANGE_PATH = Color(0.8, 1.0, 1.2) # Blue
+const COLOR_RALLY = Color(1.0, 0.9, 0.3) # Gold
+const COLOR_TARGETING_ACTIVE = Color(0.5, 0.8, 1.0) # Blue
+const COLOR_TARGETING_INACTIVE = Color(0.6, 0.6, 0.6) # Gray
+const COLOR_DISABLED = Color(0.3, 0.3, 0.3) # Dark gray
+const COLOR_CONFIRM = Color(1.0, 1.0, 0.5) # Yellow glow
 
 # BUTTON EMOJIS
 const EMOJI_UPGRADE = "⬆️"
@@ -80,23 +80,23 @@ var is_garrison_tower: bool = false
 var is_max_level: bool = false
 
 # PREVIEW STATE (two-click system)
-var preview_mode: String = ""  # "", "upgrade", "sell", "damage_path", "range_path", "targeting"
+var preview_mode: String = "" # "", "upgrade", "sell", "damage_path", "range_path", "targeting"
 var preview_stats: Dictionary = {}
 
 # TARGETING SUBMENU STATE
 var targeting_submenu_open: bool = false
-var submenu_buttons: Dictionary = {}  # button_id -> Button (for targeting submenu)
+var submenu_buttons: Dictionary = {} # button_id -> Button (for targeting submenu)
 var submenu_container: Control = null
 
 # REFERENCES
 var buttons_container: Control
-var action_buttons: Dictionary = {}  # button_id -> Button
+var action_buttons: Dictionary = {} # button_id -> Button
 var center_panel: Panel
 var center_label: RichTextLabel
 var enemy_list_panel: Panel = null
 var enemy_list_visible: bool = false
-var enemy_list_container: VBoxContainer = null  # Container for enemy labels
-var enemy_update_timer: Timer = null  # Real-time enemy list updates
+var enemy_list_container: VBoxContainer = null # Container for enemy labels
+var enemy_update_timer: Timer = null # Real-time enemy list updates
 
 # ============================================
 # INITIALIZATION
@@ -121,7 +121,7 @@ func _ready():
 	# Create update timer for real-time enemy list
 	enemy_update_timer = Timer.new()
 	enemy_update_timer.name = "EnemyUpdateTimer"
-	enemy_update_timer.wait_time = 0.1  # Update 10 times per second
+	enemy_update_timer.wait_time = 0.1 # Update 10 times per second
 	enemy_update_timer.timeout.connect(_update_enemy_list)
 	add_child(enemy_update_timer)
 
@@ -152,7 +152,7 @@ func open_for_tower(spot_position: Vector2, tower_node: Node, spot_node: Node):
 	spot = spot_node
 
 	# Detect tower type
-	is_garrison_tower = tower.has_method("get_soldier_count")
+	is_garrison_tower = tower.is_in_group("garrison")
 	is_max_level = _is_tower_max_level()
 
 	# DEBUG: Print tower state
@@ -215,7 +215,7 @@ func close():
 
 func _create_background():
 	"""Create circular background with border"""
-	pass  # We use _draw() for custom rendering
+	pass # We use _draw() for custom rendering
 
 func _create_center_panel():
 	"""Create center stats panel"""
@@ -223,7 +223,7 @@ func _create_center_panel():
 	center_panel = Panel.new()
 	center_panel.name = "CenterPanel"
 	center_panel.custom_minimum_size = CENTER_PANEL_SIZE
-	center_panel.position = -CENTER_PANEL_SIZE / 2  # Center it
+	center_panel.position = - CENTER_PANEL_SIZE / 2 # Center it
 
 	# Style panel
 	var style = StyleBoxFlat.new()
@@ -273,7 +273,7 @@ func _calculate_button_positions() -> Dictionary:
 	"""
 	# Safety check - tower might be freed during sell
 	if not is_instance_valid(tower):
-		return {}  # Return empty positions if tower is gone
+		return {} # Return empty positions if tower is gone
 
 	var positions = {}
 
@@ -284,38 +284,14 @@ func _calculate_button_positions() -> Dictionary:
 		var path = tower.upgrade_path if "upgrade_path" in tower else "???"
 		print("[RingUpgradeMenu] Path choice check: Level=%d, Path='%s', needs_path_choice()=%s" % [tower_lv, path, needs_path])
 
-	if is_garrison_tower:
-		# GARRISON LAYOUT: 4 buttons
-		# 12:00 - Upgrade/Max
-		# 2:00 - Rally Point
-		# 5:00 - Enemy List
-		# 6:00 - Sell
-		positions["upgrade"] = {
-			"angle": -PI/2, "size": BUTTON_SIZE_LARGE,
-			"emoji": EMOJI_UPGRADE if not is_max_level else "⭐",
-			"color": COLOR_UPGRADE if not is_max_level else COLOR_DISABLED
-		}
-		positions["rally"] = {
-			"angle": -PI/2 + PI/3, "size": BUTTON_SIZE_MEDIUM,
-			"emoji": EMOJI_RALLY, "color": COLOR_RALLY
-		}
-		positions["enemy_list"] = {
-			"angle": PI/6, "size": BUTTON_SIZE_SMALL,
-			"emoji": EMOJI_ENEMY_LIST, "color": COLOR_TARGETING_INACTIVE
-		}
-		positions["sell"] = {
-			"angle": PI/2, "size": BUTTON_SIZE_MEDIUM,
-			"emoji": EMOJI_SELL, "color": COLOR_SELL
-		}
-
-	elif tower.has_method("needs_path_choice") and tower.needs_path_choice():
+	# PRIORITIZE PATH CHOICE: Check this FIRST, even for garrison towers
+	if tower.has_method("needs_path_choice") and tower.needs_path_choice():
 		# PATH CHOICE LAYOUT: 5 buttons (DYNAMIC based on tower type)
 		# 12:00 - Path 1 (damage/cannon/inferno/defense)
 		# 3:00 - Targeting (collapsed)
 		# 6:00 - Sell
 		# 8:00 - Path 2 (range/mortar/frost/offense)
 		# 9:00 - Enemy List
-
 		# Get path choices from tower (dynamic per tower type)
 		var path_choices = []
 		if tower.has_method("get_path_choices"):
@@ -325,22 +301,22 @@ func _calculate_button_positions() -> Dictionary:
 		if path_choices.size() >= 2:
 			# First path (top position)
 			positions[path_choices[0]["id"]] = {
-				"angle": -PI/2, "size": BUTTON_SIZE_LARGE,
+				"angle": - PI / 2, "size": BUTTON_SIZE_LARGE,
 				"emoji": path_choices[0]["emoji"], "color": COLOR_DAMAGE_PATH
 			}
 			# Second path (bottom-left position)
 			positions[path_choices[1]["id"]] = {
-				"angle": PI - PI/4, "size": BUTTON_SIZE_LARGE,
+				"angle": PI - PI / 4, "size": BUTTON_SIZE_LARGE,
 				"emoji": path_choices[1]["emoji"], "color": COLOR_RANGE_PATH
 			}
 		else:
 			# Fallback to hardcoded for backwards compatibility
 			positions["damage_path"] = {
-				"angle": -PI/2, "size": BUTTON_SIZE_LARGE,
+				"angle": - PI / 2, "size": BUTTON_SIZE_LARGE,
 				"emoji": EMOJI_DAMAGE, "color": COLOR_DAMAGE_PATH
 			}
 			positions["range_path"] = {
-				"angle": PI - PI/4, "size": BUTTON_SIZE_LARGE,
+				"angle": PI - PI / 4, "size": BUTTON_SIZE_LARGE,
 				"emoji": EMOJI_RANGE, "color": COLOR_RANGE_PATH
 			}
 
@@ -349,13 +325,38 @@ func _calculate_button_positions() -> Dictionary:
 			"emoji": "🎯", "color": COLOR_TARGETING_ACTIVE
 		}
 		positions["sell"] = {
-			"angle": PI/2, "size": BUTTON_SIZE_MEDIUM,
+			"angle": PI / 2, "size": BUTTON_SIZE_MEDIUM,
 			"emoji": EMOJI_SELL, "color": COLOR_SELL
 		}
 		positions["enemy_list"] = {
 			"angle": PI, "size": BUTTON_SIZE_MEDIUM,
 			"emoji": EMOJI_ENEMY_LIST, "color": COLOR_TARGETING_INACTIVE
 		}
+
+	elif is_garrison_tower:
+		# GARRISON LAYOUT: 4 buttons
+		# 12:00 - Upgrade/Max
+		# 2:00 - Rally Point
+		# 5:00 - Enemy List
+		# 6:00 - Sell
+		positions["upgrade"] = {
+			"angle": - PI / 2, "size": BUTTON_SIZE_LARGE,
+			"emoji": EMOJI_UPGRADE if not is_max_level else "⭐",
+			"color": COLOR_UPGRADE if not is_max_level else COLOR_DISABLED
+		}
+		positions["rally"] = {
+			"angle": - PI / 2 + PI / 3, "size": BUTTON_SIZE_MEDIUM,
+			"emoji": EMOJI_RALLY, "color": COLOR_RALLY
+		}
+		positions["enemy_list"] = {
+			"angle": PI / 6, "size": BUTTON_SIZE_SMALL,
+			"emoji": EMOJI_ENEMY_LIST, "color": COLOR_TARGETING_INACTIVE
+		}
+		positions["sell"] = {
+			"angle": PI / 2, "size": BUTTON_SIZE_MEDIUM,
+			"emoji": EMOJI_SELL, "color": COLOR_SELL
+		}
+
 
 	else:
 		# STANDARD LAYOUT: 4 buttons (SIMPLIFIED)
@@ -364,7 +365,7 @@ func _calculate_button_positions() -> Dictionary:
 		# 6:00 - Sell
 		# 9:00 - Enemy List
 		positions["upgrade"] = {
-			"angle": -PI/2, "size": BUTTON_SIZE_LARGE,
+			"angle": - PI / 2, "size": BUTTON_SIZE_LARGE,
 			"emoji": EMOJI_UPGRADE if not is_max_level else "⭐",
 			"color": COLOR_UPGRADE if not is_max_level else COLOR_DISABLED
 		}
@@ -373,7 +374,7 @@ func _calculate_button_positions() -> Dictionary:
 			"emoji": "🎯", "color": COLOR_TARGETING_ACTIVE
 		}
 		positions["sell"] = {
-			"angle": PI/2, "size": BUTTON_SIZE_MEDIUM,
+			"angle": PI / 2, "size": BUTTON_SIZE_MEDIUM,
 			"emoji": EMOJI_SELL, "color": COLOR_SELL
 		}
 		positions["enemy_list"] = {
@@ -516,7 +517,7 @@ func _style_action_button(button: Button, tint_color: Color, button_id: String):
 	elif button_id in ["sell", "rally"]:
 		button.add_theme_font_size_override("font_size", 14)
 	else:
-		button.add_theme_font_size_override("font_size", 24)  # Big emoji for targeting
+		button.add_theme_font_size_override("font_size", 24) # Big emoji for targeting
 
 	# Disable button if max level
 	if button_id == "upgrade" and is_max_level:
@@ -534,7 +535,7 @@ func _update_center_stats():
 	var text = "[center]"
 
 	# Tower name and level
-	var tower_name = tower.name if "name" in tower else "Tower"
+	var tower_name = str(tower.name) if "name" in tower else "Tower"
 	var level_text = "Lv%d" % tower.tower_level
 
 	# Add path info if chosen
@@ -559,7 +560,7 @@ func _update_center_stats():
 func _get_normal_stats_text() -> String:
 	"""Get normal stats text (no preview)"""
 	if not is_instance_valid(tower):
-		return ""  # Tower freed, return empty string
+		return "" # Tower freed, return empty string
 
 	var text = ""
 
@@ -633,7 +634,7 @@ func _on_action_button_pressed(button_id: String):
 func _enter_preview_mode(button_id: String):
 	"""Enter preview mode for a button (first click)"""
 	if not is_instance_valid(tower):
-		return  # Tower freed, exit preview mode
+		return # Tower freed, exit preview mode
 
 	preview_mode = button_id
 
@@ -647,9 +648,6 @@ func _enter_preview_mode(button_id: String):
 		"sell":
 			_update_button_preview_visual(button_id, "CONFIRM")
 
-		"rally":
-			_update_button_preview_visual(button_id, "CONFIRM")
-
 		"enemy_list":
 			# Enemy list toggles IMMEDIATELY (single-click, no preview)
 			enemy_list_visible = not enemy_list_visible
@@ -659,6 +657,12 @@ func _enter_preview_mode(button_id: String):
 			else:
 				_hide_enemy_list()
 			# Don't enter preview mode - action is instant
+			return
+
+		"rally":
+			# Rally point is INSTANT (single-click)
+			rally_mode_entered.emit(tower)
+			close() # Close menu to let player place rally point
 			return
 
 		"targeting":
@@ -689,7 +693,7 @@ func _confirm_action(button_id: String):
 
 		"rally":
 			rally_mode_entered.emit(tower)
-			close()  # Close menu to let player place rally point
+			close() # Close menu to let player place rally point
 
 		"enemy_list":
 			# Enemy list now handles toggling in _enter_preview_mode (single-click)
@@ -705,7 +709,7 @@ func _confirm_action(button_id: String):
 				var mode = _get_targeting_mode_from_button_id(button_id)
 				if mode != -1:
 					targeting_mode_changed.emit(tower, mode)
-					_cancel_preview()  # Return to normal, update button colors
+					_cancel_preview() # Return to normal, update button colors
 
 func _cancel_preview():
 	"""Cancel preview mode (click outside or different button)"""
@@ -736,7 +740,11 @@ func _update_button_preview_visual(button_id: String, confirm_text: String):
 		return
 
 	var button = action_buttons[button_id]
-	var btn_data = _calculate_button_positions()[button_id]
+	var positions = _calculate_button_positions()
+	if not positions.has(button_id):
+		return
+
+	var btn_data = positions[button_id]
 
 	# Update text
 	button.text = "%s\n%s" % [btn_data["emoji"], confirm_text]
@@ -745,7 +753,7 @@ func _update_button_preview_visual(button_id: String, confirm_text: String):
 	var style_glow = StyleBoxFlat.new()
 	style_glow.bg_color = Color(0.3, 0.3, 0.4, 1.0) * btn_data["color"]
 	style_glow.set_border_width_all(6)
-	style_glow.border_color = COLOR_CONFIRM  # Yellow glow
+	style_glow.border_color = COLOR_CONFIRM # Yellow glow
 	style_glow.set_corner_radius_all(12)
 	button.add_theme_stylebox_override("normal", style_glow)
 
@@ -775,12 +783,12 @@ func _dim_other_path_button(button_id: String):
 		return
 
 	var button = action_buttons[button_id]
-	button.modulate = Color(0.5, 0.5, 0.5)  # Dim
+	button.modulate = Color(0.5, 0.5, 0.5) # Dim
 
 func _handle_path_button_preview(button_id: String):
 	"""Generic handler for path button previews (works for any tower type)"""
 	if not is_instance_valid(tower):
-		return  # Tower freed, exit preview
+		return # Tower freed, exit preview
 
 	# Get path internal name from button_id (e.g., "cannon_path" → "cannon")
 	var internal_name = button_id.trim_suffix("_path")
@@ -814,9 +822,9 @@ func _handle_path_button_confirm(button_id: String):
 
 	# Emit appropriate signal based on position
 	if is_first_path:
-		damage_path_chosen.emit(tower)  # LEFT button (damage/cannon/inferno/defense)
+		damage_path_chosen.emit(tower) # LEFT button (damage/cannon/inferno/defense)
 	else:
-		range_path_chosen.emit(tower)   # RIGHT button (range/mortar/frost/offense)
+		range_path_chosen.emit(tower) # RIGHT button (range/mortar/frost/offense)
 
 func _get_targeting_mode_from_button_id(button_id: String) -> int:
 	"""Convert button_id to TargetingMode enum"""
@@ -835,7 +843,7 @@ func _get_targeting_mode_from_button_id(button_id: String) -> int:
 func _show_enemy_list():
 	"""Show floating enemy list panel"""
 	if enemy_list_panel:
-		return  # Already showing
+		return # Already showing
 
 	# Create panel
 	enemy_list_panel = Panel.new()
@@ -885,7 +893,7 @@ func _update_enemy_list():
 
 	# Clear old enemy labels (keep title)
 	var children = enemy_list_container.get_children()
-	for i in range(1, children.size()):  # Skip first child (title)
+	for i in range(1, children.size()): # Skip first child (title)
 		children[i].queue_free()
 
 	# Get current enemies from tower
@@ -894,7 +902,7 @@ func _update_enemy_list():
 		enemies = tower.enemies_in_range
 
 	if enemies.size() > 0:
-		for i in range(min(enemies.size(), 10)):  # Limit to 10
+		for i in range(min(enemies.size(), 10)): # Limit to 10
 			var enemy = enemies[i]
 			if not is_instance_valid(enemy):
 				continue
@@ -918,12 +926,12 @@ func _update_enemy_list():
 			# Format display with armor and gold indicators
 			var armor_text = " [⛨%d%%]" % armor_percent if armor > 0.0 else ""
 			enemy_label.text = "[%d] %s%s\nHP: %d/%d | 💰%dg | %d%%" % [
-				i+1, enemy_name, armor_text, hp, max_hp, gold, progress_percent
+				i + 1, enemy_name, armor_text, hp, max_hp, gold, progress_percent
 			]
 
 			# Add boss highlighting
 			if _is_enemy_boss(enemy):
-				enemy_label.add_theme_color_override("font_color", Color(1.0, 0.4, 1.0))  # Magenta for bosses
+				enemy_label.add_theme_color_override("font_color", Color(1.0, 0.4, 1.0)) # Magenta for bosses
 
 			enemy_label.add_theme_font_size_override("font_size", 10)
 			enemy_list_container.add_child(enemy_label)
@@ -951,8 +959,8 @@ func _is_enemy_boss(enemy) -> bool:
 	"""Check if enemy is a boss"""
 	if "is_boss" in enemy:
 		return enemy.is_boss
-	var name = enemy.get_enemy_name() if enemy.has_method("get_enemy_name") else ""
-	return "boss" in name.to_lower()
+	var enemy_name = enemy.get_enemy_name() if enemy.has_method("get_enemy_name") else ""
+	return "boss" in enemy_name.to_lower()
 
 # ============================================
 # ANIMATION
@@ -976,7 +984,7 @@ func _show_animated():
 		var button = button_list[i]
 		button.scale = Vector2.ZERO
 
-		var delay = i * 0.05  # Stagger each button by 50ms
+		var delay = i * 0.05 # Stagger each button by 50ms
 		var button_tween = create_tween()
 		button_tween.tween_property(button, "scale", Vector2.ONE, ANIMATION_SPEED).set_delay(delay)
 
@@ -987,7 +995,7 @@ func _hide_animated():
 	tween.tween_callback(func():
 		visible = false
 		is_open = false
-		queue_redraw()  # Clear the drawn circle
+		queue_redraw() # Clear the drawn circle
 	)
 
 # ============================================
@@ -997,14 +1005,14 @@ func _hide_animated():
 func _show_targeting_submenu():
 	"""Show targeting mode submenu (5 buttons in small circle)"""
 	if targeting_submenu_open:
-		return  # Already open
+		return # Already open
 
 	print("[RingUpgradeMenu] Opening targeting submenu")
 	targeting_submenu_open = true
 
 	# Dim main menu buttons
 	for button in action_buttons.values():
-		button.modulate = Color(0.6, 0.6, 0.6)  # Dim to 60%
+		button.modulate = Color(0.6, 0.6, 0.6) # Dim to 60%
 
 	# Create submenu container
 	submenu_container = Control.new()
@@ -1013,11 +1021,11 @@ func _show_targeting_submenu():
 
 	# Define 5 targeting mode buttons in circle
 	var targeting_modes = [
-		{"id": "first", "angle": -PI/2, "emoji": EMOJI_FIRST, "mode": TargetingMode.FIRST},
-		{"id": "strong", "angle": -PI/2 + (TAU / 5), "emoji": EMOJI_STRONG, "mode": TargetingMode.STRONG},
-		{"id": "weak", "angle": -PI/2 + (TAU / 5) * 2, "emoji": EMOJI_WEAK, "mode": TargetingMode.WEAK},
-		{"id": "close", "angle": -PI/2 + (TAU / 5) * 3, "emoji": EMOJI_CLOSE, "mode": TargetingMode.CLOSE},
-		{"id": "last", "angle": -PI/2 + (TAU / 5) * 4, "emoji": EMOJI_LAST, "mode": TargetingMode.LAST},
+		{"id": "first", "angle": - PI / 2, "emoji": EMOJI_FIRST, "mode": TargetingMode.FIRST},
+		{"id": "strong", "angle": - PI / 2 + (TAU / 5), "emoji": EMOJI_STRONG, "mode": TargetingMode.STRONG},
+		{"id": "weak", "angle": - PI / 2 + (TAU / 5) * 2, "emoji": EMOJI_WEAK, "mode": TargetingMode.WEAK},
+		{"id": "close", "angle": - PI / 2 + (TAU / 5) * 3, "emoji": EMOJI_CLOSE, "mode": TargetingMode.CLOSE},
+		{"id": "last", "angle": - PI / 2 + (TAU / 5) * 4, "emoji": EMOJI_LAST, "mode": TargetingMode.LAST},
 	]
 
 	# Create buttons
@@ -1088,7 +1096,7 @@ func _style_submenu_button(button: Button, tint_color: Color):
 
 	button.add_theme_stylebox_override("normal", style_normal)
 	button.add_theme_stylebox_override("hover", style_hover)
-	button.add_theme_font_size_override("font_size", 20)  # Smaller emoji
+	button.add_theme_font_size_override("font_size", 20) # Smaller emoji
 
 func _on_submenu_targeting_clicked(mode: int):
 	"""Handle click on targeting mode in submenu"""
@@ -1119,7 +1127,7 @@ func _hide_targeting_submenu():
 
 	# Restore main menu button brightness
 	for button in action_buttons.values():
-		button.modulate = Color(1.0, 1.0, 1.0)  # Full brightness
+		button.modulate = Color(1.0, 1.0, 1.0) # Full brightness
 
 	# Remove submenu buttons
 	if submenu_container:
@@ -1223,7 +1231,7 @@ func _get_upgrade_cost() -> int:
 		if tower_data:
 			return tower_data.get("upgrade_cost", 0)
 
-	return 60  # Default fallback
+	return 60 # Default fallback
 
 func _calculate_sell_value() -> int:
 	"""Calculate sell value (70% of build cost)"""
@@ -1240,4 +1248,4 @@ func _calculate_sell_value() -> int:
 func _gui_input(event: InputEvent):
 	"""Consume clicks inside panel to prevent click-through"""
 	if event is InputEventMouseButton and event.pressed:
-		accept_event()  # Prevent click from going through to game world
+		accept_event() # Prevent click from going through to game world

@@ -14,8 +14,8 @@ signal ability_activated(skill_id: String)
 # PROPERTIES
 # ============================================
 
-@export var skill_id: String = ""  # Which skill this button represents
-@export var hotkey: String = "1"  # Keyboard hotkey
+@export var skill_id: String = "" # Which skill this button represents
+@export var hotkey: String = "1" # Keyboard hotkey
 
 # References
 var skill_manager: SkillManager = null
@@ -25,8 +25,8 @@ var skill_data: HeroSkillData = null
 var icon_rect: TextureRect
 var cooldown_label: Label
 var hotkey_label: Label
-var cooldown_overlay: ColorRect  # Visual overlay during cooldown
-var progress_bar: ProgressBar  # Radial or linear cooldown indicator
+var cooldown_overlay: ColorRect # Visual overlay during cooldown
+var progress_bar: ProgressBar # Radial or linear cooldown indicator
 
 # State
 var is_ready: bool = true
@@ -40,7 +40,7 @@ var cooldown_total: float = 0.0
 func _ready():
 	# Setup button
 	custom_minimum_size = Vector2(60, 60)
-	mouse_filter = Control.MOUSE_FILTER_PASS
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 	# Create UI hierarchy
 	_setup_ui()
@@ -115,6 +115,12 @@ func _setup_ui():
 
 func setup(p_skill_id: String, p_skill_manager: SkillManager, p_skill_data: HeroSkillData, p_hotkey: String = "1"):
 	"""Initialize the button with skill data"""
+	print("🔧 AbilityButton: setup() called for ", p_skill_id)
+	if p_skill_manager == null:
+		print("⚠️ AbilityButton: setup() received NULL skill_manager!")
+	else:
+		print("✅ AbilityButton: setup() received valid skill_manager: ", p_skill_manager)
+
 	skill_id = p_skill_id
 	skill_manager = p_skill_manager
 	skill_data = p_skill_data
@@ -148,7 +154,16 @@ func setup(p_skill_id: String, p_skill_manager: SkillManager, p_skill_data: Hero
 	# Initial state
 	_update_visual_state()
 
-	print("✅ AbilityButton setup: ", skill_id, " (", skill_data.skill_name if skill_data else "UNKNOWN", ")")
+	print("✅ AbilityButton setup complete: ", skill_id)
+
+func _exit_tree():
+	"""Disconnect signals when removed"""
+	print("🗑️ AbilityButton: _exit_tree() called")
+	if skill_manager:
+		if skill_manager.cooldown_updated.is_connected(_on_cooldown_updated):
+			skill_manager.cooldown_updated.disconnect(_on_cooldown_updated)
+		if skill_manager.skill_ready.is_connected(_on_skill_ready):
+			skill_manager.skill_ready.disconnect(_on_skill_ready)
 
 # ============================================
 # INPUT HANDLING
@@ -168,12 +183,17 @@ func _input(event: InputEvent):
 
 func _on_pressed():
 	"""Handle button click"""
+	print("🔘 AbilityButton: Clicked! (Skill ID: ", skill_id, ")")
 	_activate_ability()
 
 func _activate_ability():
 	"""Try to activate the ability"""
-	if not skill_manager or not is_ready:
-		print("⚠️ AbilityButton: Cannot activate (not ready or no skill manager)")
+	if not skill_manager:
+		print("⚠️ AbilityButton: Cannot activate - Skill Manager is NULL")
+		return
+
+	if not is_ready:
+		print("⚠️ AbilityButton: Cannot activate - Skill is NOT READY (Cooldown: ", cooldown_remaining, ")")
 		return
 
 	if skill_manager.activate_skill(skill_id):
@@ -292,15 +312,3 @@ func _play_ready_animation():
 
 	# Could also play a sound here
 	print("✨ Ability ready: ", skill_id)
-
-# ============================================
-# CLEANUP
-# ============================================
-
-func _exit_tree():
-	"""Disconnect signals when removed"""
-	if skill_manager:
-		if skill_manager.cooldown_updated.is_connected(_on_cooldown_updated):
-			skill_manager.cooldown_updated.disconnect(_on_cooldown_updated)
-		if skill_manager.skill_ready.is_connected(_on_skill_ready):
-			skill_manager.skill_ready.disconnect(_on_skill_ready)

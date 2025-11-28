@@ -9,7 +9,7 @@ extends RefCounted
 signal content_changed
 signal item_added(uuid: String, item_id: String)
 signal item_removed(uuid: String, item_id: String)
-signal size_changed(width: int, height: int)
+# signal size_changed(width: int, height: int) # Unused
 
 # Debug mode
 const DEBUG_SORT = false # Enable verbose logging for sort operations

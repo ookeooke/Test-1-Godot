@@ -1,0 +1,52 @@
+[gd_scene load_steps=2 format=3 uid="uid://bxfro6iymcexi"]
+
+[ext_resource type="Texture2D" uid="uid://d0ngu23x1ql7v" path="res://assets/sprites/towers/archer_level1/archer1.png" id="1_sprite"]
+
+[node name="ArcherVisualsL1" type="Node2D"]
+
+[node name="TowerSprite" type="Sprite2D" parent="."]
+position = Vector2(0, -20)
+scale = Vector2(0.08, 0.08)
+texture = ExtResource("1_sprite")
+
+[node name="Archer" type="Node2D" parent="."]
+position = Vector2(-1, -56)
+
+[node name="Body" type="ColorRect" parent="Archer"]
+offset_left = -8.0
+offset_top = -12.0
+offset_right = 8.0
+offset_bottom = 12.0
+color = Color(0.8, 0.6, 0.4, 1)
+
+[node name="Head" type="ColorRect" parent="Archer"]
+offset_left = -6.0
+offset_top = -18.0
+offset_right = 6.0
+offset_bottom = -6.0
+color = Color(0.9, 0.7, 0.5, 1)
+
+[node name="Weapon" type="Node2D" parent="Archer"]
+
+[node name="Bow" type="ColorRect" parent="Archer/Weapon"]
+offset_right = 18.0
+offset_bottom = 3.0
+color = Color(0.4, 0.25, 0.1, 1)
+
+[node name="MuzzleFlash" type="CPUParticles2D" parent="Archer/Weapon"]
+position = Vector2(18, 0)
+emitting = false
+amount = 6
+lifetime = 0.2
+one_shot = true
+explosiveness = 1.0
+randomness = 0.3
+emission_shape = 1
+emission_sphere_radius = 3.0
+spread = 30.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 40.0
+initial_velocity_max = 80.0
+scale_amount_min = 2.0
+scale_amount_max = 4.0
+color = Color(1, 0.9, 0.4, 1)

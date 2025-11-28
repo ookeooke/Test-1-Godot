@@ -10,8 +10,8 @@ const DEBUG_INVENTORY = false # Set to true to enable verbose inventory logging
 # Preload ItemSprite for overlay rendering (static grid + item overlay architecture)
 const ItemSpriteScript = preload("res://scripts/ui/item_sprite.gd")
 
-signal equipment_slot_clicked(slot_name: String)
-signal switch_hero_requested
+# signal equipment_slot_clicked(slot_name: String) # Unused
+# signal switch_hero_requested # Unused
 signal hero_changed(new_hero_id: String)
 
 @export var item_slot_scene: PackedScene = preload("res://scenes/ui/equipment_slot.tscn")
@@ -98,10 +98,24 @@ func _ready():
 	# Connect hero selection buttons
 	if archer_button:
 		archer_button.pressed.connect(_on_hero_button_pressed.bind("ranger"))
+		var ranger_data = HeroDatabase.get_hero("ranger")
+		if ranger_data and ranger_data.portrait:
+			archer_button.text = ""
+			archer_button.icon = ranger_data.portrait
+			archer_button.expand_icon = true
+			
 	if warrior_button:
 		warrior_button.pressed.connect(_on_hero_button_pressed.bind("warrior"))
+		var warrior_data = HeroDatabase.get_hero("warrior")
+		if warrior_data and warrior_data.portrait:
+			warrior_button.text = ""
+			warrior_button.icon = warrior_data.portrait
+			warrior_button.expand_icon = true
+			
 	if wizard_button:
 		wizard_button.pressed.connect(_on_hero_button_pressed.bind("mage"))
+		# Mage might not have a portrait yet, keep text fallback
+
 
 	# Connect common chest toggle
 	if common_chest_toggle:
@@ -255,7 +269,7 @@ func _refresh_equipment():
 		if grid and grid.has_node("ItemLayer"):
 			var item_layer = grid.get_node("ItemLayer")
 			for child in item_layer.get_children():
-				child.free()  # Synchronous deletion
+				child.free() # Synchronous deletion
 
 		if content is ItemInstance:
 			# Update slot reference (for drag-drop source tracking)
@@ -266,9 +280,9 @@ func _refresh_equipment():
 			if grid and grid.has_node("ItemLayer"):
 				var item_sprite = ItemSpriteScript.new()
 				item_sprite.hero_id = hero_id
-				item_sprite.container_id = hero_id  # Equipment uses hero_id as container
-				item_sprite.set_item(content, true)  # skip_animation=true
-				item_sprite.set_grid_position(0, 0)  # Equipment items start at (0,0)
+				item_sprite.container_id = hero_id # Equipment uses hero_id as container
+				item_sprite.set_item(content, true) # skip_animation=true
+				item_sprite.set_grid_position(0, 0) # Equipment items start at (0,0)
 
 				# Connect signals for click interactions
 				item_sprite.item_tapped.connect(_on_equipment_sprite_tapped.bind(slot_name))
@@ -279,7 +293,7 @@ func _refresh_equipment():
 		elif content is String and content.begins_with("__2H_OCCUPIED__"):
 			# 2H Marker - slot is occupied by 2H weapon in other hand
 			slot.clear_slot()
-			slot.modulate = Color(0.5, 0.5, 0.5, 0.5)  # Dimmed
+			slot.modulate = Color(0.5, 0.5, 0.5, 0.5) # Dimmed
 		else:
 			slot.clear_slot()
 			slot.modulate = Color.WHITE

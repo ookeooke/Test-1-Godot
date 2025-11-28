@@ -39,7 +39,7 @@ extends CanvasLayer
 const UPDATE_INTERVAL = 0.5
 
 ## HUD visibility (start hidden by default, toggle with button)
-var is_visible = false
+var is_hud_visible = false
 
 ## Update timer
 var update_timer = 0.0
@@ -56,7 +56,7 @@ func _ready():
 
 	# Start hidden by default
 	visible = false
-	is_visible = false
+	is_hud_visible = false
 
 	# Set process mode to always (works during pause)
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -71,7 +71,7 @@ func _ready():
 
 func _input(event):
 	# F3 - Toggle HUD
-	if event.is_action_pressed("ui_text_completion_query"):  # F3 in Godot
+	if event.is_action_pressed("ui_text_completion_query"): # F3 in Godot
 		toggle_visibility()
 		get_viewport().set_input_as_handled()
 
@@ -99,24 +99,24 @@ func _input(event):
 
 func toggle_visibility():
 	"""Toggle HUD visibility"""
-	is_visible = not is_visible
-	visible = is_visible
+	is_hud_visible = not is_hud_visible
+	visible = is_hud_visible
 
-	if is_visible:
+	if is_hud_visible:
 		print("[BalanceHUD] Shown")
-		_update_display()  # Immediate update
+		_update_display() # Immediate update
 	else:
 		print("[BalanceHUD] Hidden")
 
 func show_hud():
 	"""Show the HUD"""
-	is_visible = true
+	is_hud_visible = true
 	visible = true
 	_update_display()
 
 func hide_hud():
 	"""Hide the HUD"""
-	is_visible = false
+	is_hud_visible = false
 	visible = false
 
 # ============================================
@@ -124,7 +124,7 @@ func hide_hud():
 # ============================================
 
 func _process(delta):
-	if not is_visible:
+	if not is_hud_visible:
 		return
 
 	update_timer += delta
@@ -221,12 +221,12 @@ func _update_wave_section(run_data: Dictionary):
 
 	# Get enemy count from BalanceTracker
 	var enemies_alive = 0
-	var total_spawned = 0
+	var _total_spawned = 0
 
 	if run_data.has("enemies"):
 		for enemy_type in run_data.enemies:
 			var enemy = run_data.enemies[enemy_type]
-			total_spawned += enemy.spawned
+			_total_spawned += enemy.spawned
 			enemies_alive += enemy.spawned - enemy.killed - enemy.leaked
 
 	text += "├─ Enemies: %d remaining\n" % enemies_alive
@@ -256,9 +256,9 @@ func _update_economy_section(run_data: Dictionary):
 	# Color code efficiency
 	var eff_color = "white"
 	if efficiency > 0.95:
-		eff_color = "red"  # Overspent
+		eff_color = "red" # Overspent
 	elif efficiency < 0.5:
-		eff_color = "yellow"  # Underspent
+		eff_color = "yellow" # Underspent
 
 	var text = "[b]ECONOMY[/b]\n"
 	text += "├─ Gold: %d | Spent: %d | Earned: %d\n" % [current_gold, economy.total_spent, economy.total_earned]

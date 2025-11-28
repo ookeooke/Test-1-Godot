@@ -16,48 +16,48 @@ const TOWERS = {
 	"archer": {
 		"name": "Archer Tower",
 		"icon": "🏹",
-		"build_cost": 70,  # BALANCE FIX: Was 100g (50% of start gold), now 70g (28% - matches KR1's 26%)
+		"build_cost": 70, # BALANCE FIX: Was 100g (50% of start gold), now 70g (28% - matches KR1's 26%)
 		"type": "ranged_single",
 		"description": "Fast-attacking ranged tower. Choose Damage path for glass cannon DPS or Range path for extended coverage.",
 		"scene_path": "res://scenes/towers/archer_tower.tscn",
 
 		"levels": {
 			1: {
-				"damage": 8,  # BALANCE: Lowered from 12 to match Kingdom Rush difficulty (KR = 6.5 DPS)
-				"attack_speed": 1.2,  # BALANCE: Increased from 1.0 to compensate slightly
-				"range": 280,  # BALANCE: Matches Kingdom Rush range exactly
-				"dps": 9.6,  # Was 12.0 - Closer to KR's 6.5 DPS
+				"damage": 8, # BALANCE: Lowered from 12 to match Kingdom Rush difficulty (KR = 6.5 DPS)
+				"attack_speed": 1.2, # BALANCE: Increased from 1.0 to compensate slightly
+				"range": 280, # BALANCE: Matches Kingdom Rush range exactly
+				"dps": 9.6, # Was 12.0 - Closer to KR's 6.5 DPS
 				"cost_to_next": 60
 			},
 			2: {
-				"damage": 12,  # BALANCE: Was 17 - More gradual scaling
-				"attack_speed": 1.4,  # BALANCE: Was 1.3 - Moderate increase
-				"range": 280,  # No range increase until Range Path
-				"dps": 16.8,  # Was 22.1 - Linear scaling ~75% increase from L1
+				"damage": 12, # BALANCE: Was 17 - More gradual scaling
+				"attack_speed": 1.4, # BALANCE: Was 1.3 - Moderate increase
+				"range": 280, # No range increase until Range Path
+				"dps": 16.8, # Was 22.1 - Linear scaling ~75% increase from L1
 				"cost_to_next": 90
 			},
 			3: {
-				"damage": 18,  # BALANCE: Was 27 - More balanced progression
-				"attack_speed": 1.6,  # Same as before
-				"range": 280,  # No range increase until Range Path
-				"dps": 28.8,  # Was 43.2 - ~3x L1 instead of 3.6x
-				"cost_to_next": 150  # Path choice cost
+				"damage": 18, # BALANCE: Was 27 - More balanced progression
+				"attack_speed": 1.6, # Same as before
+				"range": 280, # No range increase until Range Path
+				"dps": 28.8, # Was 43.2 - ~3x L1 instead of 3.6x
+				"cost_to_next": 150 # Path choice cost
 			},
 			# Level 4 - Path choice required
 			4: {
 				"damage_path": {
-					"damage": 28,  # BALANCE: Was 36 - Glass cannon but not overpowered
-					"attack_speed": 1.8,  # BALANCE: Was 2.0 - Toned down speed
-					"range": 280,  # Damage path keeps base range
-					"dps": 50.4,  # Was 72.0 - Strong but not melting bosses
+					"damage": 28, # BALANCE: Was 36 - Glass cannon but not overpowered
+					"attack_speed": 1.8, # BALANCE: Was 2.0 - Toned down speed
+					"range": 280, # Damage path keeps base range
+					"dps": 50.4, # Was 72.0 - Strong but not melting bosses
 					"cost_to_next": 200,
 					"path_name": "Sharpshooter"
 				},
 				"range_path": {
-					"damage": 18,  # Same as L3 - trading DPS for coverage
-					"attack_speed": 1.6,  # Same as L3
-					"range": 400,  # BALANCE: Was 300 - NOW ACTUALLY GIVES RANGE (+43%)
-					"dps": 28.8,  # Same as L3 - meaningful tradeoff
+					"damage": 18, # Same as L3 - trading DPS for coverage
+					"attack_speed": 1.6, # Same as L3
+					"range": 400, # BALANCE: Was 300 - NOW ACTUALLY GIVES RANGE (+43%)
+					"dps": 28.8, # Same as L3 - meaningful tradeoff
 					"cost_to_next": 200,
 					"path_name": "Ranger Tower"
 				}
@@ -65,27 +65,27 @@ const TOWERS = {
 			# Level 5 - Max level
 			5: {
 				"damage_path": {
-					"damage": 38,  # BALANCE: Was 40 - Peak damage for glass cannon
-					"attack_speed": 2.0,  # BALANCE: Was 2.5 - Capped at 2.0 for balance
-					"range": 280,  # Damage path keeps base range
-					"dps": 76.0,  # Was 100.0 - Strong endgame without melting bosses in 4s
-					"cost_to_next": 0,  # Max level
+					"damage": 38, # BALANCE: Was 40 - Peak damage for glass cannon
+					"attack_speed": 2.0, # BALANCE: Was 2.5 - Capped at 2.0 for balance
+					"range": 280, # Damage path keeps base range
+					"dps": 76.0, # Was 100.0 - Strong endgame without melting bosses in 4s
+					"cost_to_next": 0, # Max level
 					"path_name": "Elite Sharpshooter"
 				},
 				"range_path": {
-					"damage": 22,  # BALANCE: Was 35 - Moderate damage
-					"attack_speed": 1.8,  # Same as before
-					"range": 500,  # BALANCE: Was 300 - HUGE range advantage (+78% from base)
-					"dps": 39.6,  # Was 63.0 - Lower DPS but covers entire map sections
-					"cost_to_next": 0,  # Max level
+					"damage": 22, # BALANCE: Was 35 - Moderate damage
+					"attack_speed": 1.8, # Same as before
+					"range": 500, # BALANCE: Was 300 - HUGE range advantage (+78% from base)
+					"dps": 39.6, # Was 63.0 - Lower DPS but covers entire map sections
+					"cost_to_next": 0, # Max level
 					"path_name": "Master Ranger"
 				}
 			}
 		},
 
 		"total_costs": {
-			"to_level_3": 150,  # 60 + 90
-			"damage_path_full": 500,  # 60 + 90 + 150 + 200
+			"to_level_3": 150, # 60 + 90
+			"damage_path_full": 500, # 60 + 90 + 150 + 200
 			"range_path_full": 500
 		}
 	},
@@ -93,7 +93,7 @@ const TOWERS = {
 	"barracks": {
 		"name": "Barracks",
 		"icon": "🛡️",
-		"build_cost": 70,  # BALANCE FIX: Was 120g, now 70g (matches archer tower cost)
+		"build_cost": 70, # BALANCE FIX: Was 120g, now 70g (matches archer tower cost)
 		"type": "garrison",
 		"description": "Spawns melee soldiers that block and fight enemies on the path. Soldiers respawn after death.",
 		"scene_path": "res://scenes/towers/soldier_tower.tscn",
@@ -105,6 +105,7 @@ const TOWERS = {
 				"soldier_damage": 10,
 				"soldier_attack_speed": 1.0,
 				"respawn_time": 5.0,
+				"range": 250, # Rally point range
 				"cost_to_next": 80
 			},
 			2: {
@@ -113,6 +114,7 @@ const TOWERS = {
 				"soldier_damage": 15,
 				"soldier_attack_speed": 1.2,
 				"respawn_time": 4.5,
+				"range": 270,
 				"cost_to_next": 120
 			},
 			3: {
@@ -121,38 +123,42 @@ const TOWERS = {
 				"soldier_damage": 20,
 				"soldier_attack_speed": 1.4,
 				"respawn_time": 4.0,
-				"cost_to_next": 150  # Path choice upgrade
+				"range": 300,
+				"cost_to_next": 150 # Path choice upgrade
 			},
 			4: {
 				"defense_path": {
 					"soldier_count": 4,
-					"soldier_health": 280,  # Very tanky
+					"soldier_health": 280, # Very tanky
 					"soldier_damage": 28,
 					"soldier_attack_speed": 1.6,
 					"respawn_time": 3.0,
+					"range": 320,
 					"cost_to_next": 200
 				},
 				"offense_path": {
 					"soldier_count": 4,
-					"soldier_health": 250,  # Less tanky but...
-					"soldier_damage": 35,  # Much higher damage
+					"soldier_health": 250, # Less tanky but...
+					"soldier_damage": 35, # Much higher damage
 					"soldier_attack_speed": 1.8,
 					"respawn_time": 3.5,
+					"range": 320,
 					"cost_to_next": 200
 				}
 			},
 			5: {
 				"defense_path": {
 					"soldier_count": 4,
-					"soldier_health": 320,  # 100 base + 220 delta
-					"soldier_damage": 38,   # 10 base + 28 delta
+					"soldier_health": 320, # 100 base + 220 delta
+					"soldier_damage": 38, # 10 base + 28 delta
 					"soldier_attack_speed": 2.0,
-					"respawn_time": 2.5
+					"respawn_time": 2.5,
+					"range": 350
 				},
 				"offense_path": {
 					"soldier_count": 4,
-					"soldier_health": 300,  # 100 base + 200 delta
-					"soldier_damage": 50,   # 10 base + 40 delta
+					"soldier_health": 300, # 100 base + 200 delta
+					"soldier_damage": 50, # 10 base + 40 delta
 					"soldier_attack_speed": 2.2,
 					"respawn_time": 3.0
 				}
@@ -160,9 +166,9 @@ const TOWERS = {
 		},
 
 		"total_costs": {
-			"to_level_3": 200,  # 80 + 120
-			"to_level_5_defense": 550,  # 80 + 120 + 150 + 200
-			"to_level_5_offense": 550   # 80 + 120 + 150 + 200
+			"to_level_3": 200, # 80 + 120
+			"to_level_5_defense": 550, # 80 + 120 + 150 + 200
+			"to_level_5_offense": 550 # 80 + 120 + 150 + 200
 		}
 	},
 
@@ -176,11 +182,11 @@ const TOWERS = {
 
 		"levels": {
 			1: {
-				"damage": 6,  # Lower than archer due to AOE
-				"attack_speed": 0.8,  # Slower than archer
-				"range": 300,  # Slightly longer range
-				"splash_radius": 80,  # AOE damage radius
-				"dps": 4.8,  # Lower single-target DPS, but hits multiple
+				"damage": 6, # Lower than archer due to AOE
+				"attack_speed": 0.8, # Slower than archer
+				"range": 300, # Slightly longer range
+				"splash_radius": 80, # AOE damage radius
+				"dps": 4.8, # Lower single-target DPS, but hits multiple
 				"cost_to_next": 70
 			},
 			2: {
@@ -197,26 +203,26 @@ const TOWERS = {
 				"range": 320,
 				"splash_radius": 100,
 				"dps": 15.0,
-				"cost_to_next": 150  # Path choice cost
+				"cost_to_next": 150 # Path choice cost
 			},
 			# Level 4 - Path choice required
 			4: {
 				"inferno_path": {
-					"damage": 24,  # High damage
+					"damage": 24, # High damage
 					"attack_speed": 1.1,
 					"range": 320,
-					"splash_radius": 120,  # Larger explosion
+					"splash_radius": 120, # Larger explosion
 					"dps": 26.4,
 					"cost_to_next": 200,
 					"path_name": "Inferno Tower"
 				},
 				"frost_path": {
-					"damage": 12,  # Lower damage
+					"damage": 12, # Lower damage
 					"attack_speed": 1.2,
-					"range": 340,  # Longer range
+					"range": 340, # Longer range
 					"splash_radius": 110,
-					"slow_amount": 0.5,  # Slows enemies to 50% speed
-					"slow_duration": 2.0,  # Slow lasts 2 seconds
+					"slow_amount": 0.5, # Slows enemies to 50% speed
+					"slow_duration": 2.0, # Slow lasts 2 seconds
 					"dps": 14.4,
 					"cost_to_next": 200,
 					"path_name": "Frost Tower"
@@ -228,7 +234,7 @@ const TOWERS = {
 					"damage": 32,
 					"attack_speed": 1.3,
 					"range": 320,
-					"splash_radius": 140,  # Massive AOE
+					"splash_radius": 140, # Massive AOE
 					"dps": 41.6,
 					"cost_to_next": 0,
 					"path_name": "Archmage Inferno"
@@ -238,7 +244,7 @@ const TOWERS = {
 					"attack_speed": 1.4,
 					"range": 360,
 					"splash_radius": 130,
-					"slow_amount": 0.3,  # Slows to 30% speed (70% reduction)
+					"slow_amount": 0.3, # Slows to 30% speed (70% reduction)
 					"slow_duration": 3.0,
 					"dps": 25.2,
 					"cost_to_next": 0,
@@ -248,8 +254,8 @@ const TOWERS = {
 		},
 
 		"total_costs": {
-			"to_level_3": 170,  # 70 + 100
-			"inferno_path_full": 520,  # 70 + 100 + 150 + 200
+			"to_level_3": 170, # 70 + 100
+			"inferno_path_full": 520, # 70 + 100 + 150 + 200
 			"frost_path_full": 520
 		}
 	},
@@ -257,25 +263,25 @@ const TOWERS = {
 	"artillery": {
 		"name": "Artillery Tower",
 		"icon": "💣",
-		"build_cost": 100,  # Most expensive starting tower
+		"build_cost": 100, # Most expensive starting tower
 		"type": "ranged_artillery",
 		"description": "Long-range siege tower with devastating power. Choose Cannon for single-target destruction or Mortar for area bombardment.",
 		"scene_path": "res://scenes/towers/artillery_tower.tscn",
 
 		"levels": {
 			1: {
-				"damage": 20,  # Very high damage per shot
-				"attack_speed": 0.4,  # Very slow
-				"range": 350,  # Longest range
-				"splash_radius": 0,  # No splash at L1 (single target)
-				"dps": 8.0,  # Lower DPS due to slow speed, but powerful hits
+				"damage": 20, # Very high damage per shot
+				"attack_speed": 0.4, # Very slow
+				"range": 350, # Longest range
+				"splash_radius": 0, # No splash at L1 (single target)
+				"dps": 8.0, # Lower DPS due to slow speed, but powerful hits
 				"cost_to_next": 90
 			},
 			2: {
 				"damage": 30,
 				"attack_speed": 0.5,
 				"range": 370,
-				"splash_radius": 60,  # Gains small splash
+				"splash_radius": 60, # Gains small splash
 				"dps": 15.0,
 				"cost_to_next": 130
 			},
@@ -285,25 +291,25 @@ const TOWERS = {
 				"range": 400,
 				"splash_radius": 80,
 				"dps": 27.0,
-				"cost_to_next": 180  # Path choice cost
+				"cost_to_next": 180 # Path choice cost
 			},
 			# Level 4 - Path choice required
 			4: {
 				"cannon_path": {
-					"damage": 70,  # Massive single-shot damage
+					"damage": 70, # Massive single-shot damage
 					"attack_speed": 0.6,
 					"range": 420,
-					"splash_radius": 50,  # Small splash
-					"knockback": 150,  # Pushes enemies back
+					"splash_radius": 50, # Small splash
+					"knockback": 150, # Pushes enemies back
 					"dps": 42.0,
 					"cost_to_next": 250,
 					"path_name": "Heavy Cannon"
 				},
 				"mortar_path": {
-					"damage": 40,  # Lower damage
-					"attack_speed": 0.8,  # Faster
-					"range": 450,  # Longer range
-					"splash_radius": 140,  # Large AOE
+					"damage": 40, # Lower damage
+					"attack_speed": 0.8, # Faster
+					"range": 450, # Longer range
+					"splash_radius": 140, # Large AOE
 					"dps": 32.0,
 					"cost_to_next": 250,
 					"path_name": "Siege Mortar"
@@ -312,7 +318,7 @@ const TOWERS = {
 			# Level 5 - Max level
 			5: {
 				"cannon_path": {
-					"damage": 100,  # Highest single-shot damage in game
+					"damage": 100, # Highest single-shot damage in game
 					"attack_speed": 0.7,
 					"range": 450,
 					"splash_radius": 60,
@@ -324,8 +330,8 @@ const TOWERS = {
 				"mortar_path": {
 					"damage": 55,
 					"attack_speed": 1.0,
-					"range": 500,  # Extreme range
-					"splash_radius": 180,  # Massive AOE
+					"range": 500, # Extreme range
+					"splash_radius": 180, # Massive AOE
 					"dps": 55.0,
 					"cost_to_next": 0,
 					"path_name": "Grand Bombard"
@@ -334,8 +340,8 @@ const TOWERS = {
 		},
 
 		"total_costs": {
-			"to_level_3": 220,  # 90 + 130
-			"cannon_path_full": 650,  # 90 + 130 + 180 + 250
+			"to_level_3": 220, # 90 + 130
+			"cannon_path_full": 650, # 90 + 130 + 180 + 250
 			"mortar_path_full": 650
 		}
 	}

@@ -4,7 +4,7 @@ class_name FlexiblePanel
 ## FlexiblePanel - Simplified panel showing single fixed view (Equipment or Inventory)
 ## Mobile-first design without tab switching complexity
 
-signal view_content_changed
+# signal view_content_changed
 
 enum ViewType {
 	EQUIPMENT,
@@ -24,7 +24,7 @@ var current_view_type: ViewType = ViewType.EQUIPMENT
 var current_view: BasePanelView = null
 
 # Settings
-@export var panel_side: String = "left"  # "left" or "right"
+@export var panel_side: String = "left" # "left" or "right"
 @export var default_view: ViewType = ViewType.EQUIPMENT
 
 

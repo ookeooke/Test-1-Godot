@@ -26,24 +26,24 @@ var baseline_zoom = 1.0
 # ============================================
 # PLATFORM DETECTION
 # ============================================
-enum Platform { MOBILE, PC, CONSOLE }
+enum Platform {MOBILE, PC, CONSOLE}
 var current_platform: Platform
 
 # DPI SCALING (for mobile touch thresholds)
-var screen_dpi: float = 160.0  # Device screen DPI (160 = Android mdpi baseline)
-var dpi_scale: float = 1.0     # Multiplier for touch thresholds (dpi / 160.0)
+var screen_dpi: float = 160.0 # Device screen DPI (160 = Android mdpi baseline)
+var dpi_scale: float = 1.0 # Multiplier for touch thresholds (dpi / 160.0)
 
 # ============================================
 # DEBUG SETTINGS
 # ============================================
 @export_group("Debug")
-@export var debug_input = false  # Print all input events
-@export var debug_drag_only = true  # Only debug drag events (not every mouse motion)
+@export var debug_input = false # Print all input events
+@export var debug_drag_only = true # Only debug drag events (not every mouse motion)
 
 # Editor visualization
-@export var show_level_borders_in_editor = true  # Show yellow border rectangle in editor
-@export var editor_border_color = Color.YELLOW  # Border color (change in Inspector)
-@export var editor_border_width = 4.0  # Border line width in pixels
+@export var show_level_borders_in_editor = true # Show yellow border rectangle in editor
+@export var editor_border_color = Color.YELLOW # Border color (change in Inspector)
+@export var editor_border_width = 4.0 # Border line width in pixels
 
 # ============================================
 # ZOOM SETTINGS - Set dynamically by platform defaults
@@ -54,14 +54,14 @@ var dpi_scale: float = 1.0     # Multiplier for touch thresholds (dpi / 160.0)
 # - Baseline is calculated from viewport size to maintain consistent framing
 
 @export_group("Zoom Settings")
-@export var zoom_speed = 0.1  # Smooth zoom speed (PC default, mobile uses slower)
-@export var zoom_smoothing = 0.15  # Smooth interpolation
+@export var zoom_speed = 0.1 # Smooth zoom speed (PC default, mobile uses slower)
+@export var zoom_smoothing = 0.15 # Smooth interpolation
 
 # Runtime zoom values (set by apply_platform_defaults)
-var min_zoom: float  # Set at runtime based on platform
-var max_zoom: float  # Set at runtime based on platform
-var default_zoom: float  # Set at runtime based on platform
-var mobile_zoom_speed = 0.08  # Slower zoom for mobile
+var min_zoom: float # Set at runtime based on platform
+var max_zoom: float # Set at runtime based on platform
+var default_zoom: float # Set at runtime based on platform
+var mobile_zoom_speed = 0.08 # Slower zoom for mobile
 
 # ============================================
 # PAN SETTINGS
@@ -73,11 +73,11 @@ var mobile_zoom_speed = 0.08  # Slower zoom for mobile
 @export var pc_drag_threshold = 5.0
 
 # Mobile
-@export var mobile_drag_speed = 1.2  # Slightly faster for touch
-@export var mobile_drag_threshold = 25.0  # ~3mm real-world distance to prevent accidental drags
+@export var mobile_drag_speed = 1.2 # Slightly faster for touch
+@export var mobile_drag_threshold = 25.0 # ~3mm real-world distance to prevent accidental drags
 
 # Edge scrolling (PC only)
-@export var edge_scroll_enabled = false  # Disabled - use right-click drag instead
+@export var edge_scroll_enabled = false # Disabled - use right-click drag instead
 @export var edge_scroll_margin = 50
 @export var edge_scroll_speed = 400.0
 
@@ -87,9 +87,9 @@ var mobile_zoom_speed = 0.08  # Slower zoom for mobile
 @export_group("Inertia")
 @export var inertia_enabled = true
 @export var pc_inertia_friction = 0.92
-@export var mobile_inertia_friction = 0.88  # More friction on mobile
+@export var mobile_inertia_friction = 0.88 # More friction on mobile
 @export var min_inertia_velocity = 10.0
-@export var max_inertia_velocity = 2000.0  # Cap for fast swipes
+@export var max_inertia_velocity = 2000.0 # Cap for fast swipes
 
 # ============================================
 # BOUNDS - MANAGED BY LEVEL CONTROLLER
@@ -100,7 +100,7 @@ var mobile_zoom_speed = 0.08  # Slower zoom for mobile
 # IMPORTANT: Level bounds MUST be set by LevelController via set_level_bounds()
 # This camera does NOT have a default fallback - bounds come from LevelConfig
 @export_group("Level Bounds (Read-Only)")
-var level_rect: Rect2 = Rect2()  # Set by LevelController - do not edit directly
+var level_rect: Rect2 = Rect2() # Set by LevelController - do not edit directly
 
 # ============================================
 # CAMERA SHAKE
@@ -108,14 +108,14 @@ var level_rect: Rect2 = Rect2()  # Set by LevelController - do not edit directly
 @export_group("Camera Shake")
 @export var shake_enabled = false
 var shake_intensity = 0.0
-var shake_decay = 5.0  # How fast shake fades
+var shake_decay = 5.0 # How fast shake fades
 var shake_offset = Vector2.ZERO
 
 # ============================================
 # SNAP-TO FEATURE
 # ============================================
 @export_group("Snap To Target")
-@export var snap_duration = 0.5  # Time to move to target
+@export var snap_duration = 0.5 # Time to move to target
 @export var snap_zoom_duration = 0.3
 var is_snapping = false
 var snap_target_pos = Vector2.ZERO
@@ -130,7 +130,7 @@ var input_locked = false
 
 # Input state
 var is_dragging = false
-var drag_button_pressed = false  # Track if drag button is held (separate from threshold)
+var drag_button_pressed = false # Track if drag button is held (separate from threshold)
 var drag_start_pos = Vector2.ZERO
 var last_mouse_pos = Vector2.ZERO
 var drag_threshold = 5.0
@@ -138,41 +138,41 @@ var drag_speed = 1.0
 
 # Touch state
 var touch_points = {}
-var last_pinch_distance = 0.0  # For pinch-zoom tracking
+var last_pinch_distance = 0.0 # For pinch-zoom tracking
 var is_pinch_zooming = false
 
 # Tap detection timing
-const MIN_TAP_DURATION: float = 0.05  # 50ms - prevent accidental brush taps
-const MAX_TAP_DURATION: float = 0.25  # 250ms - too slow = not a tap
+const MIN_TAP_DURATION: float = 0.05 # 50ms - prevent accidental brush taps
+const MAX_TAP_DURATION: float = 0.25 # 250ms - too slow = not a tap
 var tap_start_time: float = 0.0
 
 # Pinch cooldown (prevents accidental taps after pinch ends)
-const PINCH_TAP_COOLDOWN: float = 0.15  # 150ms after pinch ends
+const PINCH_TAP_COOLDOWN: float = 0.15 # 150ms after pinch ends
 var pinch_cooldown_timer: float = 0.0
 
 # Pinch detection thresholds (DPI-scaled on mobile)
-var min_pinch_distance: float = 30.0  # Fingers must be 30px apart (base value for 160 DPI)
-var min_pinch_change: float = 15.0  # Must change by 15px to register zoom (base value)
-var pinch_dead_zone: float = 5.0  # Ignore changes < 5px - jitter filter (base value)
+var min_pinch_distance: float = 30.0 # Fingers must be 30px apart (base value for 160 DPI)
+var min_pinch_change: float = 15.0 # Must change by 15px to register zoom (base value)
+var pinch_dead_zone: float = 5.0 # Ignore changes < 5px - jitter filter (base value)
 
 # Double-tap zoom detection
-const DOUBLE_TAP_WINDOW: float = 0.3  # 300ms between taps (timing, not DPI-dependent)
-var double_tap_distance: float = 50.0  # Max 50px between tap positions (DPI-scaled on mobile)
+const DOUBLE_TAP_WINDOW: float = 0.3 # 300ms between taps (timing, not DPI-dependent)
+var double_tap_distance: float = 50.0 # Max 50px between tap positions (DPI-scaled on mobile)
 var last_tap_time: float = 0.0
 var last_tap_position: Vector2 = Vector2.ZERO
-var zoom_preset_index: int = 0  # Current zoom preset (0=far, 1=normal, 2=close)
-var zoom_presets: Array[float] = []  # HIGH-PRIORITY FIX: Dynamic presets based on platform zoom range
+var zoom_preset_index: int = 0 # Current zoom preset (0=far, 1=normal, 2=close)
+var zoom_presets: Array[float] = [] # HIGH-PRIORITY FIX: Dynamic presets based on platform zoom range
 
 # Inertia state
 var velocity = Vector2.ZERO
 var is_inertia_moving = false
 var inertia_friction = 0.9
-var last_drag_time: float = 0.0  # For proper velocity calculation
+var last_drag_time: float = 0.0 # For proper velocity calculation
 
 # Zoom state
 var target_zoom = Vector2.ONE
-var base_position = Vector2.ZERO  # Position without shake
-var target_position = Vector2.ZERO  # Target position for smooth zoom-to-cursor
+var base_position = Vector2.ZERO # Position without shake
+var target_position = Vector2.ZERO # Target position for smooth zoom-to-cursor
 
 # ============================================
 # USER PREFERENCES (will be saved/loaded)
@@ -182,9 +182,9 @@ var user_prefs = {
 	"inertia_enabled": true,
 	"shake_enabled": false,
 	"keyboard_pan_enabled": true,
-	"edge_scroll_speed_multiplier": 1.0,  # 0.5 to 2.0
-	"zoom_speed_multiplier": 1.0,  # 0.5 to 2.0
-	"drag_sensitivity": 1.0,  # 0.5 to 2.0
+	"edge_scroll_speed_multiplier": 1.0, # 0.5 to 2.0
+	"zoom_speed_multiplier": 1.0, # 0.5 to 2.0
+	"drag_sensitivity": 1.0, # 0.5 to 2.0
 }
 
 # ============================================
@@ -214,9 +214,9 @@ func _ready():
 		await get_tree().process_frame
 
 	# Runtime-only initialization
-	detect_platform()  # Detect first so baseline_zoom can use platform-aware clamping
+	detect_platform() # Detect first so baseline_zoom can use platform-aware clamping
 	calculate_baseline_zoom()
-	calculate_dpi_scale()  # Calculate DPI scale after platform detection
+	calculate_dpi_scale() # Calculate DPI scale after platform detection
 	apply_platform_defaults()
 	load_user_preferences()
 
@@ -224,21 +224,21 @@ func _ready():
 	target_zoom = Vector2(baseline_zoom, baseline_zoom)
 	zoom = target_zoom
 	base_position = position
-	target_position = position  # Initialize target to current position
+	target_position = position # Initialize target to current position
 
 	# HIGH-PRIORITY FIX: Calculate dynamic zoom presets based on platform zoom range
 	# This ensures presets work correctly on all platforms (mobile: 1.0-1.4, PC: 1.0-1.5)
 	zoom_presets = [
-		baseline_zoom,           # Preset 0: Far (minimum zoom)
-		baseline_zoom * 1.2,     # Preset 1: Medium
-		max_zoom                 # Preset 2: Close (maximum zoom)
+		baseline_zoom, # Preset 0: Far (minimum zoom)
+		baseline_zoom * 1.2, # Preset 1: Medium
+		max_zoom # Preset 2: Close (maximum zoom)
 	]
 
 	# Validate that bounds have been set by LevelController
 	if level_rect.size == Vector2.ZERO:
 		# CRITICAL FIX: Use fallback bounds to prevent camera lockup
 		var viewport_size = get_viewport_rect().size
-		level_rect = Rect2(-viewport_size, viewport_size * 3)  # Large area centered at origin
+		level_rect = Rect2(-viewport_size, viewport_size * 3) # Large area centered at origin
 
 		# Check after one frame if bounds were set by parent scene (e.g., WorldMap)
 		# If not, warn the user about missing LevelController setup
@@ -309,7 +309,7 @@ func calculate_dpi_scale() -> void:
 	# At 320 DPI: scale = 2.0 (double all thresholds)
 	# At 460 DPI (iPhone 15 Pro): scale = 2.875 (2.875x thresholds)
 	dpi_scale = screen_dpi / 160.0
-	dpi_scale = clamp(dpi_scale, 0.5, 4.0)  # Prevent extreme values
+	dpi_scale = clamp(dpi_scale, 0.5, 4.0) # Prevent extreme values
 
 	if debug_input:
 		print("[Camera DPI] Screen DPI: %.0f | Scale: %.2f" % [screen_dpi, dpi_scale])
@@ -323,11 +323,11 @@ func detect_platform() -> void:
 	var has_touchscreen = DisplayServer.is_touchscreen_available()
 
 	if is_mobile_native:
-		current_platform = Platform.MOBILE  # Native mobile app
+		current_platform = Platform.MOBILE # Native mobile app
 	elif is_web and has_touchscreen:
-		current_platform = Platform.MOBILE  # Web on mobile device (phone/tablet browser)
+		current_platform = Platform.MOBILE # Web on mobile device (phone/tablet browser)
 	elif is_web:
-		current_platform = Platform.PC  # Web on desktop
+		current_platform = Platform.PC # Web on desktop
 	elif OS.has_feature("pc") or OS.get_name() in ["Windows", "Linux", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "BSD"]:
 		current_platform = Platform.PC
 	else:
@@ -338,9 +338,9 @@ func apply_platform_defaults() -> void:
 	match current_platform:
 		Platform.MOBILE:
 			# Mobile: Moderate zoom-in capability (40% closer for detail viewing)
-			min_zoom = baseline_zoom  # Baseline is furthest out
-			max_zoom = baseline_zoom * 1.4  # 40% closer to see details
-			default_zoom = baseline_zoom  # Start at baseline
+			min_zoom = baseline_zoom # Baseline is furthest out
+			max_zoom = baseline_zoom * 1.4 # 40% closer to see details
+			default_zoom = baseline_zoom # Start at baseline
 			zoom_speed = mobile_zoom_speed
 
 			# Mobile-specific behavior
@@ -366,10 +366,10 @@ func apply_platform_defaults() -> void:
 
 		Platform.PC:
 			# PC: Moderate zoom-in capability (50% closer for detail viewing)
-			min_zoom = baseline_zoom  # Baseline is furthest out
-			max_zoom = baseline_zoom * 1.5  # 50% closer to see details
-			default_zoom = baseline_zoom  # Start at baseline
-			zoom_speed = zoom_speed  # Use default zoom_speed
+			min_zoom = baseline_zoom # Baseline is furthest out
+			max_zoom = baseline_zoom * 1.5 # 50% closer to see details
+			default_zoom = baseline_zoom # Start at baseline
+			zoom_speed = zoom_speed # Use default zoom_speed
 
 			# PC-specific behavior
 			drag_speed = pc_drag_speed
@@ -407,19 +407,19 @@ func save_user_preferences() -> void:
 # SETTINGS API (called from settings menu)
 # ============================================
 
-func set_edge_scroll_enabled(enabled: bool) -> void:
-	user_prefs["edge_scroll_enabled"] = enabled
-	edge_scroll_enabled = enabled
+func set_edge_scroll_enabled(should_be_enabled: bool) -> void:
+	user_prefs["edge_scroll_enabled"] = should_be_enabled
+	edge_scroll_enabled = should_be_enabled
 	save_user_preferences()
 
-func set_inertia_enabled(enabled: bool) -> void:
-	user_prefs["inertia_enabled"] = enabled
-	inertia_enabled = enabled
+func set_inertia_enabled(should_be_enabled: bool) -> void:
+	user_prefs["inertia_enabled"] = should_be_enabled
+	inertia_enabled = should_be_enabled
 	save_user_preferences()
 
-func set_shake_enabled(enabled: bool) -> void:
-	user_prefs["shake_enabled"] = enabled
-	shake_enabled = enabled
+func set_shake_enabled(should_be_enabled: bool) -> void:
+	user_prefs["shake_enabled"] = should_be_enabled
+	shake_enabled = should_be_enabled
 	save_user_preferences()
 
 func set_edge_scroll_speed_multiplier(multiplier: float) -> void:
@@ -435,6 +435,26 @@ func set_drag_sensitivity(sensitivity: float) -> void:
 	save_user_preferences()
 
 # ============================================
+# ZOOM API (for UI buttons)
+# ============================================
+
+func zoom_in() -> void:
+	"""Public API for UI Zoom In button"""
+	var zoom_delta = zoom_speed * user_prefs["zoom_speed_multiplier"]
+	# Zoom towards center of screen
+	var center = get_viewport_rect().size / 2.0
+	var corrected_center = get_canvas_corrected_position(center)
+	zoom_at_point(corrected_center, zoom_delta)
+
+func zoom_out() -> void:
+	"""Public API for UI Zoom Out button"""
+	var zoom_delta = - zoom_speed * user_prefs["zoom_speed_multiplier"]
+	# Zoom towards center of screen
+	var center = get_viewport_rect().size / 2.0
+	var corrected_center = get_canvas_corrected_position(center)
+	zoom_at_point(corrected_center, zoom_delta)
+
+# ============================================
 # INPUT LOCK API (for menus - Kingdom Rush style)
 # ============================================
 
@@ -443,23 +463,17 @@ func lock_input() -> void:
 	input_locked = true
 	# Cancel any ongoing movement
 	is_dragging = false
-	drag_button_pressed = false  # CRITICAL FIX: Reset button state to prevent dangling drag
+	drag_button_pressed = false # CRITICAL FIX: Reset button state to prevent dangling drag
 	is_inertia_moving = false
 	velocity = Vector2.ZERO
 	# Clear mobile touch state
 	touch_points.clear()
-	is_pinch_zooming = false
-	print("[Camera] Input LOCKED (menu open)")
 
 func unlock_input() -> void:
-	"""Unlock camera input when menus close"""
+	"""Unlock camera input"""
 	input_locked = false
-	print("[Camera] Input UNLOCKED (menu closed)")
-
-# ============================================
-# INPUT HANDLING
-# ============================================
-
+	if debug_input:
+		print("[Camera DEBUG] Input unlocked")
 func _unhandled_input(event):
 	# Skip in editor mode (camera script does NOT work in editor 2D view)
 	if Engine.is_editor_hint():
@@ -496,12 +510,12 @@ func _unhandled_input(event):
 		if is_interactive:
 			if debug_input:
 				print("[Camera DEBUG] Interactive GUI detected - ignoring camera input: ", gui_element.get_class())
-			return  # Let GUI handle the input
+			return # Let GUI handle the input
 
 	match current_platform:
 		Platform.MOBILE:
 			handle_mobile_input(event)
-		_:  # PC, Console, Web all use same input
+		_: # PC, Console, Web all use same input
 			handle_pc_input(event)
 
 func handle_pc_input(event) -> void:
@@ -517,31 +531,41 @@ func handle_pc_input(event) -> void:
 				if debug_input:
 					print("[Camera DEBUG] Mouse wheel UP - zooming in")
 				var zoom_delta = zoom_speed * user_prefs["zoom_speed_multiplier"]
-				var corrected_pos = get_canvas_corrected_position(event.position)  # Fix for web exports
+				var corrected_pos = get_canvas_corrected_position(event.position) # Fix for web exports
 				zoom_at_point(corrected_pos, zoom_delta)
 				get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			if event.pressed:
 				if debug_input:
 					print("[Camera DEBUG] Mouse wheel DOWN - zooming out")
-				var zoom_delta = -zoom_speed * user_prefs["zoom_speed_multiplier"]
-				var corrected_pos = get_canvas_corrected_position(event.position)  # Fix for web exports
+				var zoom_delta = - zoom_speed * user_prefs["zoom_speed_multiplier"]
+				var corrected_pos = get_canvas_corrected_position(event.position) # Fix for web exports
 				zoom_at_point(corrected_pos, zoom_delta)
 				get_viewport().set_input_as_handled()
 
 		# Middle mouse button drag (industry standard for RTS/strategy games)
 		# Works on all platforms including web (no context menu conflict)
 		# Right-click drag remains disabled (web context menu issue)
-		elif event.button_index == MOUSE_BUTTON_MIDDLE:
+		# LEFT CLICK DRAG ADDED: Unifies PC and Mobile input
+		elif event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				if debug_input:
-					print("[Camera DEBUG] MMB pressed - starting drag")
+					print("[Camera DEBUG] Drag Button (Left/Middle) pressed - starting drag")
 				start_drag(event.position)
+				# NOTE: We do NOT consume the input immediately on press.
+				# We wait until 'is_dragging' becomes true in update_drag().
+				# This allows "Click to Select" to still work if the user doesn't move the mouse.
 			else:
 				if debug_input:
-					print("[Camera DEBUG] MMB released - ending drag")
+					print("[Camera DEBUG] Drag Button released - ending drag")
 				end_drag()
-			get_viewport().set_input_as_handled()
+				# If we were dragging, consume the release event so it doesn't trigger selection
+				if is_dragging:
+					get_viewport().set_input_as_handled()
+			
+			# Only consume the event if we are actively dragging
+			if is_dragging:
+				get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseMotion:
 		# Only debug mouse motion if debug_drag_only is FALSE (reduces spam)
@@ -573,7 +597,7 @@ func handle_touch(event: InputEventScreenTouch):
 		if touch_points.size() == 1:
 			start_drag(event.position)
 			is_pinch_zooming = false
-			get_viewport().set_input_as_handled()  # Consume touch to prevent tower placement
+			get_viewport().set_input_as_handled() # Consume touch to prevent tower placement
 		# Two fingers - start pinch-zoom
 		elif touch_points.size() == 2:
 			var points = touch_points.values()
@@ -584,16 +608,14 @@ func handle_touch(event: InputEventScreenTouch):
 				is_dragging = false
 				is_pinch_zooming = true
 				last_pinch_distance = distance
-				tap_start_time = 0.0  # Cancel any pending tap
-				get_viewport().set_input_as_handled()  # Consume pinch input
+				tap_start_time = 0.0 # Cancel any pending tap
+				get_viewport().set_input_as_handled() # Consume pinch input
 				if debug_input:
 					print("[Camera PINCH] Started - initial distance: ", distance)
 			# else: fingers too close, ignore
 
 	else:
 		# Touch released
-		var was_tap = false
-
 		# Check if this was a tap (not drag/pinch)
 		if not is_dragging and not is_pinch_zooming:
 			var time_held = (Time.get_ticks_msec() / 1000.0) - tap_start_time
@@ -601,14 +623,13 @@ func handle_touch(event: InputEventScreenTouch):
 
 			# Valid tap: quick release, minimal movement
 			if time_held >= MIN_TAP_DURATION and time_held <= MAX_TAP_DURATION and distance_moved < drag_threshold:
-				was_tap = true
 				# Check for double-tap zoom
 				if handle_tap_input(event.position):
 					# Double-tap consumed input - don't propagate
 					get_viewport().set_input_as_handled()
 
 		touch_points.erase(event.index)
-		get_viewport().set_input_as_handled()  # Always consume touch releases
+		get_viewport().set_input_as_handled() # Always consume touch releases
 
 		if touch_points.is_empty():
 			# If was pinching, add cooldown to prevent accidental taps
@@ -632,11 +653,11 @@ func handle_touch_drag(event: InputEventScreenDrag):
 	# Single finger drag
 	if touch_points.size() == 1 and is_dragging:
 		update_drag(event.position)
-		get_viewport().set_input_as_handled()  # Consume drag input
+		get_viewport().set_input_as_handled() # Consume drag input
 	# Two finger pinch-zoom
 	elif touch_points.size() == 2 and is_pinch_zooming:
 		update_pinch_zoom()
-		get_viewport().set_input_as_handled()  # Consume pinch drag input
+		get_viewport().set_input_as_handled() # Consume pinch drag input
 
 # ============================================
 # DRAG FUNCTIONS
@@ -652,14 +673,14 @@ func start_drag(screen_pos: Vector2):
 	if is_snapping:
 		cancel_snap()
 
-	drag_button_pressed = true  # Button is held - ready to check threshold
+	drag_button_pressed = true # Button is held - ready to check threshold
 	drag_start_pos = screen_pos
 	last_mouse_pos = screen_pos
-	is_dragging = false  # Wait for threshold
+	is_dragging = false # Wait for threshold
 	is_inertia_moving = false
 	velocity = Vector2.ZERO
-	tap_start_time = Time.get_ticks_msec() / 1000.0  # Track when press started
-	last_drag_time = tap_start_time  # Initialize time tracking for velocity calculation
+	tap_start_time = Time.get_ticks_msec() / 1000.0 # Track when press started
+	last_drag_time = tap_start_time # Initialize time tracking for velocity calculation
 
 func update_drag(screen_pos: Vector2):
 	"""Update camera position while dragging"""
@@ -671,7 +692,7 @@ func update_drag(screen_pos: Vector2):
 		# Removed MIN_DRAG_DURATION time check - distance threshold is sufficient
 		if distance > drag_threshold:
 			is_dragging = true
-			tap_start_time = 0.0  # No longer a tap
+			tap_start_time = 0.0 # No longer a tap
 			if debug_input:
 				print("[Camera DRAG] ✅ Drag threshold exceeded! distance=", distance, " threshold=", drag_threshold)
 				print("[Camera DRAG]   NOW DRAGGING - camera will move")
@@ -688,15 +709,15 @@ func update_drag(screen_pos: Vector2):
 
 	# Move camera (opposite direction of drag)
 	base_position -= delta
-	target_position = base_position  # Keep target in sync during drag
+	target_position = base_position # Keep target in sync during drag
 
 	# Store velocity for inertia (frame-independent)
 	# Use real time elapsed, not physics delta (input events have variable timing)
 	var current_time = Time.get_ticks_msec() / 1000.0
 	var time_delta = current_time - last_drag_time
 
-	if time_delta > 0.0 and time_delta < 0.1:  # Ignore huge time gaps (>100ms = paused/tabbed out)
-		velocity = -delta / time_delta
+	if time_delta > 0.0 and time_delta < 0.1: # Ignore huge time gaps (>100ms = paused/tabbed out)
+		velocity = - delta / time_delta
 		velocity = velocity.limit_length(max_inertia_velocity)
 	else:
 		# First drag event or large time gap - reset velocity
@@ -713,7 +734,7 @@ func end_drag():
 		is_inertia_moving = false
 		velocity = Vector2.ZERO
 
-	drag_button_pressed = false  # Button released
+	drag_button_pressed = false # Button released
 	is_dragging = false
 
 func handle_tap_input(tap_position: Vector2) -> bool:
@@ -737,19 +758,19 @@ func handle_tap_input(tap_position: Vector2) -> bool:
 
 		# HIGH-PRIORITY FIX: Zoom fully to preset (removed * 0.5 for immediate response)
 		var zoom_delta = target_zoom_level - zoom.x
-		zoom_at_point(tap_position, zoom_delta)  # Full zoom to preset
+		zoom_at_point(tap_position, zoom_delta) # Full zoom to preset
 
 		# Reset double-tap detection
 		last_tap_time = 0.0
 		last_tap_position = Vector2.ZERO
 
 		print("[Camera] Double-tap zoom: %s (%.1fx)" % [["Far", "Medium", "Close"][zoom_preset_index], zoom_presets[zoom_preset_index]])
-		return true  # Consumed input
+		return true # Consumed input
 	else:
 		# First tap - record for double-tap detection
 		last_tap_time = current_time
 		last_tap_position = tap_position
-		return false  # Don't consume - let other systems handle it
+		return false # Don't consume - let other systems handle it
 
 func update_pinch_zoom():
 	"""Update zoom based on pinch gesture (two-finger distance change)"""
@@ -773,7 +794,7 @@ func update_pinch_zoom():
 
 	# Must change by minimum amount to register as intentional zoom
 	if distance_change < min_pinch_change:
-		last_pinch_distance = current_distance  # Update but don't zoom
+		last_pinch_distance = current_distance # Update but don't zoom
 		return
 
 	# Calculate pinch center (world position to keep centered during zoom)
@@ -785,8 +806,8 @@ func update_pinch_zoom():
 	# Calculate zoom delta based on distance change
 	# Scale factor: larger distance change = more zoom
 	var distance_ratio = current_distance / last_pinch_distance
-	var zoom_factor = distance_ratio - 1.0  # Convert to delta (-0.1 to +0.1)
-	var zoom_delta = zoom_factor * zoom_speed * 2.0  # Multiply by 2 for more responsive pinch
+	var zoom_factor = distance_ratio - 1.0 # Convert to delta (-0.1 to +0.1)
+	var zoom_delta = zoom_factor * zoom_speed * 2.0 # Multiply by 2 for more responsive pinch
 
 	if debug_input:
 		print("[Camera PINCH] Distance: ", last_pinch_distance, " -> ", current_distance, " | Zoom delta: ", zoom_delta)
@@ -809,7 +830,7 @@ func _validate_touch_points() -> void:
 	if touch_points.size() > 2:
 		# Keep the 2 most recent touches, remove the rest
 		var indices = touch_points.keys()
-		indices.sort()  # Lower indices are usually older
+		indices.sort() # Lower indices are usually older
 		for i in range(touch_points.size() - 2):
 			touch_points.erase(indices[i])
 			if debug_input:
@@ -861,7 +882,7 @@ func zoom_at_point(screen_point: Vector2, zoom_delta: float):
 
 	# CRITICAL FIX: Skip position adjustment if zoom didn't change (at limits)
 	if abs(new_zoom_value - old_zoom) < 0.001:
-		return  # Zoom at limit, don't micro-shift camera position
+		return # Zoom at limit, don't micro-shift camera position
 
 	target_zoom = Vector2(new_zoom_value, new_zoom_value)
 
@@ -939,14 +960,14 @@ func update_snap(delta: float) -> void:
 
 	if snap_progress >= 1.0:
 		base_position = snap_target_pos
-		target_position = snap_target_pos  # Keep target in sync
+		target_position = snap_target_pos # Keep target in sync
 		is_snapping = false
 		snap_progress = 0.0
 	else:
 		# Smooth ease-out curve
 		var t = ease_out_cubic(snap_progress)
 		base_position = snap_start_pos.lerp(snap_target_pos, t)
-		target_position = base_position  # Keep target in sync during snap
+		target_position = base_position # Keep target in sync during snap
 
 func ease_out_cubic(t: float) -> float:
 	"""Smooth easing function"""
@@ -1045,7 +1066,7 @@ func handle_keyboard_pan(delta):
 	if direction != Vector2.ZERO:
 		direction = direction.normalized()
 		base_position += direction * keyboard_pan_speed * delta / zoom.x
-		target_position = base_position  # Keep target in sync during keyboard pan
+		target_position = base_position # Keep target in sync during keyboard pan
 
 		# Cancel inertia if manually moving
 		is_inertia_moving = false
@@ -1075,7 +1096,7 @@ func handle_edge_scroll(delta):
 		direction = direction.normalized()
 		var speed = edge_scroll_speed * user_prefs["edge_scroll_speed_multiplier"]
 		base_position += direction * speed * delta / zoom.x
-		target_position = base_position  # Keep target in sync during edge scroll
+		target_position = base_position # Keep target in sync during edge scroll
 
 func update_inertia(delta):
 	"""Update inertia-based movement (frame-independent)"""
@@ -1086,10 +1107,10 @@ func update_inertia(delta):
 
 	# Apply velocity (frame-independent)
 	base_position += velocity * delta
-	target_position = base_position  # Keep target in sync during inertia
+	target_position = base_position # Keep target in sync during inertia
 
 	# Apply friction (frame-independent)
-	var friction = pow(inertia_friction, delta * 60.0)  # Normalized to 60fps
+	var friction = pow(inertia_friction, delta * 60.0) # Normalized to 60fps
 	velocity *= friction
 
 # ============================================
@@ -1142,7 +1163,7 @@ func reset_to_center():
 	var center_x = (limit_left + limit_right) / 2.0
 	var center_y = (limit_top + limit_bottom) / 2.0
 	base_position = Vector2(center_x, center_y)
-	target_position = base_position  # Keep target in sync
+	target_position = base_position # Keep target in sync
 	position = base_position
 	target_zoom = Vector2(default_zoom, default_zoom)
 	zoom = target_zoom
@@ -1163,7 +1184,7 @@ func set_camera_state(state: Dictionary) -> void:
 	"""Restore camera state (for save/load)"""
 	if state.has("position"):
 		base_position = state["position"]
-		target_position = base_position  # Keep target in sync
+		target_position = base_position # Keep target in sync
 		position = base_position
 	if state.has("zoom"):
 		var z = state["zoom"]
@@ -1180,7 +1201,7 @@ func set_camera_state(state: Dictionary) -> void:
 func _process(_delta):
 	"""Update editor visualization (runs in editor only)"""
 	if Engine.is_editor_hint() and show_level_borders_in_editor:
-		queue_redraw()  # Request redraw every frame in editor
+		queue_redraw() # Request redraw every frame in editor
 
 func _draw():
 	"""Draw yellow border rectangle in editor to visualize playable area from LevelConfig"""
@@ -1221,7 +1242,7 @@ func _draw():
 	var bottom_left = Vector2(local_rect_pos.x, local_rect_end.y)
 
 	# Draw rectangle lines
-	draw_line(top_left, top_right, editor_border_color, editor_border_width)  # Top
-	draw_line(top_right, bottom_right, editor_border_color, editor_border_width)  # Right
-	draw_line(bottom_right, bottom_left, editor_border_color, editor_border_width)  # Bottom
-	draw_line(bottom_left, top_left, editor_border_color, editor_border_width)  # Left
+	draw_line(top_left, top_right, editor_border_color, editor_border_width) # Top
+	draw_line(top_right, bottom_right, editor_border_color, editor_border_width) # Right
+	draw_line(bottom_right, bottom_left, editor_border_color, editor_border_width) # Bottom
+	draw_line(bottom_left, top_left, editor_border_color, editor_border_width) # Left

@@ -1,0 +1,55 @@
+[gd_scene load_steps=2 format=3 uid="uid://artillery_visuals_l2"]
+
+[ext_resource type="Texture2D" uid="uid://d0ngu23x1ql7v" path="res://assets/sprites/towers/archer_level1/archer1.png" id="1_sprite"]
+
+[node name="ArtilleryVisualsL2" type="Node2D"]
+
+[node name="TowerSprite" type="Sprite2D" parent="."]
+position = Vector2(0, -20)
+scale = Vector2(0.09, 0.09)
+texture = ExtResource("1_sprite")
+modulate = Color(0.6, 0.6, 0.6, 1)
+
+[node name="Artillery" type="Node2D" parent="."]
+position = Vector2(0, -45)
+
+[node name="Base" type="ColorRect" parent="Artillery"]
+offset_left = -18.0
+offset_top = -5.0
+offset_right = 18.0
+offset_bottom = 18.0
+color = Color(0.3, 0.3, 0.3, 1)
+
+[node name="Weapon" type="Node2D" parent="Artillery"]
+
+[node name="Cannon" type="ColorRect" parent="Artillery/Weapon"]
+offset_top = -10.0
+offset_right = 36.0
+offset_bottom = 10.0
+color = Color(0.1, 0.1, 0.1, 1)
+
+[node name="Band" type="ColorRect" parent="Artillery/Weapon/Cannon"]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 0.0
+offset_right = 36.0
+offset_bottom = 20.0
+color = Color(0.8, 0.1, 0.1, 1)
+
+[node name="MuzzleFlash" type="CPUParticles2D" parent="Artillery/Weapon"]
+position = Vector2(36, 0)
+emitting = false
+amount = 20
+lifetime = 0.5
+one_shot = true
+explosiveness = 1.0
+randomness = 0.2
+emission_shape = 1
+emission_sphere_radius = 6.0
+spread = 50.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 60.0
+initial_velocity_max = 120.0
+scale_amount_min = 5.0
+scale_amount_max = 10.0
+color = Color(1, 0.2, 0.0, 1)

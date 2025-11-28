@@ -18,9 +18,9 @@ const MIN_LOADOUT_SIZE = 3
 const MAX_LOADOUT_SIZE = 4
 
 # STATE
-var current_loadout: Array = []  # Array of tower_id strings currently equipped
-var unlocked_towers: Array = []  # All towers player has unlocked
-var selected_tower_id: String = ""  # Currently previewed tower
+var current_loadout: Array = [] # Array of tower_id strings currently equipped
+var unlocked_towers: Array = [] # All towers player has unlocked
+var selected_tower_id: String = "" # Currently previewed tower
 
 # NODE REFERENCES (will be created programmatically or from scene)
 var close_button: Button
@@ -30,12 +30,12 @@ var done_button: Button
 # Top bar - available towers
 var top_bar_scroll: ScrollContainer
 var top_bar_container: HBoxContainer
-var top_bar_buttons: Dictionary = {}  # tower_id -> Button
+var top_bar_buttons: Dictionary = {} # tower_id -> Button
 
 # Left sidebar - equipped towers
 var equipped_label: Label
 var equipped_slots_container: VBoxContainer
-var equipped_slot_buttons: Array[Button] = []  # Fixed 4 slots
+var equipped_slot_buttons: Array[Button] = [] # Fixed 4 slots
 
 # Center panel - tower preview
 var preview_panel: PanelContainer
@@ -44,7 +44,7 @@ var preview_name_label: Label
 
 # Right panel - stats
 var stats_panel: VBoxContainer
-var stats_labels: Dictionary = {}  # stat_name -> Label
+var stats_labels: Dictionary = {} # stat_name -> Label
 
 # ============================================
 # INITIALIZATION
@@ -267,14 +267,14 @@ func _create_equipped_slots():
 			var tower_id = current_loadout[i]
 			_update_slot_button(button, tower_id, i)
 		else:
-			_update_slot_button(button, "", i)  # Empty slot with lock
+			_update_slot_button(button, "", i) # Empty slot with lock
 
 		button.pressed.connect(_on_equipped_slot_clicked.bind(i))
 
 		equipped_slots_container.add_child(button)
 		equipped_slot_buttons.append(button)
 
-func _update_slot_button(button: Button, tower_id: String, slot_index: int):
+func _update_slot_button(button: Button, tower_id: String, _slot_index: int):
 	"""Update an equipment slot button's appearance"""
 	if tower_id == "":
 		# Empty slot
@@ -292,15 +292,15 @@ func _update_slot_button(button: Button, tower_id: String, slot_index: int):
 		# Equipped tower
 		var tower_data = TowerData.get_tower_data(tower_id)
 		var icon = tower_data.get("icon", "?")
-		var name = tower_data.get("name", "???")
-		button.text = "%s\n%s" % [icon, name.split(" ")[0]]  # First word only
+		var tower_name = tower_data.get("name", "???")
+		button.text = "%s\n%s" % [icon, tower_name.split(" ")[0]] # First word only
 		button.add_theme_font_size_override("font_size", 18)
 
 		# Golden equipped style
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color(0.2, 0.15, 0.1, 0.9)
 		style.set_border_width_all(3)
-		style.border_color = Color(0.9, 0.8, 0.4, 1.0)  # Golden
+		style.border_color = Color(0.9, 0.8, 0.4, 1.0) # Golden
 		style.set_corner_radius_all(8)
 		button.add_theme_stylebox_override("normal", style)
 

@@ -311,9 +311,8 @@ func _refresh_inventory():
 
 ## Get slot at specific grid coordinates
 func _get_slot_at_position(x: int, y: int) -> Control:
-	var grid_width = InventoryManager.GRID_WIDTH
-	var index = y * grid_width + x
-	
+	# var grid_width = InventoryManager.GRID_WIDTH # Unused
+	# var index = y * grid_width + x # Unused
 	# If item_slots is empty (we stopped populating it in _create_item_slots),
 	# we should find the child directly from inventory_grid
 	if inventory_grid:
@@ -514,16 +513,16 @@ func _on_item_slot_hovered(slot: Control):
 	# Use slot's _generate_tooltip method if available or build it here
 	# ItemSlot has _generate_tooltip but it returns string.
 	# We can use that.
-	var tooltip_text = slot._generate_tooltip()
-	if tooltip_text == "":
+	var tooltip_content = slot._generate_tooltip()
+	if tooltip_content == "":
 		return
 		
 	# Add sell value
 	var item_data = slot.item_instance.get_data()
 	if item_data:
-		tooltip_text += "\n[color=yellow]Sell: %d gold[/color]" % item_data.sell_value
+		tooltip_content += "\n[color=yellow]Sell: %d gold[/color]" % item_data.sell_value
 
-	tooltip_label.text = tooltip_text
+	tooltip_label.text = tooltip_content
 	tooltip_panel.visible = true
 
 	# Position tooltip near mouse with bounds checking
@@ -586,16 +585,16 @@ func _get_slot_name_for_item(item_data: ItemData) -> String:
 	return ItemData.equip_slot_to_name(item_data.equip_slot)
 
 
-func _on_hero_inventory_changed(hero_id: String):
+func _on_hero_inventory_changed(changed_hero_id: String):
 	"""Called when hero inventory changes"""
 	# Only refresh if it's the current hero
-	if hero_id == self.hero_id:
+	if changed_hero_id == self.hero_id:
 		_refresh_inventory()
 
 
-func _on_hero_inventory_full(hero_id: String, item_id: String):
+func _on_hero_inventory_full(full_hero_id: String, item_id: String):
 	"""Called when hero inventory is full"""
-	if hero_id == self.hero_id:
+	if full_hero_id == self.hero_id:
 		print("[InventoryView] Hero inventory full for item: ", item_id)
 
 

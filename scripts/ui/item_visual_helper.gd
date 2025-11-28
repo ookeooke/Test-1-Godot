@@ -16,7 +16,7 @@ extends RefCounted
 # VISUAL SETUP
 # ==============================================================================
 
-static func setup_item_visuals(parent: Control, icon: TextureRect, quantity_label: Label, upgrade_label: Label, rarity_border: Panel, item_instance: ItemInstance):
+static func setup_item_visuals(_parent: Control, icon: TextureRect, quantity_label: Label, upgrade_label: Label, rarity_border: Panel, item_instance: ItemInstance):
 	"""Update all visual elements for an item"""
 	if not item_instance:
 		clear_visuals(icon, quantity_label, upgrade_label, rarity_border)

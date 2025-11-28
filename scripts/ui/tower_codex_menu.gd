@@ -23,7 +23,7 @@ var current_tower_id: String = "archer"
 @onready var description_label: Label = $PanelContainer/MarginContainer/VBoxContainer/ContentHBox/StatsPanel/StatsContainer/DescriptionPanel/DescriptionLabel
 
 # Tower selector buttons
-var tower_buttons: Dictionary = {}  # tower_id -> Button
+var tower_buttons: Dictionary = {} # tower_id -> Button
 
 func _ready():
 	# Connect signals
@@ -92,7 +92,7 @@ func _display_tower(tower_id: String):
 
 	# Clear previous stats display
 	for child in stats_container.get_children():
-		if child != description_label.get_parent():  # Keep description panel
+		if child != description_label.get_parent(): # Keep description panel
 			child.queue_free()
 
 	# Display stats based on tower type
@@ -103,7 +103,7 @@ func _display_tower(tower_id: String):
 	else:
 		_display_generic_tower_stats(tower_id, tower_data)
 
-func _display_ranged_tower_stats(tower_id: String, tower_data: Dictionary):
+func _display_ranged_tower_stats(_tower_id: String, tower_data: Dictionary):
 	"""Display stats for ranged towers (archer, mage, etc)"""
 	var levels = tower_data.get("levels", {})
 
@@ -115,7 +115,7 @@ func _display_ranged_tower_stats(tower_id: String, tower_data: Dictionary):
 	stats_container.add_child(title)
 
 	# Display each level
-	for level in range(1, 6):  # Levels 1-5
+	for level in range(1, 6): # Levels 1-5
 		if not levels.has(level):
 			continue
 
@@ -247,7 +247,7 @@ func _create_path_panel(path_title: String, level: int, stats: Dictionary, color
 
 	return panel
 
-func _display_garrison_tower_stats(tower_id: String, tower_data: Dictionary):
+func _display_garrison_tower_stats(_tower_id: String, tower_data: Dictionary):
 	"""Display stats for garrison towers (barracks)"""
 	var levels = tower_data.get("levels", {})
 
@@ -259,7 +259,7 @@ func _display_garrison_tower_stats(tower_id: String, tower_data: Dictionary):
 	stats_container.add_child(title)
 
 	# Display each level
-	for level in range(1, 10):  # Up to 10 levels for garrison
+	for level in range(1, 10): # Up to 10 levels for garrison
 		if not levels.has(level):
 			break
 
@@ -305,7 +305,7 @@ func _add_garrison_level_display(level: int, stats: Dictionary):
 
 	stats_container.add_child(level_panel)
 
-func _display_generic_tower_stats(tower_id: String, tower_data: Dictionary):
+func _display_generic_tower_stats(_tower_id: String, _tower_data: Dictionary):
 	"""Fallback for unknown tower types"""
 	var label = Label.new()
 	label.text = "Tower type not yet implemented in codex"
@@ -316,9 +316,9 @@ func _update_button_states():
 	for tower_id in tower_buttons:
 		var button = tower_buttons[tower_id]
 		if tower_id == current_tower_id:
-			button.modulate = Color(1.2, 1.2, 1.0)  # Highlight
+			button.modulate = Color(1.2, 1.2, 1.0) # Highlight
 		else:
-			button.modulate = Color(1.0, 1.0, 1.0)  # Normal
+			button.modulate = Color(1.0, 1.0, 1.0) # Normal
 
 func _on_close_pressed():
 	"""Close the codex"""

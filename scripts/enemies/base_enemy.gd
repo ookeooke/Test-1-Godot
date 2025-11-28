@@ -132,6 +132,45 @@ func _ready():
 	if EnemyManager:
 		EnemyManager.register_enemy(self)
 
+	# GRAPHICS UPGRADE: Add dynamic shadow
+	_add_dynamic_shadow()
+
+	# GRAPHICS UPGRADE: Setup hit flash shader
+	_setup_hit_flash_material()
+	
+	# DEBUG: Visual Confirmation
+	# var visual = _get_visual_sprite()
+	# print("[Enemy] Spawned: %s | Visual Node: %s | Shadow: %s" % [name, visual.name if visual else "NONE", "YES" if has_node("Shadow") else "NO"])
+
+func _add_dynamic_shadow():
+	"""Add a blob shadow under the unit"""
+	var shadow_scene = load("res://scenes/effects/shadow.tscn")
+	if shadow_scene:
+		var shadow = shadow_scene.instantiate()
+		# Place shadow at bottom of sprite (assuming origin is center)
+		# Adjust scale based on enemy size (weight)
+		shadow.scale = Vector2(1.0 + (weight * 0.2), 1.0 + (weight * 0.2))
+		shadow.position = Vector2(0, 5) # Slightly below feet
+		add_child(shadow)
+		move_child(shadow, 0) # Move to bottom of draw order
+
+func _setup_hit_flash_material():
+	"""Apply the hit flash shader to the sprite"""
+	var sprite_node = _get_visual_sprite()
+	if sprite_node:
+		var shader = load("res://assets/shaders/hit_flash.gdshader")
+		if shader:
+			var mat = ShaderMaterial.new()
+			mat.shader = shader
+			sprite_node.material = mat
+
+func _get_visual_sprite() -> Node2D:
+	"""Helper to find the main visual sprite"""
+	for child in get_children():
+		if child is Sprite2D or child is AnimatedSprite2D:
+			return child
+	return null
+
 # ============================================
 # HIT POINT MARKER SYSTEM
 # ============================================
@@ -196,6 +235,10 @@ func _process(_delta):
 	z_index = int(global_position.y)
 
 func _physics_process(delta):
+	# Stun check
+	if is_stunned:
+		return
+
 	# Handle blocking state first (same for both systems)
 	if is_blocked and blocking_hero and is_instance_valid(blocking_hero):
 		# I am the blocked enemy - check if hero is still close
@@ -494,62 +537,42 @@ func _play_animation(anim_name: String):
 
 func _spawn_impact_particles(damage_source):
 	"""Create impact particles for melee hits - subtle blood splatter"""
-	var particles = CPUParticles2D.new()
-	add_child(particles)
+	var particle_scene = load("res://scenes/effects/blood_splatter.tscn")
+	if not particle_scene:
+		return
+		
+	var particles = particle_scene.instantiate()
+	get_parent().add_child(particles)
+	particles.global_position = global_position
 
 	# Calculate direction away from attacker
-	var direction = Vector2.RIGHT
+	var direction = Vector2.UP
 	if damage_source and is_instance_valid(damage_source):
 		direction = (global_position - damage_source.global_position).normalized()
-
-	# Particle settings - fewer, smaller particles
-	particles.emitting = true
-	particles.one_shot = true
-	particles.amount = 5
-	particles.lifetime = 0.3
-	particles.explosiveness = 0.8
-	particles.randomness = 0.4
-
-	# Emission shape - small cone pointing away from attacker
-	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
-	particles.emission_sphere_radius = 3.0
+	
 	particles.direction = direction
-	particles.spread = 35.0
-
-	# Movement - slower, more natural
-	particles.initial_velocity_min = 30.0
-	particles.initial_velocity_max = 60.0
-	particles.gravity = Vector2(0, 250)
-	particles.damping_min = 5.0
-	particles.damping_max = 10.0
-
-	# Visuals - smaller, darker red
-	particles.scale_amount_min = 0.8
-	particles.scale_amount_max = 1.5
-	particles.color = Color(0.6, 0.1, 0.1, 0.9) # Dark blood color
-
-	# Fade out naturally
-	var gradient = Gradient.new()
-	gradient.add_point(0.0, Color(0.7, 0.15, 0.15, 1.0))
-	gradient.add_point(0.7, Color(0.5, 0.1, 0.1, 0.6))
-	gradient.add_point(1.0, Color(0.3, 0.05, 0.05, 0.0))
-	particles.color_ramp = gradient
-
-	# Auto-cleanup
-	await get_tree().create_timer(particles.lifetime + 0.1).timeout
-	if is_instance_valid(particles):
-		particles.queue_free()
+	particles.emitting = true
 
 func _play_hit_flash():
 	"""Flash enemy white briefly when hit - instant visual feedback"""
-	# Quick white flash to show damage
-	var original_modulate = modulate
-	modulate = Color(2.0, 2.0, 2.0, 1.0) # Bright white flash
-
-	# Return to normal color after 0.1 seconds
-	await get_tree().create_timer(0.1).timeout
-	if is_instance_valid(self):
-		modulate = original_modulate
+	var sprite_node = _get_visual_sprite()
+	if sprite_node and sprite_node.material:
+		# Enable shader parameter
+		sprite_node.material.set_shader_parameter("active", true)
+		
+		# Wait 0.1s
+		await get_tree().create_timer(0.1).timeout
+		
+		# Disable shader parameter
+		if is_instance_valid(sprite_node) and sprite_node.material:
+			sprite_node.material.set_shader_parameter("active", false)
+	else:
+		# Fallback to old modulate method if no shader
+		var original_modulate = modulate
+		modulate = Color(2.0, 2.0, 2.0, 1.0) # Bright white flash
+		await get_tree().create_timer(0.1).timeout
+		if is_instance_valid(self):
+			modulate = original_modulate
 
 func _spawn_damage_number(damage: float):
 	"""Spawn floating damage number above enemy - satisfying feedback"""
@@ -826,6 +849,58 @@ func apply_knockback(force: float, explosion_pos: Vector2):
 			parent.progress -= knockback_distance
 			# Clamp to prevent negative progress
 			parent.progress = max(0, parent.progress)
+
+# ============================================
+# CROWD CONTROL (Stun & Taunt)
+# ============================================
+
+var is_stunned: bool = false
+var stun_timer: Timer = null
+
+func stun(duration: float):
+	"""Stun the enemy, preventing movement and attacks"""
+	if is_stunned:
+		# Extend duration if already stunned
+		if stun_timer:
+			stun_timer.start(duration)
+		return
+
+	is_stunned = true
+	
+	# Visual feedback (yellow tint)
+	modulate = Color(1.5, 1.5, 0.5)
+	
+	# Create timer if needed
+	if stun_timer == null:
+		stun_timer = Timer.new()
+		add_child(stun_timer)
+		stun_timer.one_shot = true
+		stun_timer.timeout.connect(_on_stun_expired)
+		
+	stun_timer.start(duration)
+
+func _on_stun_expired():
+	is_stunned = false
+	modulate = Color.WHITE
+	
+func set_target(new_target):
+	"""Force enemy to target a specific unit (Taunt)"""
+	if new_target and new_target.has_method("take_damage"):
+		# If we are blocked, switch blocker?
+		# Or if we are free, move towards target?
+		# For now, if it's a hero, we treat it as a block
+		if new_target.is_in_group("heroes"):
+			set_blocked_by_hero(new_target)
+			# Visual feedback
+			var label = Label.new()
+			label.text = "TAUNTED!"
+			label.modulate = Color.RED
+			label.global_position = global_position + Vector2(0, -40)
+			get_parent().add_child(label)
+			var tween = create_tween()
+			tween.tween_property(label, "global_position:y", label.global_position.y - 30, 1.0)
+			tween.parallel().tween_property(label, "modulate:a", 0.0, 1.0)
+			tween.tween_callback(label.queue_free)
 
 # ============================================
 # CLEANUP

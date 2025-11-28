@@ -63,7 +63,7 @@ var current_wave_number: int = 0
 var run_start_time: float = 0.0
 
 ## Run result
-var run_result: String = "in_progress"  # "victory", "defeat", "in_progress"
+var run_result: String = "in_progress" # "victory", "defeat", "in_progress"
 
 ## AI decision log (for AI playtesting)
 var ai_decision_log: Array = []
@@ -123,9 +123,9 @@ func start_run(level_id: String = "unknown"):
 			"total_spent": 0,
 			"ending_gold": 0,
 			"completion_bonus": 0,
-			"wave_bonuses": {},  # {wave_number: bonus_amount}
+			"wave_bonuses": {}, # {wave_number: bonus_amount}
 			"total_wave_bonus": 0,
-			"gold_history": []  # [{time: float, amount: int, reason: String}]
+			"gold_history": [] # [{time: float, amount: int, reason: String}]
 		},
 		"balance_metrics": {}
 	}
@@ -231,19 +231,19 @@ func register_tower(tower_instance: Node, tower_type: String, cost: int):
 		"active_time": 0.0,
 		"idle_time": 0.0,
 		"last_shot_time": 0.0,
-		"last_state": "idle",  # "active" or "idle"
+		"last_state": "idle", # "active" or "idle"
 		"last_state_change_time": Time.get_ticks_msec() / 1000.0 - run_start_time,
 		"gold_spent": cost,
 		"position": tower_instance.global_position if tower_instance else Vector2.ZERO,
 		"tower_level": 1,
 		"upgrade_path": "",
-		"upgrade_history": []  # [{level: int, cost: int, time: float, path: String}]
+		"upgrade_history": [] # [{level: int, cost: int, time: float, path: String}]
 	}
 
 	# Record tower purchase
 	_record_gold_spent(cost, "tower_%s" % tower_type)
 
-	print("[BalanceTracker] Tower registered: %s (ID:%d)" % [tower_type, instance_id])
+	# print("[BalanceTracker] Tower registered: %s (ID:%d)" % [tower_type, instance_id])
 
 func record_tower_upgrade(tower_instance: Node, new_level: int, upgrade_cost: int, upgrade_path: String = ""):
 	"""Record that a tower was upgraded"""
@@ -312,13 +312,13 @@ func record_tower_state(tower_instance: Node, is_active: bool):
 	tower_data.last_state = new_state
 	tower_data.last_state_change_time = current_time
 
-func record_damage(source_instance: Node, target: Node, damage: float, source_type: String):
+func record_damage(source_instance: Node, _target: Node, damage: float, source_type: String):
 	"""Record damage dealt by a tower or hero"""
 	if not is_tracking:
 		return
 
 	var instance_id = source_instance.get_instance_id()
-	var current_time = Time.get_ticks_msec() / 1000.0 - run_start_time
+	# var current_time = Time.get_ticks_msec() / 1000.0 - run_start_time # Unused
 
 	# Track tower damage
 	if source_type == "tower" and tracked_towers.has(instance_id):
@@ -327,7 +327,7 @@ func record_damage(source_instance: Node, target: Node, damage: float, source_ty
 
 	# Track hero damage
 	elif source_type.begins_with("hero_") and tracked_heroes.has(instance_id):
-		var attack_type = source_type.replace("hero_", "")  # "ranged" or "melee"
+		var attack_type = source_type.replace("hero_", "") # "ranged" or "melee"
 		tracked_heroes[instance_id].total_damage += damage
 
 		if attack_type == "ranged":
@@ -335,7 +335,7 @@ func record_damage(source_instance: Node, target: Node, damage: float, source_ty
 		elif attack_type == "melee":
 			tracked_heroes[instance_id].melee_damage += damage
 
-func record_kill(source_instance: Node, enemy_type: String, gold_reward: int, source_type: String):
+func record_kill(source_instance: Node, _enemy_type: String, _gold_reward: int, source_type: String):
 	"""Record that a tower/hero killed an enemy"""
 	if not is_tracking:
 		return
@@ -381,7 +381,7 @@ func register_hero(hero_instance: Node, hero_id: String):
 		},
 		"last_state": "idle",
 		"last_state_change_time": 0.0,
-		"equipped_items": {},  # {slot: item_id}
+		"equipped_items": {}, # {slot: item_id}
 		"equipment_bonuses": {
 			"damage": 0.0,
 			"health": 0.0,
@@ -553,7 +553,7 @@ var boss_fights: Dictionary = {}
 ## Current active boss
 var current_boss_type: String = ""
 
-func record_boss_appeared(boss_type: String, boss_instance: Node):
+func record_boss_appeared(boss_type: String, _boss_instance: Node):
 	"""Record when a boss enemy appears"""
 	if not is_tracking:
 		return
@@ -567,9 +567,9 @@ func record_boss_appeared(boss_type: String, boss_instance: Node):
 		"fight_duration": 0.0,
 		"total_damage_taken": 0.0,
 		"hits_taken": 0,
-		"health_milestones": [],  # [{health_percent: float, time: float}]
-		"damage_by_tower": {},  # {instance_id: damage}
-		"damage_by_hero": {},  # {instance_id: damage}
+		"health_milestones": [], # [{health_percent: float, time: float}]
+		"damage_by_tower": {}, # {instance_id: damage}
+		"damage_by_hero": {}, # {instance_id: damage}
 		"defeated": false,
 		"leaked": false,
 		"wave_number": current_wave_number
@@ -588,7 +588,7 @@ func record_boss_health_milestone(boss_type: String, health_percent: float):
 	# Check if we already recorded this milestone
 	for milestone in boss_data.health_milestones:
 		if abs(milestone.health_percent - health_percent) < 1.0:
-			return  # Already recorded
+			return # Already recorded
 
 	boss_data.health_milestones.append({
 		"health_percent": health_percent,
@@ -690,7 +690,7 @@ func start_wave(wave_number: int, enemy_composition: Dictionary = {}):
 		"composition": enemy_composition
 	}
 
-	print("[BalanceTracker] Wave %d started" % wave_number)
+	# print("[BalanceTracker] Wave %d started" % wave_number)
 
 func end_wave(wave_number: int):
 	"""Record wave end"""
@@ -742,7 +742,7 @@ func _record_gold_spent(amount: int, reason: String):
 	current_run.economy.total_spent += amount
 	current_run.economy.gold_history.append({
 		"time": Time.get_ticks_msec() / 1000.0 - run_start_time,
-		"amount": -amount,
+		"amount": - amount,
 		"reason": reason,
 		"type": "spent"
 	})
@@ -847,7 +847,7 @@ func _calculate_balance_metrics() -> Dictionary:
 	metrics["total_hero_damage"] = total_hero_damage
 
 	# Enemy metrics
-	var total_enemy_hp = 0.0
+	# var total_enemy_hp = 0.0 # Unused
 	var total_enemies = 0
 	var total_ttk = 0.0
 

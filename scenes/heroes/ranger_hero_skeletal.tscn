@@ -1,0 +1,150 @@
+[gd_scene load_steps=17 format=3 uid="uid://cictfpbif5w8"]
+
+[ext_resource type="Script" uid="uid://bs2etc1qjtji2" path="res://scenes/heroes/ranger_hero.gd" id="1_hsk3w"]
+[ext_resource type="PackedScene" uid="uid://coirid61w00ks" path="res://scenes/projectiles/arrow.tscn" id="2_oks3e"]
+[ext_resource type="Script" uid="uid://b03423itd37lo" path="res://scripts/resources/hero_skill_data.gd" id="3_8jgnp"]
+[ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="3_healthbar"]
+[ext_resource type="PackedScene" uid="uid://dxpbar123" path="res://scenes/ui/xp_bar.tscn" id="3_xpbar"]
+[ext_resource type="Resource" path="res://resources/skills/ranger/multishot.tres" id="4_multishot"]
+[ext_resource type="Texture2D" uid="uid://dh4pinu0ptp3w" path="res://assets/sprites/heroes/archer/sceleton/torso.png" id="5_torso"]
+[ext_resource type="Texture2D" uid="uid://dtxxoyl634ol0" path="res://assets/sprites/heroes/archer/sceleton/head.png" id="6_head"]
+[ext_resource type="Texture2D" uid="uid://cuwp24a41xs87" path="res://assets/sprites/heroes/archer/sceleton/arm_left.png" id="7_arm_l"]
+[ext_resource type="Texture2D" uid="uid://kdxn0iiwhtab" path="res://assets/sprites/heroes/archer/sceleton/arm_right.png" id="8_arm_r"]
+[ext_resource type="Texture2D" uid="uid://bxju3ar3jhxkq" path="res://assets/sprites/heroes/archer/sceleton/leg_left.png" id="9_leg_l"]
+[ext_resource type="Texture2D" uid="uid://dgjrujhabsxg1" path="res://assets/sprites/heroes/archer/sceleton/leg_right.png" id="10_leg_r"]
+[ext_resource type="Resource" path="res://resources/skills/ranger/eagle_eye.tres" id="11_eagle_eye"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]
+radius = 20.09975
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_fxg0a"]
+radius = 300.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ea74a"]
+radius = 100.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hsk3w"]
+radius = 35.014282
+
+[node name="RangerHeroSkeletal" type="CharacterBody2D" groups=["hero"]]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_hsk3w")
+arrow_scene = ExtResource("2_oks3e")
+available_skills = Array[ExtResource("3_8jgnp")]([ExtResource("4_multishot"), ExtResource("11_eagle_eye")])
+
+[node name="Shadow" type="ColorRect" parent="."]
+offset_left = -20.0
+offset_right = 20.0
+offset_bottom = 10.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.3)
+
+[node name="Visuals" type="Node2D" parent="."]
+
+[node name="Skeleton2D" type="Skeleton2D" parent="Visuals"]
+
+[node name="Hip" type="Bone2D" parent="Visuals/Skeleton2D"]
+position = Vector2(0, -20)
+rest = Transform2D(1, 0, 0, 1, 0, -20)
+
+[node name="Torso" type="Bone2D" parent="Visuals/Skeleton2D/Hip"]
+position = Vector2(0, -10)
+rest = Transform2D(1, 0, 0, 1, 0, -10)
+
+[node name="Head" type="Bone2D" parent="Visuals/Skeleton2D/Hip/Torso"]
+position = Vector2(0, -15)
+rest = Transform2D(1, 0, 0, 1, 0, -15)
+
+[node name="ArmR" type="Bone2D" parent="Visuals/Skeleton2D/Hip/Torso"]
+position = Vector2(10, -5)
+rest = Transform2D(1, 0, 0, 1, 10, -5)
+
+[node name="ArmL" type="Bone2D" parent="Visuals/Skeleton2D/Hip"]
+position = Vector2(-10, -15)
+rest = Transform2D(1, 0, 0, 1, -10, -5)
+
+[node name="LegL" type="Bone2D" parent="Visuals/Skeleton2D/Hip"]
+position = Vector2(-183, 176)
+rest = Transform2D(1, 0, 0, 1, -5, 10)
+
+[node name="LegR" type="Bone2D" parent="Visuals/Skeleton2D/Hip"]
+position = Vector2(-217, 96)
+rest = Transform2D(1, 0, 0, 1, 5, 10)
+
+[node name="Sprites" type="Node2D" parent="Visuals"]
+
+[node name="LegLSprite" type="Sprite2D" parent="Visuals/Sprites"]
+position = Vector2(-266, 574)
+texture = ExtResource("9_leg_l")
+offset = Vector2(0, 10)
+
+[node name="LegRSprite" type="Sprite2D" parent="Visuals/Sprites"]
+position = Vector2(30, 427)
+texture = ExtResource("10_leg_r")
+offset = Vector2(0, 10)
+
+[node name="TorsoSprite" type="Sprite2D" parent="Visuals/Sprites"]
+position = Vector2(-271, -49)
+texture = ExtResource("5_torso")
+offset = Vector2(0, -10)
+
+[node name="ArmLSprite" type="Sprite2D" parent="Visuals/Sprites"]
+position = Vector2(-500, 257)
+texture = ExtResource("7_arm_l")
+offset = Vector2(0, 10)
+
+[node name="HeadSprite" type="Sprite2D" parent="Visuals/Sprites"]
+position = Vector2(-124, -455)
+texture = ExtResource("6_head")
+offset = Vector2(0, -10)
+
+[node name="ArmRSprite" type="Sprite2D" parent="Visuals/Sprites"]
+position = Vector2(340, 176)
+texture = ExtResource("8_arm_r")
+offset = Vector2(0, 10)
+
+[node name="ProjectileSpawnPoint" type="Marker2D" parent="Visuals"]
+position = Vector2(20, -15)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_df4ti")
+
+[node name="RangedDetection" type="Area2D" parent="."]
+collision_layer = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RangedDetection"]
+visible = false
+position = Vector2(121, -10)
+shape = SubResource("CircleShape2D_fxg0a")
+
+[node name="MeleeDetection" type="Area2D" parent="."]
+collision_layer = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeDetection"]
+visible = false
+position = Vector2(48, -31)
+shape = SubResource("CircleShape2D_ea74a")
+
+[node name="RangeIndicator" type="Polygon2D" parent="."]
+color = Color(0.3, 0.5, 1, 0.3)
+
+[node name="HealthBar" parent="." instance=ExtResource("3_healthbar")]
+offset_left = -25.0
+offset_top = -35.0
+offset_right = 25.0
+offset_bottom = -29.0
+
+[node name="XPBar" parent="." instance=ExtResource("3_xpbar")]
+offset_left = -25.0
+offset_top = -28.0
+offset_right = 25.0
+offset_bottom = -23.0
+
+[node name="ClickArea" type="Area2D" parent="."]
+collision_layer = 128
+collision_mask = 0
+input_pickable = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ClickArea"]
+shape = SubResource("CircleShape2D_hsk3w")

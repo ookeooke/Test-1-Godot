@@ -159,6 +159,10 @@ func save_to_dict() -> Dictionary:
 	return data
 
 func load_from_dict(data: Dictionary):
+	# Unregister all existing hero containers from Registry first
+	for hero_id in _hero_containers:
+		InventoryRegistry.unregister_container(hero_id)
+		
 	_hero_containers.clear()
 	for hero_id in data:
 		register_hero(hero_id)

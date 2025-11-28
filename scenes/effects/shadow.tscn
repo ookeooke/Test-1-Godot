@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://c0mvcomlfiiyy"]
+
+[sub_resource type="Gradient" id="Gradient_shadow"]
+colors = PackedColorArray(0, 0, 0, 0.6, 0, 0, 0, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_shadow"]
+gradient = SubResource("Gradient_shadow")
+width = 32
+height = 16
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
+
+[node name="Shadow" type="Sprite2D"]
+z_index = -1
+texture = SubResource("GradientTexture2D_shadow")

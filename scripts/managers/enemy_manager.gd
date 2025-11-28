@@ -78,9 +78,7 @@ func unregister_enemy(enemy: BaseEnemy):
 		return
 
 	# Check if this was a boss
-	var was_boss = false
 	if "is_boss" in enemy and enemy.is_boss:
-		was_boss = true
 		living_bosses.erase(enemy)
 		if current_boss == enemy:
 			current_boss = null

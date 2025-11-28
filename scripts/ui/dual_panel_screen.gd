@@ -10,22 +10,32 @@ class_name DualPanelScreen
 signal screen_closed
 
 @export var hero_id: String = "ranger"
-@export var allow_during_waves: bool = false  # If false, only accessible between waves
+@export var allow_during_waves: bool = false # If false, only accessible between waves
 
 # UI References
-@onready var canvas_layer: CanvasLayer = $CanvasLayer if has_node("CanvasLayer") else null
-@onready var background: ColorRect = $CanvasLayer/Background if has_node("CanvasLayer/Background") else null
-@onready var main_container: VBoxContainer = $CanvasLayer/CenterContainer/MainContainer if has_node("CanvasLayer/CenterContainer/MainContainer") else null
-@onready var left_panel: FlexiblePanel = $CanvasLayer/CenterContainer/MainContainer/PanelsContainer/LeftPanel if has_node("CanvasLayer/CenterContainer/MainContainer/PanelsContainer/LeftPanel") else null
-@onready var right_panel: FlexiblePanel = $CanvasLayer/CenterContainer/MainContainer/PanelsContainer/RightPanel if has_node("CanvasLayer/CenterContainer/MainContainer/PanelsContainer/RightPanel") else null
-@onready var close_button: Button = $CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/CloseButton if has_node("CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/CloseButton") else null
-@onready var back_button: Button = $CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/BackButton if has_node("CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/BackButton") else null
-@onready var title_label: Label = $CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/TitleLabel if has_node("CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/TitleLabel") else null
-@onready var wave_status_label: Label = $CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/WaveStatusLabel if has_node("CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox/WaveStatusLabel") else null
+# UI References
+@onready var canvas_layer: CanvasLayer = get_node_or_null("CanvasLayer")
+@onready var background: ColorRect = get_node_or_null("CanvasLayer/Background")
+
+# Helper to find the main container path (supports both CenterContainer and MainMargin)
+var _main_container_path: String = "CanvasLayer/CenterContainer/MainContainer"
+
+func _init():
+	# We can't check has_node in _init easily for children, so we'll resolve in _ready
+	pass
+
+# We'll resolve these in _ready to be safe and support multiple structures
+var main_container: VBoxContainer = null
+var left_panel: FlexiblePanel = null
+var right_panel: FlexiblePanel = null
+var close_button: Button = null
+var back_button: Button = null
+var title_label: Label = null
+var wave_status_label: Label = null
 
 # State
 var is_wave_active: bool = false
-var is_transitioning: bool = false  # Prevent rapid toggling
+var is_transitioning: bool = false # Prevent rapid toggling
 
 
 func _ready():
@@ -37,6 +47,29 @@ func _ready():
 	# Set up as always-process (for pause compatibility)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
+	# RESOLVE UI REFERENCES DYNAMICALLY
+	# Check for new responsive layout first
+	if has_node("CanvasLayer/MainMargin/MainContainer"):
+		_main_container_path = "CanvasLayer/MainMargin/MainContainer"
+		print("🔍 [DualPanelScreen] Detected RESPONSIVE layout (MainMargin)")
+	elif has_node("CanvasLayer/CenterContainer/MainContainer"):
+		_main_container_path = "CanvasLayer/CenterContainer/MainContainer"
+		print("🔍 [DualPanelScreen] Detected LEGACY layout (CenterContainer)")
+	else:
+		push_error("❌ [DualPanelScreen] Could not find MainContainer! Check scene structure.")
+		return
+
+	# Resolve nodes using the detected path
+	main_container = get_node_or_null(_main_container_path)
+	left_panel = get_node_or_null(_main_container_path + "/PanelsContainer/LeftPanel")
+	right_panel = get_node_or_null(_main_container_path + "/PanelsContainer/RightPanel")
+	
+	# Header buttons
+	close_button = get_node_or_null(_main_container_path + "/HeaderBar/MarginContainer/HBox/CloseButton")
+	back_button = get_node_or_null(_main_container_path + "/HeaderBar/MarginContainer/HBox/BackButton")
+	title_label = get_node_or_null(_main_container_path + "/HeaderBar/MarginContainer/HBox/TitleLabel")
+	wave_status_label = get_node_or_null(_main_container_path + "/HeaderBar/MarginContainer/HBox/WaveStatusLabel")
+
 	# Connect signals
 	if close_button:
 		close_button.pressed.connect(_on_close_button_pressed)
@@ -44,16 +77,29 @@ func _ready():
 	if back_button:
 		back_button.pressed.connect(_on_back_button_pressed)
 
-	# Set panel sides for identification
-	if left_panel:
-		left_panel.panel_side = "left"
-	if right_panel:
-		right_panel.panel_side = "right"
+	# Apply button effects
+	if close_button:
+		UIAnimator.apply_button_effects(close_button)
+	if back_button:
+		UIAnimator.apply_button_effects(back_button)
 
 	# Update title
 	if title_label:
 		title_label.text = "Gear & Equipment"
 
+	# Add Hero Selector (OptionButton) to Header
+	var header_hbox = get_node_or_null(_main_container_path + "/HeaderBar/MarginContainer/HBox")
+	if header_hbox:
+		var hero_selector = OptionButton.new()
+		hero_selector.name = "HeroSelector"
+		hero_selector.custom_minimum_size = Vector2(200, 40)
+		hero_selector.item_selected.connect(_on_hero_selector_item_selected)
+		header_hbox.add_child(hero_selector)
+		# Move to be after title (index 2 usually: Close, Back, Title, Selector)
+		header_hbox.move_child(hero_selector, 3)
+		
+		_update_hero_selector(hero_selector)
+		
 	# Detect if we're in standalone mode (has back button) or overlay mode (has close button only)
 	if back_button:
 		# STANDALONE MODE - stay visible and enable panels
@@ -95,7 +141,7 @@ func _ready():
 
 	# Setup responsive breakpoints
 	get_viewport().size_changed.connect(_on_viewport_resized)
-	_on_viewport_resized()  # Initial check
+	_on_viewport_resized() # Initial check
 
 	# Fallback: Ensure hero_changed signal is connected (safety for both modes)
 	# This is called deferred to ensure views are fully loaded
@@ -105,7 +151,6 @@ func _ready():
 func _input(event: InputEvent):
 	# ESC KEY PRIORITY: This runs after level_controller and pause_menu
 	# Only processes ESC if this panel is visible and game is not paused
-
 	# Prevent rapid toggling
 	if is_transitioning:
 		return
@@ -114,7 +159,7 @@ func _input(event: InputEvent):
 	# Opening should only be via button click
 	if event.is_action_pressed("ui_cancel") and visible:
 		hide_screen()
-		get_viewport().set_input_as_handled()  # Consume to prevent further propagation
+		get_viewport().set_input_as_handled() # Consume to prevent further propagation
 
 
 func _on_viewport_resized():
@@ -126,20 +171,39 @@ func _on_viewport_resized():
 
 	print("[DualPanelScreen] Viewport resized to: %d" % width)
 
-	if width >= 2340:  # Wide phone (19.5:9 aspect ratio like modern flagships)
-		main_container.custom_minimum_size = Vector2(1760, 900)  # 750 + 950 + 30 separation + margins
+	# RESPONSIVE LAYOUT (MainMargin)
+	if _main_container_path.contains("MainMargin"):
+		# In responsive mode, we trust the anchors and stretch ratios
+		# We only set minimal safety sizes for panels
+		main_container.custom_minimum_size = Vector2.ZERO # Let it fill
+		
+		# Set safe minimums for panels so they don't collapse too much
+		# But ensure they don't exceed screen width
+		var safe_width = width - 100 # Account for margins
+		var left_min = min(400, safe_width * 0.35)
+		var right_min = min(600, safe_width * 0.65)
+		
+		left_panel.custom_minimum_size = Vector2(left_min, 0)
+		right_panel.custom_minimum_size = Vector2(right_min, 0)
+		
+		print("[DualPanelScreen] Applied RESPONSIVE sizing")
+		return
+
+	# LEGACY LAYOUT (CenterContainer)
+	if width >= 2340: # Wide phone (19.5:9 aspect ratio like modern flagships)
+		main_container.custom_minimum_size = Vector2(1760, 900) # 750 + 950 + 30 separation + margins
 		left_panel.custom_minimum_size = Vector2(750, 0)
 		right_panel.custom_minimum_size = Vector2(950, 0)
 		print("[DualPanelScreen] Applied WIDE layout (2340+): Equipment 750px, Inventory 950px")
 
-	elif width >= 1920:  # Standard (16:9 aspect ratio)
-		main_container.custom_minimum_size = Vector2(1660, 900)  # 750 + 850 + 30 separation + margins
+	elif width >= 1920: # Standard (16:9 aspect ratio)
+		main_container.custom_minimum_size = Vector2(1660, 900) # 750 + 850 + 30 separation + margins
 		left_panel.custom_minimum_size = Vector2(750, 0)
 		right_panel.custom_minimum_size = Vector2(850, 0)
 		print("[DualPanelScreen] Applied STANDARD layout (1920+): Equipment 750px, Inventory 850px")
 
-	else:  # Tablet or smaller screens
-		main_container.custom_minimum_size = Vector2(1360, 900)  # 625 + 675 + 30 separation + margins
+	else: # Tablet or smaller screens
+		main_container.custom_minimum_size = Vector2(1360, 900) # 625 + 675 + 30 separation + margins
 		left_panel.custom_minimum_size = Vector2(625, 0)
 		right_panel.custom_minimum_size = Vector2(675, 0)
 		print("[DualPanelScreen] Applied COMPACT layout (<1920): Equipment 625px, Inventory 675px")
@@ -150,8 +214,8 @@ func _on_viewport_resized():
 
 func show_screen():
 	"""Show the dual panel screen with fade-in animation"""
-	print("🚨 [DualPanelScreen] show_screen() CALLED! Stack trace:")
-	print_stack()
+	# print("🚨 [DualPanelScreen] show_screen() CALLED! Stack trace:")
+	# print_stack()
 
 	# Check if we're allowed to open during waves
 	if is_wave_active and not allow_during_waves:
@@ -161,12 +225,12 @@ func show_screen():
 
 	is_transitioning = true
 	visible = true
-	print("🚨 [DualPanelScreen] visible set to TRUE")
+	# print("🚨 [DualPanelScreen] visible set to TRUE")
 
 	# CRITICAL: Show the CanvasLayer (it bypasses parent visibility)
 	if canvas_layer:
 		canvas_layer.visible = true
-		print("🚨 [DualPanelScreen] CanvasLayer shown")
+		# print("🚨 [DualPanelScreen] CanvasLayer shown")
 
 	# Re-enable panels now that we're showing
 	if left_panel:
@@ -178,13 +242,6 @@ func show_screen():
 				equipment_view.hero_changed.connect(_on_hero_changed)
 	if right_panel:
 		right_panel.set_process_mode(Node.PROCESS_MODE_ALWAYS)
-
-	# Start with transparent background and scaled-down main container
-	if background:
-		background.modulate.a = 0.0
-	if main_container:
-		main_container.scale = Vector2(0.95, 0.95)
-		main_container.modulate.a = 0.0
 
 	# Set hero ID for both panels
 	if left_panel:
@@ -198,23 +255,13 @@ func show_screen():
 	# Update wave status
 	_update_wave_status()
 
-	# Animate fade-in
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.set_trans(Tween.TRANS_CUBIC)
-
-	if background:
-		tween.tween_property(background, "modulate:a", 1.0, 0.2)
-
+	# Use standardized UI Animator
 	if main_container:
-		tween.tween_property(main_container, "scale", Vector2.ONE, 0.3)
-		tween.tween_property(main_container, "modulate:a", 1.0, 0.2)
-
+		var tween = UIAnimator.animate_window_open(main_container, background)
+		if tween:
+			await tween.finished
+	
 	print("[DualPanelScreen] Opened")
-
-	# Allow input again after animation
-	await tween.finished
 	is_transitioning = false
 
 
@@ -222,20 +269,11 @@ func hide_screen():
 	"""Hide the dual panel screen with fade-out animation"""
 	is_transitioning = true
 
-	# Animate fade-out
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.set_ease(Tween.EASE_IN)
-	tween.set_trans(Tween.TRANS_CUBIC)
-
-	if background:
-		tween.tween_property(background, "modulate:a", 0.0, 0.15)
-
+	# Use standardized UI Animator
 	if main_container:
-		tween.tween_property(main_container, "scale", Vector2(0.95, 0.95), 0.2)
-		tween.tween_property(main_container, "modulate:a", 0.0, 0.15)
-
-	await tween.finished
+		var tween = UIAnimator.animate_window_close(main_container, background)
+		if tween:
+			await tween.finished
 
 	visible = false
 
@@ -411,3 +449,49 @@ func connect_to_wave_manager(wave_manager: Node):
 		wave_manager.all_waves_complete.connect(func(): set_wave_active(false))
 
 	print("[DualPanelScreen] Connected to WaveManager")
+
+func _update_hero_selector(selector: OptionButton):
+	"""Populate hero selector with unlocked heroes"""
+	selector.clear()
+	
+	var unlocked_heroes = SaveManager.get_unlocked_heroes()
+	if unlocked_heroes.is_empty():
+		# Fallback if something is wrong
+		unlocked_heroes = ["ranger"]
+		
+	var current_index = 0
+	for i in range(unlocked_heroes.size()):
+		var h_id = unlocked_heroes[i]
+		var h_name = h_id.capitalize()
+		
+		# Try to get nice name from database
+		var hero_data = HeroDatabase.get_hero(h_id)
+		if hero_data:
+			h_name = hero_data.hero_name
+			if hero_data.portrait:
+				selector.add_icon_item(hero_data.portrait, h_name, i)
+			else:
+				selector.add_item(h_name, i)
+		else:
+			selector.add_item(h_name, i)
+			
+		# Store ID in metadata
+		selector.set_item_metadata(i, h_id)
+		
+		if h_id == hero_id:
+			current_index = i
+			
+	selector.select(current_index)
+
+func _on_hero_selector_item_selected(index: int):
+	"""Handle hero selection from dropdown"""
+	var selector = get_node_or_null(_main_container_path + "/HeaderBar/MarginContainer/HBox/HeroSelector")
+	if not selector: return
+	
+	var new_hero_id = selector.get_item_metadata(index)
+	print("[DualPanelScreen] Hero Selector changed: %s -> %s" % [hero_id, new_hero_id])
+	
+	if new_hero_id and new_hero_id != hero_id:
+		print("[DualPanelScreen] Switching to hero: ", new_hero_id)
+		set_hero_id(new_hero_id)
+		refresh_all_views()

@@ -4,15 +4,15 @@ extends Node2D
 # PLACEMENT MANAGER - Handles tower spots and menus
 # ============================================
 
-var tower_info_menu_scene = preload("res://scenes/ui/tower_info_menu.tscn")  # LEGACY - kept for reference
+var tower_info_menu_scene = preload("res://scenes/ui/tower_info_menu.tscn") # LEGACY - kept for reference
 var ring_menu_script = preload("res://scripts/ui/ring_menu.gd")
-var ring_upgrade_menu_script = preload("res://scripts/ui/ring_upgrade_menu.gd")  # NEW
+var ring_upgrade_menu_script = preload("res://scripts/ui/ring_upgrade_menu.gd") # NEW
 var current_menu = null
 var current_spot = null
-var current_selected_tower = null  # Track selected tower for deselection
+var current_selected_tower = null # Track selected tower for deselection
 
 # MENU LAYER - CanvasLayer for zoom-independent UI
-var menu_layer: Control  # Reference to MenuContainer in CanvasLayer
+var menu_layer: Control # Reference to MenuContainer in CanvasLayer
 
 # CAMERA - for input locking (Kingdom Rush style)
 var camera: Camera2D
@@ -105,19 +105,9 @@ func show_ring_menu(spot):
 	# ADD TO CANVAS LAYER (screen space), not root (world space)
 	menu_layer.add_child(current_menu)
 
-	# Wait for ring menu to initialize
-	await get_tree().process_frame
-
-	# Get player's tower loadout from SaveManager
-	var loadout = SaveManager.get_tower_loadout()
-	print("[PlacementManager] Opening ring menu with loadout: %s" % str(loadout))
-
-	# Get screen position of tower spot
-	# Convert world position to screen space using canvas transform (same as build_menu)
-	var world_pos = spot.global_position
-	var screen_pos = get_viewport().get_canvas_transform() * world_pos
-
 	# Open ring menu at tower spot position
+	var screen_pos = spot.get_global_transform_with_canvas().origin
+	var loadout = TowerData.get_all_tower_ids()
 	current_menu.open_at_position(screen_pos, loadout)
 
 	# Lock camera input (Kingdom Rush style)
@@ -191,24 +181,24 @@ func position_menu_in_screen_space(spot):
 	# Define "danger zones" - areas near screen edges (200px threshold)
 	var edge_threshold = 200.0
 	var near_top = screen_pos.y < edge_threshold
-	var near_bottom = screen_pos.y > viewport_size.y - edge_threshold
+	var _near_bottom = screen_pos.y > viewport_size.y - edge_threshold
 	var near_left = screen_pos.x < edge_threshold
 	var near_right = screen_pos.x > viewport_size.x - edge_threshold
 
 	# Apply smart offset (Kingdom Rush style: above by default, below if near top)
 	if near_top:
-		screen_pos.y += 100  # Place BELOW tower (near top edge)
+		screen_pos.y += 100 # Place BELOW tower (near top edge)
 		print("  Tower near top edge - placing menu BELOW")
 	else:
-		screen_pos.y -= 100  # Place ABOVE tower (default)
+		screen_pos.y -= 100 # Place ABOVE tower (default)
 		print("  Placing menu ABOVE tower")
 
 	# Adjust horizontal offset if near left/right edges
 	if near_left:
-		screen_pos.x += 50  # Push menu right
+		screen_pos.x += 50 # Push menu right
 		print("  Tower near left edge - pushing menu RIGHT")
 	elif near_right:
-		screen_pos.x -= 50  # Push menu left
+		screen_pos.x -= 50 # Push menu left
 		print("  Tower near right edge - pushing menu LEFT")
 
 	print("  After smart offset: ", screen_pos)
@@ -279,7 +269,7 @@ func _is_soldier_tower(tower_scene: PackedScene) -> bool:
 	var scene_path = tower_scene.resource_path
 	return "soldier" in scene_path.to_lower() or "garrison" in scene_path.to_lower()
 
-func _can_place_soldier_tower_here(position: Vector2) -> bool:
+func _can_place_soldier_tower_here(check_pos: Vector2) -> bool:
 	"""Check if a position is valid for soldier tower placement (on road)"""
 	if not road_renderer:
 		# No road renderer = allow placement anywhere (backward compatibility)
@@ -287,7 +277,7 @@ func _can_place_soldier_tower_here(position: Vector2) -> bool:
 		return true
 
 	# Check if position is on road (with 30px tolerance)
-	var on_road = road_renderer.is_point_on_road(position, 30.0)
+	var on_road = road_renderer.is_point_on_road(check_pos, 30.0)
 
 	if on_road:
 		print("✅ Position is on road - soldier placement allowed")
@@ -339,7 +329,17 @@ func _on_tower_upgraded(tower):
 			print("❌ [PlacementManager] Cannot upgrade - no upgrade_tower() method and no damage property!")
 			print("=== ❌ UPGRADE IMPOSSIBLE ===\n")
 
-func _on_tower_sold(tower):
+func _on_rally_mode_entered(tower):
+	"""Handle entering rally point placement mode"""
+	print("🚩 [PlacementManager] Rally mode entered for tower: %s" % tower.name)
+	
+	if tower.has_method("enter_rally_placement_mode"):
+		tower.enter_rally_placement_mode()
+		# Menu is already closed by the signal emission in ring_upgrade_menu
+	else:
+		print("❌ [PlacementManager] Tower does not support rally placement!")
+
+func _on_tower_sold(_tower):
 	"""Handle tower sell"""
 
 	# Deselect tower before selling
@@ -356,7 +356,7 @@ func _on_tower_sold(tower):
 
 func _on_menu_closed():
 	"""Handle menu close (when clicking outside or pressing ESC)"""
-	print("🔧 [PlacementManager] _on_menu_closed() called")
+	# print("🔧 [PlacementManager] _on_menu_closed() called")
 
 	# Deselect tower when menu closes
 	_deselect_current_tower()
@@ -366,7 +366,7 @@ func _on_menu_closed():
 
 	current_spot = null
 	current_selected_tower = null
-	print("🔧 [PlacementManager] Menu closed and cleanup complete")
+	# print("🔧 [PlacementManager] Menu closed and cleanup complete")
 
 func _on_damage_path_chosen(tower):
 	"""Handle damage path choice - LEFT BUTTON for all towers"""
@@ -474,40 +474,21 @@ func _on_targeting_mode_changed(tower, mode: int):
 	else:
 		print("❌ [PlacementManager] Tower doesn't have set_targeting_mode() method!")
 
-func _on_rally_mode_entered(tower):
-	"""Handle rally point mode entry from ring menu"""
-	print("\n=== 🚩 RALLY POINT MODE ===")
-	print("🚩 [PlacementManager] _on_rally_mode_entered() called")
 
-	if not tower or not is_instance_valid(tower):
-		print("❌ [PlacementManager] ERROR: Tower is null or invalid!")
-		return
-
-	# TODO: Implement rally point placement mode
-	# This would typically:
-	# 1. Close menu
-	# 2. Enter placement mode for rally point
-	# 3. Wait for player to click location
 	# 4. Set rally point on tower
 	print("⚠️ [PlacementManager] Rally point placement not yet implemented")
 
-# ============================================
-# HELPER METHODS
-# ============================================
-
 func _lock_camera():
-	"""Centralized camera locking with null safety"""
-	if camera and camera.has_method("lock_input"):
+	if camera and is_instance_valid(camera):
 		camera.lock_input()
-		print("🔒 [PlacementManager] Camera locked")
+		# print("🔒 [PlacementManager] Camera locked")
 	else:
 		push_warning("[PlacementManager] Cannot lock camera - reference invalid")
 
 func _unlock_camera():
-	"""Centralized camera unlocking with null safety"""
-	if camera and camera.has_method("unlock_input"):
+	if camera and is_instance_valid(camera):
 		camera.unlock_input()
-		print("🔓 [PlacementManager] Camera unlocked")
+		# print("🔓 [PlacementManager] Camera unlocked")
 	else:
 		push_warning("[PlacementManager] Cannot unlock camera - reference invalid")
 
@@ -516,7 +497,7 @@ func _deselect_current_tower():
 	if current_selected_tower and is_instance_valid(current_selected_tower):
 		if current_selected_tower.has_method("deselect_tower"):
 			current_selected_tower.deselect_tower()
-			print("🔧 [PlacementManager] Tower deselected: %s" % current_selected_tower.name)
+			# print("🔧 [PlacementManager] Tower deselected: %s" % current_selected_tower.name)
 		else:
 			push_warning("[PlacementManager] Tower missing deselect_tower() method")
 	current_selected_tower = null

@@ -31,26 +31,26 @@ var current_speed_index = 0
 func _ready():
 	print("✅ GameSpeedController initialized")
 	print("   Press 1/2/3/4 to change game speed (1x/2x/4x/8x)")
-	set_speed(0)  # Start at normal speed
+	set_speed(0) # Start at normal speed
 
 # ============================================
 # INPUT HANDLING
 # ============================================
 
-func _input(event):
+func _input(_event):
 	# Use InputMap actions for better organization and to avoid conflicts
 	# These run BEFORE ability hotkeys, so we consume the event to prevent double-activation
 	if Input.is_action_just_pressed("speed_pause"):
-		set_speed(0)  # 1x
+		set_speed(0) # 1x
 		get_viewport().set_input_as_handled()
 	elif Input.is_action_just_pressed("speed_normal"):
-		set_speed(1)  # 2x
+		set_speed(1) # 2x
 		get_viewport().set_input_as_handled()
 	elif Input.is_action_just_pressed("speed_fast"):
-		set_speed(2)  # 4x
+		set_speed(2) # 4x
 		get_viewport().set_input_as_handled()
 	elif Input.is_action_just_pressed("speed_ultra"):
-		set_speed(3)  # 8x
+		set_speed(3) # 8x
 		get_viewport().set_input_as_handled()
 
 # ============================================
@@ -88,3 +88,30 @@ func cycle_speed():
 func reset_speed():
 	"""Reset to normal speed"""
 	set_speed(0)
+
+# ============================================
+# PERFORMANCE / FPS CONTROL
+# ============================================
+
+var battery_saver_mode: bool = false
+var is_in_menu: bool = false
+
+func set_battery_saver(enabled: bool):
+	"""Enable/Disable battery saver mode (caps FPS to 30)"""
+	battery_saver_mode = enabled
+	_update_fps_cap()
+	print("🔋 Battery Saver: ", "ON" if enabled else "OFF")
+
+func set_in_menu(in_menu: bool):
+	"""Notify controller if we are in a static menu"""
+	is_in_menu = in_menu
+	_update_fps_cap()
+
+func _update_fps_cap():
+	"""Update Engine.max_fps based on state"""
+	if battery_saver_mode or is_in_menu:
+		Engine.max_fps = 30
+	else:
+		Engine.max_fps = 60 # Or 0 for unlimited, but 60 is good for mobile
+	
+	# print("FPS Cap set to: ", Engine.max_fps)

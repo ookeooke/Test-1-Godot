@@ -23,16 +23,16 @@ func _ready():
 
 ## Initialize the class configuration dictionary
 func _initialize_classes() -> void:
-	classes[0] = MELEE_CLASS   # MELEE
-	classes[1] = RANGED_CLASS  # RANGED
-	classes[2] = MAGIC_CLASS   # MAGIC
+	classes[0] = MELEE_CLASS # MELEE
+	classes[1] = RANGED_CLASS # RANGED
+	classes[2] = MAGIC_CLASS # MAGIC
 	classes[3] = SUPPORT_CLASS # SUPPORT
 
 
 ## Get class configuration for a specific class type
 func get_class_config(class_type: int) -> HeroClassConfig:
 	if classes.has(class_type):
-		return classes[class_type]
+		return classes[class_type] as HeroClassConfig
 
 	push_error("[HeroClassDatabase] No configuration found for class type: %d" % class_type)
 	return null

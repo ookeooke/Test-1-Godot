@@ -14,7 +14,7 @@ extends Control
 
 # Bar dimensions
 const BAR_WIDTH = 50
-const BAR_HEIGHT = 5  # 1px thinner than health bar
+const BAR_HEIGHT = 5 # 1px thinner than health bar
 
 # Animation
 var fill_tween: Tween = null
@@ -29,7 +29,7 @@ func _ready():
 	size = Vector2(BAR_WIDTH, BAR_HEIGHT)
 
 	# Center the bar above parent
-	position = Vector2(-BAR_WIDTH / 2.0, -23)  # Below health bar (health is at -30)
+	position = Vector2(-BAR_WIDTH / 2.0, -23) # Below health bar (health is at -30)
 
 	# Set z-index to render on top
 	z_index = 100
@@ -56,19 +56,19 @@ func setup(hero_node: Node):
 	update_level()
 
 
-func _on_hero_gained_xp(gained_hero: Node, xp_amount: int):
+func _on_hero_gained_xp(gained_hero: Node, _xp_amount: int):
 	"""Called when any hero gains XP"""
 	if gained_hero != hero:
-		return  # Not our hero
+		return # Not our hero
 
 	# Update XP bar with animation
 	update_xp(true)
 
 
-func _on_hero_leveled_up(leveled_hero: Node, new_level: int):
+func _on_hero_leveled_up(leveled_hero: Node, _new_level: int):
 	"""Called when any hero levels up"""
 	if leveled_hero != hero:
-		return  # Not our hero
+		return # Not our hero
 
 	# Update level display and reset XP bar
 	update_level()
@@ -125,8 +125,8 @@ func _pulse_glow():
 	pulse.set_ease(Tween.EASE_OUT)
 
 	# Brighten then return to normal
-	pulse.tween_property(fill, "modulate", Color(1.5, 1.5, 1.0), 0.1)  # Bright gold
-	pulse.tween_property(fill, "modulate", Color(1.0, 1.0, 1.0), 0.2)  # Normal
+	pulse.tween_property(fill, "modulate", Color(1.5, 1.5, 1.0), 0.1) # Bright gold
+	pulse.tween_property(fill, "modulate", Color(1.0, 1.0, 1.0), 0.2) # Normal
 
 
 func get_xp_info() -> String:

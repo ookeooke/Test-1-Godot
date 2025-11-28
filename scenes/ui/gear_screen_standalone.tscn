@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://gear_screen_standalone"]
 
 [ext_resource type="Script" path="res://scripts/ui/dual_panel_screen.gd" id="1_dual"]
-[ext_resource type="PackedScene" uid="uid://flexible_panel_scene" path="res://scenes/ui/flexible_panel.tscn" id="2_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/flexible_panel.tscn" id="2_panel"]
 
 [node name="GearScreenStandalone" type="Control"]
 process_mode = 3
@@ -27,60 +27,65 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.7)
 
-[node name="CenterContainer" type="CenterContainer" parent="CanvasLayer"]
+[node name="MainMargin" type="MarginContainer" parent="CanvasLayer"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 40
 
-[node name="MainContainer" type="VBoxContainer" parent="CanvasLayer/CenterContainer"]
-custom_minimum_size = Vector2(1700, 800)
+[node name="MainContainer" type="VBoxContainer" parent="CanvasLayer/MainMargin"]
 layout_mode = 2
-theme_override_constants/separation = 0
+theme_override_constants/separation = 10
 
-[node name="HeaderBar" type="PanelContainer" parent="CanvasLayer/CenterContainer/MainContainer"]
+[node name="HeaderBar" type="PanelContainer" parent="CanvasLayer/MainMargin/MainContainer"]
 custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 
-[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/CenterContainer/MainContainer/HeaderBar"]
+[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/MainMargin/MainContainer/HeaderBar"]
 layout_mode = 2
 theme_override_constants/margin_left = 15
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 15
 theme_override_constants/margin_bottom = 10
 
-[node name="HBox" type="HBoxContainer" parent="CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer"]
+[node name="HBox" type="HBoxContainer" parent="CanvasLayer/MainMargin/MainContainer/HeaderBar/MarginContainer"]
 layout_mode = 2
 
-[node name="TitleLabel" type="Label" parent="CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox"]
+[node name="TitleLabel" type="Label" parent="CanvasLayer/MainMargin/MainContainer/HeaderBar/MarginContainer/HBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Gear & Equipment"
 vertical_alignment = 1
 
-[node name="Spacer" type="Control" parent="CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox"]
+[node name="Spacer" type="Control" parent="CanvasLayer/MainMargin/MainContainer/HeaderBar/MarginContainer/HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="BackButton" type="Button" parent="CanvasLayer/CenterContainer/MainContainer/HeaderBar/MarginContainer/HBox"]
+[node name="BackButton" type="Button" parent="CanvasLayer/MainMargin/MainContainer/HeaderBar/MarginContainer/HBox"]
 custom_minimum_size = Vector2(120, 40)
 layout_mode = 2
 text = "← BACK"
 
-[node name="PanelsContainer" type="HBoxContainer" parent="CanvasLayer/CenterContainer/MainContainer"]
+[node name="PanelsContainer" type="HBoxContainer" parent="CanvasLayer/MainMargin/MainContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 30
+theme_override_constants/separation = 20
 
-[node name="LeftPanel" parent="CanvasLayer/CenterContainer/MainContainer/PanelsContainer" instance=ExtResource("2_panel")]
-custom_minimum_size = Vector2(600, 0)
+[node name="LeftPanel" parent="CanvasLayer/MainMargin/MainContainer/PanelsContainer" instance=ExtResource("2_panel")]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.35
 panel_side = "left"
 default_view = 0
 
-[node name="RightPanel" parent="CanvasLayer/CenterContainer/MainContainer/PanelsContainer" instance=ExtResource("2_panel")]
-custom_minimum_size = Vector2(1100, 0)
+[node name="RightPanel" parent="CanvasLayer/MainMargin/MainContainer/PanelsContainer" instance=ExtResource("2_panel")]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.65
 panel_side = "right"
 default_view = 1

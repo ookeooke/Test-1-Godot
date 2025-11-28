@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="HeroData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/hero_data.gd" id="1_warrior"]
+[ext_resource type="Resource" path="res://resources/hero_classes/melee_class.tres" id="2_melee_class"]
+[ext_resource type="Texture2D" path="res://assets/icons/heroes/warrior_portrait_fixed.png" id="3_portrait"]
+
+[resource]
+script = ExtResource("1_warrior")
+portrait = ExtResource("3_portrait")
+hero_id = "warrior"
+hero_name = "Warrior"
+description = "A tough fighter who excels in melee combat and can block multiple enemies."
+hero_class = 0
+class_config = ExtResource("2_melee_class")
+hero_color = Color(0.8, 0.4, 0.4, 1)
+base_health = 500
+base_damage = 25
+base_range = 0
+base_attack_speed = 1.0
+base_movement_speed = 140.0
+base_crit_chance = 0.0
+base_defense = 10
+unlock_cost = 0
+starting_level = 1
+max_level = 20
+allowed_weapon_types = ["sword", "axe", "mace"]
+allowed_armor_types = ["plate", "mail"]
+available_skills = []
+lore_text = "A stalwart defender of the realm, the Warrior stands on the front lines, blocking enemies and dealing heavy damage with melee weapons."

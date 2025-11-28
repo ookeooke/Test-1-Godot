@@ -4,29 +4,29 @@ class_name WorldMapSelectNode2D
 # WorldMapSelect - Kingdom Rush style world map (Node2D version)
 # Easier to edit in the editor - just like your level scenes!
 
-signal level_chosen(level_data: LevelNodeData, difficulty: String)
+# signal level_chosen(level_data: LevelNodeData, difficulty: String) # Unused
 
 # Export variables for easy configuration in editor
-@export var level_nodes_data: Array[LevelNodeData] = []  # All level configurations
-@export var map_texture: Texture2D  # Background map image
+@export var level_nodes_data: Array[LevelNodeData] = [] # All level configurations
+@export var map_texture: Texture2D # Background map image
 
 # Camera bounds for world map (adjust to fit your map art)
 @export var map_bounds := Rect2(-200, -200, 2200, 1400)
 
 # STAR COLOR CONSTANTS (Kingdom Rush style)
 const STAR_COLORS = {
-	3: Color("#FFD700"),  # Gold - 3 stars
-	2: Color("#C0C0C0"),  # Silver - 2 stars
-	1: Color("#CD7F32"),  # Bronze - 1 star
-	0: Color("#404040")   # Gray - Not completed
+	3: Color("#FFD700"), # Gold - 3 stars
+	2: Color("#C0C0C0"), # Silver - 2 stars
+	1: Color("#CD7F32"), # Bronze - 1 star
+	0: Color("#404040") # Gray - Not completed
 }
 
 # Star display constants
-const STAR_EARNED_COLOR = Color("#FFD700")  # Gold for earned stars
-const STAR_UNEARNED_COLOR = Color(0.3, 0.3, 0.3, 0.5)  # Gray for unearned stars
-const STAR_SIZE = 10.0  # Size of star polygon (radius) - made bigger
-const STAR_SPACING = 25.0  # Horizontal spacing between stars
-const STAR_OFFSET_Y = 35.0  # Vertical offset BELOW button (outside the button rectangle)
+const STAR_EARNED_COLOR = Color("#FFD700") # Gold for earned stars
+const STAR_UNEARNED_COLOR = Color(0.3, 0.3, 0.3, 0.5) # Gray for unearned stars
+const STAR_SIZE = 10.0 # Size of star polygon (radius) - made bigger
+const STAR_SPACING = 25.0 # Horizontal spacing between stars
+const STAR_OFFSET_Y = 35.0 # Vertical offset BELOW button (outside the button rectangle)
 
 # References
 @onready var camera: Camera2D = $Camera2D
@@ -44,8 +44,8 @@ var heroes_button: Button = null
 var gear_button: Button = null
 var towers_button: Button = null
 
-var level_buttons: Array = []  # Stores visual nodes (Polygon2D) for each level
-var level_button_nodes: Array[Node2D] = []  # Store button Node2D containers for zoom compensation
+var level_buttons: Array = [] # Stores visual nodes (Polygon2D) for each level
+var level_button_nodes: Array[Node2D] = [] # Store button Node2D containers for zoom compensation
 
 # Difficulty selection
 var selected_level_data: LevelNodeData = null
@@ -102,11 +102,11 @@ func _get_star_polygon() -> PackedVector2Array:
 	"""Create a 5-pointed star polygon shape"""
 	var points = PackedVector2Array()
 	var outer_radius = STAR_SIZE
-	var inner_radius = STAR_SIZE * 0.4  # Inner points are 40% of outer radius
+	var inner_radius = STAR_SIZE * 0.4 # Inner points are 40% of outer radius
 
 	# Create 5-pointed star (10 points total - 5 outer, 5 inner)
 	for i in range(10):
-		var angle = deg_to_rad(i * 36.0 - 90.0)  # Start at top (-90 degrees)
+		var angle = deg_to_rad(i * 36.0 - 90.0) # Start at top (-90 degrees)
 		var radius = outer_radius if i % 2 == 0 else inner_radius
 		var x = cos(angle) * radius
 		var y = sin(angle) * radius
@@ -128,11 +128,11 @@ func _create_star_display(parent: Node2D, stars_earned: int) -> Node2D:
 	var star_container = Node2D.new()
 	star_container.name = "StarDisplay"
 	star_container.position = Vector2(0, STAR_OFFSET_Y)
-	star_container.z_index = 10  # Render on top of everything else
+	star_container.z_index = 10 # Render on top of everything else
 
 	# Calculate starting X position to center 3 stars
-	var total_width = (3 - 1) * STAR_SPACING  # Width of 3 stars with spacing
-	var start_x = -total_width / 2.0
+	var total_width = (3 - 1) * STAR_SPACING # Width of 3 stars with spacing
+	var start_x = - total_width / 2.0
 
 	# Create 3 star polygons
 	for i in range(3):
@@ -313,7 +313,7 @@ func _load_ranger_skills() -> Array[HeroSkillData]:
 	rapid_fire.skill_type = HeroSkillData.SkillType.ACTIVE
 	rapid_fire.unlock_cost = 100
 	rapid_fire.max_upgrade_level = 3
-	rapid_fire.upgrade_costs.assign([50, 100])  # Level 2, Level 3
+	rapid_fire.upgrade_costs.assign([50, 100]) # Level 2, Level 3
 	rapid_fire.cooldown = 30.0
 	skills.append(rapid_fire)
 
@@ -325,7 +325,7 @@ func _load_ranger_skills() -> Array[HeroSkillData]:
 	power_shot.skill_type = HeroSkillData.SkillType.ACTIVE
 	power_shot.unlock_cost = 150
 	power_shot.max_upgrade_level = 3
-	power_shot.upgrade_costs.assign([75, 150])  # Level 2, Level 3
+	power_shot.upgrade_costs.assign([75, 150]) # Level 2, Level 3
 	power_shot.cooldown = 45.0
 	power_shot.damage_multiplier = 3.0
 	skills.append(power_shot)
@@ -338,7 +338,7 @@ func _load_ranger_skills() -> Array[HeroSkillData]:
 	eagle_eye.skill_type = HeroSkillData.SkillType.PASSIVE
 	eagle_eye.unlock_cost = 80
 	eagle_eye.max_upgrade_level = 5
-	eagle_eye.upgrade_costs.assign([40, 80, 120, 160])  # Costs for levels 2-5
+	eagle_eye.upgrade_costs.assign([40, 80, 120, 160]) # Costs for levels 2-5
 	eagle_eye.range_bonus = 60.0
 	skills.append(eagle_eye)
 
@@ -350,8 +350,8 @@ func _load_ranger_skills() -> Array[HeroSkillData]:
 	crit_strike.skill_type = HeroSkillData.SkillType.PASSIVE
 	crit_strike.unlock_cost = 120
 	crit_strike.max_upgrade_level = 5
-	crit_strike.upgrade_costs.assign([60, 120, 180, 240])  # Costs for levels 2-5
-	crit_strike.crit_chance = 0.05  # 5% per level
+	crit_strike.upgrade_costs.assign([60, 120, 180, 240]) # Costs for levels 2-5
+	crit_strike.crit_chance = 0.05 # 5% per level
 	skills.append(crit_strike)
 
 	# PASSIVE SKILL 3: Attack Speed
@@ -362,8 +362,8 @@ func _load_ranger_skills() -> Array[HeroSkillData]:
 	attack_speed.skill_type = HeroSkillData.SkillType.PASSIVE
 	attack_speed.unlock_cost = 100
 	attack_speed.max_upgrade_level = 4
-	attack_speed.upgrade_costs.assign([50, 100, 150])  # Costs for levels 2-4
-	attack_speed.attack_speed_multiplier = 1.1  # 10% per level
+	attack_speed.upgrade_costs.assign([50, 100, 150]) # Costs for levels 2-4
+	attack_speed.attack_speed_multiplier = 1.1 # 10% per level
 	skills.append(attack_speed)
 
 	print("✅ Loaded %d skills for Ranger" % skills.size())
@@ -378,7 +378,7 @@ func _setup_level_nodes():
 	for button in level_buttons:
 		button.queue_free()
 	level_buttons.clear()
-	level_button_nodes.clear()  # Clear zoom compensation array too
+	level_button_nodes.clear() # Clear zoom compensation array too
 
 	# Create world-space level buttons with professional styling
 	for level_data in level_nodes_data:
@@ -397,8 +397,8 @@ func _setup_level_nodes():
 		var button = Button.new()
 		button.custom_minimum_size = Vector2(150, 50)
 		button.text = level_data.level_name
-		button.position = Vector2(-75, -25)  # Center in parent Node2D
-		button.disabled = not is_unlocked  # Disable if locked
+		button.position = Vector2(-75, -25) # Center in parent Node2D
+		button.disabled = not is_unlocked # Disable if locked
 
 		# Apply professional styling based on stars
 		var style_normal = _create_level_button_style(stars, is_unlocked, "normal")
@@ -431,7 +431,7 @@ func _setup_level_nodes():
 		# Add star display (Kingdom Rush style)
 		var stars_earned = SaveManager.get_level_stars(level_data.level_id)
 		_create_star_display(button_node, stars_earned)
-		print("⭐ Created star display for %s: %d stars" % [level_data.level_name, stars_earned])
+		# print("⭐ Created star display for %s: %d stars" % [level_data.level_name, stars_earned])
 
 		# Store reference for zoom compensation
 		level_button_nodes.append(button_node)
@@ -442,9 +442,9 @@ func _setup_level_nodes():
 
 		# Add to scene
 		level_nodes_container.add_child(button_node)
-		level_buttons.append(button)  # Store button for future updates
+		level_buttons.append(button) # Store button for future updates
 
-		print("Created button for ", level_data.level_name, " at ", level_data.position, " | Unlocked: ", is_unlocked, " | Stars: ", stars)
+		# print("Created button for ", level_data.level_name, " at ", level_data.position, " | Unlocked: ", is_unlocked, " | Stars: ", stars)
 
 func _create_level_button_style(stars: int, is_unlocked: bool, state: String) -> StyleBoxFlat:
 	"""Create a professional StyleBoxFlat for level buttons with shadows, borders, and colors"""
@@ -454,14 +454,14 @@ func _create_level_button_style(stars: int, is_unlocked: bool, state: String) ->
 	# Background - dark with subtle tint of star color
 	var bg_color = Color(0.08, 0.08, 0.12, 0.95)
 	if is_unlocked:
-		bg_color = bg_color.lerp(base_color, 0.08)  # Subtle tint for unlocked levels
+		bg_color = bg_color.lerp(base_color, 0.08) # Subtle tint for unlocked levels
 	style.bg_color = bg_color
 
 	# Border - thicker and colored by stars
 	style.border_width_left = 4
 	style.border_width_top = 4
 	style.border_width_right = 4
-	style.border_width_bottom = 6  # Thicker bottom for 3D effect
+	style.border_width_bottom = 6 # Thicker bottom for 3D effect
 
 	# Apply state-specific styling
 	match state:
@@ -540,13 +540,13 @@ void fragment() {
 }
 """
 
-	var material = ShaderMaterial.new()
-	material.shader = shader
-	material.set_shader_parameter("glow_color", glow_color)
-	material.set_shader_parameter("glow_intensity", 0.4)  # Subtle glow
-	material.set_shader_parameter("glow_size", 0.012)
+	var mat = ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("glow_color", glow_color)
+	mat.set_shader_parameter("glow_intensity", 0.4) # Subtle glow
+	mat.set_shader_parameter("glow_size", 0.012)
 
-	return material
+	return mat
 
 func _draw_paths():
 	if not paths_layer:
@@ -581,7 +581,7 @@ func _draw_path_between_levels(from_level: LevelNodeData, to_level: LevelNodeDat
 	path_line.joint_mode = Line2D.LINE_JOINT_ROUND
 	path_line.antialiased = true
 
-	var from_pos = from_level.position + Vector2(50, 50)  # Center of node
+	var from_pos = from_level.position + Vector2(50, 50) # Center of node
 	var to_pos = to_level.position + Vector2(50, 50)
 
 	# Build the path points
@@ -643,30 +643,34 @@ func _on_difficulty_selected(difficulty: String):
 	if selected_level_data:
 		_start_level(selected_level_data, difficulty)
 
-func _start_level(level_data: LevelNodeData, difficulty: String):
-	print("WorldMapSelect: Starting level ", level_data.level_name, " on ", difficulty)
+func _start_level(level_data: LevelNodeData, _difficulty: String):
+	print("WorldMapSelect: Opening Loadout for ", level_data.level_name)
 
-	# TODO: Show hero selection screen
-	# For now, just start the level directly
-	if level_data.level_scene_path.is_empty():
-		push_error("WorldMapSelect: Level scene path is empty for ", level_data.level_name)
-		return
+	# Instantiate Level Loadout Screen
+	var loadout_scene = load("res://scenes/ui/level_loadout_screen.tscn")
+	if loadout_scene:
+		var loadout_screen = loadout_scene.instantiate()
+		ui_layer.add_child(loadout_screen)
+		loadout_screen.setup(level_data.level_id)
+		
+		# Handle back button from loadout
+		loadout_screen.back_pressed.connect(func():
+			print("Back from loadout")
+		)
+	else:
+		push_error("Failed to load LevelLoadoutScreen scene!")
+		# Fallback to direct load
+		_direct_load_level(level_data)
 
-	# Try to load via LevelManager if level config exists
+func _direct_load_level(level_data: LevelNodeData):
+	# Fallback: Load level config manually and use direct scene navigation
 	var level_config = _get_level_config_for_level_data(level_data)
 	if level_config and level_config.level_scene:
-		# Use NavigationManager with full config
 		NavigationManager.load_level(level_config)
 	else:
-		# Fallback: Load level config manually and use direct scene navigation
-		# This handles cases where level_scene is not set in the .tres file
 		if level_config:
-			# We have a config but no scene in it - initialize manually
 			LevelManager.load_level_config(level_config)
-
-		# Navigate directly to scene
 		get_tree().change_scene_to_file(level_data.level_scene_path)
-		print("WorldMapSelect: Using direct scene navigation (config.level_scene not set)")
 
 func _get_level_config_for_level_data(level_data: LevelNodeData) -> LevelConfig:
 	"""Get the LevelConfig resource for a given LevelNodeData"""
@@ -750,12 +754,12 @@ func _apply_star_color_to_button(button: Button, level_data: LevelNodeData) -> v
 	var style_disabled = StyleBoxFlat.new()
 
 	# NORMAL state
-	style_normal.bg_color = Color(0.15, 0.15, 0.15, 0.95)  # Dark background
+	style_normal.bg_color = Color(0.15, 0.15, 0.15, 0.95) # Dark background
 	style_normal.border_width_left = 4
 	style_normal.border_width_right = 4
 	style_normal.border_width_top = 4
 	style_normal.border_width_bottom = 4
-	style_normal.border_color = border_color  # Star-based color!
+	style_normal.border_color = border_color # Star-based color!
 	style_normal.corner_radius_top_left = 8
 	style_normal.corner_radius_top_right = 8
 	style_normal.corner_radius_bottom_left = 8
@@ -771,7 +775,7 @@ func _apply_star_color_to_button(button: Button, level_data: LevelNodeData) -> v
 	style_hover.border_width_right = 5
 	style_hover.border_width_top = 5
 	style_hover.border_width_bottom = 5
-	style_hover.border_color = border_color.lightened(0.2)  # Lighter on hover
+	style_hover.border_color = border_color.lightened(0.2) # Lighter on hover
 	style_hover.corner_radius_top_left = 8
 	style_hover.corner_radius_top_right = 8
 	style_hover.corner_radius_bottom_left = 8
@@ -787,7 +791,7 @@ func _apply_star_color_to_button(button: Button, level_data: LevelNodeData) -> v
 	style_pressed.border_width_right = 4
 	style_pressed.border_width_top = 4
 	style_pressed.border_width_bottom = 4
-	style_pressed.border_color = border_color.darkened(0.2)  # Darker when pressed
+	style_pressed.border_color = border_color.darkened(0.2) # Darker when pressed
 	style_pressed.corner_radius_top_left = 8
 	style_pressed.corner_radius_top_right = 8
 	style_pressed.corner_radius_bottom_left = 8
@@ -803,7 +807,7 @@ func _apply_star_color_to_button(button: Button, level_data: LevelNodeData) -> v
 	style_disabled.border_width_right = 3
 	style_disabled.border_width_top = 3
 	style_disabled.border_width_bottom = 3
-	style_disabled.border_color = Color(0.3, 0.3, 0.3, 0.8)  # Locked = dark gray
+	style_disabled.border_color = Color(0.3, 0.3, 0.3, 0.8) # Locked = dark gray
 	style_disabled.corner_radius_top_left = 8
 	style_disabled.corner_radius_top_right = 8
 	style_disabled.corner_radius_bottom_left = 8

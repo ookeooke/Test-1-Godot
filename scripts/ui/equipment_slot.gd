@@ -6,13 +6,12 @@ class_name EquipmentSlot
 ## This class ONLY handles:
 ## 1. Drop target logic (equipment validation)
 ## 2. Drag-drop for equip/unequip operations via ItemTransactionService
-##
-## Item rendering is handled by ItemSprite overlay (same as inventory grids).
-## For inventory grids, use InventoryGridSlot instead.
 
 const DEBUG_DRAG_DROP = false
 
+@warning_ignore("unused_signal")
 signal item_clicked(item: ItemInstance, slot: EquipmentSlot)
+@warning_ignore("unused_signal")
 signal item_right_clicked(item: ItemInstance, slot: EquipmentSlot)
 
 @export var slot_type: String = "equipment"
@@ -20,7 +19,7 @@ signal item_right_clicked(item: ItemInstance, slot: EquipmentSlot)
 @export var equipment_slot_name: String = ""
 
 var hero_id: String = ""
-var item_instance: ItemInstance = null  # Reference only (ItemSprite renders it)
+var item_instance: ItemInstance = null # Reference only (ItemSprite renders it)
 var is_empty: bool = true
 var is_hovered: bool = false
 

@@ -5,7 +5,6 @@
 [ext_resource type="Script" uid="uid://idfvb3maml47" path="res://scripts/level_controller.gd" id="1_level_controller"]
 [ext_resource type="PackedScene" uid="uid://detc10envwuf" path="res://scenes/enemies/goblin_scout.tscn" id="1_wtcfe"]
 [ext_resource type="Script" uid="uid://b1r6b3vwpnkst" path="res://scripts/camera/camera_controller_improved.gd" id="2_camera"]
-[ext_resource type="Resource" uid="uid://bam2alcte4wjx" path="res://data/level_configs/level_01_config.tres" id="2_cywot"]
 [ext_resource type="PackedScene" uid="uid://crirequ6fnstj" path="res://scenes/enemies/orc_warrior.tscn" id="3_epypp"]
 [ext_resource type="PackedScene" uid="uid://dwolf7k3xp2n" path="res://scenes/enemies/wolf_runner.tscn" id="3_wolf"]
 [ext_resource type="Script" uid="uid://btigmbll42353" path="res://scripts/ui/path_visualizer.gd" id="4_path_vis"]
@@ -20,6 +19,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/dual_panel_screen.tscn" id="10_dual_panel"]
 [ext_resource type="PackedScene" uid="uid://cqoyfbnb1nbig" path="res://scenes/ui/hero_button.tscn" id="10_herobutton"]
 [ext_resource type="PackedScene" path="res://scenes/ui/menu_layer.tscn" id="10_menu_layer"]
+[ext_resource type="PackedScene" uid="uid://levelbg001" path="res://scenes/levels/visuals/level_background.tscn" id="11_background"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
@@ -37,7 +37,8 @@ colors = PackedColorArray(0.5, 0.35, 0.2, 0.7, 0.6, 0.4, 0.25, 0.85, 0.55, 0.38,
 
 [node name="TestLevel" type="Node2D"]
 script = ExtResource("1_level_controller")
-level_config = ExtResource("2_cywot")
+
+[node name="LevelBackground" parent="." instance=ExtResource("11_background")]
 
 [node name="WaveManager" type="Node2D" parent="." node_paths=PackedStringArray("enemy_path", "wave_label")]
 script = ExtResource("1_0e48y")

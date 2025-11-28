@@ -29,7 +29,7 @@ signal modifiers_changed()
 
 var _base_starting_gold: int = 0
 var _base_starting_lives: int = 0
-var _base_tower_costs: Dictionary = {}  # tower_id → base_cost
+var _base_tower_costs: Dictionary = {} # tower_id → base_cost
 
 # ============================================
 # CURRENT RUNTIME VALUES
@@ -70,6 +70,64 @@ var _global_tower_cost_modifiers: Array[StatModifier] = []
 
 func _ready():
 	print("[GameStateManager] Initialized")
+	_print_system_status()
+
+func _print_system_status():
+	print("\n==========================================")
+	print("       🚀 SYSTEM STATUS REPORT 🚀       ")
+	print("==========================================")
+	
+	# Check Managers
+	var managers = {
+		"LevelManager": LevelManager,
+		"SaveManager": SaveManager,
+		"WaveManager": get_tree().root.find_child("WaveManager", true, false),
+		"HeroMetaManager": HeroMetaManager,
+		"DebugConfig": DebugConfig
+	}
+	
+	for manager_name in managers:
+		var status = "✅ LOADED"
+		var obj = managers[manager_name]
+		
+		if not obj:
+			if manager_name == "WaveManager":
+				status = "⚠️ SCENE SCOPED (Loads with Level)"
+			else:
+				status = "❌ MISSING"
+				
+		print(" • %-15s : %s" % [manager_name, status])
+		
+	print("------------------------------------------")
+	
+	# Check Data
+	if LevelManager.current_level:
+		print(" • Current Level   : %s" % LevelManager.current_level.level_id)
+	else:
+		print(" • Current Level   : (None loaded)")
+		
+	if SaveManager.current_profile_name:
+		print(" • Active Profile  : %s" % SaveManager.current_profile_name)
+	else:
+		print(" • Active Profile  : (None selected)")
+		
+	print("==========================================\n")
+
+func _notification(what):
+	# Auto-pause on focus loss (mobile/tabbing out)
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		if not get_tree().paused:
+			# print("[GameStateManager] Focus lost - Auto-pausing game")
+			# Only pause if we are in a level (lives > 0)
+			if lives > 0:
+				# Show pause menu if available, or just pause tree
+				# Ideally, trigger the UI pause button logic
+				get_tree().paused = true
+				
+				# Try to find and show pause menu if not already shown
+				var ui_layer = get_tree().root.find_child("UI", true, false)
+				if ui_layer and ui_layer.has_method("show_pause_menu"):
+					ui_layer.show_pause_menu()
 
 ## Called by LevelManager when a level is loaded
 ## This is the ONLY place where base values should be set
@@ -84,7 +142,7 @@ func initialize_level(level_config: LevelConfig):
 
 	# Calculate final starting values with all active modifiers
 	gold = get_calculated_starting_gold()
-	lives = _base_starting_lives  # Lives typically don't have modifiers
+	lives = _base_starting_lives # Lives typically don't have modifiers
 
 	print("[GameStateManager] Level initialized:")
 	print("  Base starting gold: %d" % _base_starting_gold)
@@ -301,8 +359,8 @@ func _show_defeat_screen():
 
 	# Create canvas layer for defeat screen
 	var canvas_layer = CanvasLayer.new()
-	canvas_layer.layer = 100  # Modal game over screen
-	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS  # Works while paused
+	canvas_layer.layer = 100 # Modal game over screen
+	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS # Works while paused
 
 	# Instantiate defeat screen
 	var defeat_screen = defeat_screen_scene.instantiate()
@@ -381,11 +439,11 @@ func calculate_stars(lives_remaining: int, max_lives: int) -> int:
 
 	var lives_percent = (float(lives_remaining) / float(max_lives)) * 100.0
 
-	if lives_percent >= 80.0:  # 80%+ health = 3 stars
+	if lives_percent >= 80.0: # 80%+ health = 3 stars
 		return 3
-	elif lives_percent >= 50.0:  # 50-79% health = 2 stars
+	elif lives_percent >= 50.0: # 50-79% health = 2 stars
 		return 2
-	else:  # Survived but barely = 1 star
+	else: # Survived but barely = 1 star
 		return 1
 
 ## Get current star rating during gameplay

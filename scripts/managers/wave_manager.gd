@@ -11,24 +11,24 @@ extends Node2D
 # - Buttons auto-position to follow spawn points on screen
 
 # REFERENCES (drag these from Scene tree in Inspector)
-@export var enemy_path: Path2D  # The path enemies follow (OLD SYSTEM)
-@export var start_waypoint: PathWaypoint  # Starting waypoint (NEW SYSTEM - optional)
-@export var use_waypoint_system: bool = false  # Toggle between old Path2D and new waypoint system
+@export var enemy_path: Path2D # The path enemies follow (OLD SYSTEM)
+@export var start_waypoint: PathWaypoint # Starting waypoint (NEW SYSTEM - optional)
+@export var use_waypoint_system: bool = false # Toggle between old Path2D and new waypoint system
 @export var goblin_scene: PackedScene
 @export var orc_scene: PackedScene
 @export var wolf_scene: PackedScene
 @export var troll_scene: PackedScene
 @export var bat_scene: PackedScene
-@export var wave_label: Label  # Reference to the UI label
+@export var wave_label: Label # Reference to the UI label
 
 # WAVE CONFIGURATION (using Custom Resources)
-@export var waves: Array[WaveData] = []  # Drag wave .tres files here in Inspector
+@export var waves: Array[WaveData] = [] # Drag wave .tres files here in Inspector
 
 # WAVE SETTINGS
-var current_wave = 0  # Which wave we're on (starts at 0)
-var tracked_enemies: Dictionary = {}  # Dictionary of all living enemies (enemy_instance: true)
-var is_combat_active: bool = false  # Whether a wave is currently active
-var victory_screen_shown: bool = false  # Guard to prevent showing victory twice
+var current_wave = 0 # Which wave we're on (starts at 0)
+var tracked_enemies: Dictionary = {} # Dictionary of all living enemies (enemy_instance: true)
+var is_combat_active: bool = false # Whether a wave is currently active
+var victory_screen_shown: bool = false # Guard to prevent showing victory twice
 
 # COMBAT STATE SIGNALS
 signal combat_started()
@@ -36,24 +36,24 @@ signal combat_ended()
 
 # Current wave spawn state
 var current_wave_data: WaveData = null
-var current_enemy_groups: Array = []  # Flattened list of enemies to spawn
-var current_spawn_index: int = 0  # Which enemy in the list we're spawning next
+var current_enemy_groups: Array = [] # Flattened list of enemies to spawn
+var current_spawn_index: int = 0 # Which enemy in the list we're spawning next
 
 # TIMING
-var spawn_delay = 0.5  # Base seconds between each enemy spawn (will be randomized)
-var wave_break_time = 3.0  # Seconds between waves
+var spawn_delay = 0.5 # Base seconds between each enemy spawn (will be randomized)
+var wave_break_time = 3.0 # Seconds between waves
 
 # SPAWN VARIATION SETTINGS (for more interesting movement)
-var spawn_delay_min = 0.3  # Minimum time between spawns
-var spawn_delay_max = 0.8  # Maximum time between spawns
-var position_offset_x = 60.0  # Random X offset range (-60 to +60) - increased for more spread
-var position_offset_y = 50.0  # Random Y offset range (-50 to +50) - increased for more spread
-var speed_variation_min = 0.7  # Minimum speed multiplier (70% of base speed) - increased range
-var speed_variation_max = 1.3  # Maximum speed multiplier (130% of base speed) - increased range
+var spawn_delay_min = 0.3 # Minimum time between spawns
+var spawn_delay_max = 0.8 # Maximum time between spawns
+var position_offset_x = 60.0 # Random X offset range (-60 to +60) - increased for more spread
+var position_offset_y = 50.0 # Random Y offset range (-50 to +50) - increased for more spread
+var speed_variation_min = 0.7 # Minimum speed multiplier (70% of base speed) - increased range
+var speed_variation_max = 1.3 # Maximum speed multiplier (130% of base speed) - increased range
 
 # LANE SYSTEM SETTINGS (creates parallel "traffic lanes")
-var lane_offsets = [-40.0, 0.0, 40.0]  # Perpendicular offsets for 3 lanes
-var use_lane_system = true  # Enable/disable lane-based spawning
+var lane_offsets = [-40.0, 0.0, 40.0] # Perpendicular offsets for 3 lanes
+var use_lane_system = true # Enable/disable lane-based spawning
 
 # TIMERS
 var spawn_timer: Timer
@@ -64,9 +64,9 @@ var loot_distribution_scene = preload("res://scenes/ui/loot_distribution_screen.
 
 # CALL WAVE BUTTON SYSTEM (Kingdom Rush style)
 var call_wave_button_scene = preload("res://scenes/ui/call_wave_button.tscn")
-var active_call_wave_buttons: Array = []  # Currently visible buttons
-var spawn_point_positions: Array[Vector2] = []  # World positions of spawn points
-var early_call_enabled: bool = false  # Whether early call is currently allowed
+var active_call_wave_buttons: Array = [] # Currently visible buttons
+var spawn_point_positions: Array[Vector2] = [] # World positions of spawn points
+var early_call_enabled: bool = false # Whether early call is currently allowed
 
 # ============================================
 # BUILT-IN FUNCTIONS
@@ -93,24 +93,24 @@ func _ready():
 	# VALIDATION: Warn if wave count seems wrong
 	if waves.size() == 0:
 		push_error("[WaveManager] ❌ NO WAVES LOADED! Check level configuration!")
-	elif waves.size() < 10:
-		push_warning("[WaveManager] ⚠️ Only %d waves loaded - expected 16 for level_01!" % waves.size())
-	elif waves.size() != 16:
-		push_warning("[WaveManager] ⚠️ Loaded %d waves - expected 16 for level_01!" % waves.size())
+	elif waves.size() < 5:
+		push_warning("[WaveManager] ⚠️ Only %d waves loaded - expected at least 5!" % waves.size())
+	elif waves.size() != 10:
+		push_warning("[WaveManager] ⚠️ Loaded %d waves - expected 10 for level_01!" % waves.size())
 	else:
 		print("[WaveManager] ✅ Wave count validated: 16 waves ready!")
 
 	# Create the spawn timer
 	spawn_timer = Timer.new()
 	spawn_timer.wait_time = spawn_delay
-	spawn_timer.one_shot = false  # Repeats automatically
+	spawn_timer.one_shot = false # Repeats automatically
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 	add_child(spawn_timer)
 
 	# Create the wave break timer
 	wave_break_timer = Timer.new()
 	wave_break_timer.wait_time = wave_break_time
-	wave_break_timer.one_shot = true  # Only triggers once
+	wave_break_timer.one_shot = true # Only triggers once
 	wave_break_timer.timeout.connect(_on_wave_break_timer_timeout)
 	add_child(wave_break_timer)
 
@@ -177,7 +177,7 @@ func start_next_wave():
 	# Set combat state and emit signal
 	is_combat_active = true
 	combat_started.emit()
-	print("[WaveManager] Combat started - Wave ", current_wave)
+	# print("[WaveManager] Combat started - Wave ", current_wave)
 
 	# Clear any call wave buttons (in case wave was started early)
 	clear_call_wave_buttons()
@@ -205,9 +205,9 @@ func wave_completed():
 	# Award wave completion bonus (progressive: 12g/13g/15g based on wave)
 	var wave_bonus = 12
 	if current_wave >= 7:
-		wave_bonus = 13  # Mid-game bonus
+		wave_bonus = 13 # Mid-game bonus
 	if current_wave >= 13:
-		wave_bonus = 15  # Late-game bonus
+		wave_bonus = 15 # Late-game bonus
 	GameStateManager.add_gold(wave_bonus)
 	print("[WaveManager] Wave completion bonus: +%dg (wave %d)" % [wave_bonus, current_wave])
 
@@ -250,8 +250,8 @@ func wave_completed():
 		if not _verify_all_enemies_dead():
 			print("ERROR: Victory check failed - enemies still on screen!")
 			print("Waiting for remaining enemies to be eliminated...")
-			victory_screen_shown = false  # Reset flag if verification failed
-			return  # Don't show victory yet
+			victory_screen_shown = false # Reset flag if verification failed
+			return # Don't show victory yet
 
 		if wave_label:
 			wave_label.text = "VICTORY!"
@@ -346,7 +346,7 @@ func spawn_enemy():
 			enemy.queue_free()
 			return
 
-		print("[WaveManager] Spawned ", enemy_type, " using WAYPOINT system")
+		# print("[WaveManager] Spawned ", enemy_type, " using WAYPOINT system")
 
 	else:
 		# OLD PATH2D SYSTEM
@@ -357,7 +357,7 @@ func spawn_enemy():
 		# Create PathFollow2D
 		var path_follower = PathFollow2D.new()
 		path_follower.loop = false
-		path_follower.rotates = false  # Don't rotate enemy to follow path direction
+		path_follower.rotates = false # Don't rotate enemy to follow path direction
 		enemy_path.add_child(path_follower)
 
 		# Create the enemy
@@ -383,7 +383,7 @@ func spawn_enemy():
 		else:
 			enemy.path_follower = path_follower
 
-		print("[WaveManager] Spawned ", enemy_type, " using PATH2D system")
+		# print("[WaveManager] Spawned ", enemy_type, " using PATH2D system")
 	
 	# Connect death signal with enemy reference binding
 	if enemy.has_signal("enemy_died"):
@@ -395,7 +395,7 @@ func spawn_enemy():
 
 	# Add enemy to tracking dictionary
 	tracked_enemies[enemy] = true
-	print("Enemy spawned. Tracked count: ", tracked_enemies.size())
+	# print("Enemy spawned. Tracked count: ", tracked_enemies.size())
 
 	# Check if all enemies have been spawned
 	if current_spawn_index >= current_enemy_groups.size():
@@ -408,7 +408,7 @@ func _on_spawn_timer_timeout():
 		spawn_enemy()
 
 		# Randomize the next spawn delay for more natural timing
-		if current_spawn_index < current_enemy_groups.size():  # Still more to spawn
+		if current_spawn_index < current_enemy_groups.size(): # Still more to spawn
 			spawn_timer.wait_time = randf_range(spawn_delay_min, spawn_delay_max)
 
 func _on_wave_break_timer_timeout():
@@ -463,7 +463,7 @@ func _show_victory_screen():
 	var stars = _calculate_stars()
 
 	# Get level ID from LevelManager or use default
-	var level_id = "level_01"  # Default
+	var level_id = "level_01" # Default
 	if LevelManager.current_level:
 		level_id = LevelManager.current_level.level_id
 
@@ -516,7 +516,7 @@ func _show_loot_distribution_screen(gems_earned: int):
 
 	# Create canvas layer for loot screen
 	var canvas_layer = CanvasLayer.new()
-	canvas_layer.layer = 100  # Modal loot screen above gameplay
+	canvas_layer.layer = 100 # Modal loot screen above gameplay
 	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 
 	# Instantiate loot distribution screen
@@ -591,11 +591,11 @@ func _award_star_gems(stars: int) -> int:
 	# Get gem reward based on stars from level config
 	match stars:
 		3:
-			gems_to_award = level_config.three_star_gold_bonus  # TODO: Rename to three_star_gem_reward
+			gems_to_award = level_config.three_star_gold_bonus # TODO: Rename to three_star_gem_reward
 		2:
-			gems_to_award = level_config.two_star_gold_bonus    # TODO: Rename to two_star_gem_reward
+			gems_to_award = level_config.two_star_gold_bonus # TODO: Rename to two_star_gem_reward
 		1:
-			gems_to_award = level_config.one_star_gold_bonus    # TODO: Rename to one_star_gem_reward
+			gems_to_award = level_config.one_star_gold_bonus # TODO: Rename to one_star_gem_reward
 		_:
 			print("[WaveManager] Invalid star count: ", stars)
 			return 0
@@ -640,7 +640,7 @@ func _apply_wave_modifiers(enemy, enemy_type: String):
 		var original_hp = enemy.max_health
 		var new_hp = int(original_hp * hp_mult)
 		enemy.max_health = new_hp
-		enemy.current_health = new_hp  # Also update current health
+		enemy.current_health = new_hp # Also update current health
 		print("[WaveManager] Wave %d: %s HP scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_hp, new_hp, hp_mult])
 
 	# Apply gold multiplier
@@ -711,7 +711,7 @@ func create_call_wave_buttons():
 		ui_layer.add_child(button)
 
 		# Setup button with spawn position and timing
-		button.setup(spawn_pos, break_time, 5)  # 5 gold base bonus
+		button.setup(spawn_pos, break_time, 5) # 5 gold base bonus
 
 		# Connect signal
 		button.wave_called.connect(_on_call_wave_button_pressed)
@@ -809,7 +809,7 @@ func _is_boss_enemy(enemy) -> bool:
 func _award_xp_for_enemy_kill(enemy):
 	"""Award XP to heroes when an enemy is killed"""
 	if not HeroProgressionManager:
-		return  # Progression system not available
+		return # Progression system not available
 
 	# Get enemy tier to determine XP amount
 	var enemy_tier = _get_enemy_tier(enemy)
@@ -823,7 +823,7 @@ func _award_xp_for_enemy_kill(enemy):
 	var heroes = _get_active_hero_nodes()
 
 	if heroes.is_empty():
-		return  # No heroes to award XP to
+		return # No heroes to award XP to
 
 	# Award XP to all participating heroes (Bloons TD 6 style)
 	# All heroes in level get XP regardless of proximity

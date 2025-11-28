@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://ckvxoisxu0tq1"]
 
-[ext_resource type="Script" uid="uid://bpgq31a3cqq4o" path="res://scenes/spots/hero_spot.gd" id="1_jk3ha"]
+[ext_resource type="Script" path="res://scenes/spots/hero_spot.gd" id="1_jk3ha"]
 [ext_resource type="PackedScene" uid="uid://c52n66umx0j5h" path="res://scenes/heroes/ranger_hero.tscn" id="2_esb7g"]
 
 [sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_esb7g"]

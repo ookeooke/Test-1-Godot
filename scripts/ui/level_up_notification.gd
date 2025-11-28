@@ -12,9 +12,9 @@ extends Control
 @onready var level_label = $PanelContainer/VBoxContainer/LevelNumberLabel
 
 # Animation settings
-const RISE_DISTANCE = 80.0  # Pixels to float upward
-const ANIMATION_DURATION = 2.0  # Total animation time
-const FADE_START = 1.0  # When to start fading (seconds)
+const RISE_DISTANCE = 80.0 # Pixels to float upward
+const ANIMATION_DURATION = 2.0 # Total animation time
+const FADE_START = 1.0 # When to start fading (seconds)
 
 
 func _ready():
@@ -32,7 +32,7 @@ func _animate():
 	"""Animate notification: rise + fade out"""
 	# Create tween for animation
 	var tween = create_tween()
-	tween.set_parallel(true)  # Run animations simultaneously
+	tween.set_parallel(true) # Run animations simultaneously
 
 	# Initial setup
 	modulate.a = 0.0
@@ -61,19 +61,19 @@ static func spawn_at_position(spawn_position: Vector2, level: int, parent: Node 
 	"""Spawn a level-up notification at the given position"""
 	# Load scene
 	var notification_scene = preload("res://scenes/ui/level_up_notification.tscn")
-	var notification = notification_scene.instantiate()
+	var notif_instance = notification_scene.instantiate()
 
 	# Set level
-	if notification.has_method("show_level_up"):
-		notification.show_level_up(level)
+	if notif_instance.has_method("show_level_up"):
+		notif_instance.show_level_up(level)
 
 	# Position notification
-	notification.global_position = spawn_position
+	notif_instance.global_position = spawn_position
 
 	# Add to scene tree (parent or root)
 	if parent:
-		parent.add_child(notification)
+		parent.add_child(notif_instance)
 	else:
-		notification.get_tree().root.add_child(notification)
+		notif_instance.get_tree().root.add_child(notif_instance)
 
-	return notification
+	return notif_instance

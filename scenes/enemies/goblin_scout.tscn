@@ -114,7 +114,6 @@ collision_mask = 0
 script = ExtResource("1_gndxd")
 
 [node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
-visible = false
 offset_left = -25.0
 offset_top = -5.0
 offset_right = 25.0
@@ -127,14 +126,11 @@ animation = &"walk"
 autoplay = "walk"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-visible = false
 shape = SubResource("CapsuleShape2D_af0go")
 
 [node name="HitPoint" type="Marker2D" parent="."]
-visible = false
 
 [node name="HitParticles" type="CPUParticles2D" parent="."]
-visible = false
 emitting = false
 one_shot = true
 explosiveness = 1.0

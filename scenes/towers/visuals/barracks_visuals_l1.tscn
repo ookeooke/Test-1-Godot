@@ -1,0 +1,40 @@
+[gd_scene load_steps=2 format=3 uid="uid://barracks_visuals_l1"]
+
+[ext_resource type="Texture2D" uid="uid://d0ngu23x1ql7v" path="res://assets/sprites/towers/archer_level1/archer1.png" id="1_sprite"]
+
+[node name="BarracksVisualsL1" type="Node2D"]
+
+[node name="TowerSprite" type="Sprite2D" parent="."]
+position = Vector2(0, -20)
+scale = Vector2(0.08, 0.08)
+texture = ExtResource("1_sprite")
+modulate = Color(0.6, 0.4, 0.2, 1)
+
+[node name="Barracks" type="Node2D" parent="."]
+position = Vector2(0, -40)
+
+[node name="Roof" type="Polygon2D" parent="Barracks"]
+color = Color(0.5, 0.3, 0.1, 1)
+polygon = PackedVector2Array(-15, 0, 0, -15, 15, 0)
+
+[node name="Door" type="ColorRect" parent="Barracks"]
+offset_left = -5.0
+offset_top = 0.0
+offset_right = 5.0
+offset_bottom = 15.0
+color = Color(0.2, 0.1, 0.0, 1)
+
+[node name="Flag" type="ColorRect" parent="Barracks"]
+offset_left = 10.0
+offset_top = -20.0
+offset_right = 12.0
+offset_bottom = 0.0
+color = Color(0.4, 0.4, 0.4, 1)
+
+[node name="Banner" type="ColorRect" parent="Barracks/Flag"]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 0.0
+offset_right = 12.0
+offset_bottom = 8.0
+color = Color(0.8, 0.2, 0.2, 1)

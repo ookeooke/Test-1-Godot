@@ -31,7 +31,7 @@ const BASE_THEME_PATH: String = "res://resources/themes/main_theme.tres"
 
 ## Resize debounce timer (prevents rapid theme reloads during window drag)
 var resize_timer: Timer = null
-const RESIZE_DEBOUNCE_MS: float = 0.1  # 100ms delay
+const RESIZE_DEBOUNCE_MS: float = 0.1 # 100ms delay
 
 
 func _ready() -> void:
@@ -223,3 +223,42 @@ func set_user_scale(multiplier: float) -> void:
 	calculate_ui_scale()
 	load_and_scale_theme()
 	scale_changed.emit(ui_scale)
+
+## Get safe area margins (left, top, right, bottom) in pixels
+## Useful for handling notches and rounded corners on mobile
+func get_safe_area_margins() -> Rect2:
+	var window = get_window()
+	if not window:
+		return Rect2(0, 0, 0, 0)
+		
+	var safe_area = DisplayServer.get_display_safe_area()
+	var screen_size = DisplayServer.screen_get_size()
+	
+	# Calculate margins based on safe area rect
+	var left = safe_area.position.x
+	var top = safe_area.position.y
+	var right = screen_size.x - (safe_area.position.x + safe_area.size.x)
+	var bottom = screen_size.y - (safe_area.position.y + safe_area.size.y)
+	
+	return Rect2(left, top, right, bottom)
+
+## Apply safe area margins to a MarginContainer
+## This ensures content isn't hidden behind notches
+func apply_safe_area(container: MarginContainer) -> void:
+	if not container:
+		return
+		
+	var margins = get_safe_area_margins()
+	
+	# Add safe area margins to existing theme overrides
+	var current_left = container.get_theme_constant("margin_left")
+	var current_top = container.get_theme_constant("margin_top")
+	var current_right = container.get_theme_constant("margin_right")
+	var current_bottom = container.get_theme_constant("margin_bottom")
+	
+	container.add_theme_constant_override("margin_left", current_left + margins.position.x)
+	container.add_theme_constant_override("margin_top", current_top + margins.position.y)
+	container.add_theme_constant_override("margin_right", current_right + margins.size.x)
+	container.add_theme_constant_override("margin_bottom", current_bottom + margins.size.y)
+	
+	print("[UIScaleManager] Applied safe area margins: %s" % margins)

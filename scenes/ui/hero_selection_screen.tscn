@@ -1,74 +1,58 @@
-[gd_scene load_steps=2 format=3 uid="uid://hero_selection_screen"]
+[gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scripts/ui/hero_selection_screen.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/ui/hero_selection_screen.gd" id="1_script"]
 
 [node name="HeroSelectionScreen" type="Control"]
-visible = false
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1")
+script = ExtResource("1_script")
 
-[node name="Overlay" type="ColorRect" parent="."]
+[node name="ColorRect" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.7)
+color = Color(0.1, 0.1, 0.1, 1)
 
-[node name="Panel" type="PanelContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -400.0
-offset_top = -300.0
-offset_right = 400.0
-offset_bottom = 300.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -100.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
+[node name="HBoxContainer" type="HBoxContainer" parent="CenterContainer"]
 layout_mode = 2
+theme_override_constants/separation = 20
 
-[node name="TitleLabel" type="Label" parent="Panel/VBoxContainer"]
-layout_mode = 2
-text = "Select Your Heroes"
-horizontal_alignment = 1
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -200.0
+offset_bottom = -50.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 20
 
-[node name="HSeparator" type="HSeparator" parent="Panel/VBoxContainer"]
+[node name="DescriptionLabel" type="RichTextLabel" parent="VBoxContainer"]
 layout_mode = 2
+bbcode_enabled = true
+text = "[center]Select a Hero to start your journey[/center]"
+fit_content = true
 
-[node name="HeroGrid" type="GridContainer" parent="Panel/VBoxContainer"]
+[node name="StartButton" type="Button" parent="VBoxContainer"]
+custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
-size_flags_vertical = 3
-columns = 3
-
-[node name="SelectedHeroesContainer" type="HBoxContainer" parent="Panel/VBoxContainer"]
-layout_mode = 2
-alignment = 1
-
-[node name="SelectedLabel" type="Label" parent="Panel/VBoxContainer/SelectedHeroesContainer"]
-layout_mode = 2
-text = "Selected: "
-
-[node name="ButtonsContainer" type="HBoxContainer" parent="Panel/VBoxContainer"]
-layout_mode = 2
-alignment = 1
-
-[node name="CancelButton" type="Button" parent="Panel/VBoxContainer/ButtonsContainer"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-text = "Cancel"
-
-[node name="ConfirmButton" type="Button" parent="Panel/VBoxContainer/ButtonsContainer"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-text = "Start Mission"
+size_flags_horizontal = 4
+text = "START ADVENTURE"

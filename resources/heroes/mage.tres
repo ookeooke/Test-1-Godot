@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="HeroData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/hero_data.gd" id="1_mage"]
+[ext_resource type="Resource" path="res://resources/hero_classes/magic_class.tres" id="2_magic_class"]
+[ext_resource type="Texture2D" path="res://assets/icons/heroes/mage_portrait.png" id="3_portrait"]
+
+[resource]
+script = ExtResource("1_mage")
+portrait = ExtResource("3_portrait")
+hero_id = "mage"
+hero_name = "Mage"
+description = "A powerful spellcaster who controls the elements to devastate enemies from afar."
+hero_class = 2
+class_config = ExtResource("2_magic_class")
+hero_color = Color(0.4, 0.2, 0.8, 1)
+base_health = 300
+base_damage = 40
+base_range = 400
+base_attack_speed = 1.2
+base_movement_speed = 130.0
+base_crit_chance = 0.05
+base_defense = 5
+unlock_cost = 0
+starting_level = 1
+max_level = 20
+override_allowed_weapon_types = []
+override_allowed_armor_types = []
+available_skills = []
+lore_text = "Master of the arcane arts, the Mage bends reality to their will."

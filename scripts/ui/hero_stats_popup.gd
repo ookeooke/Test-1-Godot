@@ -56,7 +56,7 @@ func hide_stats():
 	visible = false
 
 
-func _process(delta):
+func _process(_delta):
 	# Update stats every frame while visible
 	if visible and hero_reference and is_instance_valid(hero_reference):
 		_update_stats()

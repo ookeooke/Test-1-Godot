@@ -1,7 +1,8 @@
 [gd_scene load_steps=7 format=3 uid="uid://cqoyfbnb1nbig"]
 
 [ext_resource type="Script" path="res://scripts/ui/hero_button.gd" id="1_herobutton"]
-[ext_resource type="Texture2D" uid="uid://ranger_portrait" path="res://assets/icons/heroes/ranger_portrait.png" id="2_portrait"]
+[ext_resource type="Script" path="res://scripts/ui/ability_button.gd" id="2_abilitybutton"]
+[ext_resource type="Texture2D" path="res://assets/icons/heroes/ranger_portrait.png" id="2_portrait"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
 bg_color = Color(0.85, 0.1, 0.1, 1)
@@ -43,6 +44,15 @@ mouse_filter = 2
 texture = ExtResource("2_portrait")
 expand_mode = 1
 stretch_mode = 5
+
+[node name="ActiveAbilityButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 60.0
+offset_top = -10.0
+offset_right = 100.0
+offset_bottom = 30.0
+text = "S"
+script = ExtResource("2_abilitybutton")
 
 [node name="HealthBar" type="ProgressBar" parent="."]
 layout_mode = 0
