@@ -14,6 +14,21 @@ const HEROES_PATH = "res://resources/heroes/"
 
 
 func _ready():
+	# DEBUG: Explicitly check if the file exists in the export
+	var test_path = "res://resources/heroes/mage.tres"
+	if FileAccess.file_exists(test_path):
+		print("[HeroDatabase] DEBUG: ✅ mage.tres FOUND at ", test_path)
+	else:
+		print("[HeroDatabase] DEBUG: ❌ mage.tres NOT FOUND at ", test_path)
+		print("[HeroDatabase] DEBUG: This confirms the file was NOT exported.")
+
+	# DEBUG: Check if directory exists
+	var dir = DirAccess.open("res://resources/heroes")
+	if dir:
+		print("[HeroDatabase] DEBUG: ✅ 'resources/heroes' directory exists.")
+	else:
+		print("[HeroDatabase] DEBUG: ❌ 'resources/heroes' directory does NOT exist.")
+
 	load_all_heroes()
 
 
@@ -64,6 +79,19 @@ func _load_heroes_from_directory(path: String):
 		file_name = dir.get_next()
 
 	dir.list_dir_end()
+
+	# FALLBACK: If directory scan found nothing (common in Export), try hardcoded load
+	if heroes.is_empty():
+		print("[HeroDatabase] Warning: Directory scan failed. Attempting hardcoded fallback...")
+		var known_heroes = ["mage", "ranger", "warrior"]
+		for id in known_heroes:
+			var fallback_path = path + id + ".tres"
+			var hero_data = load(fallback_path) as HeroData
+			if hero_data:
+				print("[HeroDatabase] Fallback loaded: ", id)
+				_register_hero(hero_data)
+			else:
+				print("[HeroDatabase] Fallback failed for: ", id)
 
 
 ## Register a hero in the database

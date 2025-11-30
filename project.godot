@@ -51,6 +51,7 @@ GameSpeedController="*res://scripts/autoloads/game_speed_controller.gd"
 TowerData="*res://scripts/autoloads/tower_data.gd"
 EnemyManager="*res://scripts/managers/enemy_manager.gd"
 WebFullscreenManager="*res://scripts/autoloads/web_fullscreen_manager.gd"
+ResourcePreloader="*res://scripts/autoloads/resource_preloader.gd"
 
 [debug]
 

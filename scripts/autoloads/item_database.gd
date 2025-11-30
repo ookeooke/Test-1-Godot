@@ -6,9 +6,9 @@ extends Node
 
 signal items_loaded
 
-var items: Dictionary = {}  ## {item_id: ItemData}
-var items_by_type: Dictionary = {}  ## {ItemType: Array[ItemData]}
-var items_by_rarity: Dictionary = {}  ## {Rarity: Array[ItemData]}
+var items: Dictionary = {} ## {item_id: ItemData}
+var items_by_type: Dictionary = {} ## {ItemType: Array[ItemData]}
+var items_by_rarity: Dictionary = {} ## {Rarity: Array[ItemData]}
 
 const ITEMS_PATH = "res://resources/items/"
 
@@ -67,6 +67,32 @@ func _load_items_from_directory(path: String):
 		file_name = dir.get_next()
 
 	dir.list_dir_end()
+
+	# FALLBACK: If directory scan found nothing (common in Export), try hardcoded load
+	if items.is_empty():
+		print("[ItemDatabase] Warning: Directory scan failed. Attempting hardcoded fallback...")
+		var known_items = [
+			# Weapons
+			"weapons/basic_sword", "weapons/basic_bow", "weapons/basic_staff",
+			"weapons/fire_bow", "weapons/elven_longbow",
+			# Armor
+			"armor/leather_vest", "helmets/leather_cap",
+			# Accessories
+			"accessories/power_ring",
+			# Consumables
+			"potions/health_potion", "potions/damage_buff_potion",
+			# Materials
+			"materials/dragon_scale", "materials/iron_ore", "materials/magic_essence"
+		]
+		
+		for path_suffix in known_items:
+			var fallback_path = ITEMS_PATH + path_suffix + ".tres"
+			var item_data = load(fallback_path) as ItemData
+			if item_data:
+				print("[ItemDatabase] Fallback loaded: ", item_data.item_id)
+				_register_item(item_data)
+			else:
+				print("[ItemDatabase] Fallback failed for: ", fallback_path)
 
 
 ## Register an item in the database
