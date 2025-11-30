@@ -47,6 +47,7 @@ var combat_distance = 50.0
 
 # MOVEMENT
 var max_distance_from_home = 50.0
+var max_chase_distance = 150.0 # LEASH: Max distance to chase enemies
 var home_position = Vector2.ZERO
 var target_position = Vector2.ZERO
 
@@ -653,21 +654,6 @@ func handle_melee_combat_state():
 				
 			# 2. Determine Move Position
 			var move_pos = closest.global_position # Default to center
-			if current_engagement_slot != -1 and closest.has_method("get_slot_position"):
-				move_pos = closest.get_slot_position(current_engagement_slot)
-				
-			# 3. Move to Slot
-			var distance = global_position.distance_to(move_pos)
-			if distance > 5:
-				var direction = (move_pos - global_position).normalized()
-				velocity = direction * movement_speed
-				move_and_slide()
-				update_sprite_direction(closest.global_position)
-			else:
-				velocity = Vector2.ZERO
-				update_sprite_direction(closest.global_position)
-				
-	queue_redraw() # Update debug visuals
 
 func handle_returning_state(_delta):
 	var distance = global_position.distance_to(home_position)
@@ -675,6 +661,13 @@ func handle_returning_state(_delta):
 		global_position = home_position
 		enter_idle_state()
 	else:
+		# YOYO PREVENTION: Ignore enemies until we are closer to home
+		# Only switch back to combat if we are nearly back (e.g. < 50px)
+		# This stops the hero from turning around immediately after leashing.
+		if distance < 50.0 and not enemies_in_melee_range.is_empty():
+			enter_melee_combat()
+			return
+			
 		var direction = (home_position - global_position).normalized()
 		velocity = direction * movement_speed
 		move_and_slide()
