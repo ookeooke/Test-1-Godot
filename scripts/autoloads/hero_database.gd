@@ -6,8 +6,8 @@ extends Node
 
 signal heroes_loaded
 
-var heroes: Dictionary = {}  ## {hero_id: HeroData}
-var heroes_by_class: Dictionary = {}  ## {HeroClass: Array[HeroData]}
+var heroes: Dictionary = {} ## {hero_id: HeroData}
+var heroes_by_class: Dictionary = {} ## {HeroClass: Array[HeroData]}
 var heroes_loaded_flag: bool = false
 
 const HEROES_PATH = "res://resources/heroes/"
@@ -56,6 +56,7 @@ func _load_heroes_from_directory(path: String):
 			# Load the resource
 			var hero_data = load(full_path) as HeroData
 			if hero_data != null:
+				print("[HeroDatabase] Loaded hero: %s | Portrait Path: %s" % [hero_data.hero_id, hero_data.portrait.resource_path if hero_data.portrait else "NULL"])
 				_register_hero(hero_data)
 			else:
 				print("[HeroDatabase] Warning: Failed to load hero from: ", full_path)
