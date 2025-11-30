@@ -637,25 +637,37 @@ func handle_melee_combat_state():
 	# We have targets
 	var closest = current_melee_targets[0]
 	if is_instance_valid(closest):
-		# 1. Request Slot if we don't have one
-		if current_engagement_slot == -1 and closest.has_method("request_engagement_slot"):
-			current_engagement_slot = closest.request_engagement_slot(self)
-			
-		# 2. Determine Move Position
-		var move_pos = closest.global_position # Default to center
-		if current_engagement_slot != -1 and closest.has_method("get_slot_position"):
-			move_pos = closest.get_slot_position(current_engagement_slot)
-			
-		# 3. Move to Slot
-		var distance = global_position.distance_to(move_pos)
-		if distance > 5:
-			var direction = (move_pos - global_position).normalized()
-			velocity = direction * movement_speed
-			move_and_slide()
-			update_sprite_direction(closest.global_position)
-		else:
+		# STATIONARY ANCHOR LOGIC
+		# If we are blocking this enemy, we are the ANCHOR. Stand still.
+		if closest.is_blocked and closest.blocking_hero == self:
 			velocity = Vector2.ZERO
 			update_sprite_direction(closest.global_position)
+			# We don't request a slot on the enemy because WE are the slot provider.
+			
+		else:
+			# We are NOT blocking it (maybe chasing a runner or helping another hero).
+			# Use standard slot logic to surround it.
+			# 1. Request Slot if we don't have one
+			if current_engagement_slot == -1 and closest.has_method("request_engagement_slot"):
+				current_engagement_slot = closest.request_engagement_slot(self)
+				
+			# 2. Determine Move Position
+			var move_pos = closest.global_position # Default to center
+			if current_engagement_slot != -1 and closest.has_method("get_slot_position"):
+				move_pos = closest.get_slot_position(current_engagement_slot)
+				
+			# 3. Move to Slot
+			var distance = global_position.distance_to(move_pos)
+			if distance > 5:
+				var direction = (move_pos - global_position).normalized()
+				velocity = direction * movement_speed
+				move_and_slide()
+				update_sprite_direction(closest.global_position)
+			else:
+				velocity = Vector2.ZERO
+				update_sprite_direction(closest.global_position)
+				
+	queue_redraw() # Update debug visuals
 
 func handle_returning_state(_delta):
 	var distance = global_position.distance_to(home_position)
@@ -667,6 +679,33 @@ func handle_returning_state(_delta):
 		velocity = direction * movement_speed
 		move_and_slide()
 		update_sprite_direction(home_position)
+
+func _draw():
+	# DEBUG VISUALS
+	if not DebugConfig.visual_debug_enabled:
+		return
+		
+	# Draw Engagement Slots (The "Ring")
+	for i in range(hero_engagement_slots.size()):
+		var slot_pos = get_hero_slot_position(i) - global_position # Local pos
+		var is_occupied = hero_engagement_slots[i] != null
+		var color = Color.RED if is_occupied else Color.GREEN
+		
+		# Draw Slot Circle
+		draw_circle(slot_pos, 5.0, color)
+		
+		# Draw Slot Index Number
+		var font = ThemeDB.fallback_font
+		draw_string(font, slot_pos + Vector2(-5, -10), str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color.WHITE)
+		
+		# Draw Line to Occupant
+		if is_occupied and is_instance_valid(hero_engagement_slots[i]):
+			var enemy = hero_engagement_slots[i]
+			var enemy_local = enemy.global_position - global_position
+			draw_line(slot_pos, enemy_local, Color.YELLOW, 2.0)
+			
+	# Draw line to blocked enemies (Melee Range)
+	draw_circle(Vector2.ZERO, melee_range, Color(1, 1, 1, 0.1)) # Range ring
 
 func handle_walking_state(_delta):
 	var distance = global_position.distance_to(target_position)
@@ -717,6 +756,64 @@ func get_closest_ranged_enemy():
 				closest_enemy = enemy
 	return closest_enemy
 
+# ============================================
+# HERO ENGAGEMENT SLOTS (Enemies surrounding Hero)
+# ============================================
+
+var hero_engagement_slots = [] # Array of enemies
+const HERO_SLOT_OFFSET = 40.0
+
+func _init_engagement_slots():
+	hero_engagement_slots.resize(block_capacity)
+	hero_engagement_slots.fill(null)
+
+func request_hero_engagement_slot(enemy: Node2D) -> int:
+	"""Enemy requests a slot to stand at - Smart Nearest Neighbor"""
+	if hero_engagement_slots.is_empty():
+		_init_engagement_slots()
+		
+	# 1. Check if already has slot
+	var existing = hero_engagement_slots.find(enemy)
+	if existing != -1:
+		return existing
+		
+	# 2. Find CLOSEST empty slot
+	var best_slot = -1
+	var min_dist = INF
+	
+	for i in range(hero_engagement_slots.size()):
+		if hero_engagement_slots[i] == null:
+			var slot_pos = get_hero_slot_position(i)
+			var dist = slot_pos.distance_to(enemy.global_position)
+			if dist < min_dist:
+				min_dist = dist
+				best_slot = i
+				
+	if best_slot != -1:
+		hero_engagement_slots[best_slot] = enemy
+		return best_slot
+			
+	return -1
+
+func release_hero_engagement_slot(enemy: Node2D):
+	var index = hero_engagement_slots.find(enemy)
+	if index != -1:
+		hero_engagement_slots[index] = null
+
+func get_hero_slot_position(slot_index: int) -> Vector2:
+	var offset = Vector2.ZERO
+	
+	# Standard 3-slot layout (Warrior default)
+	# Fixed World Positions (Stable)
+	# 0: Right, 1: Left, 2: Bottom, 3: Top
+	match slot_index:
+		0: offset = Vector2(HERO_SLOT_OFFSET, 0) # Right
+		1: offset = Vector2(-HERO_SLOT_OFFSET, 0) # Left
+		2: offset = Vector2(0, HERO_SLOT_OFFSET) # Bottom
+		3: offset = Vector2(0, -HERO_SLOT_OFFSET) # Top
+		
+	return global_position + offset
+
 func get_melee_targets():
 	var targets = []
 	var current_weight = 0
@@ -732,6 +829,26 @@ func get_melee_targets():
 			
 		# If we have capacity, block new enemy
 		if current_weight + enemy.weight <= block_capacity and not enemy.is_blocked:
+			# FORWARD BLOCKING CHECK (Anti-Backtracking)
+			# Only block if we are IN FRONT of the enemy.
+			# If we are behind, let them pass (don't force them to turn around).
+			var to_hero = global_position - enemy.global_position
+			var enemy_forward = Vector2.RIGHT # Default
+			
+			# Try to get actual movement direction
+			if enemy.velocity.length_squared() > 1.0:
+				enemy_forward = enemy.velocity.normalized()
+			elif enemy.has_node("PathFollow2D"): # Fallback for path followers
+				# Approximate forward from rotation if stationary
+				enemy_forward = Vector2.RIGHT.rotated(enemy.rotation)
+				
+			# Dot Product: > 0 means in front, < 0 means behind
+			if to_hero.dot(enemy_forward) < -0.1: # Small buffer
+				# Hero is BEHIND enemy. Ignore blocking.
+				# We can still attack them (backstab), but don't stop them.
+				targets.append(enemy) # Add to targets list for attacking
+				continue # Skip blocking logic
+				
 			enemy.block(self)
 			targets.append(enemy)
 			current_weight += enemy.weight
@@ -769,9 +886,12 @@ func _on_ranged_timer_timeout():
 func _on_melee_timer_timeout():
 	if current_state != State.MELEE_COMBAT: return
 	if current_melee_targets.is_empty(): return
+	
+	# Single Target Attack: Only hit the first valid target
 	for target in current_melee_targets:
 		if is_instance_valid(target):
 			perform_melee_attack(target)
+			break # Stop after hitting one enemy
 
 func perform_ranged_attack(_target):
 	# Override in child class
@@ -780,6 +900,10 @@ func perform_ranged_attack(_target):
 func perform_melee_attack(target):
 	# Override in child class
 	if target.has_method("take_damage"):
+		# RANGE CHECK: Don't hit if they are still walking to the slot
+		if global_position.distance_to(target.global_position) > 60.0:
+			return
+			
 		print("[BaseHero] Attacking %s for %.1f damage" % [target.name, melee_damage])
 		target.take_damage(melee_damage, self, "hero_melee")
 

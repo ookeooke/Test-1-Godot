@@ -255,12 +255,48 @@ func _physics_process(delta):
 	if is_blocked and blocking_hero and is_instance_valid(blocking_hero):
 		# I am the blocked enemy - check if hero is still close
 		var distance = global_position.distance_to(blocking_hero.global_position)
+		
+		# STRICT AGGRO: If Hero moves, we disengage immediately.
+		# This prevents "kiting" (dragging enemies away).
+		if blocking_hero is CharacterBody2D and blocking_hero.velocity.length() > 10.0:
+			unblock(blocking_hero)
+			_continue_movement(delta)
+			return
+
+		# LEASH CHECK (Backup)
+		# If we are dragged too far from our path (100px), give up.
+		if path_position != Vector2.ZERO and global_position.distance_to(path_position) > 100.0:
+			unblock(blocking_hero)
+			_continue_movement(delta)
+			return
+
 		if distance > melee_detection_range:
 			# Hero walked away - resume movement
 			unblock(blocking_hero)
 			_continue_movement(delta)
 		else:
 			# Hero still close - I'm blocked, so fight!
+			# 1. Request Slot Position
+			var target_pos = blocking_hero.global_position
+			if blocking_hero.has_method("request_hero_engagement_slot"):
+				var slot_idx = blocking_hero.request_hero_engagement_slot(self)
+				if slot_idx != -1:
+					target_pos = blocking_hero.get_hero_slot_position(slot_idx)
+			
+			# 2. Move to Slot
+			var dist_to_slot = global_position.distance_to(target_pos)
+			
+			# DEBUG: Why am I moving?
+			if DebugConfig.visual_debug_enabled and dist_to_slot > 5.0:
+				print("[%s] Moving to Slot. Dist: %.1f | Target: %s" % [name, dist_to_slot, target_pos])
+				queue_redraw() # Force draw update
+			
+			if dist_to_slot > 5.0:
+				# Move towards slot
+				var direction = (target_pos - global_position).normalized()
+				global_position += direction * speed * delta
+			
+			# 3. Combat Logic
 			handle_hero_combat(delta)
 	else:
 		# I am NOT blocked - move normally
@@ -345,11 +381,14 @@ func handle_hero_combat(delta):
 # BLOCKING SYSTEM
 # ============================================
 
+var path_position = Vector2.ZERO # Where we were when we got blocked
+
 func block(hero):
 	"""Called by a hero when they engage this enemy"""
 	if not is_blocked:
 		is_blocked = true
 		blocking_hero = hero
+		path_position = global_position # Remember where we left the road
 		emit_signal("blocked", hero)
 		
 		# Stop movement
@@ -361,6 +400,9 @@ func block(hero):
 
 func unblock(hero = null):
 	"""Called when a hero disengages or dies"""
+	if hero and hero.has_method("release_hero_engagement_slot"):
+		hero.release_hero_engagement_slot(self)
+		
 	if is_blocked:
 		is_blocked = false
 		blocking_hero = null
@@ -373,6 +415,17 @@ func unblock(hero = null):
 func set_blocked_by_hero(hero):
 	"""Legacy alias"""
 	block(hero)
+
+func _draw():
+	if DebugConfig.visual_debug_enabled and is_blocked and blocking_hero:
+		# Draw line to my target slot position
+		var target_pos = Vector2.ZERO
+		if blocking_hero.has_method("request_hero_engagement_slot"):
+			var slot_idx = blocking_hero.request_hero_engagement_slot(self)
+			if slot_idx != -1:
+				target_pos = blocking_hero.get_hero_slot_position(slot_idx)
+				draw_line(Vector2.ZERO, target_pos - global_position, Color.MAGENTA, 2.0)
+				draw_circle(target_pos - global_position, 3.0, Color.MAGENTA)
 
 func _set_combat_state_visual(in_combat: bool):
 	"""Visual indicator when enemy is in melee combat"""
