@@ -18,7 +18,7 @@ signal ability_activated(skill_id: String)
 @export var hotkey: String = "1" # Keyboard hotkey
 
 # References
-var skill_manager: SkillManager = null
+var skill_manager: HeroSkillManager = null
 var skill_data: HeroSkillData = null
 
 # UI Elements
@@ -113,7 +113,7 @@ func _setup_ui():
 # SETUP
 # ============================================
 
-func setup(p_skill_id: String, p_skill_manager: SkillManager, p_skill_data: HeroSkillData, p_hotkey: String = "1"):
+func setup(p_skill_id: String, p_skill_manager: HeroSkillManager, p_skill_data: HeroSkillData, p_hotkey: String = "1"):
 	"""Initialize the button with skill data"""
 	print("🔧 AbilityButton: setup() called for ", p_skill_id)
 	if p_skill_manager == null:

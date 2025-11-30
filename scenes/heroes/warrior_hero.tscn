@@ -1,10 +1,11 @@
-[gd_scene load_steps=10 format=3 uid="uid://ct1jtu2rrn3rg"]
+[gd_scene load_steps=11 format=3 uid="uid://ct1jtu2rrn3rg"]
 
 [ext_resource type="Script" uid="uid://bi3i01ueb1osv" path="res://scenes/heroes/warrior_hero.gd" id="1_warrior"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="3_healthbar"]
 [ext_resource type="PackedScene" uid="uid://dxpbar123" path="res://scenes/ui/xp_bar.tscn" id="3_xpbar"]
 [ext_resource type="Texture2D" uid="uid://by67hjpol15ip" path="res://assets/sprites/heroes/warrior/warrior_icon.png" id="5_warrior_sprite"]
-[ext_resource type="SpriteFrames" path="res://scenes/heroes/warrior_animations.tres" id="6_frames"]
+[ext_resource type="SpriteFrames" uid="uid://byyq4yl6we3ot" path="res://scenes/heroes/warrior_animations.tres" id="6_frames"]
+[ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="7_shadow"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]
 radius = 25.0
@@ -23,7 +24,9 @@ collision_layer = 2
 collision_mask = 0
 script = ExtResource("1_warrior")
 
-
+[node name="Shadow" parent="." instance=ExtResource("7_shadow")]
+position = Vector2(-1, 23)
+scale = Vector2(1.2, 1.2)
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 scale = Vector2(0.03, 0.03)

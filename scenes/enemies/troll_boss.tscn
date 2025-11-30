@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://b5uslntitux6v" path="res://scenes/enemies/troll_boss.gd" id="1_troll"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
+[ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="3_shadow"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_troll"]
 radius = 30.0
@@ -18,6 +19,11 @@ offset_left = -30.0
 offset_top = -40.0
 offset_right = 30.0
 offset_bottom = -34.0
+
+
+[node name="Shadow" parent="." instance=ExtResource("3_shadow")]
+position = Vector2(0, 5)
+scale = Vector2(2.5, 2.5)
 
 [node name="ColorRect" type="ColorRect" parent="."]
 offset_left = -30.0

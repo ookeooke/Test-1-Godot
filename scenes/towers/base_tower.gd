@@ -77,6 +77,10 @@ var current_target = null
 @export var visual_scene_l1: PackedScene
 @export var visual_scene_l2: PackedScene
 @export var visual_scene_l3: PackedScene
+@export var visual_scene_l4_damage: PackedScene
+@export var visual_scene_l4_range: PackedScene
+@export var visual_scene_l5_damage: PackedScene
+@export var visual_scene_l5_range: PackedScene
 @export var construction_scene: PackedScene = preload("res://scenes/towers/construction_site.tscn")
 
 # TOWER SPOT
@@ -416,7 +420,18 @@ func _update_tower_visual():
 	add_child(container)
 	
 	var scene_to_spawn = visual_scene_l1
-	if tower_level >= 3 and visual_scene_l3:
+	
+	if tower_level == 5:
+		if upgrade_path == "damage" and visual_scene_l5_damage:
+			scene_to_spawn = visual_scene_l5_damage
+		elif upgrade_path == "range" and visual_scene_l5_range:
+			scene_to_spawn = visual_scene_l5_range
+	elif tower_level == 4:
+		if upgrade_path == "damage" and visual_scene_l4_damage:
+			scene_to_spawn = visual_scene_l4_damage
+		elif upgrade_path == "range" and visual_scene_l4_range:
+			scene_to_spawn = visual_scene_l4_range
+	elif tower_level >= 3 and visual_scene_l3:
 		scene_to_spawn = visual_scene_l3
 	elif tower_level >= 2 and visual_scene_l2:
 		scene_to_spawn = visual_scene_l2

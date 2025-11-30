@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://c52n66umx0j5h"]
+[gd_scene load_steps=14 format=3 uid="uid://c52n66umx0j5h"]
 
 [ext_resource type="Script" uid="uid://bs2etc1qjtji2" path="res://scenes/heroes/ranger_hero.gd" id="1_hsk3w"]
 [ext_resource type="PackedScene" uid="uid://coirid61w00ks" path="res://scenes/projectiles/arrow.tscn" id="2_oks3e"]
@@ -8,6 +8,7 @@
 [ext_resource type="Resource" path="res://resources/skills/ranger/multishot.tres" id="4_multishot"]
 [ext_resource type="Texture2D" uid="uid://dfv0iy2dudoib" path="res://assets/sprites/heroes/archer/archer1.png" id="5_archer_sprite"]
 [ext_resource type="Resource" path="res://resources/skills/ranger/eagle_eye.tres" id="6_eagle_eye"]
+[ext_resource type="PackedScene" path="res://scenes/effects/shadow.tscn" id="7_shadow"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]
 radius = 20.09975
@@ -28,14 +29,15 @@ script = ExtResource("1_hsk3w")
 arrow_scene = ExtResource("2_oks3e")
 available_skills = Array[ExtResource("3_8jgnp")]([ExtResource("4_multishot"), ExtResource("6_eagle_eye")])
 
-
+[node name="Shadow" parent="." instance=ExtResource("7_shadow")]
+position = Vector2(-4, 24)
+scale = Vector2(1.2, 1.2)
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 scale = Vector2(0.03, 0.03)
 texture = ExtResource("5_archer_sprite")
 
 [node name="FallbackRect" type="ColorRect" parent="Sprite2D"]
-visible = false
 offset_left = -25.0
 offset_top = -25.0
 offset_right = 25.0
@@ -83,14 +85,12 @@ shape = SubResource("CircleShape2D_ea74a")
 color = Color(0.3, 0.5, 1, 0.3)
 
 [node name="HealthBar" parent="." instance=ExtResource("3_healthbar")]
-visible = false
 offset_left = -25.0
 offset_top = -35.0
 offset_right = 25.0
 offset_bottom = -29.0
 
 [node name="XPBar" parent="." instance=ExtResource("3_xpbar")]
-visible = false
 offset_left = -25.0
 offset_top = -28.0
 offset_right = 25.0

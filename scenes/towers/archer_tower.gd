@@ -13,6 +13,8 @@ extends BaseTower
 @export var visual_scene_l1_default: PackedScene = preload("res://scenes/towers/visuals/archer_visuals_l1.tscn")
 @export var visual_scene_l2_default: PackedScene = preload("res://scenes/towers/visuals/archer_visuals_l2.tscn")
 @export var visual_scene_l3_default: PackedScene = preload("res://scenes/towers/visuals/archer_visuals_l3.tscn")
+@export var visual_scene_l4_damage_default: PackedScene = preload("res://scenes/towers/visuals/archer_visuals_l4_damage.tscn")
+@export var visual_scene_l4_range_default: PackedScene = preload("res://scenes/towers/visuals/archer_visuals_l4_range.tscn")
 
 # REFERENCES
 var archer_weapon: Node2D
@@ -28,6 +30,10 @@ func _ready():
 		visual_scene_l2 = visual_scene_l2_default
 	if not visual_scene_l3:
 		visual_scene_l3 = visual_scene_l3_default
+	if not visual_scene_l4_damage:
+		visual_scene_l4_damage = visual_scene_l4_damage_default
+	if not visual_scene_l4_range:
+		visual_scene_l4_range = visual_scene_l4_range_default
 		
 	# Initialize BaseTower logic
 	super._ready()

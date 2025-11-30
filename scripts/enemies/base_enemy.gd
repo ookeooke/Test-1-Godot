@@ -46,6 +46,8 @@ signal unblocked
 ## 1 = Standard, 2 = Heavy, 10 = Unblockable (Boss)
 @export var weight: int = 1
 
+@export_group("Visuals")
+
 ## Camera shake intensity when enemy dies
 @export_enum("None", "Small", "Medium", "Large") var death_shake: String = "None"
 
@@ -143,12 +145,23 @@ func _ready():
 
 func _add_dynamic_shadow():
 	"""Add a blob shadow under the unit"""
+	# 1. Check if a Shadow node already exists (added in Editor)
+	if has_node("Shadow"):
+		var shadow = get_node("Shadow")
+		# Ensure it's at the bottom
+		move_child(shadow, 0)
+		# If it exists, we assume the user set the scale/position in Editor.
+		# We can optionally force the export scale here if desired, 
+		# but usually Editor visual wins.
+		return
+
+	# 2. Fallback: Create dynamic shadow if none exists
 	var shadow_scene = load("res://scenes/effects/shadow.tscn")
 	if shadow_scene:
 		var shadow = shadow_scene.instantiate()
-		# Place shadow at bottom of sprite (assuming origin is center)
-		# Adjust scale based on enemy size (weight)
-		shadow.scale = Vector2(1.0 + (weight * 0.2), 1.0 + (weight * 0.2))
+		shadow.name = "Shadow" # Name it so we can find it later
+		# Use the manual export for precise control
+		shadow.scale = Vector2(1.0, 1.0)
 		shadow.position = Vector2(0, 5) # Slightly below feet
 		add_child(shadow)
 		move_child(shadow, 0) # Move to bottom of draw order
@@ -384,6 +397,7 @@ func _set_combat_state_visual(in_combat: bool):
 
 func take_damage(amount: float, damage_source = null, damage_source_type = "unknown"):
 	"""Apply damage to this enemy (reduced by armor)"""
+	print("[BaseEnemy] %s taking damage: %.1f (Armor: %.1f)" % [name, amount, armor])
 	# Apply armor reduction
 	var actual_damage = amount * (1.0 - armor)
 	current_health -= actual_damage
@@ -510,6 +524,42 @@ func set_waypoint_navigation(start_waypoint: PathWaypoint):
 # ============================================
 # COMBAT ANCHOR SYSTEM (New)
 # ============================================
+
+# 4 Slots: Left, Right, Top, Bottom
+var engagement_slots = [null, null, null, null]
+const SLOT_OFFSET = 40.0 # Distance from enemy center
+
+func request_engagement_slot(hero: Node2D) -> int:
+	"""Hero requests a slot to attack from"""
+	# 1. Check if hero already has a slot
+	var existing_index = engagement_slots.find(hero)
+	if existing_index != -1:
+		return existing_index
+		
+	# 2. Find first empty slot
+	for i in range(engagement_slots.size()):
+		if engagement_slots[i] == null:
+			engagement_slots[i] = hero
+			return i
+			
+	# 3. No slots available (full)
+	return -1
+
+func release_engagement_slot(hero: Node2D):
+	"""Hero leaves combat"""
+	var index = engagement_slots.find(hero)
+	if index != -1:
+		engagement_slots[index] = null
+
+func get_slot_position(slot_index: int) -> Vector2:
+	"""Get global position for a specific slot"""
+	var offset = Vector2.ZERO
+	match slot_index:
+		0: offset = Vector2(-SLOT_OFFSET, 0) # Left
+		1: offset = Vector2(SLOT_OFFSET, 0) # Right
+		2: offset = Vector2(0, -SLOT_OFFSET) # Top
+		3: offset = Vector2(0, SLOT_OFFSET) # Bottom
+	return global_position + offset
 
 
 # ============================================

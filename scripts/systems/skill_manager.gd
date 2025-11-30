@@ -1,5 +1,5 @@
 extends Node
-class_name SkillManager
+class_name HeroSkillManager
 
 ## ============================================
 ## SKILL MANAGER - Handles skill activation and cooldowns

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scenes/enemies/wolf_runner.gd" id="1_wolf"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
+[ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="3_shadow"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_wolf"]
 radius = 15.0
@@ -17,6 +18,11 @@ offset_left = -20.0
 offset_top = -22.0
 offset_right = 20.0
 offset_bottom = -17.0
+
+
+[node name="Shadow" parent="." instance=ExtResource("3_shadow")]
+position = Vector2(0, 5)
+scale = Vector2(1.0, 1.0)
 
 [node name="ColorRect" type="ColorRect" parent="."]
 offset_left = -15.0

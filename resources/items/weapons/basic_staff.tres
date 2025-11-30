@@ -13,10 +13,12 @@ equip_slot = 1
 weapon_type = "staff"
 armor_type = ""
 rarity = 0
-base_stats = {
-"damage": 10.0,
-"range": 50.0
-}
+damage_bonus = 15
+attack_speed_multiplier = 1.0
+health_bonus = 0
+defense_bonus = 0
+range_bonus = 50
+crit_chance_bonus = 0.0
 icon = ExtResource("2_icon")
 inventory_width = 1
 inventory_height = 2

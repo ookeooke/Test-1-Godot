@@ -1,8 +1,9 @@
-[gd_scene load_steps=18 format=3 uid="uid://detc10envwuf"]
+[gd_scene load_steps=19 format=3 uid="uid://detc10envwuf"]
 
 [ext_resource type="Script" uid="uid://dhbpq6hpw151g" path="res://scenes/enemies/goblin_scout.gd" id="1_gndxd"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
 [ext_resource type="Texture2D" uid="uid://djpi0o8x7temw" path="res://assets/sprites/enemies/goblin/goblin.png" id="3_goblin_sprite"]
+[ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="4_shadow"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_q5iri"]
 atlas = ExtResource("3_goblin_sprite")
@@ -118,6 +119,9 @@ offset_left = -25.0
 offset_top = -5.0
 offset_right = 25.0
 offset_bottom = 0.0
+
+[node name="Shadow" parent="." instance=ExtResource("4_shadow")]
+position = Vector2(0, 20)
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="."]
 scale = Vector2(0.4, 0.4)

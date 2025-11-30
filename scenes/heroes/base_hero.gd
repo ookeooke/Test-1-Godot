@@ -111,12 +111,11 @@ const AURA_RADIUS = 200.0
 
 # VISUAL
 @export var hero_texture: Texture2D
-@export var hero_shadow_scale: float = 1.2 # Adjustable in Inspector
 
 
 # SKILL SYSTEM
 @export var available_skills: Array[HeroSkillData] = []
-var skill_manager: SkillManager = null
+var skill_manager: HeroSkillManager = null
 
 # ============================================
 # INITIALIZATION
@@ -231,12 +230,19 @@ func _setup_visuals():
 
 func _add_dynamic_shadow():
 	"""Add a blob shadow under the unit"""
+	# 1. Check if a Shadow node already exists (added in Editor)
+	if has_node("Shadow"):
+		var shadow = get_node("Shadow")
+		move_child(shadow, 0)
+		return
+
+	# 2. Fallback: Create dynamic shadow if none exists
 	var shadow_scene = load("res://scenes/effects/shadow.tscn")
 	if shadow_scene:
 		var shadow = shadow_scene.instantiate()
+		shadow.name = "Shadow"
 		# Place shadow at bottom of sprite (assuming origin is center)
-		# Use exported scale for easy adjustment per hero
-		shadow.scale = Vector2(hero_shadow_scale, hero_shadow_scale)
+		shadow.scale = Vector2(1.0, 1.0)
 		shadow.position = Vector2(0, 5) # Slightly below feet
 		add_child(shadow)
 		move_child(shadow, 0) # Move to bottom of draw order
@@ -255,6 +261,7 @@ func _initialize_stats():
 	current_health = BASE_MAX_HEALTH
 
 func _recalculate_all_stats():
+	print("[BaseHero] Recalculating stats for %s..." % hero_id)
 	if not stat_max_health: return
 
 	_attribute_regen_bonus = 0.0
@@ -314,10 +321,17 @@ func _recalculate_all_stats():
 
 func _apply_modifier_to_appropriate_stat(modifier: StatModifier):
 	var desc_lower = modifier.description.to_lower()
-	if "damage" in desc_lower and "melee" not in desc_lower:
-		stat_ranged_damage.add_modifier(modifier)
-	elif "melee" in desc_lower and "damage" in desc_lower:
-		stat_melee_damage.add_modifier(modifier)
+	if "damage" in desc_lower:
+		if "melee" in desc_lower:
+			stat_melee_damage.add_modifier(modifier)
+		elif "ranged" in desc_lower:
+			stat_ranged_damage.add_modifier(modifier)
+		else:
+			# Generic damage - apply based on class type
+			if _get_class_type() == 0: # Melee
+				stat_melee_damage.add_modifier(modifier)
+			else: # Ranged (or others)
+				stat_ranged_damage.add_modifier(modifier)
 	elif "health" in desc_lower:
 		stat_max_health.add_modifier(modifier)
 	elif "range" in desc_lower:
@@ -367,7 +381,7 @@ func _on_batch_update(dirty_hero_ids: Array[String]) -> void:
 # ============================================
 
 func _setup_skill_system():
-	skill_manager = SkillManager.new()
+	skill_manager = HeroSkillManager.new()
 	skill_manager.name = "SkillManager"
 	add_child(skill_manager)
 	var skills_to_load = available_skills
@@ -594,29 +608,54 @@ func handle_ranged_combat_state():
 	if current_ranged_target and is_instance_valid(current_ranged_target):
 		update_sprite_direction(current_ranged_target.global_position)
 
+# Engagement Slot System
+var current_engagement_slot: int = -1
+
 func handle_melee_combat_state():
 	current_melee_targets = get_melee_targets()
 
 	if current_melee_targets.is_empty():
+		# No targets? Release slot and return
+		if current_engagement_slot != -1:
+			# We don't know which enemy we had, so we can't release easily unless we track the target.
+			# Ideally we track 'current_melee_target' property.
+			# For now, we rely on the enemy cleaning up or the loop below.
+			current_engagement_slot = -1
+			
 		for enemy in enemies_in_melee_range:
 			if is_instance_valid(enemy) and enemy.has_method("unblock"):
 				if enemy.is_blocked and enemy.blocking_hero == self:
 					enemy.unblock()
+					enemy.release_engagement_slot(self) # Release slot!
+					
 		if not enemies_in_ranged_range.is_empty():
 			enter_ranged_combat()
 		else:
 			enter_returning_state()
 		return
 
-	for enemy in enemies_in_melee_range:
-		if is_instance_valid(enemy) and not current_melee_targets.has(enemy):
-			if enemy.has_method("unblock") and enemy.is_blocked and enemy.blocking_hero == self:
-				enemy.unblock()
-
+	# We have targets
 	var closest = current_melee_targets[0]
 	if is_instance_valid(closest):
-		velocity = Vector2.ZERO
-		update_sprite_direction(closest.global_position)
+		# 1. Request Slot if we don't have one
+		if current_engagement_slot == -1 and closest.has_method("request_engagement_slot"):
+			current_engagement_slot = closest.request_engagement_slot(self)
+			
+		# 2. Determine Move Position
+		var move_pos = closest.global_position # Default to center
+		if current_engagement_slot != -1 and closest.has_method("get_slot_position"):
+			move_pos = closest.get_slot_position(current_engagement_slot)
+			
+		# 3. Move to Slot
+		var distance = global_position.distance_to(move_pos)
+		if distance > 5:
+			var direction = (move_pos - global_position).normalized()
+			velocity = direction * movement_speed
+			move_and_slide()
+			update_sprite_direction(closest.global_position)
+		else:
+			velocity = Vector2.ZERO
+			update_sprite_direction(closest.global_position)
 
 func handle_returning_state(_delta):
 	var distance = global_position.distance_to(home_position)
@@ -741,7 +780,8 @@ func perform_ranged_attack(_target):
 func perform_melee_attack(target):
 	# Override in child class
 	if target.has_method("take_damage"):
-		target.take_damage(melee_damage)
+		print("[BaseHero] Attacking %s for %.1f damage" % [target.name, melee_damage])
+		target.take_damage(melee_damage, self, "hero_melee")
 
 # ============================================
 # VISUAL HELPERS

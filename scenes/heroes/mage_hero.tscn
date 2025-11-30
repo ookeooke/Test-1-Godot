@@ -1,10 +1,11 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3 uid="uid://6j54ukxexjft"]
 
-[ext_resource type="Script" path="res://scenes/heroes/mage_hero.gd" id="1_mage_script"]
-[ext_resource type="PackedScene" path="res://scenes/projectiles/arrow.tscn" id="2_projectile"]
-[ext_resource type="PackedScene" path="res://scenes/ui/health_bar.tscn" id="3_healthbar"]
-[ext_resource type="PackedScene" path="res://scenes/ui/xp_bar.tscn" id="3_xpbar"]
-[ext_resource type="Texture2D" path="res://assets/sprites/heroes/mage/Mage icon.png" id="5_mage_sprite"]
+[ext_resource type="Script" uid="uid://cbcqlv58axwfg" path="res://scenes/heroes/mage_hero.gd" id="1_mage_script"]
+[ext_resource type="PackedScene" uid="uid://coirid61w00ks" path="res://scenes/projectiles/arrow.tscn" id="2_projectile"]
+[ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="3_healthbar"]
+[ext_resource type="PackedScene" uid="uid://dxpbar123" path="res://scenes/ui/xp_bar.tscn" id="3_xpbar"]
+[ext_resource type="Texture2D" uid="uid://dyd70jhwkxr83" path="res://assets/sprites/heroes/mage/Mage icon.png" id="5_mage_sprite"]
+[ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="6_shadow"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]
 radius = 20.0
@@ -24,7 +25,9 @@ collision_mask = 0
 script = ExtResource("1_mage_script")
 projectile_scene = ExtResource("2_projectile")
 
-
+[node name="Shadow" parent="." instance=ExtResource("6_shadow")]
+position = Vector2(-1, 24)
+scale = Vector2(1.2, 1.2)
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 scale = Vector2(0.03, 0.03)
@@ -37,7 +40,7 @@ offset_top = -25.0
 offset_right = 25.0
 offset_bottom = 25.0
 mouse_filter = 2
-color = Color(0.5, 0.0, 1.0, 1)
+color = Color(0.5, 0, 1, 1)
 
 [node name="Label" type="Label" parent="Sprite2D"]
 anchors_preset = 8
@@ -76,7 +79,7 @@ collision_layer = 0
 shape = SubResource("CircleShape2D_ea74a")
 
 [node name="RangeIndicator" type="Polygon2D" parent="."]
-color = Color(0.5, 0.2, 1.0, 0.3)
+color = Color(0.5, 0.2, 1, 0.3)
 
 [node name="HealthBar" parent="." instance=ExtResource("3_healthbar")]
 visible = false
