@@ -27,7 +27,7 @@ class_name ItemSprite
 ## Drag/drop business logic delegated to InventoryGridSlot/EquipmentSlot system
 
 # Debug mode
-const DEBUG_DRAG_DROP = false # Enable verbose drag-drop logging
+const DEBUG_DRAG_DROP = true # Enable verbose drag-drop logging and VISUALS
 
 # Item data
 var item_instance: ItemInstance = null
@@ -39,6 +39,8 @@ var container_id: String = "" # 🔧 FIX: Explicit container ID (dependency inje
 # Grid positioning
 var grid_x: int = 0
 var grid_y: int = 0
+var centering_offset: Vector2 = Vector2.ZERO # Visual offset for centering in large slots
+var debug_slot_size: Vector2 = Vector2.ZERO # For debug drawing (Yellow Box)
 
 # Animation control (prevents mass bouncing during inventory refresh)
 var _skip_intro_animation: bool = false
@@ -159,6 +161,20 @@ func _ready():
 	# Connect touch input for mobile support
 	if not gui_input.is_connected(_on_gui_input):
 		gui_input.connect(_on_gui_input)
+
+
+func _draw():
+	"""Debug drawing for centering verification"""
+	if debug_slot_size != Vector2.ZERO:
+		# Draw Yellow Box representing the SLOT boundary
+		# We draw at -centering_offset because the sprite itself is shifted by +centering_offset
+		# This effectively draws the box at the slot's origin relative to the item
+		var slot_rect = Rect2(-centering_offset, debug_slot_size)
+		draw_rect(slot_rect, Color.YELLOW, false, 2.0) # Unfilled, 2px width
+
+		# Draw Green Box representing the ITEM boundary
+		var item_rect = Rect2(Vector2.ZERO, size)
+		draw_rect(item_rect, Color.GREEN, false, 2.0) # Unfilled, 2px width
 
 
 func _notification(what):
@@ -323,7 +339,7 @@ func set_grid_position(x: int, y: int):
 	var gap_w = grid_params.cell_gap.x
 	var gap_h = grid_params.cell_gap.y
 
-	position = Vector2(grid_x * (cell_w + gap_w), grid_y * (cell_h + gap_h))
+	position = Vector2(grid_x * (cell_w + gap_w), grid_y * (cell_h + gap_h)) + centering_offset
 
 
 ## Drag/Drop Implementation (ItemSprite Handles Input)
@@ -341,6 +357,18 @@ func _get_drag_data(at_position: Vector2):
 
 	# Hide tooltip when drag starts (prevents tooltip + preview visual conflict)
 	TooltipManager.hide_tooltip()
+
+	# Calculate grab offset (which grid cell within the item was clicked?)
+	# This allows for "Anchor Point Correction" on drop
+	# Read cell_size dynamically to support flexible grid sizing
+	var grid_params = _get_grid_params()
+	var local_click_pos = get_local_mouse_position()
+	var grab_offset_x = int(local_click_pos.x / grid_params.cell_size.x)
+	var grab_offset_y = int(local_click_pos.y / grid_params.cell_size.y)
+	
+	# Clamp offsets to be safe (shouldn't be needed if click is valid, but good practice)
+	grab_offset_x = clampi(grab_offset_x, 0, item_data.inventory_width - 1)
+	grab_offset_y = clampi(grab_offset_y, 0, item_data.inventory_height - 1)
 
 	# Calculate drag offset (where user clicked within the item)
 	# This creates a "natural grab" feel - item follows cursor from where you clicked
@@ -363,13 +391,62 @@ func _get_drag_data(at_position: Vector2):
 	preview_icon.scale = Vector2(1.0, 1.0)
 
 	# 🎮 JUICE #2: Mobile Finger Offset - Position preview above finger so user can see target
-	# Offset icon so click position stays under cursor (natural grab feel on desktop)
-	var preview_offset = Vector2.ZERO - drag_offset
+	# 🔧 FIX UX: CELL-SNAPPED DRAGGING (Diablo / PoE Style)
+	# Instead of "Natural Grab" (loose), we snap the cursor to the CENTER of the grabbed cell.
+	# This allows precise point-and-shoot aiming at target slots.
+	
+	# 1. Get grid dimensions
+	var cell_w = grid_params.cell_size.x
+	var cell_h = grid_params.cell_size.y
+	var gap_w = grid_params.cell_gap.x
+	var gap_h = grid_params.cell_gap.y
+
+	# 2. Calculate center of the specific cell we grabbed
+	var cell_center_x = (grab_offset_x * (cell_w + gap_w)) + (cell_w / 2.0)
+	var cell_center_y = (grab_offset_y * (cell_h + gap_h)) + (cell_h / 2.0)
+	var snap_offset = Vector2(cell_center_x, cell_center_y)
+
+	# 3. Set preview offset (negative because we move the image relative to cursor)
+	var preview_offset = - snap_offset
+
 	if OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios"):
 		preview_offset.y -= 100 # Lift 100px above finger on mobile (Diablo Immortal pattern)
 	preview_icon.position = preview_offset
 
 	preview.add_child(preview_icon)
+	
+	# 🛠️ DEBUG VISUALS: Verify Snap Logic
+	if DEBUG_DRAG_DROP:
+		# 1. Blue Box: The specific Grid Cell we grabbed (Should be centered on cursor)
+		var blue_box = ReferenceRect.new()
+		blue_box.editor_only = false
+		blue_box.border_color = Color.BLUE
+		blue_box.border_width = 2.0
+		blue_box.size = grid_params.cell_size
+		blue_box.position = - grid_params.cell_size / 2.0 # Center it on (0,0)
+		preview.add_child(blue_box)
+
+		# 2. Green Cross: The Snap Target (Center of the cell)
+		var green_cross = Control.new()
+		var v_line = ColorRect.new()
+		v_line.color = Color.GREEN
+		v_line.size = Vector2(2, 10)
+		v_line.position = Vector2(-1, -5)
+		green_cross.add_child(v_line)
+		var h_line = ColorRect.new()
+		h_line.color = Color.GREEN
+		h_line.size = Vector2(10, 2)
+		h_line.position = Vector2(-5, -1)
+		green_cross.add_child(h_line)
+		preview.add_child(green_cross) # At (0,0)
+
+		# 3. Red Dot: The Mouse Cursor (Should align with Green Cross)
+		var red_dot = ColorRect.new()
+		red_dot.color = Color.RED
+		red_dot.size = Vector2(4, 4)
+		red_dot.position = Vector2(-2, -2) # Center on (0,0)
+		preview.add_child(red_dot)
+
 	set_drag_preview(preview)
 
 	# 🎮 JUICE #1: Ghost Item - Hide original during drag (prevents "duplicate" illusion)
@@ -378,17 +455,7 @@ func _get_drag_data(at_position: Vector2):
 	# 🔊 AUDIO: Play pickup sound
 	AudioManager.play("pickup", 0.1)
 
-	# Calculate grab offset (which grid cell within the item was clicked?)
-	# This allows for "Anchor Point Correction" on drop
-	# Read cell_size dynamically to support flexible grid sizing
-	var grid_params = _get_grid_params()
-	var local_click_pos = get_local_mouse_position()
-	var grab_offset_x = int(local_click_pos.x / grid_params.cell_size.x)
-	var grab_offset_y = int(local_click_pos.y / grid_params.cell_size.y)
-	
-	# Clamp offsets to be safe (shouldn't be needed if click is valid, but good practice)
-	grab_offset_x = clampi(grab_offset_x, 0, item_data.inventory_width - 1)
-	grab_offset_y = clampi(grab_offset_y, 0, item_data.inventory_height - 1)
+	# (Calculated above)
 
 	if DEBUG_DRAG_DROP:
 		print("[ItemSprite] 🖱️ Drag started at local pos (%d, %d) -> Offset (%d, %d)" % [local_click_pos.x, local_click_pos.y, grab_offset_x, grab_offset_y])

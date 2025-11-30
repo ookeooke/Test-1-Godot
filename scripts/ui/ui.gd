@@ -9,7 +9,7 @@ extends CanvasLayer
 @onready var debug_hud_button = $TopBar/HBoxContainer/DebugHudButton
 
 # SPEED CONTROL
-var current_speed: int = 1  # Current game speed (1, 2, 4, or 8)
+var current_speed: int = 1 # Current game speed (1, 2, 4, or 8)
 
 # PAUSE STATE
 var is_paused: bool = false
@@ -33,6 +33,13 @@ func _ready():
 	lives_label.text = "Lives: " + str(GameStateManager.lives)
 	_update_speed_display()
 	_update_debug_hud_button()
+	
+	# Instantiate SkillBar
+	var skill_bar_scene = load("res://scenes/ui/skill_bar.tscn")
+	if skill_bar_scene:
+		var skill_bar = skill_bar_scene.instantiate()
+		add_child(skill_bar)
+		# Position is handled by anchors in the scene file
 
 func _on_gold_changed(new_amount):
 	gold_label.text = "Gold: " + str(new_amount)
@@ -77,9 +84,9 @@ func _on_pause_button_pressed():
 
 	# Update button display
 	if is_paused:
-		pause_button.text = "▶"  # Play icon when paused
+		pause_button.text = "▶" # Play icon when paused
 	else:
-		pause_button.text = "⏸"  # Pause icon when playing
+		pause_button.text = "⏸" # Pause icon when playing
 
 # DEBUG HUD CONTROL FUNCTIONS
 func _on_debug_hud_button_pressed():

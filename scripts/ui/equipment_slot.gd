@@ -18,6 +18,10 @@ signal item_right_clicked(item: ItemInstance, slot: EquipmentSlot)
 @export var equipment_filter: ItemData.EquipSlot = ItemData.EquipSlot.NONE
 @export var equipment_slot_name: String = ""
 
+# Smart Slot Dimensions (for visual centering)
+@export var grid_width: int = 1
+@export var grid_height: int = 1
+
 var hero_id: String = ""
 var item_instance: ItemInstance = null # Reference only (ItemSprite renders it)
 var is_empty: bool = true
@@ -26,6 +30,11 @@ var is_hovered: bool = false
 # Grid coordinates (for positioning in InventoryGridContainer)
 var grid_x: int = 0
 var grid_y: int = 0
+
+# Rate-limiting for error sounds (prevent audio spam during drag)
+var _last_rejection_time: float = 0.0
+var _last_rejection_uuid: String = ""
+const AUDIO_COOLDOWN: float = 0.5 # 500ms between error sounds
 
 
 func _ready():
@@ -57,6 +66,42 @@ func _get_drag_data(_at_position: Vector2):
 
 	TooltipManager.hide_tooltip()
 
+	# Create drag preview (Visual Feedback)
+	var preview = Control.new()
+	preview.custom_minimum_size = Vector2.ZERO
+	preview.size = Vector2.ZERO
+
+	var item_data = item_instance.get_data()
+	if item_data and item_data.icon:
+		var preview_icon = TextureRect.new()
+		preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		preview_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		preview_icon.texture = item_data.icon
+		
+		# 🔧 FIX: Calculate size based on item dimensions (80px tiles + 5px gap)
+		# This prevents small items (Daggers) from "growing" when dragged from large slots (Weapon Slots)
+		var tile_size = 80
+		var tile_gap = 5
+		var width = item_data.inventory_width * tile_size + (item_data.inventory_width - 1) * tile_gap
+		var height = item_data.inventory_height * tile_size + (item_data.inventory_height - 1) * tile_gap
+		
+		preview_icon.size = Vector2(width, height)
+		preview_icon.modulate = Color(1, 1, 1, 0.7)
+		
+		# Offset so the item stays under the cursor exactly where grabbed
+		var preview_offset = - _at_position
+		
+		# Mobile offset (lift above finger)
+		if OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios"):
+			preview_offset.y -= 100
+			
+		preview_icon.position = preview_offset
+		preview.add_child(preview_icon)
+		set_drag_preview(preview)
+		
+	# 🔊 AUDIO: Play pickup sound
+	AudioManager.play("pickup", 0.1)
+
 	return {
 		"item_id": item_instance.item_id,
 		"uuid": item_instance.uuid,
@@ -79,16 +124,42 @@ func _can_drop_data(_at_position: Vector2, data) -> bool:
 	# Equipment slot validation
 	var dragged_item = ItemDatabase.get_item(data.item_id)
 	if dragged_item == null:
-		AudioManager.play("error", 0.0)
+		_play_error_sound_once(data.get("uuid", ""))
+		print("❌ [EquipmentSlot] Rejected: Item data not found for ID: ", data.item_id)
 		return false
 
 	# Only allow items that match this equipment slot
 	if dragged_item.equip_slot != equipment_filter:
-		AudioManager.play("error", 0.0)
+		_play_error_sound_once(data.get("uuid", ""))
+		print("❌ [EquipmentSlot] Rejected: Wrong slot type. Item: %s (Slot: %s) -> Target: %s" % [dragged_item.item_name, ItemData.EquipSlot.keys()[dragged_item.equip_slot], ItemData.EquipSlot.keys()[equipment_filter]])
 		return false
+
+	# Check class restrictions (Warrior can't use Bows, etc.)
+	if hero_id != "":
+		var hero_data = HeroDatabase.get_hero(hero_id)
+		if hero_data:
+			if not hero_data.is_item_compatible(dragged_item):
+				_play_error_sound_once(data.get("uuid", ""))
+				print("❌ [EquipmentSlot] Rejected: Class restriction. Hero: %s (%s) cannot equip %s (%s)" % [hero_data.hero_name, hero_data.get_class_name(), dragged_item.item_name, dragged_item.weapon_type if dragged_item.weapon_type else dragged_item.armor_type])
+				return false
+			else:
+				print("✅ [EquipmentSlot] Accepted: %s is compatible with %s" % [dragged_item.item_name, hero_data.hero_name])
 
 	modulate = Color(1.2, 1.2, 1.2)
 	return true
+
+
+## Rate-limited error sound (only plays once per drag operation)
+func _play_error_sound_once(uuid: String):
+	var current_time = Time.get_ticks_msec() / 1000.0
+
+	# Only play if:
+	# 1. Different item being dragged, OR
+	# 2. Enough time has passed since last error
+	if uuid != _last_rejection_uuid or (current_time - _last_rejection_time) > AUDIO_COOLDOWN:
+		AudioManager.play("error", 0.0)
+		_last_rejection_time = current_time
+		_last_rejection_uuid = uuid
 
 
 ## Godot drag-and-drop: Handle drop

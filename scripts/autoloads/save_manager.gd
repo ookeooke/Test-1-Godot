@@ -12,6 +12,13 @@ const SAVE_DIR = "user://saves/"
 const SAVE_EXTENSION = ".save"
 const AUTO_SAVE_INTERVAL = 5.0 # Auto-save every 5 seconds if dirty
 
+# Starter heroes configuration (data-driven, scalable to 100+ heroes)
+const STARTER_HEROES = [
+	{"id": "ranger", "starter_items": ["basic_bow", "leather_vest", "leather_cap", "power_ring"]},
+	{"id": "warrior", "starter_items": ["basic_sword"]},
+	{"id": "mage", "starter_items": ["basic_staff"]},
+]
+
 var current_profile: Dictionary = {}
 var current_profile_name: String = ""
 
@@ -120,21 +127,32 @@ func create_new_profile(profile_name: String) -> bool:
 			InventoryManager.add_item_instance("leather_vest", 0, {})
 			InventoryManager.add_item_instance("leather_cap", 0, {})
 			InventoryManager.add_item_instance("power_ring", 0, {})
-			print("[SaveManager] ✅ Added 4 starter items to shared stash: basic_bow, leather_vest, leather_cap, power_ring")
+			InventoryManager.add_item_instance("basic_sword", 0, {})
+			InventoryManager.add_item_instance("basic_staff", 0, {})
+			print("[SaveManager] ✅ Added 6 starter items to shared stash: bow, vest, cap, ring, sword, staff")
 
 		# Initialize empty hero inventories
 		if HeroInventoryManager:
 			HeroInventoryManager.load_from_dict({}) # Empty dict = no heroes registered yet
 			print("[SaveManager] Initialized HeroInventoryManager for new profile")
 
-			# Add 4 starter items to ranger's hero inventory
-			# This gives the ranger hero starting equipment for immediate gameplay
-			HeroInventoryManager.register_hero("ranger")
-			HeroInventoryManager.add_item_instance_to_hero("ranger", "basic_bow", 0)
-			HeroInventoryManager.add_item_instance_to_hero("ranger", "leather_vest", 0)
-			HeroInventoryManager.add_item_instance_to_hero("ranger", "leather_cap", 0)
-			HeroInventoryManager.add_item_instance_to_hero("ranger", "power_ring", 0)
-			print("[SaveManager] ✅ Added 4 starter items to ranger's hero inventory: basic_bow, leather_vest, leather_cap, power_ring")
+			# Register all starter heroes with their items (data-driven config)
+			for hero_config in STARTER_HEROES:
+				var hero_id = hero_config.id
+				HeroInventoryManager.register_hero(hero_id)
+
+				var item_names = []
+				for item_id in hero_config.starter_items:
+					HeroInventoryManager.add_item_instance_to_hero(hero_id, item_id, 0)
+					item_names.append(item_id)
+
+				print("[SaveManager] ✅ %s: Registered with %d starter items (%s)" % [
+					hero_id.capitalize(),
+					hero_config.starter_items.size(),
+					", ".join(item_names)
+				])
+
+			print("[SaveManager] ✅ All %d heroes registered and ready for item transfers" % STARTER_HEROES.size())
 
 		# Load empty equipment registry
 		if HeroEquipmentRegistry and new_profile.has("equipment_registry"):
@@ -293,6 +311,25 @@ func load_profile(profile_name: String) -> bool:
 					InventoryManager.add_item("basic_bow", 1)
 					print("[SaveManager] Migration: Added missing starter item (basic_bow)")
 					# Save the profile to persist the migration
+					save_current_profile()
+
+			# MIGRATION: Add new weapons (sword/staff) if missing
+			if InventoryManager:
+				var all_items = InventoryManager.get_all_items()
+				var has_sword = false
+				var has_staff = false
+				for item in all_items:
+					if item.item_id == "basic_sword": has_sword = true
+					if item.item_id == "basic_staff": has_staff = true
+				
+				if not has_sword:
+					InventoryManager.add_item("basic_sword", 1)
+					print("[SaveManager] Migration: Added missing item (basic_sword)")
+				if not has_staff:
+					InventoryManager.add_item("basic_staff", 1)
+					print("[SaveManager] Migration: Added missing item (basic_staff)")
+				
+				if not has_sword or not has_staff:
 					save_current_profile()
 
 			print("SaveManager: Profile loaded: ", profile_name)

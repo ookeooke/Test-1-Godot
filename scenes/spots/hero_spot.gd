@@ -14,6 +14,7 @@ var respawn_time_left = 0.0
 
 # Hero scene to spawn
 @export var hero_scene: PackedScene
+@export var squad_index: int = 0  ## Which hero from squad to spawn (0=first, 1=second, 2=third)
 
 # References
 @onready var sprite = $Sprite2D
@@ -41,16 +42,34 @@ func _ready():
 	# AUTO-SPAWN: Wait a moment for scene to fully load, then spawn hero
 	await get_tree().process_frame
 	await get_tree().process_frame
-	
-	if hero_scene != null:
-		auto_spawn_hero()
-	else:
-		print("WARNING: No hero scene assigned to ", name, "!")
+
+	auto_spawn_hero()  # Handles null internally now
 
 func auto_spawn_hero():
-	"""Automatically spawn hero at start"""
-	print("Auto-spawning hero at ", name)
-	spawn_hero(hero_scene)
+	"""Automatically spawn hero at start - uses SaveManager squad if available"""
+	print("Auto-spawning hero at ", name, " (squad_index: ", squad_index, ")")
+
+	# Check if there's a squad selection from SaveManager
+	var squad = SaveManager.get_current_squad()
+	if not squad.is_empty() and squad_index < squad.size():
+		var hero_id = squad[squad_index]
+		print("  Loading hero from squad: ", hero_id)
+
+		# Get hero data from HeroDatabase
+		var hero_data = HeroDatabase.get_hero(hero_id)
+		if hero_data and hero_data.hero_scene:
+			print("  ✓ Found hero scene for: ", hero_id)
+			spawn_hero(hero_data.hero_scene)
+			return
+		else:
+			print("  WARNING: Hero data or scene missing for: ", hero_id)
+
+	# FALLBACK: Use exported hero_scene (backward compatible)
+	if hero_scene != null:
+		print("  Fallback: Using exported hero_scene")
+		spawn_hero(hero_scene)
+	else:
+		print("  No hero to spawn at index ", squad_index)
 
 func _on_click_area_input_event(_viewport, event, _shape_idx):
 	"""Optional: Allow clicking to spawn hero manually"""
@@ -167,10 +186,9 @@ func respawn_hero():
 	print("Hero respawning at: ", name)
 	is_respawning = false
 	respawn_label.visible = false
-	
-	# Auto-spawn hero again
-	if hero_scene != null:
-		spawn_hero(hero_scene)
+
+	# Auto-spawn hero again using squad-aware logic
+	auto_spawn_hero()
 
 func get_spawn_position() -> Vector2:
 	return global_position

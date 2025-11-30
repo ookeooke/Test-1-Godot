@@ -6,6 +6,7 @@ class_name EquipmentView
 ## Extends BasePanelView for use in FlexiblePanel
 
 const DEBUG_INVENTORY = false # Set to true to enable verbose inventory logging
+const DEBUG_CENTERING = true # Set to true to visualize centering logic (Yellow Box = Slot, Green Box = Item)
 
 # Preload ItemSprite for overlay rendering (static grid + item overlay architecture)
 const ItemSpriteScript = preload("res://scripts/ui/item_sprite.gd")
@@ -114,7 +115,11 @@ func _ready():
 			
 	if wizard_button:
 		wizard_button.pressed.connect(_on_hero_button_pressed.bind("mage"))
-		# Mage might not have a portrait yet, keep text fallback
+		var mage_data = HeroDatabase.get_hero("mage")
+		if mage_data and mage_data.portrait:
+			wizard_button.text = ""
+			wizard_button.icon = mage_data.portrait
+			wizard_button.expand_icon = true
 
 
 	# Connect common chest toggle
@@ -172,6 +177,8 @@ func _create_equipment_slots():
 	hand_left_slot.hero_id = hero_id
 	hand_left_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hand_left_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	hand_left_slot.grid_width = HAND_GRID.x
+	hand_left_slot.grid_height = HAND_GRID.y
 	hand_left_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("hand_left"))
 	if hand_left_container:
 		hand_left_container.add_child(hand_left_slot)
@@ -184,6 +191,8 @@ func _create_equipment_slots():
 	hand_right_slot.hero_id = hero_id
 	hand_right_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hand_right_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	hand_right_slot.grid_width = HAND_GRID.x
+	hand_right_slot.grid_height = HAND_GRID.y
 	hand_right_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("hand_right"))
 	if hand_right_container:
 		hand_right_container.add_child(hand_right_slot)
@@ -196,6 +205,8 @@ func _create_equipment_slots():
 	helmet_slot.hero_id = hero_id
 	helmet_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	helmet_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	helmet_slot.grid_width = HELMET_GRID.x
+	helmet_slot.grid_height = HELMET_GRID.y
 	helmet_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("helmet"))
 	if helmet_container:
 		helmet_container.add_child(helmet_slot)
@@ -208,6 +219,8 @@ func _create_equipment_slots():
 	armor_slot.hero_id = hero_id
 	armor_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	armor_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	armor_slot.grid_width = ARMOR_GRID.x
+	armor_slot.grid_height = ARMOR_GRID.y
 	armor_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("armor"))
 	if armor_container:
 		armor_container.add_child(armor_slot)
@@ -220,6 +233,8 @@ func _create_equipment_slots():
 	accessory1_slot.hero_id = hero_id
 	accessory1_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	accessory1_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	accessory1_slot.grid_width = ACCESSORY_GRID.x
+	accessory1_slot.grid_height = ACCESSORY_GRID.y
 	accessory1_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("accessory_1"))
 	if accessory1_container:
 		accessory1_container.add_child(accessory1_slot)
@@ -232,6 +247,8 @@ func _create_equipment_slots():
 	accessory2_slot.hero_id = hero_id
 	accessory2_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	accessory2_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	accessory2_slot.grid_width = ACCESSORY_GRID.x
+	accessory2_slot.grid_height = ACCESSORY_GRID.y
 	accessory2_slot.item_right_clicked.connect(_on_equipment_slot_right_clicked.bind("accessory_2"))
 	if accessory2_container:
 		accessory2_container.add_child(accessory2_slot)
@@ -249,6 +266,16 @@ func _setup_equipment_manager():
 
 	# Load and display current equipment
 	_refresh_equipment()
+
+	# CRITICAL FIX: Update hero_id on all slots so drops go to the correct hero
+	if hand_left_slot: hand_left_slot.hero_id = hero_id
+	if hand_right_slot: hand_right_slot.hero_id = hero_id
+	if helmet_slot: helmet_slot.hero_id = hero_id
+	if armor_slot: armor_slot.hero_id = hero_id
+	if accessory1_slot: accessory1_slot.hero_id = hero_id
+	if accessory2_slot: accessory2_slot.hero_id = hero_id
+	
+	print("[EquipmentView] Switched to hero: %s (Slots updated)" % hero_id)
 
 
 func _refresh_equipment():
@@ -282,6 +309,31 @@ func _refresh_equipment():
 				item_sprite.hero_id = hero_id
 				item_sprite.container_id = hero_id # Equipment uses hero_id as container
 				item_sprite.set_item(content, true) # skip_animation=true
+				item_sprite.set_item(content, true) # skip_animation=true
+
+				# 🔧 SMART CENTERING: Calculate offset based on slot vs item size
+				# This allows small items (Daggers) to be centered in large slots (Weapon Slots)
+				if "grid_width" in slot and "grid_height" in slot:
+					var slot_grid_size = Vector2i(slot.grid_width, slot.grid_height)
+					var slot_pixel_size = _calculate_tile_size(slot_grid_size)
+					
+					var item_data = content.get_data()
+					var item_grid_size = Vector2i(item_data.inventory_width, item_data.inventory_height)
+					var item_pixel_size = _calculate_tile_size(item_grid_size)
+					
+					# Calculate center offset
+					var offset = (slot_pixel_size - item_pixel_size) / 2.0
+					item_sprite.centering_offset = offset
+
+					if DEBUG_CENTERING:
+						print("[Centering] Slot: %s (%dx%d) | Item: %s (%dx%d) | Offset: %s" % [
+							slot_name, slot_pixel_size.x, slot_pixel_size.y,
+							item_data.item_name, item_pixel_size.x, item_pixel_size.y,
+							offset
+						])
+						# Pass slot size to sprite for debug drawing
+						item_sprite.debug_slot_size = slot_pixel_size
+
 				item_sprite.set_grid_position(0, 0) # Equipment items start at (0,0)
 
 				# Connect signals for click interactions

@@ -66,7 +66,7 @@ tooltip_text = "Show shared stash for item storage and transfers (C)"
 text = "📦 Common Chest"
 
 [node name="EquipmentPaperDoll" type="Control" parent="MarginContainer/VBoxContainer"]
-custom_minimum_size = Vector2(400, 600)
+custom_minimum_size = Vector2(400, 700)
 layout_mode = 2
 size_flags_vertical = 3
 

@@ -40,6 +40,8 @@ const MIN_LEVEL: int = 1
 ## Structure: {hero_instance: {xp: int, level: int}}
 var _hero_progress: Dictionary = {}
 
+const DEBUG_HERO_PROGRESSION = true # Toggle detailed logging for hero progression
+
 
 ## Initialize tracking for a hero when they spawn
 func register_hero(hero: Node) -> void:
@@ -50,7 +52,7 @@ func register_hero(hero: Node) -> void:
 	_hero_progress[hero] = {
 		"xp": 0,
 		"level": MIN_LEVEL,
-		"total_xp_earned": 0  # For statistics
+		"total_xp_earned": 0 # For statistics
 	}
 
 	# Set initial level on hero if it has the property
@@ -115,7 +117,8 @@ func _level_up_hero(hero: Node) -> void:
 	_check_ability_unlocks(hero, new_level)
 
 	# Debug output
-	print("[HeroProgressionManager] %s leveled up to %d!" % [hero.name, new_level])
+	if DEBUG_HERO_PROGRESSION:
+		print("🆙 [HeroProgression] %s leveled up to %d!" % [hero.name, new_level])
 
 
 ## Check if hero should unlock abilities at this level
@@ -127,14 +130,15 @@ func _check_ability_unlocks(hero: Node, level: int) -> void:
 	elif "hero_data" in hero and hero.hero_data != null:
 		available_skills = hero.hero_data.available_skills
 	else:
-		return  # No skills to unlock
+		return # No skills to unlock
 
 	# Find skills that unlock at this level
 	var unlocked_skill_ids = []
 	for skill_data in available_skills:
 		if skill_data.required_hero_level == level:
 			unlocked_skill_ids.append(skill_data.skill_id)
-			print("[HeroProgressionManager] Unlocked skill: %s at level %d" % [skill_data.skill_name, level])
+			if DEBUG_HERO_PROGRESSION:
+				print("✨ [HeroProgression] Unlocked skill: %s for %s at level %d" % [skill_data.skill_name, hero.name, level])
 
 	if unlocked_skill_ids.size() > 0:
 		abilities_unlocked.emit(hero, unlocked_skill_ids)
@@ -177,7 +181,7 @@ func get_xp_to_next_level(hero: Node) -> int:
 
 	var current_level = _hero_progress[hero].level
 	if current_level >= MAX_LEVEL:
-		return 0  # Already max level
+		return 0 # Already max level
 
 	return get_xp_required(current_level + 1)
 
@@ -239,7 +243,7 @@ func get_recommended_xp_for_tier(tier: String) -> int:
 		"boss", "champion":
 			return 500
 		_:
-			return 10  # Default for unknown
+			return 10 # Default for unknown
 
 
 ## Calculate XP for wave completion bonus

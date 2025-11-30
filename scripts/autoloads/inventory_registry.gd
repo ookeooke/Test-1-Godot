@@ -31,3 +31,10 @@ func has_container(id: String) -> bool:
 ## Get all registered IDs
 func get_all_ids() -> Array:
 	return _containers.keys()
+
+## Get all registered container IDs (typed version for scalability)
+func get_all_container_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for id in _containers.keys():
+		ids.append(id)
+	return ids

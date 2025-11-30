@@ -87,18 +87,9 @@ func _ready():
 	if title_label:
 		title_label.text = "Gear & Equipment"
 
-	# Add Hero Selector (OptionButton) to Header
-	var header_hbox = get_node_or_null(_main_container_path + "/HeaderBar/MarginContainer/HBox")
-	if header_hbox:
-		var hero_selector = OptionButton.new()
-		hero_selector.name = "HeroSelector"
-		hero_selector.custom_minimum_size = Vector2(200, 40)
-		hero_selector.item_selected.connect(_on_hero_selector_item_selected)
-		header_hbox.add_child(hero_selector)
-		# Move to be after title (index 2 usually: Close, Back, Title, Selector)
-		header_hbox.move_child(hero_selector, 3)
-		
-		_update_hero_selector(hero_selector)
+	# Add Hero Selector (OptionButton) to Header - REMOVED (Redundant with EquipmentView buttons)
+	# The buttons in EquipmentView (left panel) are the primary way to switch heroes.
+	# The dropdown here was causing visual issues (giant portrait) and is not needed.
 		
 	# Detect if we're in standalone mode (has back button) or overlay mode (has close button only)
 	if back_button:
@@ -450,48 +441,4 @@ func connect_to_wave_manager(wave_manager: Node):
 
 	print("[DualPanelScreen] Connected to WaveManager")
 
-func _update_hero_selector(selector: OptionButton):
-	"""Populate hero selector with unlocked heroes"""
-	selector.clear()
-	
-	var unlocked_heroes = SaveManager.get_unlocked_heroes()
-	if unlocked_heroes.is_empty():
-		# Fallback if something is wrong
-		unlocked_heroes = ["ranger"]
-		
-	var current_index = 0
-	for i in range(unlocked_heroes.size()):
-		var h_id = unlocked_heroes[i]
-		var h_name = h_id.capitalize()
-		
-		# Try to get nice name from database
-		var hero_data = HeroDatabase.get_hero(h_id)
-		if hero_data:
-			h_name = hero_data.hero_name
-			if hero_data.portrait:
-				selector.add_icon_item(hero_data.portrait, h_name, i)
-			else:
-				selector.add_item(h_name, i)
-		else:
-			selector.add_item(h_name, i)
-			
-		# Store ID in metadata
-		selector.set_item_metadata(i, h_id)
-		
-		if h_id == hero_id:
-			current_index = i
-			
-	selector.select(current_index)
-
-func _on_hero_selector_item_selected(index: int):
-	"""Handle hero selection from dropdown"""
-	var selector = get_node_or_null(_main_container_path + "/HeaderBar/MarginContainer/HBox/HeroSelector")
-	if not selector: return
-	
-	var new_hero_id = selector.get_item_metadata(index)
-	print("[DualPanelScreen] Hero Selector changed: %s -> %s" % [hero_id, new_hero_id])
-	
-	if new_hero_id and new_hero_id != hero_id:
-		print("[DualPanelScreen] Switching to hero: ", new_hero_id)
-		set_hero_id(new_hero_id)
-		refresh_all_views()
+	print("[DualPanelScreen] Connected to WaveManager")

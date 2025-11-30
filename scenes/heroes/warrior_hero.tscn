@@ -1,9 +1,10 @@
 [gd_scene load_steps=10 format=3 uid="uid://ct1jtu2rrn3rg"]
 
-[ext_resource type="Script" path="res://scenes/heroes/warrior_hero.gd" id="1_warrior"]
+[ext_resource type="Script" uid="uid://bi3i01ueb1osv" path="res://scenes/heroes/warrior_hero.gd" id="1_warrior"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="3_healthbar"]
 [ext_resource type="PackedScene" uid="uid://dxpbar123" path="res://scenes/ui/xp_bar.tscn" id="3_xpbar"]
-[ext_resource type="Texture2D" path="res://assets/sprites/heroes/warrior/warrior1.png" id="5_warrior_sprite"]
+[ext_resource type="Texture2D" uid="uid://by67hjpol15ip" path="res://assets/sprites/heroes/warrior/warrior_icon.png" id="5_warrior_sprite"]
+[ext_resource type="SpriteFrames" path="res://scenes/heroes/warrior_animations.tres" id="6_frames"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]
 radius = 25.0
@@ -49,6 +50,12 @@ theme_override_font_sizes/font_size = 10
 text = "WARRIOR"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="AnimatedSprite" type="AnimatedSprite2D" parent="."]
+scale = Vector2(0.04, 0.04)
+sprite_frames = ExtResource("6_frames")
+animation = &"attack"
+autoplay = "idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_df4ti")

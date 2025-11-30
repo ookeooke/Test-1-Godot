@@ -5,7 +5,7 @@ extends Node
 ## Acts as the "Controller" in the MVC pattern.
 
 # Debug mode
-const DEBUG_TRANSACTIONS = false # Enable verbose transaction logging
+const DEBUG_TRANSACTIONS = true # Enable verbose transaction logging
 
 ## Move an item from one container to another
 ## Returns true if successful
@@ -21,20 +21,34 @@ func move_item(uuid: String, source_id: String, target_id: String, target_x: int
 	var target = InventoryRegistry.get_container(target_id)
 
 	if not source:
-		if DEBUG_TRANSACTIONS:
-			print("  ❌ FAILED: Source container not found: '%s'" % source_id)
-			print("  Available containers: %s" % InventoryRegistry._containers.keys())
-			print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-		push_error("Invalid source container ID: %s" % source_id)
-		return false
+		# Safety net: Try to auto-register hero if it's a valid hero_id
+		if source_id in ["ranger", "warrior", "mage"]:
+			print("[ItemTransactionService] ⚠️ Source container missing - auto-registering hero: %s" % source_id)
+			HeroInventoryManager.register_hero(source_id)
+			source = InventoryRegistry.get_container(source_id)
+
+		if not source:  # Still null after registration attempt
+			if DEBUG_TRANSACTIONS:
+				print("  ❌ FAILED: Source container not found: '%s'" % source_id)
+				print("  Available containers: %s" % InventoryRegistry._containers.keys())
+				print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			push_error("Invalid source container ID: %s" % source_id)
+			return false
 
 	if not target:
-		if DEBUG_TRANSACTIONS:
-			print("  ❌ FAILED: Target container not found: '%s'" % target_id)
-			print("  Available containers: %s" % InventoryRegistry._containers.keys())
-			print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-		push_error("Invalid target container ID: %s" % target_id)
-		return false
+		# Safety net: Try to auto-register hero if it's a valid hero_id
+		if target_id in ["ranger", "warrior", "mage"]:
+			print("[ItemTransactionService] ⚠️ Target container missing - auto-registering hero: %s" % target_id)
+			HeroInventoryManager.register_hero(target_id)
+			target = InventoryRegistry.get_container(target_id)
+
+		if not target:  # Still null after registration attempt
+			if DEBUG_TRANSACTIONS:
+				print("  ❌ FAILED: Target container not found: '%s'" % target_id)
+				print("  Available containers: %s" % InventoryRegistry._containers.keys())
+				print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			push_error("Invalid target container ID: %s" % target_id)
+			return false
 
 	# 1. Get the item (Optimistic Transaction: Remove first)
 	# 🔧 FIX: Capture original position BEFORE removing (for rollback)
@@ -110,13 +124,13 @@ func move_item(uuid: String, source_id: String, target_id: String, target_x: int
 				target._place_on_grid(item, nudged_pos.x, nudged_pos.y)
 				target.item_added.emit(item.uuid, item.item_id)
 				target.content_changed.emit()
-				success = true  # ✅ Nudge succeeded
+				success = true # ✅ Nudge succeeded
 			else:
 				# 🔄 ATOMIC SWAP: Try to swap with blocking item (if exactly 1 blocking)
 				# Item was removed from source at line 40, so we can't get its old position
 				# But try_atomic_swap doesn't need it (parameter kept for future use)
 				if try_atomic_swap(item, source, target, target_x, target_y, Vector2i(-1, -1)):
-					success = true  # ✅ Swap succeeded
+					success = true # ✅ Swap succeeded
 				# If swap also failed, fall through to rollback
 	else:
 		# Auto-place
@@ -168,18 +182,31 @@ func move_item(uuid: String, source_id: String, target_id: String, target_x: int
 
 ## Equip an item from ANY container to a Hero
 func equip_item(hero_id: String, uuid: String, slot_name: String) -> bool:
-	# Determine source container (could be stash or hero inventory)
-	# We search hero inventory first, then stash
+	# Determine source container (could be stash or any hero inventory)
+	# Search priority: 1) target hero, 2) stash, 3) other heroes
 	var source_id = hero_id # Default to hero's own inventory
 	var source = InventoryRegistry.get_container(source_id)
-	
+
 	if not source or not source.has_item(uuid):
 		# Try stash
 		source_id = "stash"
 		source = InventoryRegistry.get_container(source_id)
-		
+
 	if not source or not source.has_item(uuid):
-		push_error("Cannot equip: Item not found in hero inventory or stash")
+		# Try ALL registered containers (dynamic discovery - scales to 100+ heroes)
+		for container_id in InventoryRegistry.get_all_container_ids():
+			# Skip already checked containers
+			if container_id == hero_id or container_id == "stash":
+				continue
+
+			var potential_source = InventoryRegistry.get_container(container_id)
+			if potential_source and potential_source.has_item(uuid):
+				source_id = container_id
+				source = potential_source
+				break
+
+	if not source or not source.has_item(uuid):
+		push_error("Cannot equip: Item not found in any hero inventory or stash")
 		return false
 	
 	# 1. Remove from source
@@ -266,12 +293,12 @@ func try_atomic_swap(item_a: ItemInstance, source: InventoryContainer, target: I
 	if blocking_uuids.size() == 0:
 		if DEBUG_TRANSACTIONS:
 			print("  ❌ No blocking items (placement failed for other reasons)")
-		return false  # Failed for other reasons (bounds, etc.)
+		return false # Failed for other reasons (bounds, etc.)
 
 	if blocking_uuids.size() > 1:
 		if DEBUG_TRANSACTIONS:
 			print("  ❌ Too complex: %d items blocking (swap requires exactly 1)" % blocking_uuids.size())
-		return false  # Too complex (e.g., 2x2 armor on 4 rings)
+		return false # Too complex (e.g., 2x2 armor on 4 rings)
 
 	# 3. Get the single blocking item (Item B)
 	var item_b_uuid = blocking_uuids[0]

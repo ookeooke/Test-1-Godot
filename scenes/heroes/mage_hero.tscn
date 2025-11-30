@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/projectiles/arrow.tscn" id="2_projectile"]
 [ext_resource type="PackedScene" path="res://scenes/ui/health_bar.tscn" id="3_healthbar"]
 [ext_resource type="PackedScene" path="res://scenes/ui/xp_bar.tscn" id="3_xpbar"]
-[ext_resource type="Texture2D" path="res://assets/sprites/heroes/mage_sprite.png" id="5_mage_sprite"]
+[ext_resource type="Texture2D" path="res://assets/sprites/heroes/mage/Mage icon.png" id="5_mage_sprite"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]
 radius = 20.0

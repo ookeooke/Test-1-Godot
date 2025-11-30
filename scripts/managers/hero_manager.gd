@@ -5,11 +5,13 @@ extends Node2D
 # ============================================
 
 @export var ranger_hero_scene: PackedScene
-@export var debug_input = false  # Print all input events
+@export var debug_input = false # Print all input events
 
 var current_hero = null
 var spawned_heroes = []
-var hero_button = null  # Reference to the UI hero button
+var hero_button = null # Reference to the UI hero button
+
+signal hero_selected(hero)
 
 func _ready():
 	# Wait for scene to fully load
@@ -68,6 +70,8 @@ func _on_hero_selected(hero):
 	# Update button visual state
 	if hero_button:
 		hero_button.set_selected(true)
+		
+	hero_selected.emit(hero)
 
 
 func _unhandled_input(event):
@@ -132,10 +136,10 @@ func _unhandled_input(event):
 				var space_state = get_viewport().get_world_2d().direct_space_state
 				var query = PhysicsPointQueryParameters2D.new()
 				query.position = click_world_pos
-				query.collide_with_areas = true  # Check Area2D (towers, heroes, items)
-				query.collide_with_bodies = false  # Don't check bodies (we only want Area2D)
+				query.collide_with_areas = true # Check Area2D (towers, heroes, items)
+				query.collide_with_bodies = false # Don't check bodies (we only want Area2D)
 
-				var results = space_state.intersect_point(query, 5)  # Check up to 5 objects
+				var results = space_state.intersect_point(query, 5) # Check up to 5 objects
 
 				# Check if clicking on tower/hero/item
 				var clicking_interactive_object = false
@@ -152,7 +156,7 @@ func _unhandled_input(event):
 				if clicking_interactive_object:
 					if debug_input:
 						print("[HeroManager DEBUG] Interactive object detected - not moving hero")
-					return  # Exit without consuming input - let Area2D (Stage 4) process it
+					return # Exit without consuming input - let Area2D (Stage 4) process it
 
 				# Clicking empty space - move hero
 				if debug_input:

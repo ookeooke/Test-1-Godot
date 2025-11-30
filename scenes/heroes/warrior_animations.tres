@@ -1,0 +1,44 @@
+[gd_resource type="SpriteFrames" load_steps=7 format=3 uid="uid://byyq4yl6we3ot"]
+
+[ext_resource type="Texture2D" uid="uid://dlvyirprm2omg" path="res://assets/sprites/heroes/warrior/warrior_idle.png" id="1_idle"]
+[ext_resource type="Texture2D" uid="uid://c5grr5pgf8gal" path="res://assets/sprites/heroes/warrior/warrior_walking.png" id="2_walk"]
+[ext_resource type="Texture2D" uid="uid://rto24tpi4dgo" path="res://assets/sprites/heroes/warrior/warrior_attack.png" id="3_attack"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_q0u3n"]
+atlas = ExtResource("3_attack")
+region = Rect2(0, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6kuyp"]
+atlas = ExtResource("1_idle")
+region = Rect2(0, 0, 1024, 1536)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_2kj6b"]
+atlas = ExtResource("2_walk")
+region = Rect2(0, 0, 1024, 1536)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_q0u3n")
+}],
+"loop": false,
+"name": &"attack",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6kuyp")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2kj6b")
+}],
+"loop": true,
+"name": &"run",
+"speed": 10.0
+}]

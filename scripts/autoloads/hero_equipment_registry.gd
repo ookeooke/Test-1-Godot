@@ -34,6 +34,8 @@ var _dirty_heroes: Dictionary = {}
 # DEFERRED REFRESH CONTROL
 var _refresh_scheduled: bool = false
 
+const DEBUG_HERO_EQUIPMENT = true # Toggle detailed logging for hero equipment
+
 ## ============================================
 ## INITIALIZATION
 ## ============================================
@@ -156,6 +158,10 @@ func equip_item_in_transaction(slot: String, item) -> bool:
 	
 	_equipment_registry[hero_id]["equipped_items"][slot] = item
 	
+	if DEBUG_HERO_EQUIPMENT:
+		var item_name = item.get_data().item_name if item is ItemInstance else ("Empty" if item == null else "Blocked")
+		print("🛡️ [HeroEquipment] Staged change for '%s': Slot '%s' → %s" % [hero_id, slot, item_name])
+
 	_transaction_mutex.unlock()
 	return true
 
@@ -178,6 +184,9 @@ func commit_transaction() -> bool:
 
 	# 🔧 FIX CRITICAL: Mark save data as dirty so auto-save persists equipment changes
 	SaveManager.mark_dirty()
+
+	if DEBUG_HERO_EQUIPMENT:
+		print("✅ [HeroEquipment] Committed transaction for '%s' (%s)" % [hero_id, transaction_type])
 
 	equipment_transaction_completed.emit(hero_id, transaction_type, details)
 	_schedule_batch_refresh()

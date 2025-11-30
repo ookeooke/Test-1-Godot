@@ -12,6 +12,8 @@ signal hero_inventory_full(hero_id: String, item_id: String)
 # Storage: hero_id -> InventoryContainer
 var _hero_containers: Dictionary = {}
 
+const DEBUG_HERO_INTERACTIONS = true # Toggle detailed logging for hero items
+
 func _ready():
 	print("[HeroInventoryManager] Initialized (Unified Architecture)")
 
@@ -65,9 +67,13 @@ func add_item_instance_to_hero(hero_id: String, item_id: String, upgrade_level: 
 
 	if container.add_item(item):
 		SaveManager.mark_dirty()
+		if DEBUG_HERO_INTERACTIONS:
+			print("➕ [HeroInventory] Added item '%s' to hero '%s' (UUID: %s)" % [item_id, hero_id, item.uuid])
 		return item.uuid
 	else:
 		hero_inventory_full.emit(hero_id, item_id)
+		if DEBUG_HERO_INTERACTIONS:
+			print("❌ [HeroInventory] Failed to add '%s' to hero '%s' (Inventory Full)" % [item_id, hero_id])
 		return ""
 
 func remove_item_instance_from_hero(hero_id: String, uuid: String) -> bool:
@@ -77,6 +83,8 @@ func remove_item_instance_from_hero(hero_id: String, uuid: String) -> bool:
 	var item = container.remove_item(uuid)
 	if item:
 		SaveManager.mark_dirty()
+		if DEBUG_HERO_INTERACTIONS:
+			print("➖ [HeroInventory] Removed item '%s' from hero '%s' (UUID: %s)" % [item.item_id, hero_id, uuid])
 		return true
 	return false
 

@@ -15,7 +15,7 @@ func _ready():
 	# Warrior Stats: High Health, High Melee Damage, Low Range
 	BASE_MAX_HEALTH = 500.0
 	BASE_RANGED_DAMAGE = 0.0
-	BASE_MELEE_DAMAGE = 25.0
+	BASE_MELEE_DAMAGE = 0.0
 	BASE_RANGED_RANGE = 0.0 # Pure melee
 	BASE_RANGED_ATTACK_SPEED = 1.0
 	BASE_MOVEMENT_SPEED = 140.0 # Slightly slower
@@ -27,6 +27,89 @@ func _ready():
 	
 	# Warrior can block more enemies
 	block_capacity = 3
+	
+	# Setup Animations
+	_setup_animations()
+
+# ============================================
+# ANIMATION SYSTEM (AnimatedSprite2D)
+# ============================================
+
+var animated_sprite: AnimatedSprite2D
+const TEXTURE_IDLE = preload("res://assets/sprites/heroes/warrior/warrior_idle.png")
+const TEXTURE_WALK = preload("res://assets/sprites/heroes/warrior/warrior_walking.png")
+const TEXTURE_ATTACK = preload("res://assets/sprites/heroes/warrior/warrior_attack.png")
+const FRAME_COUNT = 6 # Assumed frame count
+
+func _setup_animations():
+	# 1. Hide original static sprite
+	if sprite:
+		sprite.visible = false
+	
+	# 2. Get existing AnimatedSprite from scene
+	if has_node("AnimatedSprite"):
+		animated_sprite = $AnimatedSprite
+	
+	# 3. Connect signal for attack -> idle transition (Goblin logic)
+	if animated_sprite and not animated_sprite.animation_finished.is_connected(_on_animation_finished):
+		animated_sprite.animation_finished.connect(_on_animation_finished)
+		
+	_play_animation("idle")
+
+# ============================================
+# ANIMATION LOGIC (Goblin-Style Event Driven)
+# ============================================
+
+func _play_animation(anim_name: String):
+	if not animated_sprite: return
+	
+	# Don't interrupt attack or death (unless it's a forced state change)
+	if animated_sprite.animation == "attack" and animated_sprite.is_playing() and anim_name != "attack":
+		return
+		
+	if animated_sprite.sprite_frames.has_animation(anim_name):
+		animated_sprite.play(anim_name)
+
+func _on_animation_finished():
+	# Return to idle/walk after attack finishes
+	if animated_sprite.animation == "attack":
+		if current_state == State.WALKING or current_state == State.RETURNING:
+			_play_animation("run")
+		else:
+			_play_animation("idle")
+
+# ============================================
+# STATE OVERRIDES (Hooking into BaseHero)
+# ============================================
+
+func enter_idle_state():
+	super.enter_idle_state()
+	_play_animation("idle")
+
+func enter_melee_combat():
+	super.enter_melee_combat()
+	_play_animation("attack")
+
+func enter_returning_state():
+	super.enter_returning_state()
+	_play_animation("run")
+
+func set_target_position(pos: Vector2):
+	super.set_target_position(pos)
+	_play_animation("run")
+
+func perform_melee_attack(target):
+	# Call base to deal damage
+	super.perform_melee_attack(target)
+	# Play animation for every swing
+	_play_animation("attack")
+
+func _physics_process(delta):
+	super._physics_process(delta)
+	# Handle flipping (direction) - kept separate as it's physics-related
+	if animated_sprite and sprite:
+		# Assets face LEFT, so we invert the flip logic
+		animated_sprite.flip_h = not sprite.flip_h
 
 func _generate_unique_hero_id() -> String:
 	return "warrior"

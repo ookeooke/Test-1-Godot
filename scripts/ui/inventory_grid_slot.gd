@@ -92,6 +92,36 @@ func _handle_sprite_drop(data: Dictionary):
 	# 3. Execute Move
 	var target_x_pos = grid_x
 	var target_y_pos = grid_y
+
+	# 🔧 FIX: Apply Anchor Point Correction (Prevent "The Jump")
+	# If we grabbed the item by (1,1), and dropped on (5,5),
+	# the item's top-left origin should be (5-1, 5-1) = (4,4).
+	if data.has("grab_offset_x") and data.has("grab_offset_y"):
+		target_x_pos -= data.grab_offset_x
+		target_y_pos -= data.grab_offset_y
+
+	# 🔧 FIX: Smart Edge Clamping (Match Visual Highlight)
+	# Ensure the item fits within the grid, just like the visual highlight does.
+	# This creates the "Magnet" effect for edge drops.
+	var item_data = ItemDatabase.get_item(data.item_id)
+	var grid_container = _find_parent_grid_container()
+	
+	if item_data and grid_container:
+		var item_w = item_data.inventory_width
+		var item_h = item_data.inventory_height
+		
+		# Get grid dimensions (handle dynamic vs fixed size)
+		var grid_size = grid_container.get_grid_size()
+		var max_rows = grid_size.y if grid_size.y > 0 else grid_container.rows
+		var max_cols = grid_container.columns
+		
+		# Clamp to valid range (0 to Max - ItemSize)
+		# Example: 8 cols, 2-wide item. Max valid X = 8 - 2 = 6.
+		var max_valid_x = max(0, max_cols - item_w)
+		var max_valid_y = max(0, max_rows - item_h)
+		
+		target_x_pos = clamp(target_x_pos, 0, max_valid_x)
+		target_y_pos = clamp(target_y_pos, 0, max_valid_y)
 	
 	# If data has specific target coordinates (e.g. from gap drop), use them
 	if data.has("target_grid_x") and data.has("target_grid_y"):

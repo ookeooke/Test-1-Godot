@@ -502,6 +502,12 @@ Simple tower defense game doesn't need event bus complexity. Enemy dies → `cam
 - **Mobile-first**: Touch targets, tap-to-equip, long-press menus
 - **Simplicity**: No complex tabs, minimal UI, streamlined interactions
 
+### Hero & Equipment Balance Philosophy
+- **Zero Base Damage**: Heroes MUST have 0 base damage. They are blank slates.
+- **Gear-Based Scaling**: 100% of a hero's power comes from items.
+- **Starter Power**: Starter weapons (sword, staff, bow) must match **Level 1-2 Tower** power (~10-12 Damage).
+- **Loot Incentive**: Because heroes start weak, finding new items feels impactful.
+
 ### Key Components
 
 #### DualPanelScreen (`scenes/ui/dual_panel_screen.tscn`)
@@ -589,6 +595,35 @@ Simple tower defense game doesn't need event bus complexity. Enemy dies → `cam
 - Rollback safety if sort fails
 - Audio feedback on success/failure
 - File: `inventory_container.gd:429-502`
+
+### Debug Flags (All default to `false`)
+- `DEBUG_INVENTORY` - Verbose logging for inventory actions
+- `DEBUG_TRANSACTIONS` - Detailed transaction logs (ItemTransactionService)
+- `DEBUG_DRAG_DROP` - Visual debug markers (Red Dot/Blue Box) for drag operations
+
+### Professional Drag & Drop Standards (Diablo 2 / PoE Style)
+
+#### 1. Cell-Snapped Dragging
+- **Behavior**: When dragging, the item preview snaps so the cursor is at the **Center of the Grabbed Cell**.
+- **Why**: Allows precise "point-and-shoot" aiming at slots.
+- **Visuals**: Debug mode shows Red Dot (Cursor) aligned with Green Cross (Cell Center).
+- **Implementation**: `ItemSprite._get_drag_data` calculates `snap_offset`.
+
+#### 2. Anchor Point Correction ("The Jump Fix")
+- **Problem**: Dropping a large item (e.g., 2x3 Bow) by the bottom handle causes it to "jump" down if using cursor position as origin.
+- **Solution**: `Target Origin = Cursor Slot - Grab Offset`.
+- **Implementation**: `InventoryGridSlot` subtracts `grab_offset` from drop coordinates.
+- **Result**: Item stays exactly where visually placed.
+
+#### 3. No Absolute Centering
+- **Rule**: NEVER implement "Hold by Center" for even-sized items (2x2).
+- **Reason**: Causes grid misalignment (the "Drift" problem). Always snap to a specific cell.
+
+#### 4. Smart Edge Clamping ("The Magnet")
+- **Problem**: Dragging an item partially off-screen (e.g., x=-1) causes drop failure, even if visual highlight snaps to edge.
+- **Solution**: `Target = clamp(Target, 0, MaxValid)`.
+- **Implementation**: `InventoryGridSlot` clamps the calculated target to valid grid bounds.
+- **Result**: "Magnetic" feel at edges - if the green box is visible, the drop works.
 
 ### Debug Flags (All default to `false`)
 

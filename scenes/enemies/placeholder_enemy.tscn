@@ -7,7 +7,7 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_placeholder"]
 radius = 20.0
 
-[node name="PlaceholderEnemy" type="CharacterBody2D" groups=["enemy"]]
+[node name="PlaceholderEnemy" type="CharacterBody2D" groups=["enemies", "enemy"]]
 collision_mask = 0
 script = ExtResource("1_script")
 

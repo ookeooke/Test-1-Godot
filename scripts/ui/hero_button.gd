@@ -115,7 +115,7 @@ func set_hero(hero):
 		_update_hero_info()
 
 	# Setup ability buttons
-		_setup_active_ability_button()
+	# _setup_active_ability_button() # MOVED TO SKILL BAR
 
 		# Set hero for stats popup
 		if stats_popup:
@@ -256,15 +256,14 @@ func _on_hero_health_changed(current_health, max_health):
 ## ============================================
 
 func _setup_active_ability_button():
-	"""Configure the single active ability button"""
-	var active_btn = $ActiveAbilityButton
-	if not active_btn:
-		return
+	"""Configure ability buttons for all active skills"""
+	# Clear existing buttons
+	for child in abilities_container.get_children():
+		child.queue_free()
 	
-	# Move button above the hero portrait
-	active_btn.position = Vector2(15, -95)
-		
-	# active_btn.visible = false # Hide by default until we find a skill
+	# Also hide/remove the old static button if it exists
+	if has_node("ActiveAbilityButton"):
+		$ActiveAbilityButton.visible = false
 	
 	if not hero_reference or not is_instance_valid(hero_reference):
 		return
@@ -281,7 +280,14 @@ func _setup_active_ability_button():
 	if owned_skills.is_empty():
 		return
 
-	# Find the FIRST active skill
+	# Load ability button scene
+	var ability_btn_scene = load("res://scenes/ui/ability_button.tscn")
+	if not ability_btn_scene:
+		print("⚠️ HeroButton: Could not load ability_button.tscn")
+		return
+
+	# Find ALL active skills
+	var hotkey_index = 1
 	for skill_id in owned_skills.keys():
 		var skill_data = skill_manager.get_skill_data(skill_id)
 
@@ -290,8 +296,13 @@ func _setup_active_ability_button():
 
 		# Only care about ACTIVE skills
 		if skill_data.skill_type == HeroSkillData.SkillType.ACTIVE:
-			# Found one! Setup the button
-			active_btn.visible = true
-			active_btn.setup(skill_id, skill_manager, skill_data, "1")
-			print("🎮 HeroButton: Bound active skill button to: ", skill_id)
-			return # Stop after finding the first one
+			# Instantiate button
+			var btn = ability_btn_scene.instantiate()
+			abilities_container.add_child(btn)
+			
+			# Setup button
+			var hotkey = str(hotkey_index)
+			btn.setup(skill_id, skill_manager, skill_data, hotkey)
+			print("🎮 HeroButton: Bound active skill button to: ", skill_id, " (Hotkey: ", hotkey, ")")
+			
+			hotkey_index += 1

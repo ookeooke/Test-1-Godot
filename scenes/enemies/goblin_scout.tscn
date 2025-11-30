@@ -109,7 +109,7 @@ animations = [{
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_af0go"]
 radius = 15.0
 
-[node name="GoblinScout" type="CharacterBody2D" groups=["enemy"]]
+[node name="GoblinScout" type="CharacterBody2D" groups=["enemies", "enemy"]]
 collision_mask = 0
 script = ExtResource("1_gndxd")
 

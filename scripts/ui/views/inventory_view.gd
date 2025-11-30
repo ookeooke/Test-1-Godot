@@ -111,6 +111,13 @@ func on_view_shown():
 	refresh_view()
 
 
+func on_view_hidden():
+	super.on_view_hidden()
+	# Hide tooltip when view is closed
+	if tooltip_panel:
+		tooltip_panel.visible = false
+
+
 func refresh_view():
 	super.refresh_view()
 	_refresh_inventory()

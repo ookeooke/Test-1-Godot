@@ -55,13 +55,15 @@ func _on_start_pressed():
 	# 1. Profile already created in ProfileCreation screen
 	print("[HeroSelectionScreen] Using current profile: ", SaveManager.get_current_profile_name())
 	
-	# 2. Unlock Selected Hero
-	print("[HeroSelectionScreen] Unlocking hero: ", selected_hero_id)
-	SaveManager.unlock_hero(selected_hero_id)
+	# 2. Unlock All Starter Heroes (for testing)
+	var starter_heroes: Array[String] = ["ranger", "warrior", "mage"]
+	for hero in starter_heroes:
+		print("[HeroSelectionScreen] Unlocking hero: ", hero)
+		SaveManager.unlock_hero(hero)
 	
-	# 3. Add to Squad
-	print("[HeroSelectionScreen] Setting squad: ", [selected_hero_id])
-	SaveManager.set_current_squad([selected_hero_id])
+	# 3. Add All to Squad (for testing)
+	print("[HeroSelectionScreen] Setting squad to all starters: ", starter_heroes)
+	SaveManager.set_current_squad(starter_heroes)
 	
 	# 4. Go to World Map
 	print("[HeroSelectionScreen] Loading World Map...")
@@ -70,73 +72,7 @@ func _on_start_pressed():
 	queue_free()
 
 func _ready():
-	_setup_debug_panel()
+	# _setup_debug_panel() # Removed debug panel
 	_populate_heroes()
 	start_button.disabled = true
 	start_button.pressed.connect(_on_start_pressed)
-
-func _setup_debug_panel():
-	var debug_panel = VBoxContainer.new()
-	debug_panel.name = "DebugPanel"
-	add_child(debug_panel)
-	debug_panel.position = Vector2(10, 10)
-	
-	var title = Label.new()
-	title.text = "DEBUG: Hero Resources"
-	title.modulate = Color.YELLOW
-	debug_panel.add_child(title)
-	
-	# 1. Get all .tres files in resources/heroes/
-	var dir = DirAccess.open("res://resources/heroes/")
-	var found_files = []
-	if dir:
-		dir.list_dir_begin()
-		var file_name = dir.get_next()
-		while file_name != "":
-			if not dir.current_is_dir() and file_name.ends_with(".tres"):
-				found_files.append(file_name)
-			file_name = dir.get_next()
-	
-	# 2. Check status of each file
-	var hero_list = HeroDatabase.heroes
-	
-	for file_name in found_files:
-		# Check if this file corresponds to any loaded hero
-		for h_id in hero_list:
-			if file_name.begins_with(h_id):
-				break
-				
-		# Alternative: Check if ANY hero loaded from this file? 
-		# Hard to do reverse lookup. Let's list LOADED heroes and UNLOADED files.
-		pass
-
-	# Simpler approach: List LOADED, then list FILES NOT LOADED
-	
-	# List Loaded
-	for h_id in hero_list:
-		var h_data = hero_list[h_id]
-		var status = "LOADED"
-		var color = Color.GREEN
-		if not h_data.portrait:
-			status = "NO PORTRAIT"
-			color = Color.ORANGE
-			
-		var label = Label.new()
-		label.text = "ID: %s [%s]" % [h_id, status]
-		label.modulate = color
-		debug_panel.add_child(label)
-		
-	# Check for missing
-	for file_name in found_files:
-		var is_represented = false
-		for h_id in hero_list:
-			# loose match
-			if file_name.contains(h_id):
-				is_represented = true
-				break
-		
-		if not is_represented:
-			var label = Label.new()
-			label.text = "FILE: %s [NOT LOADED]" % file_name
-			label.modulate = Color.RED
-			debug_panel.add_child(label)

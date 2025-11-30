@@ -35,7 +35,7 @@ var current_health = 0.0
 # Base stats (Override in child classes)
 var BASE_MAX_HEALTH = 100.0
 var BASE_RANGED_DAMAGE = 0.0
-var BASE_MELEE_DAMAGE = 10.0
+var BASE_MELEE_DAMAGE = 0.0
 var BASE_RANGED_RANGE = 0.0
 var BASE_RANGED_ATTACK_SPEED = 1.0
 var BASE_MOVEMENT_SPEED = 150.0
@@ -761,8 +761,16 @@ func update_sprite_direction(look_at_pos: Vector2):
 			projectile_spawn_node.position.x = current_x * (-1 if should_flip else 1)
 
 func draw_range_circle():
-	if range_indicator:
-		range_indicator.queue_redraw()
+	if range_indicator and range_indicator is Polygon2D:
+		var points = PackedVector2Array()
+		var radius = ranged_range
+		if radius <= 0: radius = melee_range # Fallback for melee heroes
+		
+		var segments = 32
+		for i in range(segments + 1):
+			var angle = (i / float(segments)) * TAU
+			points.append(Vector2(cos(angle), sin(angle)) * radius)
+		range_indicator.polygon = points
 
 func update_health_bar():
 	if health_bar and health_bar.has_method("update_health"):

@@ -100,37 +100,41 @@ func is_item_compatible(item_data: ItemData) -> bool:
 	if not item_data:
 		return false
 
-	# Check weapon type restrictions
-	if item_data.equip_slot == ItemData.EquipSlot.WEAPON:
-		var allowed_weapons = get_allowed_weapon_types()
-		# If allowed_weapons is empty, all weapons are allowed
-		if allowed_weapons.is_empty():
-			return true
-		# Check if item has weapon_type and it's in allowed list
-		if item_data.weapon_type != "":
-			return allowed_weapons.has(item_data.weapon_type)
-		return false
+	# DISABLED: Allow all heroes to equip all items (no class restrictions)
+	return true
 
-	# Check armor type restrictions
-	if item_data.equip_slot == ItemData.EquipSlot.ARMOR:
-		var allowed_armor = get_allowed_armor_types()
-		# If allowed_armor is empty, all armor is allowed
-		if allowed_armor.is_empty():
-			return true
-		# Check if item has armor_type and it's in allowed list
-		if item_data.armor_type != "":
-			return allowed_armor.has(item_data.armor_type)
-		return false
-
-	# Helmets are universal (all heroes can equip)
-	if item_data.equip_slot == ItemData.EquipSlot.HELMET:
-		return true
-
-	# Accessories are universal (all heroes can equip)
-	if item_data.equip_slot == ItemData.EquipSlot.ACCESSORY:
-		return true
-
-	return false
+	# OLD CODE (commented out for reference - can be re-enabled if needed):
+	## Check weapon type restrictions
+	#if item_data.equip_slot == ItemData.EquipSlot.WEAPON:
+	#	var allowed_weapons = get_allowed_weapon_types()
+	#	# If allowed_weapons is empty, all weapons are allowed
+	#	if allowed_weapons.is_empty():
+	#		return true
+	#	# Check if item has weapon_type and it's in allowed list
+	#	if item_data.weapon_type != "":
+	#		return allowed_weapons.has(item_data.weapon_type)
+	#	return false
+	#
+	## Check armor type restrictions
+	#if item_data.equip_slot == ItemData.EquipSlot.ARMOR:
+	#	var allowed_armor = get_allowed_armor_types()
+	#	# If allowed_armor is empty, all armor is allowed
+	#	if allowed_armor.is_empty():
+	#		return true
+	#	# Check if item has armor_type and it's in allowed list
+	#	if item_data.armor_type != "":
+	#		return allowed_armor.has(item_data.armor_type)
+	#	return false
+	#
+	## Helmets are universal (all heroes can equip)
+	#if item_data.equip_slot == ItemData.EquipSlot.HELMET:
+	#	return true
+	#
+	## Accessories are universal (all heroes can equip)
+	#if item_data.equip_slot == ItemData.EquipSlot.ACCESSORY:
+	#	return true
+	#
+	#return false
 
 
 ## Get hero class as string

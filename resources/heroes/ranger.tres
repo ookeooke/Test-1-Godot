@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="HeroData" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="HeroData" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/hero_data.gd" id="1_ranger"]
 [ext_resource type="Resource" path="res://resources/hero_classes/ranged_class.tres" id="2_ranged_class"]
-[ext_resource type="Texture2D" path="res://assets/icons/heroes/ranger_portrait.png" id="3_portrait"]
+[ext_resource type="Texture2D" path="res://assets/sprites/heroes/archer/archer_icon.png" id="3_portrait"]
+[ext_resource type="PackedScene" path="res://scenes/heroes/ranger_hero.tscn" id="4_ranger_scene"]
 
 [resource]
 script = ExtResource("1_ranger")
@@ -13,6 +14,7 @@ description = "A skilled archer who strikes enemies from afar with deadly precis
 hero_class = 1
 class_config = ExtResource("2_ranged_class")
 hero_color = Color(0.4, 0.6, 0.8, 1)
+hero_scene = ExtResource("4_ranger_scene")
 base_health = 300
 base_damage = 0
 base_range = 240

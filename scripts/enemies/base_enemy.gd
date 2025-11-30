@@ -333,6 +333,10 @@ func handle_hero_combat(delta):
 # BLOCKING SYSTEM
 # ============================================
 
+func block(hero):
+	"""Alias for set_blocked_by_hero to match BaseHero call"""
+	set_blocked_by_hero(hero)
+
 func set_blocked_by_hero(hero):
 	"""Called by hero when enemy enters melee range"""
 	if not can_be_blocked:
