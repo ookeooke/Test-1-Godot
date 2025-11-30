@@ -21,8 +21,8 @@ func move_item(uuid: String, source_id: String, target_id: String, target_x: int
 	var target = InventoryRegistry.get_container(target_id)
 
 	if not source:
-		# Safety net: Try to auto-register hero if it's a valid hero_id
-		if source_id in ["ranger", "warrior", "mage"]:
+		# Safety net: Try to auto-register hero if it's a valid hero_id (scalable to 100+ heroes)
+		if HeroDatabase.has_hero(source_id):
 			print("[ItemTransactionService] ⚠️ Source container missing - auto-registering hero: %s" % source_id)
 			HeroInventoryManager.register_hero(source_id)
 			source = InventoryRegistry.get_container(source_id)
@@ -36,8 +36,8 @@ func move_item(uuid: String, source_id: String, target_id: String, target_x: int
 			return false
 
 	if not target:
-		# Safety net: Try to auto-register hero if it's a valid hero_id
-		if target_id in ["ranger", "warrior", "mage"]:
+		# Safety net: Try to auto-register hero if it's a valid hero_id (scalable to 100+ heroes)
+		if HeroDatabase.has_hero(target_id):
 			print("[ItemTransactionService] ⚠️ Target container missing - auto-registering hero: %s" % target_id)
 			HeroInventoryManager.register_hero(target_id)
 			target = InventoryRegistry.get_container(target_id)

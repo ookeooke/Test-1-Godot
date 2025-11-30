@@ -14,7 +14,8 @@
       "Bash(git rm:*)",
       "Bash(del \"c:\\Users\\ollil\\Test-1-Godot\\scripts\\ui\\views\\hero_progression_view.gd\")",
       "Bash(del \"c:\\Users\\ollil\\Test-1-Godot\\scenes\\ui\\views\\hero_progression_view.tscn\")",
-      "Bash(dir /s /b \"c:\\Users\\ollil\\Test-1-Godot\\assets\")"
+      "Bash(dir /s /b \"c:\\Users\\ollil\\Test-1-Godot\\assets\")",
+      "Bash(dir /b \"c:\\Users\\ollil\\Test-1-Godot\\scenes\\heroes\")"
     ],
     "deny": [],
     "ask": []

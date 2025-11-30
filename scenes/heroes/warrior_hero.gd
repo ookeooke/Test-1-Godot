@@ -1,4 +1,4 @@
-extends BaseHero
+extends "res://scenes/heroes/base_hero.gd"
 
 # ============================================
 # WARRIOR HERO

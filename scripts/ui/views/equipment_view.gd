@@ -6,7 +6,7 @@ class_name EquipmentView
 ## Extends BasePanelView for use in FlexiblePanel
 
 const DEBUG_INVENTORY = false # Set to true to enable verbose inventory logging
-const DEBUG_CENTERING = true # Set to true to visualize centering logic (Yellow Box = Slot, Green Box = Item)
+const DEBUG_CENTERING = false # Set to true to visualize centering logic (Yellow Box = Slot, Green Box = Item)
 
 # Preload ItemSprite for overlay rendering (static grid + item overlay architecture)
 const ItemSpriteScript = preload("res://scripts/ui/item_sprite.gd")

@@ -125,13 +125,13 @@ func _can_drop_data(_at_position: Vector2, data) -> bool:
 	var dragged_item = ItemDatabase.get_item(data.item_id)
 	if dragged_item == null:
 		_play_error_sound_once(data.get("uuid", ""))
-		print("❌ [EquipmentSlot] Rejected: Item data not found for ID: ", data.item_id)
+
 		return false
 
 	# Only allow items that match this equipment slot
 	if dragged_item.equip_slot != equipment_filter:
 		_play_error_sound_once(data.get("uuid", ""))
-		print("❌ [EquipmentSlot] Rejected: Wrong slot type. Item: %s (Slot: %s) -> Target: %s" % [dragged_item.item_name, ItemData.EquipSlot.keys()[dragged_item.equip_slot], ItemData.EquipSlot.keys()[equipment_filter]])
+
 		return false
 
 	# Check class restrictions (Warrior can't use Bows, etc.)
@@ -140,10 +140,8 @@ func _can_drop_data(_at_position: Vector2, data) -> bool:
 		if hero_data:
 			if not hero_data.is_item_compatible(dragged_item):
 				_play_error_sound_once(data.get("uuid", ""))
-				print("❌ [EquipmentSlot] Rejected: Class restriction. Hero: %s (%s) cannot equip %s (%s)" % [hero_data.hero_name, hero_data.get_class_name(), dragged_item.item_name, dragged_item.weapon_type if dragged_item.weapon_type else dragged_item.armor_type])
+
 				return false
-			else:
-				print("✅ [EquipmentSlot] Accepted: %s is compatible with %s" % [dragged_item.item_name, hero_data.hero_name])
 
 	modulate = Color(1.2, 1.2, 1.2)
 	return true

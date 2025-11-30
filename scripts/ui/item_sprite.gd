@@ -27,7 +27,7 @@ class_name ItemSprite
 ## Drag/drop business logic delegated to InventoryGridSlot/EquipmentSlot system
 
 # Debug mode
-const DEBUG_DRAG_DROP = true # Enable verbose drag-drop logging and VISUALS
+const DEBUG_DRAG_DROP = false # Enable verbose drag-drop logging and VISUALS
 
 # Item data
 var item_instance: ItemInstance = null

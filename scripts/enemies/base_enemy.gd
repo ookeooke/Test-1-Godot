@@ -10,6 +10,8 @@ class_name BaseEnemy
 # ============================================
 
 signal enemy_died
+signal blocked(hero)
+signal unblocked
 
 # ============================================
 # STATS (Edit these in Inspector for each enemy type)
@@ -61,7 +63,7 @@ signal enemy_died
 
 var current_health: float
 var is_blocked := false
-var blocking_hero = null
+var blocking_hero: Node2D = null # The PRIMARY blocker
 var attack_timer := 0.0
 var debug_highlight: Polygon2D # Visual target indicator (F4 debug)
 var hit_point_marker: Marker2D # Dynamic target spot for projectiles
@@ -137,10 +139,7 @@ func _ready():
 
 	# GRAPHICS UPGRADE: Setup hit flash shader
 	_setup_hit_flash_material()
-	
-	# DEBUG: Visual Confirmation
-	# var visual = _get_visual_sprite()
-	# print("[Enemy] Spawned: %s | Visual Node: %s | Shadow: %s" % [name, visual.name if visual else "NONE", "YES" if has_node("Shadow") else "NO"])
+
 
 func _add_dynamic_shadow():
 	"""Add a blob shadow under the unit"""
@@ -245,7 +244,7 @@ func _physics_process(delta):
 		var distance = global_position.distance_to(blocking_hero.global_position)
 		if distance > melee_detection_range:
 			# Hero walked away - resume movement
-			unblock()
+			unblock(blocking_hero)
 			_continue_movement(delta)
 		else:
 			# Hero still close - I'm blocked, so fight!
@@ -334,27 +333,50 @@ func handle_hero_combat(delta):
 # ============================================
 
 func block(hero):
-	"""Alias for set_blocked_by_hero to match BaseHero call"""
-	set_blocked_by_hero(hero)
-
-func set_blocked_by_hero(hero):
-	"""Called by hero when enemy enters melee range"""
-	if not can_be_blocked:
-		return
-
-	# Only set as THE blocker if not already blocked
-	# This allows multiple units to attack, but only one is the "official" blocker
+	"""Called by a hero when they engage this enemy"""
 	if not is_blocked:
 		is_blocked = true
 		blocking_hero = hero
-		attack_timer = 0.0
+		emit_signal("blocked", hero)
+		
+		# Stop movement
+		if path_follower:
+			path_follower.loop = false # Stop looping if enabled
+		
+		# Visual feedback
 		_set_combat_state_visual(true)
 
-func unblock():
-	"""Called when hero dies or moves away"""
-	is_blocked = false
-	blocking_hero = null
-	_set_combat_state_visual(false)
+func unblock(hero = null):
+	"""Called when a hero disengages or dies"""
+	if is_blocked:
+		is_blocked = false
+		blocking_hero = null
+		emit_signal("unblocked")
+		
+		# Resume movement logic handled in _physics_process usually, 
+		# but here we just reset state
+		_set_combat_state_visual(false)
+
+func set_blocked_by_hero(hero):
+	"""Legacy alias"""
+	block(hero)
+
+func _set_combat_state_visual(in_combat: bool):
+	"""Visual indicator when enemy is in melee combat"""
+	# Find Sprite2D or AnimatedSprite2D child
+	var sprite_node = null
+	for child in get_children():
+		if child is Sprite2D or child is AnimatedSprite2D:
+			sprite_node = child
+			break
+
+	if sprite_node:
+		if in_combat:
+			# Reddish tint = in combat
+			sprite_node.modulate = Color(1.2, 0.8, 0.8)
+		else:
+			# Normal color
+			sprite_node.modulate = Color(1, 1, 1)
 
 # ============================================
 # HEALTH & DEATH
@@ -382,6 +404,7 @@ func take_damage(amount: float, damage_source = null, damage_source_type = "unkn
 
 	# Play hit animation and particles
 	_play_animation("hit")
+
 	if hit_particles:
 		hit_particles.restart()
 
@@ -488,39 +511,6 @@ func set_waypoint_navigation(start_waypoint: PathWaypoint):
 # COMBAT ANCHOR SYSTEM (New)
 # ============================================
 
-func get_current_path_offset() -> float:
-	"""Get current progress along the path (pixels)"""
-	if path_follower:
-		return path_follower.progress
-	return 0.0
-
-func get_position_at_path_offset(offset: float) -> Vector2:
-	"""Get world position for a specific distance along the path"""
-	if path_follower:
-		# Save current offset
-		var current = path_follower.progress
-		
-		# Sample new position
-		# Note: This is a bit hacky but the most reliable way in Godot 4
-		# without direct Curve2D access if using PathFollow2D
-		path_follower.progress = offset
-		var pos = path_follower.global_position
-		
-		# Restore offset
-		path_follower.progress = current
-		return pos
-	return global_position
-
-func get_combat_anchor_position(distance_ahead: float = 30.0) -> Vector2:
-	"""Get the ideal position for a hero to stand to block this enemy"""
-	if use_waypoint_navigation:
-		# Waypoint system: Just project vector towards target
-		var to_target = (target_position - global_position).normalized()
-		return global_position + (to_target * distance_ahead)
-	else:
-		# Path2D system: Get exact point on curve
-		var current = get_current_path_offset()
-		return get_position_at_path_offset(current + distance_ahead)
 
 # ============================================
 # HELPER METHODS
@@ -786,23 +776,6 @@ func _play_death_animation():
 	tween2.tween_property(self, "modulate:a", 0.0, FADE_OUT_TIME).set_ease(Tween.EASE_IN)
 
 	await tween2.finished
-
-func _set_combat_state_visual(in_combat: bool):
-	"""Visual indicator when enemy is in melee combat"""
-	# Find Sprite2D or AnimatedSprite2D child
-	var sprite_node = null
-	for child in get_children():
-		if child is Sprite2D or child is AnimatedSprite2D:
-			sprite_node = child
-			break
-
-	if sprite_node:
-		if in_combat:
-			# Reddish tint = in combat
-			sprite_node.modulate = Color(1.2, 0.8, 0.8)
-		else:
-			# Normal color
-			sprite_node.modulate = Color(1, 1, 1)
 
 # ============================================
 # STATUS EFFECTS (Slow & Knockback)

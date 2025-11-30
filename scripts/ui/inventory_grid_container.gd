@@ -15,6 +15,7 @@ class_name InventoryGridContainer
 # Debug mode
 const DEBUG_LOGGING = false # Enable verbose logging for grid operations
 const DEBUG_DROP_MARKER = false # Enable visual drop position marker (shows where items land)
+const SHOW_DRAG_HIGHLIGHTS = false # User Request: Disable green/red drag highlights (cleaner look)
 
 ## Highlight states for 3-color feedback (Professional ARPG UX)
 enum HighlightState {VALID, SWAP, INVALID}
@@ -420,9 +421,8 @@ func _draw():
 				var pos = Vector2(x * tile_size.x, y * tile_size.y)
 				draw_texture(background_texture, pos)
 
-	# Draw cell highlights ALWAYS (Professional ARPG UX - Diablo 2 / PoE style)
-	# This must render regardless of show_grid so drag highlighting works in normal gameplay
-	if not _highlight_cells.is_empty():
+	# Draw cell highlights (Controlled by SHOW_DRAG_HIGHLIGHTS)
+	if SHOW_DRAG_HIGHLIGHTS and not _highlight_cells.is_empty():
 		var highlight_color: Color
 		match _highlight_state:
 			HighlightState.VALID:

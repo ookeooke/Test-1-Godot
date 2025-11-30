@@ -111,6 +111,8 @@ const AURA_RADIUS = 200.0
 
 # VISUAL
 @export var hero_texture: Texture2D
+@export var hero_shadow_scale: float = 1.2 # Adjustable in Inspector
+
 
 # SKILL SYSTEM
 @export var available_skills: Array[HeroSkillData] = []
@@ -224,8 +226,20 @@ func _setup_visuals():
 			sprite.get_node("FallbackRect").visible = false
 	elif sprite and sprite.has_node("FallbackRect"):
 		sprite.get_node("FallbackRect").visible = true
+	
+	_add_dynamic_shadow()
 
-# ============================================
+func _add_dynamic_shadow():
+	"""Add a blob shadow under the unit"""
+	var shadow_scene = load("res://scenes/effects/shadow.tscn")
+	if shadow_scene:
+		var shadow = shadow_scene.instantiate()
+		# Place shadow at bottom of sprite (assuming origin is center)
+		# Use exported scale for easy adjustment per hero
+		shadow.scale = Vector2(hero_shadow_scale, hero_shadow_scale)
+		shadow.position = Vector2(0, 5) # Slightly below feet
+		add_child(shadow)
+		move_child(shadow, 0) # Move to bottom of draw order
 # STAT SYSTEM
 # ============================================
 
@@ -601,20 +615,8 @@ func handle_melee_combat_state():
 
 	var closest = current_melee_targets[0]
 	if is_instance_valid(closest):
-		if USE_COMBAT_ANCHOR:
-			var anchor_pos = closest.get_combat_anchor_position(20.0)
-			var distance_to_anchor = global_position.distance_to(anchor_pos)
-			if distance_to_anchor > 5.0:
-				var direction = (anchor_pos - global_position).normalized()
-				velocity = direction * movement_speed
-				move_and_slide()
-				update_sprite_direction(anchor_pos)
-			else:
-				velocity = Vector2.ZERO
-				update_sprite_direction(closest.global_position)
-		else:
-			velocity = Vector2.ZERO
-			update_sprite_direction(closest.global_position)
+		velocity = Vector2.ZERO
+		update_sprite_direction(closest.global_position)
 
 func handle_returning_state(_delta):
 	var distance = global_position.distance_to(home_position)
@@ -717,7 +719,7 @@ func _on_melee_enemy_exited(body):
 	if enemies_in_melee_range.has(body):
 		enemies_in_melee_range.erase(body)
 		if body.has_method("unblock") and body.is_blocked and body.blocking_hero == self:
-			body.unblock()
+			body.unblock(self)
 
 func _on_ranged_timer_timeout():
 	if current_state != State.RANGED_COMBAT: return
@@ -783,6 +785,7 @@ func _flash_hero(color: Color):
 		await get_tree().create_timer(0.2).timeout
 		sprite.modulate = original_color
 
+
 # ============================================
 # REGENERATION
 # ============================================
@@ -799,23 +802,6 @@ func update_regeneration(delta):
 	else:
 		is_regenerating = false
 
-func take_damage(amount):
-	current_health -= amount
-	time_since_last_damage = 0.0
-	is_regenerating = false
-	update_health_bar()
-	_flash_hero(Color(1, 0, 0))
-	if current_health <= 0:
-		die()
-
-func heal(amount):
-	current_health = min(current_health + amount, max_health)
-	update_health_bar()
-
-func die():
-	hero_died.emit(10.0)
-	queue_free()
-
 func get_hero_id() -> String:
 	return hero_id
 
@@ -830,3 +816,25 @@ func _on_tower_exited_aura(body):
 		towers_in_aura.erase(body)
 		if body.has_method("remove_hero_buff"):
 			body.remove_hero_buff(self)
+
+func take_damage(amount):
+	var damage_taken = max(0, amount - defense)
+	current_health -= damage_taken
+	time_since_last_damage = 0.0
+	is_regenerating = false
+	update_health_bar()
+	
+	# Visual feedback
+	_flash_hero(Color(1.5, 0.5, 0.5)) # Red flash for damage
+
+	
+	if current_health <= 0:
+		die()
+
+func heal(amount):
+	current_health = min(current_health + amount, max_health)
+	update_health_bar()
+
+func die():
+	hero_died.emit(10.0)
+	queue_free()
