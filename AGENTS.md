@@ -676,6 +676,36 @@ scripts/autoloads/
 
 ---
 
+
+---
+
+## 📦 Asset Management & Exporting
+
+### The "Dynamic Loading" Problem
+Godot's export system excludes files that are not explicitly referenced in scenes or scripts. Since this project uses `DirAccess` to scan folders for Heroes and Items, these files are often excluded from the exported build, causing "Loaded 0 items" errors.
+
+### ⚠️ CRITICAL RULE: Adding New Content
+When adding a new **Hero**, **Item**, or **Icon**, you MUST perform these 2 steps to ensure it appears in the exported game:
+
+#### 1. Add to `ResourcePreloader.gd`
+Open `scripts/autoloads/resource_preloader.gd` and add a `preload()` line:
+```gdscript
+var _new_item = preload("res://resources/items/weapons/new_super_sword.tres")
+```
+*Why? This forces Godot to see the file as a dependency and include it in the .pck file.*
+
+#### 2. Add to Database Fallback List
+Open `HeroDatabase.gd` or `ItemDatabase.gd` and add the ID/path to the fallback list:
+```gdscript
+var known_items = [
+    ...,
+    "weapons/new_super_sword"
+]
+```
+*Why? `DirAccess` often fails to list files in exported builds. This fallback allows the code to load the file directly by name.*
+
+---
+
 *Last updated: Optimized based on industry research (GitHub's analysis of 2,500+ repos)*
 *Length: ~400 lines (industry standard 300-500) | Sections: GitHub's 6 core areas + project-specific*
 *AI Compatibility: Claude, Cursor, GitHub Copilot, Aider, and all AI coding assistants*
