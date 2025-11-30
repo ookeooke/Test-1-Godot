@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dyd70jhwkxr83"
-path="res://.godot/imported/Mage icon.png-b575f274c10b6a57e0e0a87d270dbdf3.ctex"
+uid="uid://cpq740yim8ofp"
+path="res://.godot/imported/mage_icon.png-4881b4d2af0793b9a55380f4489377e5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/heroes/mage/Mage icon.png"
-dest_files=["res://.godot/imported/Mage icon.png-b575f274c10b6a57e0e0a87d270dbdf3.ctex"]
+source_file="res://assets/sprites/heroes/mage/mage_icon.png"
+dest_files=["res://.godot/imported/mage_icon.png-4881b4d2af0793b9a55380f4489377e5.ctex"]
 
 [params]
 

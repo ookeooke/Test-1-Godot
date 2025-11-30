@@ -297,7 +297,10 @@ func _physics_process(delta):
 				global_position += direction * speed * delta
 			
 			# 3. Combat Logic
-			handle_hero_combat(delta)
+			# ATTACK CHECK: Only attack if we have reached the slot (stopped moving)
+			# This prevents "sliding attacks" while walking around the hero.
+			if dist_to_slot <= 10.0:
+				handle_hero_combat(delta)
 	else:
 		# I am NOT blocked - move normally
 		_continue_movement(delta)

@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://coirid61w00ks" path="res://scenes/projectiles/arrow.tscn" id="2_projectile"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="3_healthbar"]
 [ext_resource type="PackedScene" uid="uid://dxpbar123" path="res://scenes/ui/xp_bar.tscn" id="3_xpbar"]
-[ext_resource type="Texture2D" uid="uid://dyd70jhwkxr83" path="res://assets/sprites/heroes/mage/Mage icon.png" id="5_mage_sprite"]
+[ext_resource type="Texture2D" uid="uid://dyd70jhwkxr83" path="res://assets/sprites/heroes/mage/mage_icon.png" id="5_mage_sprite"]
 [ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="6_shadow"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]

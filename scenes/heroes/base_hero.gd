@@ -893,6 +893,10 @@ func perform_ranged_attack(_target):
 func perform_melee_attack(target):
 	# Override in child class
 	if target.has_method("take_damage"):
+		# DEAD CHECK: Don't hit dead enemies (even if instance is valid this frame)
+		if "current_health" in target and target.current_health <= 0:
+			return
+
 		# RANGE CHECK: Don't hit if they are still walking to the slot
 		if global_position.distance_to(target.global_position) > 60.0:
 			return
