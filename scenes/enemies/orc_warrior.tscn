@@ -236,17 +236,15 @@ offset_right = 25.0
 offset_bottom = -24.0
 
 [node name="Shadow" parent="." instance=ExtResource("3_shadow")]
-position = Vector2(0, 20)
-scale = Vector2(1.2, 1.2)
+position = Vector2(-3.9999995, 25)
+scale = Vector2(1.3246195, 0.8053374)
 
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="."]
 position = Vector2(0.9999981, -1.9073486e-06)
-scale = Vector2(0.25, 0.25)
+scale = Vector2(0.15593807, 0.20115124)
 sprite_frames = SubResource("SpriteFrames_bd28b")
 animation = &"attack"
 autoplay = "walk"
-frame = 8
-frame_progress = 1.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_uvyif")

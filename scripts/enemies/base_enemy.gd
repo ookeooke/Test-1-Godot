@@ -102,9 +102,15 @@ func _ready():
 	# Initialize health
 	current_health = max_health
 
+	# CRITICAL: Add to enemies group for hero detection
+	# This ensures ALL enemies (including manually created test nodes) are detectable
+	add_to_group("enemies")
+
 	# Set collision
+	# Layer 1: Default/Enemy (Required for Towers)
+	# Mask 1: World/Walls ONLY (Ignore Hero Physics so we can get close enough to fight)
 	collision_layer = 1
-	collision_mask = 0
+	collision_mask = 1
 
 	# Initialize health bar
 	_update_health_bar()
@@ -482,7 +488,7 @@ func take_damage(amount: float, damage_source = null, damage_source_type = "unkn
 	_spawn_damage_number(actual_damage)
 
 	# Play hit animation and particles
-	_play_animation("hit")
+	# _play_animation("hit") # Most enemies don't have a hit animation, causing errors
 
 	if hit_particles:
 		hit_particles.restart()
@@ -641,17 +647,17 @@ func is_dead() -> bool:
 
 func _play_animation(anim_name: String):
 	"""Play animation if AnimationPlayer exists"""
-	var speed = 1.0
+	var anim_speed = 1.0
 	
 	# Dynamic Speed Scaling (Option A)
 	if anim_name == "attack":
 		# Calculate speed multiplier: 1.0 / cooldown
 		# Example: Cooldown 0.5s -> Speed 2.0x
 		# Example: Cooldown 2.0s -> Speed 0.5x
-		speed = 1.0 / max(0.1, attack_cooldown)
+		anim_speed = 1.0 / max(0.1, attack_cooldown)
 		
 	if anim_player and anim_player.has_animation(anim_name):
-		anim_player.play(anim_name, -1, speed)
+		anim_player.play(anim_name, -1, anim_speed)
 	else:
 		# Try AnimatedSprite2D
 		var sprite = _get_visual_sprite()
@@ -659,9 +665,11 @@ func _play_animation(anim_name: String):
 			# Don't interrupt attack
 			if sprite.animation == "attack" and sprite.is_playing() and anim_name != "attack":
 				return
-				
-			sprite.play(anim_name)
-			sprite.speed_scale = speed
+			
+			# Check if animation exists before playing
+			if sprite.sprite_frames.has_animation(anim_name):
+				sprite.play(anim_name)
+				sprite.speed_scale = anim_speed
 
 func _spawn_impact_particles(damage_source):
 	"""Create impact particles for melee hits - subtle blood splatter"""
