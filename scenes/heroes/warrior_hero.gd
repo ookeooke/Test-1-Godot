@@ -69,7 +69,14 @@ func _play_animation(anim_name: String):
 		return
 		
 	if animated_sprite.sprite_frames.has_animation(anim_name):
+		var speed = 1.0
+		if anim_name == "attack":
+			# Dynamic Speed Scaling (Option A)
+			# 1.0 / cooldown
+			speed = 1.0 / max(0.1, melee_attack_speed)
+			
 		animated_sprite.play(anim_name)
+		animated_sprite.speed_scale = speed
 
 func _on_animation_finished():
 	# Return to idle/walk after attack finishes
@@ -101,9 +108,10 @@ func set_target_position(pos: Vector2):
 
 func perform_melee_attack(target):
 	# Call base to deal damage
-	super.perform_melee_attack(target)
-	# Play animation for every swing
-	_play_animation("attack")
+	# Only play animation if we actually hit (target wasn't dead/out of range)
+	if super.perform_melee_attack(target):
+		# Play animation for every swing
+		_play_animation("attack")
 
 func _physics_process(delta):
 	super._physics_process(delta)

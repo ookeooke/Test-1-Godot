@@ -48,3 +48,15 @@ var _ui_1 = preload("res://resources/ui/hero_selection_group.tres")
 
 func _ready():
 	print("[ResourcePreloader] ☢️ FORCE-LOADED 26 RESOURCES FOR EXPORT ☢️")
+	# Dummy usage to silence warnings and ensure export
+	var _keep = [
+		_hero_1, _hero_2, _hero_3,
+		_wep_1, _wep_2, _wep_3,
+		_arm_1, _arm_2,
+		_acc_1,
+		_cls_1, _cls_2, _cls_3, _cls_4,
+		_pfx_1, _pfx_2, _pfx_3,
+		_sfx_1, _sfx_2, _sfx_3,
+		_skl_1, _skl_2, _skl_3, _skl_4, _skl_5,
+		_thm_1, _ui_1
+	]

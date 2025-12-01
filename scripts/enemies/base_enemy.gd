@@ -160,8 +160,24 @@ func _add_dynamic_shadow():
 	if shadow_scene:
 		var shadow = shadow_scene.instantiate()
 		shadow.name = "Shadow" # Name it so we can find it later
-		# Use the manual export for precise control
-		shadow.scale = Vector2(1.0, 1.0)
+		
+		# SMART SCALING: Calculate scale based on CollisionShape
+		var target_scale = Vector2(1.0, 1.0)
+		if has_node("CollisionShape2D"):
+			var shape = get_node("CollisionShape2D").shape
+			if shape is CircleShape2D:
+				# Diameter / 32.0 (Base Shadow Width)
+				var scale_factor = (shape.radius * 2.0) / 32.0
+				target_scale = Vector2(scale_factor, scale_factor)
+			elif shape is CapsuleShape2D:
+				# Width / 32.0
+				var scale_factor = (shape.radius * 2.0) / 32.0 # Capsule radius is half-width
+				target_scale = Vector2(scale_factor, scale_factor)
+			elif shape is RectangleShape2D:
+				var scale_factor = shape.size.x / 32.0
+				target_scale = Vector2(scale_factor, scale_factor)
+		
+		shadow.scale = target_scale
 		shadow.position = Vector2(0, 5) # Slightly below feet
 		add_child(shadow)
 		move_child(shadow, 0) # Move to bottom of draw order
@@ -179,6 +195,10 @@ func _setup_hit_flash_material():
 func _get_visual_sprite() -> Node2D:
 	"""Helper to find the main visual sprite"""
 	for child in get_children():
+		# Ignore the shadow node so we find the actual body
+		if child.name == "Shadow":
+			continue
+			
 		if child is Sprite2D or child is AnimatedSprite2D:
 			return child
 	return null
@@ -256,20 +276,12 @@ func _physics_process(delta):
 		# I am the blocked enemy - check if hero is still close
 		var distance = global_position.distance_to(blocking_hero.global_position)
 		
-		# COMBAT STICKINESS: Stay engaged even if hero shifts position slightly
-		# Only disengage if dragged far from where we were blocked (50px radius)
-		# This prevents teleporting and enables Kingdom Rush-style mobile combat
-		var distance_moved_from_block_point = global_position.distance_to(path_position)
-
-		if distance_moved_from_block_point > 50.0:
-			# Dragged too far from block point - disengage
-			unblock(blocking_hero)
-			_continue_movement(delta)
-			return
-
-		# LEASH CHECK (Backup)
-		# If we are dragged too far from our path (100px), give up.
-		if path_position != Vector2.ZERO and global_position.distance_to(path_position) > 100.0:
+		# KINGDOM RUSH LOGIC: No sticky combat.
+		# If the hero moves out of range (unblocks), we resume immediately.
+		# The 'unblock' call usually comes from the Hero script when they move.
+		
+		# We only check if the hero is DEAD or INVALID here.
+		if not is_instance_valid(blocking_hero) or (blocking_hero.has_method("is_dead") and blocking_hero.is_dead()):
 			unblock(blocking_hero)
 			_continue_movement(delta)
 			return
@@ -280,37 +292,29 @@ func _physics_process(delta):
 			_continue_movement(delta)
 		else:
 			# Hero still close - I'm blocked, so fight!
-			# 1. Request Slot Position
-			var target_pos = blocking_hero.global_position
-			if blocking_hero.has_method("request_hero_engagement_slot"):
-				var slot_idx = blocking_hero.request_hero_engagement_slot(self)
-				if slot_idx != -1:
-					target_pos = blocking_hero.get_hero_slot_position(slot_idx)
+			# Hero still close - I'm blocked, so fight!
+			# KINGDOM RUSH LOGIC: Stop immediately at contact point.
+			# No slot seeking, no walking around. Just stop.
+			velocity = Vector2.ZERO
 			
-			# 2. Move to Slot
-			var dist_to_slot = global_position.distance_to(target_pos)
+			# Face the hero
+			var direction_to_hero = (blocking_hero.global_position - global_position).normalized()
+			if direction_to_hero.x != 0:
+				var sprite = _get_visual_sprite()
+				if sprite:
+					sprite.flip_h = direction_to_hero.x < 0
 			
-			# DEBUG: Why am I moving?
-			if DebugConfig.visual_debug_enabled and dist_to_slot > 5.0:
-				print("[%s] Moving to Slot. Dist: %.1f | Target: %s" % [name, dist_to_slot, target_pos])
-				queue_redraw() # Force draw update
-			
-			if dist_to_slot > 5.0:
-				# Move towards slot
-				var direction = (target_pos - global_position).normalized()
-				global_position += direction * speed * delta
-			
-			# 3. Combat Logic
-			# ATTACK CHECK: Only attack if we have reached the slot (stopped moving)
-			# This prevents "sliding attacks" while walking around the hero.
-			if dist_to_slot <= 10.0:
-				handle_hero_combat(delta)
+			# Combat Logic
+			handle_hero_combat(delta)
 	else:
 		# I am NOT blocked - move normally
 		_continue_movement(delta)
 
 func _continue_movement(delta):
 	"""Handle movement based on current navigation system"""
+	# Ensure we are walking (unless attacking)
+	_play_animation("walk")
+	
 	if use_waypoint_navigation:
 		_waypoint_movement(delta)
 	else:
@@ -380,6 +384,12 @@ func handle_hero_combat(delta):
 	if attack_timer >= attack_cooldown:
 		attack_timer = 0.0
 		if blocking_hero.has_method("take_damage"):
+			# Don't attack dead heroes
+			if blocking_hero.has_method("is_dead") and blocking_hero.is_dead():
+				return
+			if "current_health" in blocking_hero and blocking_hero.current_health <= 0:
+				return
+				
 			blocking_hero.take_damage(melee_damage)
 			# Play attack animation
 			_play_animation("attack")
@@ -405,10 +415,11 @@ func block(hero):
 		# Visual feedback
 		_set_combat_state_visual(true)
 
-func unblock(hero = null):
+func unblock(_hero = null):
 	"""Called when a hero disengages or dies"""
-	if hero and hero.has_method("release_hero_engagement_slot"):
-		hero.release_hero_engagement_slot(self)
+	# KINGDOM RUSH LOGIC: No slots to release.
+	# if hero and hero.has_method("release_hero_engagement_slot"):
+	# 	hero.release_hero_engagement_slot(self)
 		
 	if is_blocked:
 		is_blocked = false
@@ -425,14 +436,8 @@ func set_blocked_by_hero(hero):
 
 func _draw():
 	if DebugConfig.visual_debug_enabled and is_blocked and blocking_hero:
-		# Draw line to my target slot position
-		var target_pos = Vector2.ZERO
-		if blocking_hero.has_method("request_hero_engagement_slot"):
-			var slot_idx = blocking_hero.request_hero_engagement_slot(self)
-			if slot_idx != -1:
-				target_pos = blocking_hero.get_hero_slot_position(slot_idx)
-				draw_line(Vector2.ZERO, target_pos - global_position, Color.MAGENTA, 2.0)
-				draw_circle(target_pos - global_position, 3.0, Color.MAGENTA)
+		# Draw line to blocking hero
+		draw_line(Vector2.ZERO, blocking_hero.global_position - global_position, Color.MAGENTA, 2.0)
 
 func _set_combat_state_visual(in_combat: bool):
 	"""Visual indicator when enemy is in melee combat"""
@@ -636,8 +641,27 @@ func is_dead() -> bool:
 
 func _play_animation(anim_name: String):
 	"""Play animation if AnimationPlayer exists"""
+	var speed = 1.0
+	
+	# Dynamic Speed Scaling (Option A)
+	if anim_name == "attack":
+		# Calculate speed multiplier: 1.0 / cooldown
+		# Example: Cooldown 0.5s -> Speed 2.0x
+		# Example: Cooldown 2.0s -> Speed 0.5x
+		speed = 1.0 / max(0.1, attack_cooldown)
+		
 	if anim_player and anim_player.has_animation(anim_name):
-		anim_player.play(anim_name)
+		anim_player.play(anim_name, -1, speed)
+	else:
+		# Try AnimatedSprite2D
+		var sprite = _get_visual_sprite()
+		if sprite is AnimatedSprite2D:
+			# Don't interrupt attack
+			if sprite.animation == "attack" and sprite.is_playing() and anim_name != "attack":
+				return
+				
+			sprite.play(anim_name)
+			sprite.speed_scale = speed
 
 func _spawn_impact_particles(damage_source):
 	"""Create impact particles for melee hits - subtle blood splatter"""

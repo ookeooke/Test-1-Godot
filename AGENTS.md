@@ -679,6 +679,28 @@ scripts/autoloads/
 
 ---
 
+## ⚔️ Combat & Animation Standards
+
+### Shadow System
+- **Hybrid Approach:** Supports both manual `Shadow` nodes (Editor) and auto-generated ones (Code).
+- **Smart Scaling:** `BaseEnemy` and `BaseHero` automatically scale shadows based on `CollisionShape2D` size.
+- **Critical Rule:** When finding the main sprite (e.g. for flipping), **ALWAYS ignore the "Shadow" node**.
+  ```gdscript
+  if child.name == "Shadow": continue # Skip shadow
+  ```
+
+### Animation Logic
+- **Dynamic Speed:** Animations must scale with attack speed.
+  - Formula: `speed_scale = 1.0 / attack_cooldown`
+- **State Management:**
+  - **Walk:** Explicitly request "walk" animation in movement loops (`_continue_movement`).
+  - **Attack:** Do NOT interrupt "attack" animation with "walk" requests.
+- **Ghost Attacks:**
+  - Attack functions (`perform_melee_attack`) MUST return `bool` (true = hit, false = miss/dead).
+  - **NEVER** play attack animation if the target is dead or the attack failed.
+
+---
+
 ## 📦 Asset Management & Exporting
 
 ### The "Dynamic Loading" Problem

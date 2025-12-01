@@ -1,9 +1,9 @@
-[gd_scene load_steps=40 format=3 uid="uid://crirequ6fnstj"]
+[gd_scene load_steps=37 format=3 uid="uid://crirequ6fnstj"]
 
 [ext_resource type="Script" uid="uid://dnjewyf0n7rkd" path="res://scenes/enemies/orc_warrior.gd" id="1_aro76"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
 [ext_resource type="Texture2D" uid="uid://2cqjlgn2kh4c" path="res://assets/sprites/enemies/ork/aor_attack.png" id="3_4ukyo"]
-[ext_resource type="Texture2D" uid="uid://djpi0o8x7temw" path="res://assets/sprites/enemies/goblin/goblin.png" id="3_4530n"]
+[ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="3_shadow"]
 [ext_resource type="Texture2D" uid="uid://bn6rtdk45smhg" path="res://assets/sprites/enemies/ork/texture.png" id="4_4ukyo"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_vnnd3"]
@@ -41,18 +41,6 @@ region = Rect2(5600, 0, 800, 450)
 [sub_resource type="AtlasTexture" id="AtlasTexture_s772h"]
 atlas = ExtResource("3_4ukyo")
 region = Rect2(6400, 0, 800, 450)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_death0"]
-atlas = ExtResource("3_4530n")
-region = Rect2(520, 0, 130, 128)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_death1"]
-atlas = ExtResource("3_4530n")
-region = Rect2(650, 0, 130, 128)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_death2"]
-atlas = ExtResource("3_4530n")
-region = Rect2(780, 0, 130, 128)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_4530n"]
 atlas = ExtResource("4_4ukyo")
@@ -166,21 +154,7 @@ animations = [{
 }],
 "loop": false,
 "name": &"attack",
-"speed": 16.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_death0")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_death1")
-}, {
-"duration": 2.0,
-"texture": SubResource("AtlasTexture_death2")
-}],
-"loop": false,
-"name": &"death",
-"speed": 6.0
+"speed": 13.0
 }, {
 "frames": [{
 "duration": 1.0,
@@ -261,13 +235,18 @@ offset_top = -30.0
 offset_right = 25.0
 offset_bottom = -24.0
 
+[node name="Shadow" parent="." instance=ExtResource("3_shadow")]
+position = Vector2(0, 20)
+scale = Vector2(1.2, 1.2)
+
 [node name="AnimatedSprite" type="AnimatedSprite2D" parent="."]
 position = Vector2(0.9999981, -1.9073486e-06)
 scale = Vector2(0.25, 0.25)
 sprite_frames = SubResource("SpriteFrames_bd28b")
-animation = &"walk"
+animation = &"attack"
 autoplay = "walk"
-frame_progress = 0.4679279
+frame = 8
+frame_progress = 1.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_uvyif")

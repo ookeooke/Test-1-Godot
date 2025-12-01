@@ -46,7 +46,7 @@ var melee_attack_speed = 0.8
 var combat_distance = 50.0
 
 # MOVEMENT
-var max_distance_from_home = 50.0
+var max_distance_from_home = 100.0 # LEASH: Increased to 100px to prevent deadlock with 50px stop distance
 var max_chase_distance = 150.0 # LEASH: Max distance to chase enemies
 var home_position = Vector2.ZERO
 var target_position = Vector2.ZERO
@@ -80,7 +80,7 @@ var current_melee_targets = []
 # KINGDOM RUSH COMBAT MOVEMENT
 var combat_target: Node2D = null # Current enemy we're walking toward
 var combat_movement_enabled: bool = true # Toggle for testing/debugging
-const COMBAT_CLOSE_DISTANCE: float = 15.0 # Stop within 15px (face-to-face range)
+const COMBAT_CLOSE_DISTANCE: float = 40.0 # Stop within 40px (Hero Radius 25 + Enemy Radius ~15)
 
 # TIMERS
 var ranged_timer: Timer
@@ -247,11 +247,22 @@ func _add_dynamic_shadow():
 	if shadow_scene:
 		var shadow = shadow_scene.instantiate()
 		shadow.name = "Shadow"
-		# Place shadow at bottom of sprite (assuming origin is center)
-		shadow.scale = Vector2(1.0, 1.0)
-		shadow.position = Vector2(0, 5) # Slightly below feet
+		
+		# SMART SCALING: Calculate scale based on CollisionShape
+		var target_scale = Vector2(1.0, 1.0)
+		if has_node("CollisionShape2D"):
+			var shape = get_node("CollisionShape2D").shape
+			if shape is CircleShape2D:
+				var scale_factor = (shape.radius * 2.0) / 32.0
+				target_scale = Vector2(scale_factor, scale_factor)
+			elif shape is CapsuleShape2D:
+				var scale_factor = (shape.radius * 2.0) / 32.0
+				target_scale = Vector2(scale_factor, scale_factor)
+				
+		shadow.scale = target_scale
+		shadow.position = Vector2(0, 5)
 		add_child(shadow)
-		move_child(shadow, 0) # Move to bottom of draw order
+		move_child(shadow, 0)
 # STAT SYSTEM
 # ============================================
 
@@ -661,6 +672,8 @@ func handle_melee_combat_state():
 				enter_returning_state()
 				return
 
+			# STOPPING DISTANCE: Increased to 50.0 to prevent jitter
+			# (Hero Radius 25 + Enemy Radius 15 = 40 collision)
 			if distance_to_enemy > COMBAT_CLOSE_DISTANCE:
 				# Too far - walk closer for face-to-face combat
 				var direction = (closest.global_position - global_position).normalized()
@@ -715,8 +728,36 @@ func _draw():
 		draw_arc(Vector2.ZERO, COMBAT_CLOSE_DISTANCE, 0, TAU, 32, color, 2.0)
 
 		# Draw distance text
-		draw_string(font, Vector2(0, -50), "Distance: %.1fpx" % dist, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.WHITE)
-		draw_string(font, Vector2(0, -35), "In Range: %s" % ("YES" if in_range else "NO"), HORIZONTAL_ALIGNMENT_CENTER, -1, 14, color)
+		draw_string(font, Vector2(0, -50), "Dist: %.1fpx" % dist, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.WHITE)
+		draw_string(font, Vector2(0, -35), "Stop Range: %.1fpx" % COMBAT_CLOSE_DISTANCE, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, color)
+		
+		# Draw line between collision shapes (approximate)
+		# Hero Radius ~25, Enemy Radius ~15
+		var surface_dist = dist - 25.0 - 15.0
+		draw_string(font, Vector2(0, -20), "Gap: %.1fpx" % surface_dist, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
+
+		# DEBUG: Check if we are behind the enemy
+		var enemy_forward = Vector2.RIGHT
+		if "velocity" in combat_target and combat_target.velocity.length() > 1.0:
+			enemy_forward = combat_target.velocity.normalized()
+		
+		var to_hero = global_position - combat_target.global_position
+		if to_hero.dot(enemy_forward) < -0.1:
+			draw_string(font, Vector2(0, -80), "⚠️ BEHIND ENEMY", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.RED)
+
+		# DEBUG: Check for Dragging (Enemy moving while we chase)
+		if "velocity" in combat_target and combat_target.velocity.length() > 1.0:
+			draw_string(font, Vector2(0, -95), "⚠️ DRAGGING", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.ORANGE)
+
+	# Draw Leash Line (Home -> Hero)
+	if max_distance_from_home > 0:
+		var dist_home = global_position.distance_to(home_position)
+		var leash_color = Color.GREEN if dist_home < max_distance_from_home else Color.RED
+		draw_line(Vector2.ZERO, home_position - global_position, Color(leash_color, 0.3), 1.0)
+		if dist_home > max_distance_from_home * 0.8:
+			draw_string(font, Vector2(0, 20), "Leash: %.0f/%.0f" % [dist_home, max_distance_from_home], HORIZONTAL_ALIGNMENT_CENTER, -1, 12, leash_color)
+
+	# Draw state info
 
 	# Draw state info
 	var state_text = State.keys()[current_state]
@@ -726,23 +767,15 @@ func _draw():
 	var is_moving = velocity.length() > 1.0
 	draw_string(font, Vector2(0, -5), "Moving: %s" % ("YES" if is_moving else "NO"), HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
 
-	# Draw Engagement Slots (The "Ring")
-	for i in range(hero_engagement_slots.size()):
-		var slot_pos = get_hero_slot_position(i) - global_position # Local pos
-		var is_occupied = hero_engagement_slots[i] != null
-		var color = Color.RED if is_occupied else Color.GREEN
-
-		# Draw Slot Circle
-		draw_circle(slot_pos, 5.0, color)
-
-		# Draw Slot Index Number
-		draw_string(font, slot_pos + Vector2(-5, -10), str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color.WHITE)
-
-		# Draw Line to Occupant
-		if is_occupied and is_instance_valid(hero_engagement_slots[i]):
-			var enemy = hero_engagement_slots[i]
-			var enemy_local = enemy.global_position - global_position
-			draw_line(slot_pos, enemy_local, Color.YELLOW, 2.0)
+	# Draw Engagement Slots (Simplified - just show blocked count)
+	var blocked_count = 0
+	for enemy in enemies_in_melee_range:
+		if is_instance_valid(enemy) and enemy.is_blocked and enemy.blocking_hero == self:
+			blocked_count += 1
+			# Draw line to blocked enemy
+			draw_line(Vector2.ZERO, enemy.global_position - global_position, Color.RED, 2.0)
+			
+	draw_string(font, Vector2(0, -65), "Blocked: %d/%d" % [blocked_count, block_capacity], HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.WHITE)
 
 	# Draw line to blocked enemies (Melee Range)
 	draw_circle(Vector2.ZERO, melee_range, Color(1, 1, 1, 0.1)) # Range ring
@@ -800,59 +833,37 @@ func get_closest_ranged_enemy():
 # HERO ENGAGEMENT SLOTS (Enemies surrounding Hero)
 # ============================================
 
-var hero_engagement_slots = [] # Array of enemies
-const HERO_SLOT_OFFSET = 40.0
+# ============================================
+# HERO ENGAGEMENT (Simplified for Kingdom Rush Style)
+# ============================================
 
-func _init_engagement_slots():
-	hero_engagement_slots.resize(block_capacity)
-	hero_engagement_slots.fill(null)
+# We no longer use specific slots.
+# We just track how many enemies are blocked to enforce capacity.
+# The enemies themselves handle positioning (they stop at contact).
 
 func request_hero_engagement_slot(enemy: Node2D) -> int:
-	"""Enemy requests a slot to stand at - Smart Nearest Neighbor"""
-	if hero_engagement_slots.is_empty():
-		_init_engagement_slots()
+	"""Legacy compatibility: Returns 0 if capacity allows, -1 if full"""
+	# Check if we are already blocking this enemy (re-request)
+	if enemies_in_melee_range.has(enemy) and enemy.is_blocked and enemy.blocking_hero == self:
+		return 0
 		
-	# 1. Check if already has slot
-	var existing = hero_engagement_slots.find(enemy)
-	if existing != -1:
-		return existing
-		
-	# 2. Find CLOSEST empty slot
-	var best_slot = -1
-	var min_dist = INF
-	
-	for i in range(hero_engagement_slots.size()):
-		if hero_engagement_slots[i] == null:
-			var slot_pos = get_hero_slot_position(i)
-			var dist = slot_pos.distance_to(enemy.global_position)
-			if dist < min_dist:
-				min_dist = dist
-				best_slot = i
-				
-	if best_slot != -1:
-		hero_engagement_slots[best_slot] = enemy
-		return best_slot
+	# Check capacity
+	var current_blocked_count = 0
+	for e in enemies_in_melee_range:
+		if is_instance_valid(e) and e.is_blocked and e.blocking_hero == self:
+			current_blocked_count += e.weight if "weight" in e else 1
 			
-	return -1
+	if current_blocked_count < block_capacity:
+		return 0 # Granted
+	return -1 # Denied
 
-func release_hero_engagement_slot(enemy: Node2D):
-	var index = hero_engagement_slots.find(enemy)
-	if index != -1:
-		hero_engagement_slots[index] = null
+func release_hero_engagement_slot(_enemy: Node2D):
+	"""Legacy compatibility: No-op"""
+	pass
 
-func get_hero_slot_position(slot_index: int) -> Vector2:
-	var offset = Vector2.ZERO
-	
-	# Standard 3-slot layout (Warrior default)
-	# Fixed World Positions (Stable)
-	# 0: Right, 1: Left, 2: Bottom, 3: Top
-	match slot_index:
-		0: offset = Vector2(HERO_SLOT_OFFSET, 0) # Right
-		1: offset = Vector2(-HERO_SLOT_OFFSET, 0) # Left
-		2: offset = Vector2(0, HERO_SLOT_OFFSET) # Bottom
-		3: offset = Vector2(0, -HERO_SLOT_OFFSET) # Top
-		
-	return global_position + offset
+func get_hero_slot_position(_slot_index: int) -> Vector2:
+	"""Legacy compatibility: Returns hero position (center)"""
+	return global_position
 
 func get_melee_targets():
 	var targets = []
@@ -869,26 +880,17 @@ func get_melee_targets():
 			
 		# If we have capacity, block new enemy
 		if current_weight + enemy.weight <= block_capacity and not enemy.is_blocked:
-			# FORWARD BLOCKING CHECK (Anti-Backtracking)
-			# Only block if we are IN FRONT of the enemy.
-			# If we are behind, let them pass (don't force them to turn around).
-			var to_hero = global_position - enemy.global_position
-			var enemy_forward = Vector2.RIGHT # Default
-			
-			# Try to get actual movement direction
-			if enemy.velocity.length_squared() > 1.0:
-				enemy_forward = enemy.velocity.normalized()
-			elif enemy.has_node("PathFollow2D"): # Fallback for path followers
-				# Approximate forward from rotation if stationary
-				enemy_forward = Vector2.RIGHT.rotated(enemy.rotation)
-				
-			# Dot Product: > 0 means in front, < 0 means behind
-			if to_hero.dot(enemy_forward) < -0.1: # Small buffer
-				# Hero is BEHIND enemy. Ignore blocking.
-				# We can still attack them (backstab), but don't stop them.
-				targets.append(enemy) # Add to targets list for attacking
-				continue # Skip blocking logic
-				
+			# DISTANCE CHECK: Don't block immediately at detection edge (100px).
+			# Let them walk closer so the fight feels "tight".
+			# Block only if they are within Combat Distance + small buffer (e.g. 45px).
+			var dist_to_enemy = global_position.distance_to(enemy.global_position)
+			if dist_to_enemy > COMBAT_CLOSE_DISTANCE + 5.0:
+				# Too far to block yet. Let them come closer.
+				# We still add them to targets so we can attack them if they are in range,
+				# but we don't call enemy.block() yet.
+				targets.append(enemy)
+				continue
+
 			enemy.block(self)
 			targets.append(enemy)
 			current_weight += enemy.weight
@@ -947,27 +949,31 @@ func perform_ranged_attack(_target):
 	# Override in child class
 	pass
 
-func perform_melee_attack(target):
+func perform_melee_attack(target) -> bool:
 	# Override in child class
 	if target.has_method("take_damage"):
 		# DEAD CHECK: Don't hit dead enemies (even if instance is valid this frame)
 		if "current_health" in target and target.current_health <= 0:
 			if DebugConfig.visual_debug_enabled:
 				print("[ATTACK] ❌ Skipped - Target '%s' is already dead" % target.name)
-			return
+			return false
 
 		# RANGE CHECK: Don't hit if they are still walking to the slot
 		var distance_to_target = global_position.distance_to(target.global_position)
-		if distance_to_target > 60.0:
+		# Allow a buffer over the stopping distance (50 + 25 = 75px)
+		var max_attack_range = COMBAT_CLOSE_DISTANCE + 25.0
+		if distance_to_target > max_attack_range:
 			if DebugConfig.visual_debug_enabled:
-				print("[ATTACK] ❌ Skipped - Target '%s' too far (%.1fpx > 60px)" % [target.name, distance_to_target])
-			return
+				print("[ATTACK] ❌ Skipped - Target '%s' too far (%.1fpx > %.1fpx)" % [target.name, distance_to_target, max_attack_range])
+			return false
 
 		if DebugConfig.visual_debug_enabled:
 			print("[ATTACK] ✅ HITTING '%s' for %.1f damage (distance: %.1fpx)" % [target.name, melee_damage, distance_to_target])
 		else:
 			print("[BaseHero] Attacking %s for %.1f damage" % [target.name, melee_damage])
 		target.take_damage(melee_damage, self, "hero_melee")
+		return true
+	return false
 
 # ============================================
 # VISUAL HELPERS
