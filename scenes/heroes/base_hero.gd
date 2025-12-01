@@ -868,16 +868,16 @@ func get_hero_slot_position(_slot_index: int) -> Vector2:
 func get_melee_targets():
 	var targets = []
 	var current_weight = 0
-	
+
 	for enemy in enemies_in_melee_range:
 		if not is_instance_valid(enemy): continue
-		
+
 		# If already blocking this enemy, keep it
 		if enemy.is_blocked and enemy.blocking_hero == self:
 			targets.append(enemy)
 			current_weight += enemy.weight
 			continue
-			
+
 		# If we have capacity, block new enemy
 		if current_weight + enemy.weight <= block_capacity and not enemy.is_blocked:
 			# DISTANCE CHECK: Don't block immediately at detection edge (100px).
@@ -894,7 +894,7 @@ func get_melee_targets():
 			enemy.block(self)
 			targets.append(enemy)
 			current_weight += enemy.weight
-			
+
 	return targets
 
 func clean_enemy_lists():

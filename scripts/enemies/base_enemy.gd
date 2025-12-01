@@ -108,9 +108,9 @@ func _ready():
 
 	# Set collision
 	# Layer 1: Default/Enemy (Required for Towers)
-	# Mask 1: World/Walls ONLY (Ignore Hero Physics so we can get close enough to fight)
+	# Mask 0: Detect NOTHING (Ethereal) - Fixes Traffic Jams & Hero Avoidance
 	collision_layer = 1
-	collision_mask = 1
+	collision_mask = 0
 
 	# Initialize health bar
 	_update_health_bar()
@@ -320,7 +320,7 @@ func _continue_movement(delta):
 	"""Handle movement based on current navigation system"""
 	# Ensure we are walking (unless attacking)
 	_play_animation("walk")
-	
+
 	if use_waypoint_navigation:
 		_waypoint_movement(delta)
 	else:
