@@ -256,9 +256,13 @@ func _physics_process(delta):
 		# I am the blocked enemy - check if hero is still close
 		var distance = global_position.distance_to(blocking_hero.global_position)
 		
-		# STRICT AGGRO: If Hero moves, we disengage immediately.
-		# This prevents "kiting" (dragging enemies away).
-		if blocking_hero is CharacterBody2D and blocking_hero.velocity.length() > 10.0:
+		# COMBAT STICKINESS: Stay engaged even if hero shifts position slightly
+		# Only disengage if dragged far from where we were blocked (50px radius)
+		# This prevents teleporting and enables Kingdom Rush-style mobile combat
+		var distance_moved_from_block_point = global_position.distance_to(path_position)
+
+		if distance_moved_from_block_point > 50.0:
+			# Dragged too far from block point - disengage
 			unblock(blocking_hero)
 			_continue_movement(delta)
 			return

@@ -58,7 +58,8 @@ func _ready():
 
 	# Hide in game unless specified
 	if not Engine.is_editor_hint() and not visible_in_game:
-		visible = false
+		# visible = false # REMOVED - let _draw() handle visibility
+		pass
 
 	# Add to waypoint group for easy finding
 	add_to_group("waypoints")
@@ -66,9 +67,22 @@ func _ready():
 	# Trigger initial draw
 	queue_redraw()
 
+func _process(_delta):
+	# Redraw if debug flag changes state
+	if not Engine.is_editor_hint():
+		queue_redraw() # Simple but effective for debug toggles
+
 func _draw():
-	# Draw waypoint marker (always visible in editor)
-	if Engine.is_editor_hint() or visible_in_game:
+	# Draw waypoint marker (always visible in editor, or if debug enabled)
+	var show_debug = false
+	if Engine.is_editor_hint():
+		show_debug = true
+	elif visible_in_game:
+		show_debug = true
+	elif DebugConfig.show_waypoints: # Check global debug flag
+		show_debug = true
+		
+	if show_debug:
 		# Draw road width circle (semi-transparent)
 		draw_circle(Vector2.ZERO, road_width / 2.0, Color(waypoint_color, 0.15))
 

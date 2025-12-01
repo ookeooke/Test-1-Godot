@@ -8,9 +8,10 @@ extends Node
 # ============================================
 
 # Debug flags
-var targeting_debug_enabled = false  # Console output for targeting
-var visual_debug_enabled = false     # Visual lines and highlights
-var log_stat_calculations = false    # Log stat recalculation details
+var targeting_debug_enabled = false # Console output for targeting
+var visual_debug_enabled = false # Visual lines and highlights
+var show_waypoints = false # Show waypoint paths in game
+var log_stat_calculations = false # Log stat recalculation details
 
 func _ready():
 	print("Debug Config loaded - F3: Targeting Debug | F4: Visual Debug")

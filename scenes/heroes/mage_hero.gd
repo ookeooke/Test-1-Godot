@@ -5,6 +5,7 @@ extends "res://scenes/heroes/base_hero.gd"
 # ============================================
 
 # CLASS TYPE (for attribute scaling)
+# CLASS TYPE (for attribute scaling)
 const CLASS_TYPE_MAGIC: int = 2 # Matches HeroClassConfig.class_type
 
 # PROJECTILE
@@ -27,6 +28,9 @@ func _ready():
 	
 	set_meta("hero_name", "Mage")
 	set_meta("hero_class", "mage")
+	
+	# Mage blocks 1 enemy (self-defense)
+	block_capacity = 1
 
 func _generate_unique_hero_id() -> String:
 	return "mage"

@@ -161,14 +161,30 @@ func _unhandled_input(event):
 				# Clicking empty space - move hero
 				if debug_input:
 					print("[HeroManager DEBUG] Empty space - moving hero to: ", click_world_pos)
-				current_hero.move_to_position(click_world_pos)
+				
+				# ROAD CONSTRAINT CHECK
+				var road_renderer = get_tree().get_first_node_in_group("road_renderer")
+				var can_move = true
+				
+				if road_renderer:
+					# Check if point is on road (with tolerance)
+					if not road_renderer.is_point_on_road(click_world_pos, 40.0):
+						print("[HeroManager] Movement blocked: Target not on road")
+						can_move = false
+						
+						# Visual feedback for blocked move
+						if current_hero and current_hero.has_method("_show_floating_text"):
+							current_hero._show_floating_text("Can't move there!", Color.RED)
+				
+				if can_move:
+					current_hero.move_to_position(click_world_pos)
 
-				# Auto-deselect hero after giving move command
-				current_hero.deselect()
-				current_hero = null
-				if hero_button:
-					hero_button.set_selected(false)
-				get_viewport().set_input_as_handled()
+					# Auto-deselect hero after giving move command
+					current_hero.deselect()
+					current_hero = null
+					if hero_button:
+						hero_button.set_selected(false)
+					get_viewport().set_input_as_handled()
 		return
 
 	# Right-click deselect REMOVED - use ESC key instead (via "deselect" action above)

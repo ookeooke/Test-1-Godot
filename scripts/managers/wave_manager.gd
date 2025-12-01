@@ -11,7 +11,7 @@ extends Node2D
 # - Buttons auto-position to follow spawn points on screen
 
 # REFERENCES (drag these from Scene tree in Inspector)
-@export var enemy_path: Path2D # The path enemies follow (OLD SYSTEM)
+@export var enemy_path: Path2D # The path enemies follow (OLD SYSTEM - Optional if using waypoints)
 @export var start_waypoint: PathWaypoint # Starting waypoint (NEW SYSTEM - optional)
 @export var use_waypoint_system: bool = false # Toggle between old Path2D and new waypoint system
 @export var goblin_scene: PackedScene
@@ -118,6 +118,22 @@ func _ready():
 	if BalanceTracker:
 		var level_id = LevelManager.current_level.level_id if LevelManager.current_level else "unknown"
 		BalanceTracker.start_run(level_id)
+
+	# SELF-HEALING: If start_waypoint is missing (common in migration), try to find it dynamically
+	if use_waypoint_system and start_waypoint == null:
+		print("[WaveManager] ⚠️ start_waypoint is null! Attempting to find it dynamically...")
+		var potential_waypoint = get_node_or_null("../Waypoints/Waypoint_0")
+		if potential_waypoint:
+			start_waypoint = potential_waypoint
+			print("[WaveManager] ✅ FIXED: Found start_waypoint at ../Waypoints/Waypoint_0")
+		else:
+			# Try searching by group
+			var waypoints = get_tree().get_nodes_in_group("waypoints")
+			if waypoints.size() > 0:
+				# Sort by name to hopefully get Waypoint_0
+				waypoints.sort_custom(func(a, b): return a.name < b.name)
+				start_waypoint = waypoints[0]
+				print("[WaveManager] ✅ FIXED: Found start_waypoint via group: ", start_waypoint.name)
 
 	# Detect spawn point positions for call wave buttons
 	detect_spawn_points()

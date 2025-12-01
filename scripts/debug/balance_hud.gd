@@ -64,6 +64,18 @@ func _ready():
 	print("✅ BalanceHUD initialized (Hidden by default - toggle with button or F3)")
 	print("📊 Auto-export enabled - data will save automatically on level complete/defeat")
 	print("⏩ Speed controls: Press 1/2/3/4 for 1x/2x/4x/8x speed")
+	
+	# Add Toggle Paths button programmatically
+	var btn = Button.new()
+	btn.text = "Toggle Paths"
+	btn.pressed.connect(_on_toggle_paths_pressed)
+	content_container.add_child(btn)
+	content_container.move_child(btn, 1) # Place after header
+
+func _on_toggle_paths_pressed():
+	DebugConfig.show_waypoints = !DebugConfig.show_waypoints
+	print("Debug Paths: ", DebugConfig.show_waypoints)
+	_update_display()
 
 # ============================================
 # INPUT HANDLING
@@ -104,20 +116,24 @@ func toggle_visibility():
 
 	if is_hud_visible:
 		print("[BalanceHUD] Shown")
+		DebugConfig.show_waypoints = true # Auto-show waypoints
 		_update_display() # Immediate update
 	else:
 		print("[BalanceHUD] Hidden")
+		DebugConfig.show_waypoints = false # Auto-hide waypoints
 
 func show_hud():
 	"""Show the HUD"""
 	is_hud_visible = true
 	visible = true
+	DebugConfig.show_waypoints = true
 	_update_display()
 
 func hide_hud():
 	"""Hide the HUD"""
 	is_hud_visible = false
 	visible = false
+	DebugConfig.show_waypoints = false
 
 # ============================================
 # UPDATE LOOP
@@ -276,9 +292,25 @@ func _update_performance_section(run_data: Dictionary):
 	var lives = GameStateManager.lives if GameStateManager else 0
 
 	var text = "[b]PERFORMANCE[/b]\n"
+	
+	# Technical Metrics
+	var fps = Engine.get_frames_per_second()
+	var mem = OS.get_static_memory_usage() / 1024.0 / 1024.0 # Convert to MB
+	var draw_calls = Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+	var objects = Performance.get_monitor(Performance.OBJECT_COUNT)
+	
+	text += "├─ FPS: %d | Mem: %.1f MB\n" % [fps, mem]
+	text += "├─ Draw Calls: %d | Objs: %d\n" % [draw_calls, objects]
 
 	if metrics.has("total_dps"):
 		text += "├─ Total DPS: %.1f\n" % metrics.total_dps
+
+	text += "├─ Lives: %d\n" % lives
+
+	if metrics.has("gold_efficiency"):
+		text += "└─ Gold Efficiency: %.0f%%\n" % (metrics.gold_efficiency * 100)
+
+	performance_label.text = text
 
 	text += "├─ Lives: %d\n" % lives
 

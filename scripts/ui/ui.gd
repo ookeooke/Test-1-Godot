@@ -100,8 +100,8 @@ func _update_debug_hud_button():
 	# Update button text based on HUD visibility
 	var balance_hud = get_tree().root.find_child("BalanceDebugHUD", true, false)
 	if balance_hud:
-		# Check the is_visible variable in the balance_hud script
-		if balance_hud.get("is_visible"):
+		# Check the is_hud_visible variable in the balance_hud script
+		if balance_hud.get("is_hud_visible"):
 			debug_hud_button.text = "Debug: ON"
 		else:
 			debug_hud_button.text = "Debug: OFF"

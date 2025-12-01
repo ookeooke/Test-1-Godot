@@ -77,6 +77,11 @@ var enemies_in_ranged_range = []
 var current_ranged_target = null
 var current_melee_targets = []
 
+# KINGDOM RUSH COMBAT MOVEMENT
+var combat_target: Node2D = null # Current enemy we're walking toward
+var combat_movement_enabled: bool = true # Toggle for testing/debugging
+const COMBAT_CLOSE_DISTANCE: float = 15.0 # Stop within 15px (face-to-face range)
+
 # TIMERS
 var ranged_timer: Timer
 var melee_timer: Timer
@@ -615,45 +620,61 @@ var current_engagement_slot: int = -1
 func handle_melee_combat_state():
 	current_melee_targets = get_melee_targets()
 
+	# DEBUG: Log combat state entry
+	if DebugConfig.visual_debug_enabled and not current_melee_targets.is_empty():
+		if is_instance_valid(current_melee_targets[0]):
+			var dist = global_position.distance_to(current_melee_targets[0].global_position)
+			print("[COMBAT] Hero '%s' | Targets: %d | Distance: %.1fpx | State: MELEE_COMBAT" % [name, current_melee_targets.size(), dist])
+
 	if current_melee_targets.is_empty():
 		# No targets? Release slot and return
+		combat_target = null
 		if current_engagement_slot != -1:
-			# We don't know which enemy we had, so we can't release easily unless we track the target.
-			# Ideally we track 'current_melee_target' property.
-			# For now, we rely on the enemy cleaning up or the loop below.
 			current_engagement_slot = -1
-			
+
 		for enemy in enemies_in_melee_range:
 			if is_instance_valid(enemy) and enemy.has_method("unblock"):
 				if enemy.is_blocked and enemy.blocking_hero == self:
 					enemy.unblock()
-					enemy.release_engagement_slot(self) # Release slot!
-					
+					enemy.release_engagement_slot(self)
+
 		if not enemies_in_ranged_range.is_empty():
 			enter_ranged_combat()
 		else:
 			enter_returning_state()
 		return
 
-	# We have targets
+	# We have targets - fight the closest one
 	var closest = current_melee_targets[0]
 	if is_instance_valid(closest):
-		# STATIONARY ANCHOR LOGIC
-		# If we are blocking this enemy, we are the ANCHOR. Stand still.
-		if closest.is_blocked and closest.blocking_hero == self:
+		combat_target = closest
+
+		# KINGDOM RUSH COMBAT: Hero walks TO the enemy
+		if combat_movement_enabled:
+			var distance_to_enemy = global_position.distance_to(closest.global_position)
+
+			# Leash check - don't chase beyond home range
+			if global_position.distance_to(home_position) > max_distance_from_home:
+				if closest.has_method("unblock"):
+					closest.unblock(self)
+				combat_target = null
+				enter_returning_state()
+				return
+
+			if distance_to_enemy > COMBAT_CLOSE_DISTANCE:
+				# Too far - walk closer for face-to-face combat
+				var direction = (closest.global_position - global_position).normalized()
+				velocity = direction * movement_speed * 0.6 # 60% speed in combat
+				move_and_slide()
+				update_sprite_direction(closest.global_position)
+			else:
+				# Close enough - stop and fight
+				velocity = Vector2.ZERO
+				update_sprite_direction(closest.global_position)
+		else:
+			# Legacy mode: stationary anchor
 			velocity = Vector2.ZERO
 			update_sprite_direction(closest.global_position)
-			# We don't request a slot on the enemy because WE are the slot provider.
-			
-		else:
-			# We are NOT blocking it (maybe chasing a runner or helping another hero).
-			# Use standard slot logic to surround it.
-			# 1. Request Slot if we don't have one
-			if current_engagement_slot == -1 and closest.has_method("request_engagement_slot"):
-				current_engagement_slot = closest.request_engagement_slot(self)
-				
-			# 2. Determine Move Position
-			var move_pos = closest.global_position # Default to center
 
 func handle_returning_state(_delta):
 	var distance = global_position.distance_to(home_position)
@@ -677,26 +698,52 @@ func _draw():
 	# DEBUG VISUALS
 	if not DebugConfig.visual_debug_enabled:
 		return
-		
+
+	var font = ThemeDB.fallback_font
+
+	# KINGDOM RUSH COMBAT DEBUG
+	if combat_target and is_instance_valid(combat_target):
+		# Draw line to combat target (Yellow)
+		var to_target = combat_target.global_position - global_position
+		draw_line(Vector2.ZERO, to_target, Color.YELLOW, 3.0)
+
+		# Draw combat close distance circle (Green if in range, Red if too far)
+		var dist = global_position.distance_to(combat_target.global_position)
+		var in_range = dist <= COMBAT_CLOSE_DISTANCE
+		var color = Color.GREEN if in_range else Color.RED
+		draw_circle(Vector2.ZERO, COMBAT_CLOSE_DISTANCE, Color(color, 0.3))
+		draw_arc(Vector2.ZERO, COMBAT_CLOSE_DISTANCE, 0, TAU, 32, color, 2.0)
+
+		# Draw distance text
+		draw_string(font, Vector2(0, -50), "Distance: %.1fpx" % dist, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.WHITE)
+		draw_string(font, Vector2(0, -35), "In Range: %s" % ("YES" if in_range else "NO"), HORIZONTAL_ALIGNMENT_CENTER, -1, 14, color)
+
+	# Draw state info
+	var state_text = State.keys()[current_state]
+	draw_string(font, Vector2(0, -20), "State: %s" % state_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.CYAN)
+
+	# Draw velocity info
+	var is_moving = velocity.length() > 1.0
+	draw_string(font, Vector2(0, -5), "Moving: %s" % ("YES" if is_moving else "NO"), HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.YELLOW)
+
 	# Draw Engagement Slots (The "Ring")
 	for i in range(hero_engagement_slots.size()):
 		var slot_pos = get_hero_slot_position(i) - global_position # Local pos
 		var is_occupied = hero_engagement_slots[i] != null
 		var color = Color.RED if is_occupied else Color.GREEN
-		
+
 		# Draw Slot Circle
 		draw_circle(slot_pos, 5.0, color)
-		
+
 		# Draw Slot Index Number
-		var font = ThemeDB.fallback_font
 		draw_string(font, slot_pos + Vector2(-5, -10), str(i), HORIZONTAL_ALIGNMENT_CENTER, -1, 16, Color.WHITE)
-		
+
 		# Draw Line to Occupant
 		if is_occupied and is_instance_valid(hero_engagement_slots[i]):
 			var enemy = hero_engagement_slots[i]
 			var enemy_local = enemy.global_position - global_position
 			draw_line(slot_pos, enemy_local, Color.YELLOW, 2.0)
-			
+
 	# Draw line to blocked enemies (Melee Range)
 	draw_circle(Vector2.ZERO, melee_range, Color(1, 1, 1, 0.1)) # Range ring
 
@@ -877,9 +924,19 @@ func _on_ranged_timer_timeout():
 		perform_ranged_attack(target)
 
 func _on_melee_timer_timeout():
-	if current_state != State.MELEE_COMBAT: return
-	if current_melee_targets.is_empty(): return
-	
+	# DEBUG: Log timer trigger
+	if DebugConfig.visual_debug_enabled:
+		if current_state != State.MELEE_COMBAT:
+			print("[ATTACK] Timer fired but NOT in MELEE_COMBAT state (current: %s)" % State.keys()[current_state])
+			return
+		if current_melee_targets.is_empty():
+			print("[ATTACK] Timer fired but NO TARGETS available")
+			return
+		print("[ATTACK] Timer fired! Attempting attack on %d target(s)" % current_melee_targets.size())
+	else:
+		if current_state != State.MELEE_COMBAT: return
+		if current_melee_targets.is_empty(): return
+
 	# Single Target Attack: Only hit the first valid target
 	for target in current_melee_targets:
 		if is_instance_valid(target):
@@ -895,13 +952,21 @@ func perform_melee_attack(target):
 	if target.has_method("take_damage"):
 		# DEAD CHECK: Don't hit dead enemies (even if instance is valid this frame)
 		if "current_health" in target and target.current_health <= 0:
+			if DebugConfig.visual_debug_enabled:
+				print("[ATTACK] ❌ Skipped - Target '%s' is already dead" % target.name)
 			return
 
 		# RANGE CHECK: Don't hit if they are still walking to the slot
-		if global_position.distance_to(target.global_position) > 60.0:
+		var distance_to_target = global_position.distance_to(target.global_position)
+		if distance_to_target > 60.0:
+			if DebugConfig.visual_debug_enabled:
+				print("[ATTACK] ❌ Skipped - Target '%s' too far (%.1fpx > 60px)" % [target.name, distance_to_target])
 			return
-			
-		print("[BaseHero] Attacking %s for %.1f damage" % [target.name, melee_damage])
+
+		if DebugConfig.visual_debug_enabled:
+			print("[ATTACK] ✅ HITTING '%s' for %.1f damage (distance: %.1fpx)" % [target.name, melee_damage, distance_to_target])
+		else:
+			print("[BaseHero] Attacking %s for %.1f damage" % [target.name, melee_damage])
 		target.take_damage(melee_damage, self, "hero_melee")
 
 # ============================================

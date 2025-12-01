@@ -5,6 +5,7 @@ extends "res://scenes/heroes/base_hero.gd"
 # ============================================
 
 # CLASS TYPE
+# CLASS TYPE
 const CLASS_TYPE_MELEE: int = 0 # Matches HeroClassConfig.class_type
 
 # ============================================
