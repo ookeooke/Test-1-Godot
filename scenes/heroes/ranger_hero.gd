@@ -31,6 +31,9 @@ func _ready():
 	
 	# Ranger blocks 1 enemy (self-defense)
 	block_capacity = 1
+	
+	# Default to FIRST targeting (Smart Default)
+	targeting_mode = TargetingMode.FIRST
 
 func _generate_unique_hero_id() -> String:
 	return "ranger"

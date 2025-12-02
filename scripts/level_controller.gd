@@ -26,6 +26,11 @@ func _ready():
 		# Fallback: Load default config for this level
 		# Use load() to avoid cyclic dependency at parse time
 		level_config = load("res://data/level_configs/level_01_config.tres")
+	
+	# Ensure GameState is initialized (fixes 0 gold on restart)
+	if GameStateManager and GameStateManager.current_level_config != level_config:
+		print("[LevelController] Initializing GameState (Restart or Direct Load detected)")
+		GameStateManager.initialize_level(level_config)
 		
 	# Set camera bounds from level config
 	_setup_camera_bounds()

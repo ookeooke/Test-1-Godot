@@ -339,8 +339,29 @@ func _on_rally_mode_entered(tower):
 	else:
 		print("❌ [PlacementManager] Tower does not support rally placement!")
 
-func _on_tower_sold(_tower):
+func _on_tower_sold(tower_to_sell):
 	"""Handle tower sell"""
+	print("\n=== 💰 TOWER SELL HANDLER ===")
+	print("💰 [PlacementManager] _on_tower_sold() called")
+
+	# Calculate sell value (70% of build cost)
+	var sell_value = 0
+	if tower_to_sell and is_instance_valid(tower_to_sell):
+		if tower_to_sell.has_method("get_sell_value"):
+			sell_value = tower_to_sell.get_sell_value()
+		else:
+			# Fallback: 70% of build_cost
+			var build_cost = tower_to_sell.build_cost if "build_cost" in tower_to_sell else 100
+			sell_value = int(build_cost * 0.7)
+	
+	print("💰 [PlacementManager] Sell value: %d" % sell_value)
+
+	# Refund gold
+	if GameStateManager:
+		GameStateManager.add_gold(sell_value)
+		print("✅ [PlacementManager] Gold refunded: +%d" % sell_value)
+	else:
+		push_error("❌ [PlacementManager] GameStateManager not found! Gold not refunded.")
 
 	# Deselect tower before selling
 	_deselect_current_tower()
@@ -351,8 +372,14 @@ func _on_tower_sold(_tower):
 		# AND re-enables click_area.input_pickable (critical for re-building)
 		current_spot.remove_tower()
 
+		# CRITICAL FIX: Close the menu immediately after selling
+		# This prevents the "stuck menu" bug where user has to click elsewhere
+		close_current_menu()
+		
 		current_spot = null
 		current_selected_tower = null
+		
+	print("=== ✅ TOWER SOLD ===\n")
 
 func _on_menu_closed():
 	"""Handle menu close (when clicking outside or pressing ESC)"""

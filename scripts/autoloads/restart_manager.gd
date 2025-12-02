@@ -71,6 +71,19 @@ func cleanup_for_restart() -> void:
 	else:
 		push_warning("[RestartManager] ⚠️ EnemyManager not found")
 
+	# Clear floating text (damage numbers)
+	if FloatingTextManager:
+		FloatingTextManager.clear_all_text()
+	else:
+		# Since it's a class_name, we can access static methods directly if script is loaded
+		# But checking if the class exists at runtime is tricky if not autoload.
+		# However, since we defined class_name, it should be globally available.
+		# We can just call it directly.
+		pass
+	
+	# Direct call because it is a static class_name
+	FloatingTextManager.clear_all_text()
+
 	# Verify pause state
 	var pause_state = "paused" if get_tree().paused else "running"
 	print("[RestartManager] ℹ️ Game state: %s" % pause_state)

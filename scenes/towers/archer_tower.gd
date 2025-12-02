@@ -100,15 +100,23 @@ func shoot_at(target):
 		projectile.target = target
 		projectile.damage = damage
 	
+	# Trigger animation on visual if available
+	if has_node("VisualContainer") and $VisualContainer.get_child_count() > 0:
+		var visual = $VisualContainer.get_child(0)
+		if visual.has_method("play_attack"):
+			visual.play_attack()
+	
 	# Play sound if available
 	# if has_node("ShootSound"): $ShootSound.play()
 
 func _update_weapon_reference(visual_instance):
 	"""Override: Find the weapon node in the new visual scene"""
+	# The pivot is likely "Archer/Weapon" in the new structure
 	if visual_instance.has_node("Archer/Weapon"):
 		archer_weapon = visual_instance.get_node("Archer/Weapon")
+	elif visual_instance.has_node("Visuals/WeaponPivot"): # Fallback for other structures
+		archer_weapon = visual_instance.get_node("Visuals/WeaponPivot")
 	else:
-		# Try to find recursively or by type if needed
 		archer_weapon = null
 
 # ============================================

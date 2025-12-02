@@ -699,6 +699,15 @@ scripts/autoloads/
   - Attack functions (`perform_melee_attack`) MUST return `bool` (true = hit, false = miss/dead).
   - **NEVER** play attack animation if the target is dead or the attack failed.
 
+### Collision & Movement
+- **Ethereal Enemies (Kingdom Rush Style):**
+  - **Layer 1:** Visible to Towers and Heroes (for detection).
+  - **Mask 0:** Ignores ALL physical collisions.
+  - **Why?** Allows enemies to:
+    1.  **Stack** (walk through each other) to prevent traffic jams.
+    2.  **Pass Heroes** (walk through them) until Combat Logic stops them.
+    3.  **Follow Road:** Movement is constrained by Waypoints, not physics walls.
+
 ---
 
 ## 📦 Asset Management & Exporting

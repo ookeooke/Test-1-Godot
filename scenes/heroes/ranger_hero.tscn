@@ -8,7 +8,7 @@
 [ext_resource type="Resource" path="res://resources/skills/ranger/multishot.tres" id="4_multishot"]
 [ext_resource type="Texture2D" uid="uid://dfv0iy2dudoib" path="res://assets/sprites/heroes/archer/archer1.png" id="5_archer_sprite"]
 [ext_resource type="Resource" path="res://resources/skills/ranger/eagle_eye.tres" id="6_eagle_eye"]
-[ext_resource type="PackedScene" path="res://scenes/effects/shadow.tscn" id="7_shadow"]
+[ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="7_shadow"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_df4ti"]
 radius = 20.09975
@@ -76,6 +76,7 @@ position = Vector2(21, 21)
 shape = SubResource("CircleShape2D_fxg0a")
 
 [node name="MeleeDetection" type="Area2D" parent="."]
+scale = Vector2(0.663, 0.663)
 collision_layer = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeDetection"]

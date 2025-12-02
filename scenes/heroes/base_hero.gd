@@ -13,6 +13,25 @@ enum State {IDLE, RANGED_COMBAT, MELEE_COMBAT, RETURNING, WALKING}
 var current_state = State.IDLE
 var hero_id: String
 
+# TARGETING MODES
+enum TargetingMode {
+	FIRST,
+	LAST,
+	CLOSE,
+	STRONG,
+	WEAK
+}
+
+var targeting_mode = TargetingMode.CLOSE # Default for melee
+var last_target_change_time_msec := 0
+var current_ranged_target = null # Track current target for stickiness
+
+# TARGET SELECTION TUNING
+const PROGRESS_EPSILON := 0.01
+const PROGRESS_SWITCH_THRESHOLD := 0.05
+const HEALTH_SWITCH_THRESHOLD := 25.0
+const MIN_TARGET_LOCK_TIME := 0.25
+
 # COMBAT CONFIGURATION
 const USE_COMBAT_ANCHOR = true
 
@@ -74,7 +93,7 @@ var block_capacity = 2
 var current_load = 0
 var enemies_in_melee_range = []
 var enemies_in_ranged_range = []
-var current_ranged_target = null
+
 var current_melee_targets = []
 
 # KINGDOM RUSH COMBAT MOVEMENT
@@ -676,9 +695,16 @@ func handle_melee_combat_state():
 			# (Hero Radius 25 + Enemy Radius 15 = 40 collision)
 			if distance_to_enemy > COMBAT_CLOSE_DISTANCE:
 				# Too far - walk closer for face-to-face combat
-				var direction = (closest.global_position - global_position).normalized()
-				velocity = direction * movement_speed * 0.6 # 60% speed in combat
-				move_and_slide()
+				# Dynamic Snap Check
+				var frame_movement = movement_speed * 0.6 * get_physics_process_delta_time()
+				if distance_to_enemy - COMBAT_CLOSE_DISTANCE < frame_movement:
+					# We are practically there - stop now to avoid overshoot
+					velocity = Vector2.ZERO
+				else:
+					var direction = (closest.global_position - global_position).normalized()
+					velocity = direction * movement_speed * 0.6 # 60% speed in combat
+					move_and_slide()
+				
 				update_sprite_direction(closest.global_position)
 			else:
 				# Close enough - stop and fight
@@ -689,9 +715,12 @@ func handle_melee_combat_state():
 			velocity = Vector2.ZERO
 			update_sprite_direction(closest.global_position)
 
-func handle_returning_state(_delta):
+func handle_returning_state(delta):
 	var distance = global_position.distance_to(home_position)
-	if distance < 5:
+	var frame_movement = movement_speed * delta
+	
+	# Dynamic Snap: If we can reach home this frame, snap to it
+	if distance <= frame_movement + 1.0: # +1.0 buffer
 		global_position = home_position
 		enter_idle_state()
 	else:
@@ -830,6 +859,167 @@ func get_closest_ranged_enemy():
 	return closest_enemy
 
 # ============================================
+# ADVANCED TARGETING LOGIC
+# ============================================
+
+func cycle_targeting_mode() -> int:
+	targeting_mode = (targeting_mode + 1) % TargetingMode.size()
+	print("[BaseHero] Targeting mode changed to: %s" % TargetingMode.keys()[targeting_mode])
+	return targeting_mode
+
+func get_targeting_mode_name() -> String:
+	return TargetingMode.keys()[targeting_mode]
+
+func get_target_by_mode():
+	# Filter valid enemies first
+	var valid_enemies = []
+	for e in enemies_in_ranged_range:
+		if is_instance_valid(e) and (not e.has_method("is_dead") or not e.is_dead()) and ("current_health" not in e or e.current_health > 0.0):
+			valid_enemies.append(e)
+			
+	if valid_enemies.is_empty():
+		return null
+
+	# Find the "best" candidate based on current mode
+	var candidate = null
+	match targeting_mode:
+		TargetingMode.FIRST: candidate = get_first_enemy(valid_enemies)
+		TargetingMode.LAST: candidate = get_last_enemy(valid_enemies)
+		TargetingMode.CLOSE: candidate = get_closest_enemy(valid_enemies)
+		TargetingMode.STRONG: candidate = get_strongest_enemy(valid_enemies)
+		TargetingMode.WEAK: candidate = get_weakest_enemy(valid_enemies)
+		
+	# Apply hysteresis (stickiness) if we have a current target
+	return _pick_target_with_stickiness(current_ranged_target, candidate, valid_enemies)
+
+func _pick_target_with_stickiness(old_target, candidate_target, valid_enemies):
+	# If we have no candidate, we must lose target
+	if candidate_target == null:
+		if old_target != null:
+			_record_target_change_time()
+		return null
+
+	# If same target, keep it
+	if old_target == candidate_target:
+		return candidate_target
+
+	# Check if old target is still valid
+	var old_valid = old_target != null and is_instance_valid(old_target) and valid_enemies.has(old_target)
+	
+	if old_valid:
+		# Time-based lock: Don't switch too fast
+		var now_msec = Time.get_ticks_msec()
+		var elapsed = (now_msec - last_target_change_time_msec) / 1000.0
+		if elapsed < MIN_TARGET_LOCK_TIME:
+			return old_target
+
+		# Score-based hysteresis
+		match targeting_mode:
+			TargetingMode.FIRST:
+				var old_p = _get_enemy_progress(old_target)
+				var new_p = _get_enemy_progress(candidate_target)
+				if new_p < old_p + PROGRESS_SWITCH_THRESHOLD: return old_target
+			TargetingMode.LAST:
+				var old_p = _get_enemy_progress(old_target)
+				var new_p = _get_enemy_progress(candidate_target)
+				if new_p > old_p - PROGRESS_SWITCH_THRESHOLD: return old_target
+			TargetingMode.CLOSE:
+				var old_d = global_position.distance_to(old_target.global_position)
+				var new_d = global_position.distance_to(candidate_target.global_position)
+				if new_d > old_d - 50.0: return old_target
+			TargetingMode.STRONG:
+				var old_h = _get_enemy_health(old_target)
+				var new_h = _get_enemy_health(candidate_target)
+				if new_h <= old_h + HEALTH_SWITCH_THRESHOLD: return old_target
+			TargetingMode.WEAK:
+				var old_h = _get_enemy_health(old_target)
+				var new_h = _get_enemy_health(candidate_target)
+				if new_h >= old_h - HEALTH_SWITCH_THRESHOLD: return old_target
+
+	# If we decided to switch, record the time
+	if old_target != candidate_target:
+		_record_target_change_time()
+
+	return candidate_target
+
+func _record_target_change_time():
+	last_target_change_time_msec = Time.get_ticks_msec()
+
+# --- Helper Functions ---
+
+func get_first_enemy(enemies):
+	if enemies.is_empty(): return null
+	var best = enemies[0]
+	var best_progress = _get_enemy_progress(best)
+	for i in range(1, enemies.size()):
+		var progress = _get_enemy_progress(enemies[i])
+		if progress > best_progress + PROGRESS_EPSILON:
+			best = enemies[i]
+			best_progress = progress
+	return best
+
+func get_last_enemy(enemies):
+	if enemies.is_empty(): return null
+	var best = enemies[0]
+	var best_progress = _get_enemy_progress(best)
+	for i in range(1, enemies.size()):
+		var progress = _get_enemy_progress(enemies[i])
+		if progress < best_progress - PROGRESS_EPSILON:
+			best = enemies[i]
+			best_progress = progress
+	return best
+
+func get_closest_enemy(enemies):
+	if enemies.is_empty(): return null
+	var best = enemies[0]
+	var min_dist = global_position.distance_to(best.global_position)
+	for i in range(1, enemies.size()):
+		var dist = global_position.distance_to(enemies[i].global_position)
+		if dist < min_dist:
+			best = enemies[i]
+			min_dist = dist
+	return best
+
+func get_strongest_enemy(enemies):
+	if enemies.is_empty(): return null
+	var best = enemies[0]
+	var max_hp = _get_enemy_health(best)
+	for i in range(1, enemies.size()):
+		var hp = _get_enemy_health(enemies[i])
+		if hp > max_hp:
+			best = enemies[i]
+			max_hp = hp
+	return best
+
+func get_weakest_enemy(enemies):
+	if enemies.is_empty(): return null
+	var best = enemies[0]
+	var min_hp = _get_enemy_health(best)
+	for i in range(1, enemies.size()):
+		var hp = _get_enemy_health(enemies[i])
+		if hp < min_hp:
+			best = enemies[i]
+			min_hp = hp
+	return best
+
+func _get_enemy_progress(enemy) -> float:
+	if not enemy or not is_instance_valid(enemy): return 0.0
+	var path_follower = enemy.get_parent()
+	if path_follower and path_follower is PathFollow2D:
+		return path_follower.progress_ratio
+	if "waypoint_progress" in enemy:
+		return enemy.waypoint_progress
+	if enemy.has_method("get_progress"):
+		return enemy.get_progress()
+	return 0.0
+
+func _get_enemy_health(enemy) -> float:
+	if not enemy or not is_instance_valid(enemy): return 0.0
+	if "current_health" in enemy:
+		return float(enemy.current_health)
+	return 0.0
+
+# ============================================
 # HERO ENGAGEMENT SLOTS (Enemies surrounding Hero)
 # ============================================
 
@@ -921,8 +1111,12 @@ func _on_melee_enemy_exited(body):
 
 func _on_ranged_timer_timeout():
 	if current_state != State.RANGED_COMBAT: return
-	var target = get_closest_ranged_enemy()
+	
+	# Use new targeting logic
+	var target = get_target_by_mode()
+	
 	if target:
+		current_ranged_target = target
 		perform_ranged_attack(target)
 
 func _on_melee_timer_timeout():

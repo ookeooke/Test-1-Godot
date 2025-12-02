@@ -43,6 +43,7 @@ const STAR_OFFSET_Y = 35.0 # Vertical offset BELOW button (outside the button re
 var heroes_button: Button = null
 var gear_button: Button = null
 var towers_button: Button = null
+var town_button: Button = null
 
 var level_buttons: Array = [] # Stores visual nodes (Polygon2D) for each level
 var level_button_nodes: Array[Node2D] = [] # Store button Node2D containers for zoom compensation
@@ -75,6 +76,12 @@ func _ready():
 		_create_towers_button()
 	else:
 		towers_button.pressed.connect(_on_towers_button_pressed)
+
+	# Create town button if it doesn't exist
+	if not town_button:
+		_create_town_button()
+	else:
+		town_button.pressed.connect(_on_town_button_pressed)
 
 	# Panel setup removed - using standalone scenes now
 
@@ -176,11 +183,22 @@ func _setup_camera_bounds():
 		print("[WorldMap] ⚠️ WARNING: Camera not found or doesn't support set_level_bounds()")
 
 func _create_gear_button():
-	"""Create the Gear button programmatically - prominently placed in top-middle"""
+	"""Create the Gear button programmatically"""
 	gear_button = Button.new()
 	gear_button.name = "GearButton"
-	gear_button.text = "⚙ GEAR"
-	gear_button.custom_minimum_size = Vector2(160, 50)
+	# gear_button.text = "⚙ GEAR" # Removed text in favor of icon
+	gear_button.custom_minimum_size = Vector2(100, 100) # Increased size again (80 -> 100)
+
+	# Load icon
+	var icon_texture = load("res://assets/sprites/map/UI/button_gear.png")
+	if icon_texture:
+		gear_button.icon = icon_texture
+		gear_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		gear_button.expand_icon = true
+		# Make background transparent to show the nice PNG
+		gear_button.flat = true
+	else:
+		gear_button.text = "⚙ GEAR"
 
 	# IMPORTANT: Ensure button can receive clicks
 	gear_button.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -194,10 +212,7 @@ func _create_gear_button():
 	gear_button.mouse_entered.connect(_on_gear_button_hover_enter)
 	gear_button.mouse_exited.connect(_on_gear_button_hover_exit)
 
-	# Style the button with theme overrides
-	gear_button.add_theme_font_size_override("font_size", 18)
-
-	# Add to top bar - place it prominently
+	# Add to top bar
 	if top_bar:
 		# Create a spacer to push it to center
 		var spacer = Control.new()
@@ -239,16 +254,30 @@ func _on_gear_button_hover_exit():
 
 
 func _create_heroes_button():
-	"""Create the Heroes button programmatically if it doesn't exist in scene"""
+	"""Create the Heroes button programmatically"""
 	heroes_button = Button.new()
 	heroes_button.name = "HeroesButton"
-	heroes_button.text = "🦸 HEROES"
-	heroes_button.custom_minimum_size = Vector2(120, 40)
+	# heroes_button.text = "🦸 HEROES"
+	heroes_button.custom_minimum_size = Vector2(100, 100) # Increased size again (80 -> 100)
+
+	# Load icon
+	var icon_texture = load("res://assets/sprites/map/UI/button_heroes.png")
+	if icon_texture:
+		heroes_button.icon = icon_texture
+		heroes_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		heroes_button.expand_icon = true
+		heroes_button.flat = true
+	else:
+		heroes_button.text = "🦸 HEROES"
 
 	# IMPORTANT: Ensure button can receive clicks
 	heroes_button.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	heroes_button.pressed.connect(_on_heroes_button_pressed)
+
+	# Add hover effects (Missing previously!)
+	heroes_button.mouse_entered.connect(_on_heroes_button_hover_enter)
+	heroes_button.mouse_exited.connect(_on_heroes_button_hover_exit)
 
 	# Add to top bar
 	if top_bar:
@@ -258,17 +287,47 @@ func _create_heroes_button():
 
 	print("✅ Created Heroes button")
 
+func _on_heroes_button_hover_enter():
+	"""Animate heroes button on hover"""
+	if heroes_button:
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_BACK)
+		tween.tween_property(heroes_button, "scale", Vector2(1.1, 1.1), 0.2)
+
+func _on_heroes_button_hover_exit():
+	"""Animate heroes button on hover exit"""
+	if heroes_button:
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_CUBIC)
+		tween.tween_property(heroes_button, "scale", Vector2.ONE, 0.2)
+
 func _create_towers_button():
-	"""Create the Towers button programmatically for tower encyclopedia"""
+	"""Create the Towers button programmatically"""
 	towers_button = Button.new()
 	towers_button.name = "TowersButton"
-	towers_button.text = "🏹 TOWERS"
-	towers_button.custom_minimum_size = Vector2(140, 40)
+	# towers_button.text = "🏹 TOWERS"
+	towers_button.custom_minimum_size = Vector2(100, 100) # Increased size again (80 -> 100)
+
+	# Load icon
+	var icon_texture = load("res://assets/sprites/map/UI/button_towers.png")
+	if icon_texture:
+		towers_button.icon = icon_texture
+		towers_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		towers_button.expand_icon = true
+		towers_button.flat = true
+	else:
+		towers_button.text = "🏹 TOWERS"
 
 	# IMPORTANT: Ensure button can receive clicks
 	towers_button.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	towers_button.pressed.connect(_on_towers_button_pressed)
+
+	# Add hover effects (Missing previously!)
+	towers_button.mouse_entered.connect(_on_towers_button_hover_enter)
+	towers_button.mouse_exited.connect(_on_towers_button_hover_exit)
 
 	# Add to top bar
 	if top_bar:
@@ -277,6 +336,92 @@ func _create_towers_button():
 		top_bar.move_child(towers_button, top_bar.get_child_count() - 3)
 
 	print("✅ Created Towers button")
+
+func _on_towers_button_hover_enter():
+	"""Animate towers button on hover"""
+	if towers_button:
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_BACK)
+		tween.tween_property(towers_button, "scale", Vector2(1.1, 1.1), 0.2)
+
+func _on_towers_button_hover_exit():
+	"""Animate towers button on hover exit"""
+	if towers_button:
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_CUBIC)
+		tween.tween_property(towers_button, "scale", Vector2.ONE, 0.2)
+
+func _create_town_button():
+	"""Create the Town button programmatically"""
+	town_button = Button.new()
+	town_button.name = "TownButton"
+	# town_button.text = "🏠 TOWN"
+	town_button.custom_minimum_size = Vector2(100, 100) # Increased size again (80 -> 100)
+
+	# Load icon
+	var icon_texture = load("res://assets/sprites/map/UI/button_village.png")
+	if icon_texture:
+		town_button.icon = icon_texture
+		town_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		town_button.expand_icon = true
+		town_button.flat = true
+	else:
+		town_button.text = "🏠 TOWN"
+
+	# IMPORTANT: Ensure button can receive clicks
+	town_button.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	town_button.pressed.connect(_on_town_button_pressed)
+	
+	# Add hover effects
+	town_button.mouse_entered.connect(_on_town_button_hover_enter)
+	town_button.mouse_exited.connect(_on_town_button_hover_exit)
+
+	# Add to top bar
+	if top_bar:
+		# Insert at the beginning (before gear/spacers) or after towers?
+		# Let's put it at the start for visibility
+		top_bar.add_child(town_button)
+		top_bar.move_child(town_button, 0)
+
+	print("✅ Created Town button")
+
+func _on_town_button_pressed():
+	print("🏠 Town button clicked (Placeholder)")
+	# Show a simple popup or floating text
+	var label = Label.new()
+	label.text = "Town Coming Soon!"
+	label.add_theme_font_size_override("font_size", 32)
+	label.add_theme_color_override("font_color", Color.YELLOW)
+	label.add_theme_constant_override("outline_size", 4)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	
+	# Add to UI layer
+	if ui_layer:
+		ui_layer.add_child(label)
+		label.global_position = town_button.global_position + Vector2(0, 60)
+		
+		# Animate
+		var tween = create_tween()
+		tween.tween_property(label, "position:y", label.position.y - 50, 1.5).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(label, "modulate:a", 0.0, 1.5).set_ease(Tween.EASE_IN)
+		tween.tween_callback(label.queue_free)
+
+func _on_town_button_hover_enter():
+	if town_button:
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_BACK)
+		tween.tween_property(town_button, "scale", Vector2(1.1, 1.1), 0.2)
+
+func _on_town_button_hover_exit():
+	if town_button:
+		var tween = create_tween()
+		tween.set_ease(Tween.EASE_OUT)
+		tween.set_trans(Tween.TRANS_CUBIC)
+		tween.tween_property(town_button, "scale", Vector2.ONE, 0.2)
 
 # Arsenal button and screen removed - use Gear and Heroes buttons instead
 

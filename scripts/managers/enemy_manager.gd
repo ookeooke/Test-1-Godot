@@ -182,6 +182,11 @@ func has_active_boss() -> bool:
 
 func clear_all_enemies():
 	"""Remove all enemies from tracking (useful for level transitions)"""
+	# CRITICAL FIX: Actually destroy the enemies to prevent memory leaks!
+	for enemy in living_enemies:
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+
 	living_enemies.clear()
 	living_bosses.clear()
 	current_boss = null

@@ -70,7 +70,10 @@ func _refresh_skills():
 	var owned_skills = skill_manager.owned_skills
 	
 	if owned_skills.is_empty():
-		return
+		# print("SkillBar: No owned skills")
+		pass
+		
+	print("SkillBar: Refreshing skills for ", current_hero.name)
 		
 	# Load ability button scene
 	var ability_btn_scene = load("res://scenes/ui/ability_button.tscn")
@@ -95,5 +98,31 @@ func _refresh_skills():
 			
 			hotkey_index += 1
 			
+			
+	# Add Targeting Button (if hero supports it)
+	if current_hero.has_method("cycle_targeting_mode"):
+		print("SkillBar: Adding targeting button for ", current_hero.name)
+		var target_btn = Button.new()
+		target_btn.custom_minimum_size = Vector2(40, 40)
+		target_btn.toggle_mode = false
+		target_btn.focus_mode = Control.FOCUS_NONE
+		
+		# Initial text
+		var mode_name = current_hero.get_targeting_mode_name()
+		target_btn.text = "🎯\n" + mode_name
+		target_btn.add_theme_font_size_override("font_size", 10)
+		target_btn.tooltip_text = "Change Targeting Priority"
+		
+		# Connect click
+		target_btn.pressed.connect(func():
+			if is_instance_valid(current_hero):
+				var _new_mode = current_hero.cycle_targeting_mode()
+				var new_name = current_hero.get_targeting_mode_name()
+				target_btn.text = "🎯\n" + new_name
+		)
+		
+		container.add_child(target_btn)
+			
 	# Adjust visibility based on whether we have skills
 	visible = container.get_child_count() > 0
+	print("SkillBar: Visible? ", visible, " (Children: ", container.get_child_count(), ")")

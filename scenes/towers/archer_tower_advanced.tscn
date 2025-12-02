@@ -1,0 +1,41 @@
+[gd_scene load_steps=4 format=3 uid="uid://archer_tower_advanced"]
+
+[ext_resource type="Script" path="res://scripts/towers/archer_tower_advanced.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://arrow_projectile_v2" path="res://scenes/projectiles/arrow_projectile_advanced.tscn" id="2_arrow"]
+
+[sub_resource type="SpriteFrames" id="1"]
+animations = [{
+"frames": [],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"attack",
+"speed": 10.0
+}]
+
+[node name="ArcherTowerAdvanced" type="Node2D"]
+script = ExtResource("1_script")
+arrow_scene = ExtResource("2_arrow")
+
+[node name="Visuals" type="Node2D" parent="."]
+
+[node name="Body" type="Sprite2D" parent="Visuals"]
+position = Vector2(0, -16)
+texture = ExtResource("res://archer_body.aseprite")
+
+[node name="WeaponPivot" type="Node2D" parent="Visuals"]
+position = Vector2(0, -20)
+
+[node name="Weapon" type="Sprite2D" parent="Visuals/WeaponPivot"]
+position = Vector2(10, 0)
+texture = ExtResource("res://archer_bow.aseprite")
+
+[node name="ArrowSpawn" type="Marker2D" parent="Visuals/WeaponPivot"]
+position = Vector2(25, 0)
+
+[node name="RangeArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 1

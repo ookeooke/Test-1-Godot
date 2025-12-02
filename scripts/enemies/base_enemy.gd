@@ -712,51 +712,8 @@ func _play_hit_flash():
 
 func _spawn_damage_number(damage: float):
 	"""Spawn floating damage number above enemy - satisfying feedback"""
-	# Create label for damage number
-	var damage_label = Label.new()
-	get_parent().add_child(damage_label)
-
-	# Position above enemy
-	damage_label.global_position = global_position + Vector2(randf_range(-10, 10), -30)
-
-	# Format damage number (round to integer for cleaner display)
-	var damage_int = int(round(damage))
-	damage_label.text = str(damage_int)
-
-	# Styling - small, bold, colored
-	damage_label.add_theme_font_size_override("font_size", 14)
-	damage_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	damage_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	damage_label.z_index = 100 # Above everything
-
-	# Color based on damage amount (visual feedback for damage size)
-	if damage >= 20:
-		damage_label.modulate = Color(1.0, 0.3, 0.3) # Red for high damage
-	elif damage >= 10:
-		damage_label.modulate = Color(1.0, 0.7, 0.2) # Orange for medium damage
-	else:
-		damage_label.modulate = Color(1.0, 1.0, 0.5) # Yellow for low damage
-
-	# Animate: float upward and fade out
-	var tween = create_tween()
-	tween.set_parallel(true)
-
-	# Float upward
-	tween.tween_property(damage_label, "global_position:y", damage_label.global_position.y - 50, 0.8).set_ease(Tween.EASE_OUT)
-
-	# Fade out
-	tween.tween_property(damage_label, "modulate:a", 0.0, 0.8).set_ease(Tween.EASE_IN)
-
-	# Scale up slightly then down (pop effect)
-	tween.tween_property(damage_label, "scale", Vector2(1.3, 1.3), 0.2).set_ease(Tween.EASE_OUT)
-	tween.tween_property(damage_label, "scale", Vector2(0.8, 0.8), 0.6).set_ease(Tween.EASE_IN).set_delay(0.2)
-
-	# Cleanup after animation - use tween callback instead of await
-	# This ensures cleanup happens even if enemy dies during animation
-	tween.finished.connect(func():
-		if is_instance_valid(damage_label):
-			damage_label.queue_free()
-	)
+	# Use centralized manager for cleanup safety
+	FloatingTextManager.spawn_damage_number(damage, global_position, get_parent())
 
 func _spawn_death_particles():
 	"""Create subtle death particles when enemy dies"""
