@@ -14,6 +14,7 @@ class_name HeroManagementPanel
 signal skill_purchased(hero_id: String, skill_id: String)
 signal skill_upgraded(hero_id: String, skill_id: String)
 signal attribute_spent(hero_id: String, attribute: String)
+signal hero_changed(new_hero_id: String)
 signal closed()
 
 # ============================================
@@ -52,6 +53,15 @@ signal closed()
 @onready var wisdom_plus: Button = $Panel/VBox/AttributeSection/AttributeGrid/WisdomPlus
 @onready var respec_button: Button = $Panel/VBox/AttributeSection/RespecButton
 
+# Loadout UI (NEW - Skill Loadout System)
+@onready var active_loadout_grid = $Panel/VBox/LoadoutSection/ActiveLoadoutGrid if has_node("Panel/VBox/LoadoutSection/ActiveLoadoutGrid") else null
+@onready var passive_loadout_grid = $Panel/VBox/LoadoutSection/PassiveLoadoutGrid if has_node("Panel/VBox/LoadoutSection/PassiveLoadoutGrid") else null
+
+# Hero switcher buttons
+@onready var archer_button = $Panel/VBox/TitleBar/HeroButtonsContainer/ArcherButton if has_node("Panel/VBox/TitleBar/HeroButtonsContainer/ArcherButton") else null
+@onready var warrior_button = $Panel/VBox/TitleBar/HeroButtonsContainer/WarriorButton if has_node("Panel/VBox/TitleBar/HeroButtonsContainer/WarriorButton") else null
+@onready var wizard_button = $Panel/VBox/TitleBar/HeroButtonsContainer/WizardButton if has_node("Panel/VBox/TitleBar/HeroButtonsContainer/WizardButton") else null
+
 # Skill sections
 @onready var active_skills_container: VBoxContainer = $Panel/VBox/ScrollContainer/SkillsVBox/ActiveSkillsSection/SkillsContainer
 @onready var passive_skills_container: VBoxContainer = $Panel/VBox/ScrollContainer/SkillsVBox/PassiveSkillsSection/SkillsContainer
@@ -85,6 +95,9 @@ func _ready():
 	# Connect attribute buttons
 	_connect_attribute_buttons()
 
+	# Setup hero switcher buttons
+	_setup_hero_buttons()
+
 func _connect_attribute_buttons():
 	if might_plus:
 		might_plus.pressed.connect(_on_attribute_plus.bind("might"))
@@ -97,6 +110,99 @@ func _connect_attribute_buttons():
 	if respec_button:
 		respec_button.pressed.connect(_on_respec_pressed)
 
+func _setup_hero_buttons():
+	"""Configure hero portrait buttons"""
+	# Archer/Ranger button
+	if archer_button:
+		archer_button.pressed.connect(_on_hero_button_pressed.bind("ranger"))
+		var ranger_data = HeroDatabase.get_hero("ranger")
+		if ranger_data and ranger_data.portrait:
+			archer_button.text = ""
+			archer_button.icon = ranger_data.portrait
+			archer_button.expand_icon = true
+
+	# Warrior button
+	if warrior_button:
+		warrior_button.pressed.connect(_on_hero_button_pressed.bind("warrior"))
+		var warrior_data = HeroDatabase.get_hero("warrior")
+		if warrior_data and warrior_data.portrait:
+			warrior_button.text = ""
+			warrior_button.icon = warrior_data.portrait
+			warrior_button.expand_icon = true
+
+	# Wizard/Mage button
+	if wizard_button:
+		wizard_button.pressed.connect(_on_hero_button_pressed.bind("mage"))
+		var mage_data = HeroDatabase.get_hero("mage")
+		if mage_data and mage_data.portrait:
+			wizard_button.text = ""
+			wizard_button.icon = mage_data.portrait
+			wizard_button.expand_icon = true
+
+	print("[HeroManagementPanel] Hero switcher buttons configured")
+
+func _on_hero_button_pressed(new_hero_id: String):
+	"""Called when a hero selection button is pressed"""
+	print("\n" + "=".repeat(60))
+	print("[HeroManagementPanel] 🔄 HERO SWITCH TRIGGERED")
+	print("=".repeat(60))
+	print("  From: %s (class_type: %d)" % [hero_id, class_type])
+	print("  To:   %s" % new_hero_id)
+
+	# Update hero_id and refresh display
+	if new_hero_id != hero_id:
+		hero_id = new_hero_id
+
+		# FIX: Update class_type and reload skills!
+		var hero_data = HeroDatabase.get_hero(hero_id)
+		if hero_data:
+			var old_class = class_type
+			class_type = hero_data.hero_class # Update the class type (0=Melee, 1=Ranged, etc.)
+			print("  ✅ Hero data loaded: %s" % hero_data.hero_name)
+			print("  📊 Class type changed: %d → %d" % [old_class, class_type])
+
+			# Reload skills
+			var old_skill_count = available_skills.size()
+			_load_class_skills() # Reload available_skills for the new class
+			print("  🎯 Skills reloaded: %d → %d skills" % [old_skill_count, available_skills.size()])
+
+			# Debug: List skill names
+			if available_skills.size() > 0:
+				print("  📋 New skill list:")
+				for skill in available_skills:
+					if skill:
+						print("    - %s (Type: %s)" % [skill.skill_name, "ACTIVE" if skill.skill_type == HeroSkillData.SkillType.ACTIVE else "PASSIVE"])
+		else:
+			print("  ❌ ERROR: Hero data not found for %s" % hero_id)
+	else:
+		print("  ℹ️  Already on this hero, refreshing display")
+
+	# Emit signal for other panels to listen
+	print("  📡 Emitting hero_changed signal...")
+	hero_changed.emit(new_hero_id)
+
+	# Refresh the panel display for new hero
+	print("  🔄 Refreshing display...")
+	_refresh_display()
+
+	# Refresh loadout grids
+	print("  🎨 Refreshing loadout grids...")
+	if active_loadout_grid and active_loadout_grid.has_method("setup"):
+		active_loadout_grid.setup(hero_id, "active")
+		print("    ✅ Active loadout grid refreshed")
+	else:
+		print("    ⚠️  Active loadout grid not available")
+
+	if passive_loadout_grid and passive_loadout_grid.has_method("setup"):
+		passive_loadout_grid.setup(hero_id, "passive")
+		print("    ✅ Passive loadout grid refreshed")
+	else:
+		print("    ⚠️  Passive loadout grid not available")
+
+	print("=".repeat(60))
+	print("[HeroManagementPanel] ✅ HERO SWITCH COMPLETE")
+	print("=".repeat(60) + "\n")
+
 func _initialize_standalone():
 	"""Initialize panel in standalone mode with skills from class config"""
 	_load_class_skills()
@@ -104,16 +210,52 @@ func _initialize_standalone():
 
 func _load_class_skills():
 	"""Load skills from HeroClassDatabase instead of hardcoded values"""
+	print("\n" + "-".repeat(60))
+	print("[HeroPanel] 📚 LOADING CLASS SKILLS")
+	print("-".repeat(60))
+	print("  🎯 Target class_type: %d" % class_type)
+	print("  🏷️  Class name: %s" % ["Melee", "Ranged", "Magic", "Support"][class_type] if class_type < 4 else "Unknown")
+
 	if HeroClassDatabase:
+		print("  ✅ HeroClassDatabase available")
 		current_class_config = HeroClassDatabase.get_class_config(class_type)
-		if current_class_config and current_class_config.available_skill_pool.size() > 0:
-			available_skills = current_class_config.available_skill_pool
-			print("[HeroPanel] Loaded %d skills from HeroClassDatabase" % available_skills.size())
-			return
+
+		if current_class_config:
+			print("  ✅ Class config found")
+			var pool_size = current_class_config.available_skill_pool.size()
+			print("  📊 Skill pool size: %d" % pool_size)
+
+			if pool_size > 0:
+				available_skills = current_class_config.available_skill_pool
+				print("  ✅ Skills loaded successfully!")
+				print("  📋 Skill breakdown:")
+
+				var active_count = 0
+				var passive_count = 0
+				for skill in available_skills:
+					if skill:
+						if skill.skill_type == HeroSkillData.SkillType.ACTIVE:
+							active_count += 1
+							print("    🗡️  [ACTIVE] %s" % skill.skill_name)
+						else:
+							passive_count += 1
+							print("    🛡️  [PASSIVE] %s" % skill.skill_name)
+
+				print("  📈 Summary: %d active, %d passive" % [active_count, passive_count])
+				print("-".repeat(60) + "\n")
+				return
+			else:
+				print("  ⚠️  Skill pool is empty!")
+		else:
+			print("  ❌ Class config not found for class_type %d" % class_type)
+	else:
+		print("  ❌ HeroClassDatabase not available")
 
 	# Fallback to hardcoded skills if database not available
-	print("[HeroPanel] HeroClassDatabase not available, using fallback skills")
+	print("  🔄 Using fallback skills (Ranger default)")
 	available_skills = _load_ranger_skills_fallback()
+	print("  📊 Loaded %d fallback skills" % available_skills.size())
+	print("-".repeat(60) + "\n")
 
 func open_panel(p_hero_id: String, skills: Array[HeroSkillData] = []):
 	"""Open the panel with hero data"""
@@ -124,6 +266,9 @@ func open_panel(p_hero_id: String, skills: Array[HeroSkillData] = []):
 
 	hero_id = p_hero_id
 
+	# Emit signal for consistency
+	hero_changed.emit(hero_id)
+
 	# Use provided skills or load from class config
 	if skills.is_empty():
 		_load_class_skills()
@@ -132,6 +277,14 @@ func open_panel(p_hero_id: String, skills: Array[HeroSkillData] = []):
 
 	# Update currency
 	current_currency = SaveManager.get_gems()
+
+	# Setup loadout grids (NEW - Skill Loadout System)
+	if active_loadout_grid and active_loadout_grid.has_method("setup"):
+		active_loadout_grid.setup(hero_id, "active")
+		print("[HeroPanel] ✅ Setup active loadout grid")
+	if passive_loadout_grid and passive_loadout_grid.has_method("setup"):
+		passive_loadout_grid.setup(hero_id, "passive")
+		print("[HeroPanel] ✅ Setup passive loadout grid")
 
 	# Refresh display
 	_refresh_display()
@@ -172,26 +325,49 @@ func _load_ranger_skills_fallback() -> Array[HeroSkillData]:
 
 func _refresh_display():
 	"""Update all UI elements"""
+	print("\n" + "~".repeat(60))
+	print("[HeroPanel] 🎨 REFRESHING DISPLAY")
+	print("~".repeat(60))
+	print("  👤 Hero: %s" % hero_id)
+	print("  🎓 Class type: %d (%s)" % [class_type, ["Melee", "Ranged", "Magic", "Support"][class_type] if class_type < 4 else "Unknown"])
+	print("  💎 Currency: %d gems" % current_currency)
+	print("  📚 Available skills: %d" % available_skills.size())
+
 	# Update title
 	if title_label:
 		title_label.text = "HERO: " + hero_id.to_upper()
+		print("  ✅ Title updated")
+	else:
+		print("  ⚠️  Title label not found")
 
 	# Update currency
 	if currency_label:
 		currency_label.text = str(current_currency) + " Gems"
+		print("  ✅ Currency updated")
+	else:
+		print("  ⚠️  Currency label not found")
 
 	# Update meta level display
+	print("  🔄 Updating meta level...")
 	_update_meta_level_display()
 
 	# Update attributes display
+	print("  🔄 Updating attributes...")
 	_update_attributes_display()
 
 	# Update hero info
+	print("  🔄 Updating hero info...")
 	_update_hero_info()
 
 	# Update skill lists
+	print("  🔄 Updating active skills list...")
 	_update_skill_list(active_skills_container, HeroSkillData.SkillType.ACTIVE)
+	print("  🔄 Updating passive skills list...")
 	_update_skill_list(passive_skills_container, HeroSkillData.SkillType.PASSIVE)
+
+	print("~".repeat(60))
+	print("[HeroPanel] ✅ DISPLAY REFRESH COMPLETE")
+	print("~".repeat(60) + "\n")
 
 # ============================================
 # META LEVEL DISPLAY
@@ -309,6 +485,7 @@ func _update_hero_info():
 func _update_skill_list(container: VBoxContainer, skill_type: HeroSkillData.SkillType):
 	"""Populate a skill list container"""
 	if not container:
+		push_error("[HeroPanel] ❌ Container is NULL in _update_skill_list!")
 		return
 
 	# Clear existing children
@@ -317,6 +494,7 @@ func _update_skill_list(container: VBoxContainer, skill_type: HeroSkillData.Skil
 
 	# Handle empty skill pool gracefully
 	if available_skills.is_empty():
+		print("[HeroPanel] ⚠️  available_skills is EMPTY - showing placeholder")
 		var empty_label = Label.new()
 		empty_label.text = "No skills available for this class"
 		empty_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
@@ -326,24 +504,80 @@ func _update_skill_list(container: VBoxContainer, skill_type: HeroSkillData.Skil
 	# Filter skills by type (with null check)
 	var filtered_skills = available_skills.filter(func(skill): return skill != null and skill.skill_type == skill_type)
 
+	print("[HeroPanel] 🔍 Filtered %d skills of type %s" % [
+		filtered_skills.size(),
+		"ACTIVE" if skill_type == HeroSkillData.SkillType.ACTIVE else "PASSIVE"
+	])
+
 	# Create skill rows
 	for skill_data in filtered_skills:
+		print("[HeroPanel] 🎯 Creating row for: %s" % skill_data.skill_name)
 		if skill_data == null:
 			continue
 		var skill_row = _create_skill_row(skill_data)
 		if skill_row:
 			container.add_child(skill_row)
+			print("[HeroPanel] ✅ Added skill row to container")
+		else:
+			print("[HeroPanel] ❌ Failed to create skill row!")
 
 func _create_skill_row(skill_data: HeroSkillData) -> Control:
 	"""Create a row UI for a single skill"""
 	var row = HBoxContainer.new()
 	row.custom_minimum_size = Vector2(0, 50)
 
-	# Icon placeholder
-	var placeholder = ColorRect.new()
-	placeholder.custom_minimum_size = Vector2(40, 40)
-	placeholder.color = Color(0.3, 0.5, 0.7) if skill_data.skill_type == HeroSkillData.SkillType.ACTIVE else Color(0.5, 0.7, 0.3)
-	row.add_child(placeholder)
+	# Icon - Make draggable using SkillIcon component (NEW - Skill Loadout System)
+	var skill_icon_scene = load("res://scenes/ui/skill_icon.tscn")
+	print("[HeroPanel] 📦 Loading skill_icon.tscn: %s" % ("SUCCESS" if skill_icon_scene else "FAILED"))
+
+	if skill_icon_scene:
+		var skill_icon = skill_icon_scene.instantiate() as SkillIcon
+		print("[HeroPanel] 🔨 Instantiating SkillIcon: %s (type: %s)" % [
+			"SUCCESS" if skill_icon else "FAILED",
+			skill_icon.get_script().get_global_name() if skill_icon.get_script() else "null"
+		])
+
+		if not skill_icon:
+			push_error("[HeroPanel] ❌ CRITICAL: SkillIcon instantiation FAILED for %s" % skill_data.skill_name)
+			push_error("  → Skill will show as placeholder with text label")
+
+			# Create visible error placeholder (RED to indicate error)
+			var placeholder = ColorRect.new()
+			placeholder.custom_minimum_size = Vector2(40, 40)
+			placeholder.color = Color(0.8, 0.2, 0.2, 1.0) # Red error color
+			row.add_child(placeholder)
+
+			# Add error label so user can SEE the skill exists
+			var error_info = VBoxContainer.new()
+			error_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+			var error_name_label = Label.new()
+			error_name_label.text = skill_data.skill_name + " (ERROR: Icon failed)"
+			error_name_label.add_theme_color_override("font_color", Color.RED)
+			error_name_label.add_theme_font_size_override("font_size", 14)
+			error_info.add_child(error_name_label)
+
+			var error_desc_label = Label.new()
+			error_desc_label.text = skill_data.description
+			error_desc_label.add_theme_font_size_override("font_size", 11)
+			error_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+			error_info.add_child(error_desc_label)
+
+			row.add_child(error_info)
+
+			# DON'T return early - continue to add buttons below
+		else:
+			skill_icon.setup(skill_data.skill_id, skill_data, hero_id)
+			skill_icon.source_slot_index = -1 # -1 indicates dragging from skill list
+			skill_icon.source_slot_type = "active" if skill_data.skill_type == HeroSkillData.SkillType.ACTIVE else "passive"
+			skill_icon.custom_minimum_size = Vector2(50, 50)
+			row.add_child(skill_icon)
+	else:
+		# Fallback to old placeholder if scene not found
+		var placeholder = ColorRect.new()
+		placeholder.custom_minimum_size = Vector2(40, 40)
+		placeholder.color = Color(0.3, 0.5, 0.7) if skill_data.skill_type == HeroSkillData.SkillType.ACTIVE else Color(0.5, 0.7, 0.3)
+		row.add_child(placeholder)
 
 	# Info section
 	var info_vbox = VBoxContainer.new()

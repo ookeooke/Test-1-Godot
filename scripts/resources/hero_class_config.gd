@@ -42,6 +42,11 @@ extends Resource
 @export_group("Skills")
 @export var available_skill_pool: Array[HeroSkillData] = [] ## Pool of skills this class can learn
 
+# Skill Loadout Slots (How many skills can be equipped)
+@export_group("Skill Loadout Slots")
+@export var max_active_ability_slots: int = 2 ## Max active skills in battle (shown on HUD)
+@export var max_passive_ability_slots: int = 4 ## Max passive skills (always-on, inspectable in management UI)
+
 # Visual Defaults
 @export_group("Presentation")
 @export var class_color: Color = Color.WHITE

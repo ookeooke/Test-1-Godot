@@ -57,46 +57,65 @@ func _refresh_skills():
 	# Clear existing buttons
 	for child in container.get_children():
 		child.queue_free()
-		
+
 	if not current_hero:
 		return
-		
+
 	# Get skill manager
 	if not current_hero.has_node("SkillManager"):
 		print("⚠️ SkillBar: Hero has no SkillManager")
 		return
-		
+
 	var skill_manager = current_hero.get_node("SkillManager")
-	var owned_skills = skill_manager.owned_skills
-	
-	if owned_skills.is_empty():
-		# print("SkillBar: No owned skills")
-		pass
-		
+
 	print("SkillBar: Refreshing skills for ", current_hero.name)
-		
+
 	# Load ability button scene
 	var ability_btn_scene = load("res://scenes/ui/ability_button.tscn")
 	if not ability_btn_scene:
 		print("⚠️ SkillBar: Could not load ability_button.tscn")
 		return
-		
-	# Create buttons for active skills
+
+	# NEW: Get equipped skills from loadout system (instead of all owned skills)
+	var hero_id = current_hero.hero_id if "hero_id" in current_hero else current_hero.name
+	var equipped = SaveManager.get_equipped_skills(hero_id)
+	var active_skills = equipped.get("active", [])
+
+	if active_skills.is_empty():
+		print("SkillBar: No equipped skills for ", hero_id)
+		# Show empty state
+		visible = false
+		return
+
+	print("SkillBar: Equipped skills: ", active_skills)
+
+	# Create buttons for each equipped slot (including empty slots)
 	var hotkey_index = 1
-	for skill_id in owned_skills.keys():
-		var skill_data = skill_manager.get_skill_data(skill_id)
-		
-		if not skill_data:
-			continue
-			
-		if skill_data.skill_type == HeroSkillData.SkillType.ACTIVE:
-			var btn = ability_btn_scene.instantiate()
-			container.add_child(btn)
-			
-			var hotkey = str(hotkey_index)
-			btn.setup(skill_id, skill_manager, skill_data, hotkey)
-			
-			hotkey_index += 1
+	for skill_id in active_skills:
+		if skill_id == "": # Empty slot
+			# Create placeholder button for empty slot
+			var placeholder = Button.new()
+			placeholder.custom_minimum_size = Vector2(40, 40)
+			placeholder.text = "?"
+			placeholder.disabled = true
+			placeholder.modulate = Color(0.5, 0.5, 0.5, 0.5)
+			placeholder.tooltip_text = "Empty Skill Slot (assign in Hero Management)"
+			container.add_child(placeholder)
+			print("SkillBar: Added empty slot placeholder")
+		else:
+			# Create ability button for equipped skill
+			var skill_data = skill_manager.get_skill_data(skill_id)
+			if skill_data:
+				var btn = ability_btn_scene.instantiate()
+				container.add_child(btn)
+
+				var hotkey = str(hotkey_index)
+				btn.setup(skill_id, skill_manager, skill_data, hotkey)
+				print("SkillBar: Added button for skill: ", skill_id)
+			else:
+				print("⚠️ SkillBar: No skill data for: ", skill_id)
+
+		hotkey_index += 1
 			
 			
 	# Add Targeting Button (if hero supports it)

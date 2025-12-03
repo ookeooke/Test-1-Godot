@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://hero_screen_standalone"]
+[gd_scene load_steps=3 format=3 uid="uid://hero_screen_standalone"]
 
 [ext_resource type="Script" path="res://scripts/ui/hero_management_panel.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/skill_loadout_grid.gd" id="2"]
 
 [node name="HeroScreenStandalone" type="Control"]
 layout_mode = 3
@@ -55,6 +56,26 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "HERO MANAGEMENT"
 vertical_alignment = 1
+
+[node name="HeroButtonsContainer" type="HBoxContainer" parent="Panel/VBox/TitleBar"]
+layout_mode = 2
+size_flags_horizontal = 4
+alignment = 1
+
+[node name="ArcherButton" type="Button" parent="Panel/VBox/TitleBar/HeroButtonsContainer"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+tooltip_text = "Ranger"
+
+[node name="WarriorButton" type="Button" parent="Panel/VBox/TitleBar/HeroButtonsContainer"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+tooltip_text = "Warrior"
+
+[node name="WizardButton" type="Button" parent="Panel/VBox/TitleBar/HeroButtonsContainer"]
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 2
+tooltip_text = "Mage"
 
 [node name="CurrencyLabel" type="Label" parent="Panel/VBox/TitleBar"]
 layout_mode = 2
@@ -189,6 +210,41 @@ layout_mode = 2
 text = "Health: 200  |  Damage: 25  |  Range: 300"
 
 [node name="HSeparator4" type="HSeparator" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="LoadoutSection" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 150)
+size_flags_vertical = 0
+
+[node name="LoadoutTitle" type="Label" parent="Panel/VBox/LoadoutSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "⚔️ ACTIVE SKILLS LOADOUT"
+horizontal_alignment = 1
+
+[node name="ActiveLoadoutGrid" type="GridContainer" parent="Panel/VBox/LoadoutSection"]
+layout_mode = 2
+columns = 4
+script = ExtResource("2")
+slot_type = "active"
+
+[node name="HSeparator" type="HSeparator" parent="Panel/VBox/LoadoutSection"]
+layout_mode = 2
+
+[node name="PassiveTitle" type="Label" parent="Panel/VBox/LoadoutSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🛡️ PASSIVE SKILLS"
+horizontal_alignment = 1
+
+[node name="PassiveLoadoutGrid" type="GridContainer" parent="Panel/VBox/LoadoutSection"]
+layout_mode = 2
+columns = 6
+script = ExtResource("2")
+slot_type = "passive"
+
+[node name="HSeparator5" type="HSeparator" parent="Panel/VBox"]
 layout_mode = 2
 
 [node name="ScrollContainer" type="ScrollContainer" parent="Panel/VBox"]

@@ -15,7 +15,16 @@
       "Bash(del \"c:\\Users\\ollil\\Test-1-Godot\\scripts\\ui\\views\\hero_progression_view.gd\")",
       "Bash(del \"c:\\Users\\ollil\\Test-1-Godot\\scenes\\ui\\views\\hero_progression_view.tscn\")",
       "Bash(dir /s /b \"c:\\Users\\ollil\\Test-1-Godot\\assets\")",
-      "Bash(dir /b \"c:\\Users\\ollil\\Test-1-Godot\\scenes\\heroes\")"
+      "Bash(dir /b \"c:\\Users\\ollil\\Test-1-Godot\\scenes\\heroes\")",
+      "Bash(git ls-tree:*)",
+      "Bash(xxd:*)",
+      "Bash(cat:*)",
+      "Bash(while read f)",
+      "Bash(do file \"$f\")",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(python3:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

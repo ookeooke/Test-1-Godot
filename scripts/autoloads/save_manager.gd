@@ -94,6 +94,7 @@ func create_new_profile(profile_name: String) -> bool:
 			"heroes": {}
 		},
 		"unlocked_heroes": ["ranger", "warrior", "mage"], # Default starter heroes
+		"equipped_skills": {}, # hero_id -> {active: [skill_id1, skill_id2, ...], passive: [skill_id1, ...]}
 		"tower_loadout": ["archer", "barracks", "mage", "artillery"], # Phase 1: Global tower loadout (3-4 tower IDs)
 		"unlocked_towers": ["archer", "barracks", "mage", "artillery"], # Phase 1: All unlocked towers
 		"user_preferences": {}, # UI preferences (panel tabs, etc.)
@@ -280,6 +281,58 @@ func load_profile(profile_name: String) -> bool:
 
 			current_profile = profile_data
 			current_profile_name = profile_name
+
+			# MIGRATION: Auto-equip first 2 skills for old saves
+			if not profile_data.has("equipped_skills"):
+				profile_data["equipped_skills"] = {}
+				print("[SaveManager] Migration: Initializing equipped_skills for old save")
+
+				# For each unlocked hero, auto-equip their first 2 active skills
+				for hero_id in profile_data.get("unlocked_heroes", []):
+					var hero_skills_dict = profile_data.get("hero_skills", {}).get(hero_id, {})
+					var active_skills = []
+
+					# Find active skills (need to check HeroClassDatabase)
+					if HeroClassDatabase:
+						var hero_data = HeroDatabase.get_hero(hero_id)
+						if hero_data:
+							var class_config = HeroClassDatabase.get_class_config(hero_data.hero_class)
+							if class_config:
+								# Filter owned active skills
+								for skill_data in class_config.available_skill_pool:
+									if skill_data and skill_data.skill_type == HeroSkillData.SkillType.ACTIVE:
+										if hero_skills_dict.has(skill_data.skill_id):
+											active_skills.append(skill_data.skill_id)
+											if active_skills.size() >= 2:
+												break
+
+					# Create loadout with first 2 skills
+					var max_slots = get_max_skill_slots(hero_id)
+					var active_loadout = []
+					var passive_loadout = []
+
+					for i in max_slots.active:
+						if i < active_skills.size():
+							active_loadout.append(active_skills[i])
+						else:
+							active_loadout.append("") # Empty slot
+
+					for i in max_slots.passive:
+						passive_loadout.append("") # Empty passive slots for now
+
+					profile_data["equipped_skills"][hero_id] = {
+						"active": active_loadout,
+						"passive": passive_loadout
+					}
+
+					if active_skills.size() > 0:
+						print("[SaveManager] Migration: Auto-equipped %d skills for %s: %s" % [
+							active_skills.size(),
+							hero_id,
+							", ".join(active_skills)
+						])
+
+				mark_dirty()
 
 			# Load inventory data into InventoryManager (shared stash)
 			if InventoryManager and profile_data.has("inventory"):
@@ -1156,3 +1209,167 @@ func set_branch_choice(hero_id: String, branch: String) -> bool:
 func can_unlock_second_branch(hero_id: String) -> bool:
 	"""Check if hero can unlock the second skill branch (meta level 35+)"""
 	return get_meta_level(hero_id) >= 35
+
+# ============================================
+# SKILL LOADOUT SYSTEM (Per-Hero)
+# ============================================
+
+func get_equipped_skills(hero_id: String) -> Dictionary:
+	"""Get equipped skills for a hero (active + passive arrays)
+
+	Returns: {active: Array[String], passive: Array[String]}
+	Empty slots are represented as "" (empty string)
+	"""
+	if not has_current_profile():
+		return {"active": [], "passive": []}
+
+	if not current_profile.has("equipped_skills"):
+		current_profile["equipped_skills"] = {}
+
+	if not current_profile["equipped_skills"].has(hero_id):
+		# Initialize with empty slots based on hero's class config
+		var max_slots = get_max_skill_slots(hero_id)
+		var active_slots = []
+		var passive_slots = []
+
+		for i in max_slots.active:
+			active_slots.append("")
+		for i in max_slots.passive:
+			passive_slots.append("")
+
+		current_profile["equipped_skills"][hero_id] = {
+			"active": active_slots,
+			"passive": passive_slots
+		}
+		mark_dirty()
+
+	return current_profile["equipped_skills"][hero_id].duplicate()
+
+func equip_skill(hero_id: String, skill_type: String, slot_index: int, skill_id: String) -> bool:
+	"""Equip a skill to a specific slot
+
+	Args:
+		hero_id: Hero to equip skill for
+		skill_type: "active" or "passive"
+		slot_index: Which slot (0-based index)
+		skill_id: Skill ID to equip
+
+	Returns: true if successful
+
+	Features:
+	- Handles duplicate removal (if skill already equipped elsewhere)
+	- Validates slot_index against hero's max slots
+	- Calls save_current_profile()
+	"""
+	if not has_current_profile():
+		push_error("[SaveManager] Cannot equip skill - no profile loaded")
+		return false
+
+	if skill_type != "active" and skill_type != "passive":
+		push_error("[SaveManager] Invalid skill_type: %s" % skill_type)
+		return false
+
+	# Ensure equipped_skills exists
+	if not current_profile.has("equipped_skills"):
+		current_profile["equipped_skills"] = {}
+
+	# Get or create hero's equipped skills
+	var equipped = get_equipped_skills(hero_id)
+	var skills_array = equipped[skill_type]
+
+	# Validate slot_index
+	if slot_index < 0 or slot_index >= skills_array.size():
+		push_error("[SaveManager] Invalid slot_index %d (max: %d)" % [slot_index, skills_array.size() - 1])
+		return false
+
+	# Remove duplicate if skill is already equipped in another slot
+	for i in skills_array.size():
+		if i != slot_index and skills_array[i] == skill_id:
+			skills_array[i] = ""
+			print("[SaveManager] Removed duplicate %s from %s slot %d" % [skill_id, skill_type, i])
+
+	# Equip to target slot
+	skills_array[slot_index] = skill_id
+
+	# Save back to profile
+	current_profile["equipped_skills"][hero_id][skill_type] = skills_array
+	save_current_profile()
+
+	print("[SaveManager] ✅ Equipped %s to %s slot %d for %s" % [skill_id, skill_type, slot_index, hero_id])
+	return true
+
+func unequip_skill(hero_id: String, skill_type: String, slot_index: int) -> bool:
+	"""Unequip a skill from a slot (set to "")
+
+	Returns: true if successful
+	"""
+	if not has_current_profile():
+		push_error("[SaveManager] Cannot unequip skill - no profile loaded")
+		return false
+
+	if skill_type != "active" and skill_type != "passive":
+		push_error("[SaveManager] Invalid skill_type: %s" % skill_type)
+		return false
+
+	# Get hero's equipped skills
+	var equipped = get_equipped_skills(hero_id)
+	var skills_array = equipped[skill_type]
+
+	# Validate slot_index
+	if slot_index < 0 or slot_index >= skills_array.size():
+		push_error("[SaveManager] Invalid slot_index %d" % slot_index)
+		return false
+
+	# Unequip (set to empty string)
+	skills_array[slot_index] = ""
+
+	# Save back to profile
+	if not current_profile.has("equipped_skills"):
+		current_profile["equipped_skills"] = {}
+	if not current_profile["equipped_skills"].has(hero_id):
+		current_profile["equipped_skills"][hero_id] = equipped
+
+	current_profile["equipped_skills"][hero_id][skill_type] = skills_array
+	save_current_profile()
+
+	print("[SaveManager] ❌ Unequipped %s slot %d for %s" % [skill_type, slot_index, hero_id])
+	return true
+
+func get_max_skill_slots(hero_id: String) -> Dictionary:
+	"""Get max skill slots for a hero based on their class config
+
+	Returns: {active: int, passive: int}
+	"""
+	# Default fallback
+	var default_slots = {"active": 2, "passive": 4}
+
+	# Get hero data
+	if not HeroDatabase:
+		return default_slots
+
+	var hero_data = HeroDatabase.get_hero(hero_id)
+	if not hero_data:
+		return default_slots
+
+	# Get class config
+	if not HeroClassDatabase:
+		return default_slots
+
+	var class_config = HeroClassDatabase.get_class_config(hero_data.hero_class)
+	if not class_config:
+		return default_slots
+
+	# Return configured slots (access properties directly from Resource)
+	var active_slots = 2
+	var passive_slots = 4
+
+	if "max_active_ability_slots" in class_config:
+		active_slots = class_config.max_active_ability_slots
+	if "max_passive_ability_slots" in class_config:
+		passive_slots = class_config.max_passive_ability_slots
+
+	return {
+		"active": active_slots,
+		"passive": passive_slots
+	}
+
