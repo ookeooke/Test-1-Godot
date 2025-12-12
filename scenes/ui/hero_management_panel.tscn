@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://hero_mgmt_panel"]
 
 [ext_resource type="Script" path="res://scripts/ui/hero_management_panel.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/ui/skill_loadout_grid.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hero_command_widget.tscn" id="2"]
 
 [node name="HeroManagementPanel" type="Control"]
 layout_mode = 3
@@ -220,29 +220,15 @@ size_flags_vertical = 0
 [node name="LoadoutTitle" type="Label" parent="Panel/VBox/LoadoutSection"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "⚔️ ACTIVE SKILLS LOADOUT"
+text = "⚔️ HERO SKILLS"
 horizontal_alignment = 1
 
-[node name="ActiveLoadoutGrid" type="GridContainer" parent="Panel/VBox/LoadoutSection"]
+[node name="UnifiedHeroWidget" parent="Panel/VBox/LoadoutSection" instance=ExtResource("2")]
+custom_minimum_size = Vector2(300, 300)
 layout_mode = 2
-columns = 4
-script = ExtResource("2")
-slot_type = "active"
-
-[node name="HSeparator" type="HSeparator" parent="Panel/VBox/LoadoutSection"]
-layout_mode = 2
-
-[node name="PassiveTitle" type="Label" parent="Panel/VBox/LoadoutSection"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "🛡️ PASSIVE SKILLS"
-horizontal_alignment = 1
-
-[node name="PassiveLoadoutGrid" type="GridContainer" parent="Panel/VBox/LoadoutSection"]
-layout_mode = 2
-columns = 6
-script = ExtResource("2")
-slot_type = "passive"
+size_flags_horizontal = 4
+size_flags_vertical = 4
+current_mode = 1
 
 [node name="HSeparator5" type="HSeparator" parent="Panel/VBox"]
 layout_mode = 2

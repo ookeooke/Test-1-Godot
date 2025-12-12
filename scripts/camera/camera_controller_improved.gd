@@ -337,9 +337,9 @@ func apply_platform_defaults() -> void:
 	"""Set platform-appropriate defaults as ratios of baseline"""
 	match current_platform:
 		Platform.MOBILE:
-			# Mobile: Moderate zoom-in capability (40% closer for detail viewing)
+			# Mobile: Moderate zoom-in capability (adjusted +20%)
 			min_zoom = baseline_zoom # Baseline is furthest out
-			max_zoom = baseline_zoom * 1.4 # 40% closer to see details
+			max_zoom = baseline_zoom * 1.68 # 40% * 1.2 = 68% closer
 			default_zoom = baseline_zoom # Start at baseline
 			zoom_speed = mobile_zoom_speed
 
@@ -365,9 +365,9 @@ func apply_platform_defaults() -> void:
 				print("  Double-tap dist: %.0fpx (%.1fmm physical)" % [double_tap_distance, double_tap_distance * 25.4 / screen_dpi])
 
 		Platform.PC:
-			# PC: Moderate zoom-in capability (50% closer for detail viewing)
+			# PC: Moderate zoom-in capability (adjusted +20%)
 			min_zoom = baseline_zoom # Baseline is furthest out
-			max_zoom = baseline_zoom * 1.5 # 50% closer to see details
+			max_zoom = baseline_zoom * 1.8 # 50% * 1.2 = 80% closer
 			default_zoom = baseline_zoom # Start at baseline
 			zoom_speed = zoom_speed # Use default zoom_speed
 

@@ -1,11 +1,13 @@
-[gd_resource type="Resource" script_class="HeroSkillData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="HeroSkillData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/hero_skill_data.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/skills/ranger/rapid_fire_icon.png" id="2"]
 
 [resource]
 script = ExtResource("1")
 skill_id = "ranger_rapid_fire"
 skill_name = "Rapid Fire"
+icon = ExtResource("2")
 description = "Fire a rapid volley of arrows at current target. Each consecutive hit on same target deals bonus damage (stacking).\n\nArrows: 5-10 | Damage: 80-120% each | Stack Bonus: +5-15%\nCooldown: {cooldown}s\n\nAttribute Scaling: AGILITY +1 arrow/20pts, MIGHT +5% dmg/10pts"
 skill_type = 1
 category = 0

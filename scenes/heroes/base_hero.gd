@@ -137,6 +137,9 @@ const AURA_RADIUS = 200.0
 # VISUAL
 @export var hero_texture: Texture2D
 
+func set_home_position(pos: Vector2):
+	home_position = pos
+
 
 # SKILL SYSTEM
 @export var available_skills: Array[HeroSkillData] = []
@@ -420,14 +423,29 @@ func _setup_skill_system():
 	skill_manager = HeroSkillManager.new()
 	skill_manager.name = "SkillManager"
 	add_child(skill_manager)
-	var skills_to_load = available_skills
-	
-	# Load from class config if empty
-	if skills_to_load.is_empty() and HeroClassDatabase:
+	# Start with any explicitly defined skills on the scene
+	var skills_to_load = available_skills.duplicate()
+	var explicit_count = skills_to_load.size()
+
+	# Merge with class skills if available
+	if HeroClassDatabase:
 		var class_type = _get_class_type()
 		var class_config = HeroClassDatabase.get_class_config(class_type)
 		if class_config and class_config.available_skill_pool.size() > 0:
-			skills_to_load = class_config.available_skill_pool
+			var class_skills = class_config.available_skill_pool
+			print("[BaseHero] Found %d class skills for Type: %d. Merging with %d explicit skills..." % [class_skills.size(), class_type, explicit_count])
+			
+			for s in class_skills:
+				# Avoid duplicates (check by skill_id)
+				var already_has = false
+				for existing in skills_to_load:
+					if existing.skill_id == s.skill_id:
+						already_has = true
+						break
+				if not already_has:
+					skills_to_load.append(s)
+	
+	print("[BaseHero] Final skill pool size: %d" % skills_to_load.size())
 			
 	skill_manager.load_skill_definitions(skills_to_load)
 	
@@ -436,7 +454,25 @@ func _setup_skill_system():
 		if saved_skills:
 			skill_manager.load_save_data(saved_skills)
 			skill_manager.recalculate_all_passives()
-			
+
+		# Auto-unlock equipped skills when hero spawns in battle
+		# This ensures that skills equipped in loadout can actually be activated
+		var equipped_skills_dict = SaveManager.get_equipped_skills(hero_id)
+		print("[BaseHero] Equipped skills for '%s': %s" % [hero_id, equipped_skills_dict])
+		
+		var all_equipped = equipped_skills_dict.get("active", []) + equipped_skills_dict.get("passive", [])
+
+		for skill_id in all_equipped:
+			if skill_id != "" and not skill_manager.is_skill_owned(skill_id):
+				# Find skill data in available skills
+				var skill_data = skill_manager.get_skill_data(skill_id)
+				if skill_data:
+					# Unlock at level 1 (no cost in battle)
+					skill_manager.unlock_skill(skill_id, skill_data)
+					print("Auto-unlocked equipped skill for %s: %s" % [hero_id, skill_id])
+				else:
+					print("⚠️ [BaseHero] Failed to auto-unlock '%s': Skill Data not found in manager!" % skill_id)
+
 	skill_manager.skill_activated.connect(_on_skill_activated)
 
 func _get_class_type() -> int:
@@ -463,6 +499,26 @@ func activate_skill(skill_id: String):
 func _on_skill_activated(skill_id: String):
 	print("[BaseHero] Skill activated signal received: ", skill_id)
 	# Override in child classes to implement specific effects
+
+# ============================================
+# VISUAL FEEDBACK
+# ============================================
+
+func _show_floating_text(text: String, color: Color = Color.WHITE):
+	"""Show floating text above hero (shared utility for all heroes)"""
+	var label = Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_constant_override("outline_size", 4)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	get_tree().root.add_child(label)
+	label.global_position = global_position + Vector2(0, -60)
+
+	var tween = create_tween()
+	tween.parallel().tween_property(label, "global_position", label.global_position + Vector2(0, -50), 1.0)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 1.0)
+	tween.tween_callback(label.queue_free)
 
 # ============================================
 # SELECTION & MOVEMENT API

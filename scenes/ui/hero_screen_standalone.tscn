@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://hero_screen_standalone"]
 
 [ext_resource type="Script" path="res://scripts/ui/hero_management_panel.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/ui/skill_loadout_grid.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hero_command_widget.tscn" id="2"]
 
 [node name="HeroScreenStandalone" type="Control"]
 layout_mode = 3
@@ -23,15 +23,13 @@ color = Color(0, 0, 0, 0.9)
 
 [node name="Panel" type="Panel" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -400.0
-offset_top = -350.0
-offset_right = 400.0
-offset_bottom = 350.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 50.0
+offset_top = 50.0
+offset_right = -50.0
+offset_bottom = -50.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -90,191 +88,193 @@ custom_minimum_size = Vector2(100, 40)
 [node name="HSeparator" type="HSeparator" parent="Panel/VBox"]
 layout_mode = 2
 
-[node name="MetaLevelSection" type="VBoxContainer" parent="Panel/VBox"]
+[node name="ContentHBox" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LeftColumn" type="VBoxContainer" parent="Panel/VBox/ContentHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.35
+
+[node name="HeroInfo" type="HBoxContainer" parent="Panel/VBox/ContentHBox/LeftColumn"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 80)
+
+[node name="Portrait" type="ColorRect" parent="Panel/VBox/ContentHBox/LeftColumn/HeroInfo"]
+custom_minimum_size = Vector2(80, 80)
+layout_mode = 2
+color = Color(0.4, 0.6, 0.8, 1)
+
+[node name="VBox" type="VBoxContainer" parent="Panel/VBox/ContentHBox/LeftColumn/HeroInfo"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="NameLabel" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/HeroInfo/VBox"]
+layout_mode = 2
+text = "RANGER"
+
+[node name="StatsLabel" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/HeroInfo/VBox"]
+layout_mode = 2
+text = "Health: 200  |  Damage: 25  |  Range: 300"
+
+[node name="HSeparator2" type="HSeparator" parent="Panel/VBox/ContentHBox/LeftColumn"]
 layout_mode = 2
 
-[node name="MetaLevelLabel" type="Label" parent="Panel/VBox/MetaLevelSection"]
+[node name="MetaLevelSection" type="VBoxContainer" parent="Panel/VBox/ContentHBox/LeftColumn"]
+layout_mode = 2
+
+[node name="MetaLevelLabel" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/MetaLevelSection"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Meta Level 1"
 horizontal_alignment = 1
 
-[node name="XPProgressBar" type="ProgressBar" parent="Panel/VBox/MetaLevelSection"]
+[node name="XPProgressBar" type="ProgressBar" parent="Panel/VBox/ContentHBox/LeftColumn/MetaLevelSection"]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 value = 50.0
 show_percentage = false
 
-[node name="XPLabel" type="Label" parent="Panel/VBox/MetaLevelSection"]
+[node name="XPLabel" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/MetaLevelSection"]
 layout_mode = 2
 text = "0 / 200 XP"
 horizontal_alignment = 1
 
-[node name="HSeparator2" type="HSeparator" parent="Panel/VBox"]
+[node name="HSeparator3" type="HSeparator" parent="Panel/VBox/ContentHBox/LeftColumn"]
 layout_mode = 2
 
-[node name="AttributeSection" type="VBoxContainer" parent="Panel/VBox"]
+[node name="AttributeSection" type="VBoxContainer" parent="Panel/VBox/ContentHBox/LeftColumn"]
 layout_mode = 2
 
-[node name="AttributeTitle" type="Label" parent="Panel/VBox/AttributeSection"]
+[node name="AttributeTitle" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "ATTRIBUTES (10 points available)"
 horizontal_alignment = 1
 
-[node name="AttributeGrid" type="GridContainer" parent="Panel/VBox/AttributeSection"]
+[node name="AttributeGrid" type="GridContainer" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection"]
 layout_mode = 2
 columns = 3
 
-[node name="MightLabel" type="Label" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="MightLabel" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 text = "MIGHT"
 
-[node name="MightValue" type="Label" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="MightValue" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 text = "0"
 horizontal_alignment = 1
 
-[node name="MightPlus" type="Button" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="MightPlus" type="Button" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 text = "+"
 
-[node name="AgilityLabel" type="Label" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="AgilityLabel" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 layout_mode = 2
 text = "AGILITY"
 
-[node name="AgilityValue" type="Label" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="AgilityValue" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 layout_mode = 2
 text = "0"
 horizontal_alignment = 1
 
-[node name="AgilityPlus" type="Button" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="AgilityPlus" type="Button" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 layout_mode = 2
 text = "+"
 
-[node name="VitalityLabel" type="Label" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="VitalityLabel" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 layout_mode = 2
 text = "VITALITY"
 
-[node name="VitalityValue" type="Label" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="VitalityValue" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 layout_mode = 2
 text = "0"
 horizontal_alignment = 1
 
-[node name="VitalityPlus" type="Button" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="VitalityPlus" type="Button" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 layout_mode = 2
 text = "+"
 
-[node name="WisdomLabel" type="Label" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="WisdomLabel" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 layout_mode = 2
 text = "WISDOM"
 
-[node name="WisdomValue" type="Label" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="WisdomValue" type="Label" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 layout_mode = 2
 text = "0"
 horizontal_alignment = 1
 
-[node name="WisdomPlus" type="Button" parent="Panel/VBox/AttributeSection/AttributeGrid"]
+[node name="WisdomPlus" type="Button" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid"]
 layout_mode = 2
 text = "+"
 
-[node name="RespecButton" type="Button" parent="Panel/VBox/AttributeSection"]
+[node name="RespecButton" type="Button" parent="Panel/VBox/ContentHBox/LeftColumn/AttributeSection"]
 layout_mode = 2
 text = "Respec (Free)"
 
-[node name="HSeparator3" type="HSeparator" parent="Panel/VBox"]
+[node name="VSeparator" type="VSeparator" parent="Panel/VBox/ContentHBox"]
 layout_mode = 2
 
-[node name="HeroInfo" type="HBoxContainer" parent="Panel/VBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 80)
-
-[node name="Portrait" type="ColorRect" parent="Panel/VBox/HeroInfo"]
-custom_minimum_size = Vector2(80, 80)
-layout_mode = 2
-color = Color(0.4, 0.6, 0.8, 1)
-
-[node name="VBox" type="VBoxContainer" parent="Panel/VBox/HeroInfo"]
+[node name="RightColumn" type="VBoxContainer" parent="Panel/VBox/ContentHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.65
 
-[node name="NameLabel" type="Label" parent="Panel/VBox/HeroInfo/VBox"]
-layout_mode = 2
-text = "RANGER"
-
-[node name="StatsLabel" type="Label" parent="Panel/VBox/HeroInfo/VBox"]
-layout_mode = 2
-text = "Health: 200  |  Damage: 25  |  Range: 300"
-
-[node name="HSeparator4" type="HSeparator" parent="Panel/VBox"]
-layout_mode = 2
-
-[node name="LoadoutSection" type="VBoxContainer" parent="Panel/VBox"]
+[node name="LoadoutSection" type="VBoxContainer" parent="Panel/VBox/ContentHBox/RightColumn"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 150)
 size_flags_vertical = 0
 
-[node name="LoadoutTitle" type="Label" parent="Panel/VBox/LoadoutSection"]
+[node name="LoadoutTitle" type="Label" parent="Panel/VBox/ContentHBox/RightColumn/LoadoutSection"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "⚔️ ACTIVE SKILLS LOADOUT"
+text = "⚔️ HERO SKILLS"
 horizontal_alignment = 1
 
-[node name="ActiveLoadoutGrid" type="GridContainer" parent="Panel/VBox/LoadoutSection"]
+[node name="UnifiedHeroWidget" parent="Panel/VBox/ContentHBox/RightColumn/LoadoutSection" instance=ExtResource("2")]
+custom_minimum_size = Vector2(300, 300)
 layout_mode = 2
-columns = 4
-script = ExtResource("2")
-slot_type = "active"
+size_flags_horizontal = 4
+size_flags_vertical = 4
+current_mode = 1
 
-[node name="HSeparator" type="HSeparator" parent="Panel/VBox/LoadoutSection"]
-layout_mode = 2
-
-[node name="PassiveTitle" type="Label" parent="Panel/VBox/LoadoutSection"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "🛡️ PASSIVE SKILLS"
-horizontal_alignment = 1
-
-[node name="PassiveLoadoutGrid" type="GridContainer" parent="Panel/VBox/LoadoutSection"]
-layout_mode = 2
-columns = 6
-script = ExtResource("2")
-slot_type = "passive"
-
-[node name="HSeparator5" type="HSeparator" parent="Panel/VBox"]
+[node name="HSeparator5" type="HSeparator" parent="Panel/VBox/ContentHBox/RightColumn"]
 layout_mode = 2
 
-[node name="ScrollContainer" type="ScrollContainer" parent="Panel/VBox"]
+[node name="ScrollContainer" type="ScrollContainer" parent="Panel/VBox/ContentHBox/RightColumn"]
+custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="SkillsVBox" type="VBoxContainer" parent="Panel/VBox/ScrollContainer"]
+[node name="SkillsVBox" type="VBoxContainer" parent="Panel/VBox/ContentHBox/RightColumn/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="ActiveSkillsSection" type="VBoxContainer" parent="Panel/VBox/ScrollContainer/SkillsVBox"]
+[node name="ActiveSkillsSection" type="VBoxContainer" parent="Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox"]
 layout_mode = 2
 
-[node name="SectionLabel" type="Label" parent="Panel/VBox/ScrollContainer/SkillsVBox/ActiveSkillsSection"]
+[node name="SectionLabel" type="Label" parent="Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/ActiveSkillsSection"]
 layout_mode = 2
 text = "ACTIVE ABILITIES"
 
-[node name="SkillsContainer" type="VBoxContainer" parent="Panel/VBox/ScrollContainer/SkillsVBox/ActiveSkillsSection"]
+[node name="SkillsContainer" type="VBoxContainer" parent="Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/ActiveSkillsSection"]
 layout_mode = 2
 
-[node name="HSeparator" type="HSeparator" parent="Panel/VBox/ScrollContainer/SkillsVBox"]
+[node name="HSeparator" type="HSeparator" parent="Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox"]
 layout_mode = 2
 
-[node name="PassiveSkillsSection" type="VBoxContainer" parent="Panel/VBox/ScrollContainer/SkillsVBox"]
+[node name="PassiveSkillsSection" type="VBoxContainer" parent="Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox"]
 layout_mode = 2
 
-[node name="SectionLabel" type="Label" parent="Panel/VBox/ScrollContainer/SkillsVBox/PassiveSkillsSection"]
+[node name="SectionLabel" type="Label" parent="Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/PassiveSkillsSection"]
 layout_mode = 2
 text = "PASSIVE UPGRADES"
 
-[node name="SkillsContainer" type="VBoxContainer" parent="Panel/VBox/ScrollContainer/SkillsVBox/PassiveSkillsSection"]
+[node name="SkillsContainer" type="VBoxContainer" parent="Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/PassiveSkillsSection"]
 layout_mode = 2

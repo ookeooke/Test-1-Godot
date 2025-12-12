@@ -1,16 +1,18 @@
-[gd_scene load_steps=3 format=3 uid="uid://dwolf7k3xp2n"]
+[gd_scene load_steps=6 format=3 uid="uid://dwolf7k3xp2n"]
 
-[ext_resource type="Script" path="res://scenes/enemies/wolf_runner.gd" id="1_wolf"]
+[ext_resource type="Script" uid="uid://bi533lvdlde3p" path="res://scenes/enemies/wolf_runner.gd" id="1_wolf"]
 [ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
 [ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="3_shadow"]
+[ext_resource type="SpriteFrames" uid="uid://cr12ux28vssdo" path="res://assets/sprites/enemies/wolf_runner/wolf_runner.aseprite" id="4_sprite"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_wolf"]
 radius = 15.0
 
 [node name="WolfRunner" type="CharacterBody2D" groups=["enemy"]]
-collision_layer = 1
+scale = Vector2(0.335, 0.335)
 collision_mask = 0
 script = ExtResource("1_wolf")
+metadata/_edit_vertical_guides_ = [-6.0]
 
 [node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
 custom_minimum_size = Vector2(40, 5)
@@ -19,27 +21,35 @@ offset_top = -22.0
 offset_right = 20.0
 offset_bottom = -17.0
 
-
 [node name="Shadow" parent="." instance=ExtResource("3_shadow")]
 position = Vector2(0, 5)
-scale = Vector2(1.0, 1.0)
 
-[node name="ColorRect" type="ColorRect" parent="."]
-offset_left = -15.0
-offset_top = -15.0
-offset_right = 15.0
-offset_bottom = 15.0
-color = Color(0.5, 0.4, 0.3, 1)
-
-[node name="Label" type="Label" parent="ColorRect"]
-layout_mode = 0
-offset_right = 30.0
-offset_bottom = 23.0
-theme_override_font_sizes/font_size = 10
-text = "WOLF"
-horizontal_alignment = 1
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("4_sprite")
+animation = &"run_side"
+autoplay = "run_side"
+offset = Vector2(0, -5)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_wolf")
 
 [node name="HitPoint" type="Marker2D" parent="."]
+position = Vector2(2.9850745, -20.895521)
+
+[node name="HitParticles" type="CPUParticles2D" parent="."]
+position = Vector2(2.9850745, -20.895521)
+emitting = false
+one_shot = true
+explosiveness = 1.0
+randomness = 0.5
+lifetime_randomness = 0.3
+emission_shape = 1
+emission_sphere_radius = 8.0
+direction = Vector2(0, -1)
+spread = 180.0
+gravity = Vector2(0, 200)
+initial_velocity_min = 50.0
+initial_velocity_max = 100.0
+scale_amount_min = 2.0
+scale_amount_max = 4.0
+color = Color(0.8, 0.1, 0.1, 1)

@@ -1,0 +1,58 @@
+[gd_scene load_steps=6 format=3 uid="uid://ctroll8k3xp2n"]
+
+[ext_resource type="Script" path="res://scenes/enemies/goblin_troll.gd" id="1_troll"]
+[ext_resource type="PackedScene" uid="uid://dhealthbar5x" path="res://scenes/ui/health_bar.tscn" id="2_healthbar"]
+[ext_resource type="PackedScene" uid="uid://c0mvcomlfiiyy" path="res://scenes/effects/shadow.tscn" id="3_shadow"]
+[ext_resource type="SpriteFrames" uid="uid://b4ngdu7npvbnw" path="res://assets/sprites/enemies/goblin_troll/goblin_troll.aseprite" id="4_sprite"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_troll"]
+radius = 25.0
+height = 60.0
+
+[node name="GoblinTroll" type="CharacterBody2D" groups=["enemy", "boss"]]
+scale = Vector2(0.8, 0.8)
+collision_mask = 0
+script = ExtResource("1_troll")
+metadata/_edit_group_ = true
+
+[node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
+custom_minimum_size = Vector2(70, 8)
+offset_left = -35.0
+offset_top = -45.0
+offset_right = 35.0
+offset_bottom = -37.0
+
+[node name="Shadow" parent="." instance=ExtResource("3_shadow")]
+position = Vector2(0, 15)
+scale = Vector2(2.5, 2.5)
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("4_sprite")
+animation = &"walk_side"
+autoplay = "walk_side"
+offset = Vector2(0, -10)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CapsuleShape2D_troll")
+
+[node name="HitPoint" type="Marker2D" parent="."]
+position = Vector2(0, -20)
+
+[node name="HitParticles" type="CPUParticles2D" parent="."]
+position = Vector2(0, -20)
+emitting = false
+amount = 16
+one_shot = true
+explosiveness = 1.0
+randomness = 0.5
+lifetime_randomness = 0.3
+emission_shape = 1
+emission_sphere_radius = 15.0
+direction = Vector2(0, -1)
+spread = 180.0
+gravity = Vector2(0, 200)
+initial_velocity_min = 80.0
+initial_velocity_max = 150.0
+scale_amount_min = 4.0
+scale_amount_max = 7.0
+color = Color(0.8, 0.1, 0.1, 1)

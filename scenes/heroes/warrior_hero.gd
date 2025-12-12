@@ -204,18 +204,3 @@ func _execute_taunt():
 		_show_floating_text("TAUNT! (%d)" % taunted_count, Color.YELLOW)
 	else:
 		_show_floating_text("TAUNT!", Color.YELLOW)
-
-func _show_floating_text(text: String, color: Color):
-	var label = Label.new()
-	label.text = text
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", 24)
-	label.add_theme_constant_override("outline_size", 4)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	get_tree().root.add_child(label)
-	label.global_position = global_position + Vector2(0, -60)
-	
-	var tween = create_tween()
-	tween.parallel().tween_property(label, "global_position", label.global_position + Vector2(0, -50), 1.0)
-	tween.parallel().tween_property(label, "modulate:a", 0.0, 1.0)
-	tween.tween_callback(label.queue_free)

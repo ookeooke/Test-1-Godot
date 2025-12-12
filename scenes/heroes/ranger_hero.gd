@@ -83,14 +83,12 @@ func perform_ranged_attack(target):
 # ============================================
 
 func _on_skill_activated(skill_id: String):
-	# print("🏹 RangerHero: Skill activated: ", skill_id)
+	print("🏹 RangerHero: Skill activated: ", skill_id)
 	match skill_id:
 		"ranger_multishot": _execute_multishot()
 		"ranger_rapid_fire": _execute_rapid_fire()
 		"ranger_poison_arrow": _execute_poison_arrow()
 		"ranger_sniper_shot": _execute_sniper_shot()
-		"ranger_smoke_bomb": _execute_smoke_bomb()
-		"ranger_rally_call": _execute_rally_call()
 		"ranger_eagle_eye": pass # Passive
 		_: push_warning("Unknown skill activated: ", skill_id)
 
@@ -143,21 +141,6 @@ func _execute_multishot():
 		arrow.setup(target, damage, self)
 	_flash_hero(Color(1.5, 1.3, 1.0))
 	_show_floating_text("Multishot!", Color.YELLOW)
-
-func _show_floating_text(text: String, color: Color):
-	var label = Label.new()
-	label.text = text
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", 24)
-	label.add_theme_constant_override("outline_size", 4)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	get_tree().root.add_child(label)
-	label.global_position = global_position + Vector2(0, -60)
-	
-	var tween = create_tween()
-	tween.parallel().tween_property(label, "global_position", label.global_position + Vector2(0, -50), 1.0)
-	tween.parallel().tween_property(label, "modulate:a", 0.0, 1.0)
-	tween.tween_callback(label.queue_free)
 
 func _execute_rapid_fire():
 	if arrow_scene == null:
@@ -257,7 +240,7 @@ func _execute_sniper_shot():
 	execute_threshold = minf(execute_threshold, 0.30)
 
 	var is_execute = false
-	if target.has("current_health") and target.has("max_health"):
+	if "current_health" in target and "max_health" in target:
 		var health_percent = target.current_health / target.max_health
 		if health_percent <= execute_threshold:
 			is_execute = true
@@ -275,14 +258,3 @@ func _execute_sniper_shot():
 		damage *= 3.0
 	arrow.setup(target, damage, self)
 	_flash_hero(Color(1.5, 1.0, 1.5))
-
-func _execute_smoke_bomb():
-	for enemy in enemies_in_melee_range:
-		if is_instance_valid(enemy) and enemy.has_method("unblock"):
-			if enemy.is_blocked and enemy.blocking_hero == self:
-				enemy.unblock()
-	current_melee_targets.clear()
-	_flash_hero(Color(0.7, 0.7, 0.7, 0.5))
-
-func _execute_rally_call():
-	_flash_hero(Color(1.3, 1.5, 1.0))

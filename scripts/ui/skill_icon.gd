@@ -55,7 +55,15 @@ func _update_display():
 	# Update level label
 	if level_label:
 		var level = SaveManager.get_hero_skill_level(hero_id, skill_id)
-		level_label.text = "Lv%d" % level
+		if level > 0:
+			level_label.text = "Lv%d" % level
+			level_label.visible = true
+		else:
+			level_label.visible = false
+			
+	# Debug Icon
+	if not skill_data.icon:
+		print("[SkillIcon] ⚠️ Warning: No icon texture for %s" % skill_id)
 
 ## ============================================
 ## DRAG-AND-DROP (Diablo 2 Style)
@@ -63,6 +71,7 @@ func _update_display():
 
 func _get_drag_data(at_position: Vector2):
 	"""Initiate drag operation"""
+	print("[SkillIcon] 🖱️ _get_drag_data called at %s" % at_position)
 	print("[SkillIcon] >>> Drag started: %s (from slot %d)" % [skill_id, source_slot_index])
 
 	# Create visual preview (semi-transparent)

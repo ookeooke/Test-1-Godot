@@ -1,11 +1,13 @@
-[gd_resource type="Resource" script_class="HeroSkillData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="HeroSkillData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/hero_skill_data.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/skills/ranger/multishot_icon.png" id="2"]
 
 [resource]
 script = ExtResource("1")
 skill_id = "ranger_multishot"
 skill_name = "Multishot"
+icon = ExtResource("2")
 description = "Fire a spread of arrows that pierce all enemies in a cone. Hits splash on impact.\nDamage: 60-100% per arrow | Cooldown: {cooldown}s\n\nAttribute Scaling: MIGHT +1 arrow/25pts, AGILITY +10% dmg/15pts"
 skill_type = 1
 category = 0

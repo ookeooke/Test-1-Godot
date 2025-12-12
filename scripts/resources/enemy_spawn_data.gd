@@ -5,7 +5,7 @@ class_name EnemySpawnData
 ## Used within WaveData to define what enemies spawn in a wave
 
 ## Type of enemy to spawn
-@export_enum("goblin", "orc", "wolf", "troll", "bat") var enemy_type: String = "goblin"
+@export_enum("goblin", "wolf", "troll") var enemy_type: String = "goblin"
 
 ## How many of this enemy type to spawn
 @export_range(1, 50, 1) var count: int = 5

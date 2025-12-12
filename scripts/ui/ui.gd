@@ -33,13 +33,6 @@ func _ready():
 	lives_label.text = "Lives: " + str(GameStateManager.lives)
 	_update_speed_display()
 	_update_debug_hud_button()
-	
-	# Instantiate SkillBar
-	var skill_bar_scene = load("res://scenes/ui/skill_bar.tscn")
-	if skill_bar_scene:
-		var skill_bar = skill_bar_scene.instantiate()
-		add_child(skill_bar)
-		# Position is handled by anchors in the scene file
 
 func _on_gold_changed(new_amount):
 	gold_label.text = "Gold: " + str(new_amount)

@@ -150,7 +150,7 @@ func activate_skill(skill_id: String) -> bool:
 		return false
 
 	if is_on_cooldown(skill_id):
-		push_warning("SkillManager: Skill on cooldown: ", skill_id)
+		# push_warning("SkillManager: Skill on cooldown: ", skill_id) # Optional: uncomment for verbose debugging
 		return false
 
 	var skill_data = get_skill_data(skill_id)

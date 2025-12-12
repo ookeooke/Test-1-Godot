@@ -1,68 +1,52 @@
 extends Node2D
 
-@onready var body = $Archer/Body
-@onready var weapon = $Archer/Weapon/Bow
+@onready var anim_sprite = $Archer/Body
+@onready var muzzle_flash = $Archer/Weapon/MuzzleFlash
 
-# Animation Config
-const FRAME_COUNT = 6
-const ANIM_SPEED = 10.0
-const IDLE_FRAME = 0 # Changed back to 0 for single-frame texture
-
-var is_attacking = false
-var anim_time = 0.0
+var is_attacking: bool = false
 
 func _ready():
 	print("[ArcherVisuals] _ready called")
-	
-	if body:
-		var tex = body.texture
-		if tex:
-			print("[ArcherVisuals] Body Texture: ", tex.resource_path)
-			print("[ArcherVisuals] Body Size: ", tex.get_size(), " | hframes: ", body.hframes)
-		
-		body.frame = IDLE_FRAME
-		body.visible = true
-	else:
-		print("[ArcherVisuals] ERROR: Body node not found!")
+	if anim_sprite:
+		var anim_names = anim_sprite.sprite_frames.get_animation_names()
+		print("[ArcherVisuals] Available animations: ", anim_names)
 
-	if weapon:
-		var tex = weapon.texture
-		if tex:
-			print("[ArcherVisuals] Weapon Texture: ", tex.resource_path)
-			print("[ArcherVisuals] Weapon Size: ", tex.get_size(), " | hframes: ", weapon.hframes)
-			
-		weapon.frame = IDLE_FRAME
-		weapon.visible = true
+		# Start with idle animation
+		_play_idle()
 	else:
-		print("[ArcherVisuals] ERROR: Weapon node not found!")
+		print("[ArcherVisuals] ERROR: Body (AnimatedSprite2D) not found!")
 
-func _process(delta):
-	# DEBUG: Cycle frames continuously to see ALL content
-	# Uncomment the next 3 lines to force a debug loop
-	# anim_time += delta * 5.0
-	# var debug_frame = int(anim_time) % FRAME_COUNT
-	# if body: body.frame = debug_frame
-	# if weapon: weapon.frame = debug_frame
-	# return 
-	if is_attacking:
-		anim_time += delta * ANIM_SPEED
-		var frame = int(anim_time)
-		
-		if frame < FRAME_COUNT:
-			if weapon: weapon.frame = frame
-			# if body: body.frame = frame # Optional: Animate body too
-		else:
-			# Animation finished
-			is_attacking = false
-			if weapon: weapon.frame = IDLE_FRAME
-			# if body: body.frame = IDLE_FRAME
-	else:
-		# Idle state
-		if weapon: weapon.frame = IDLE_FRAME
-		# if body: body.frame = IDLE_FRAME
+func _play_idle():
+	if not anim_sprite:
+		return
+
+	if anim_sprite.sprite_frames.has_animation("idle"):
+		if anim_sprite.animation != "idle":  # Only play if not already playing
+			anim_sprite.play("idle")
+	elif anim_sprite.sprite_frames.get_animation_names().size() > 0:
+		var anim_names = anim_sprite.sprite_frames.get_animation_names()
+		print("[ArcherVisuals] 'idle' not found. Defaulting to: ", anim_names[0])
+		anim_sprite.play(anim_names[0])
 
 func play_attack():
-	print("[ArcherVisuals] play_attack() called")
+	if not anim_sprite:
+		return
+
 	is_attacking = true
-	anim_time = 0.0
-	if weapon: weapon.frame = 0 # Start from 0 (even if empty) for animation flow
+
+	# Play attack animation if available
+	if anim_sprite.sprite_frames.has_animation("attack"):
+		anim_sprite.play("attack")
+		# Wait for animation to finish, then return to idle
+		await anim_sprite.animation_finished
+	else:
+		print("[ArcherVisuals] 'attack' animation missing!")
+
+	# Always return to idle after attack
+	is_attacking = false
+	_play_idle()
+
+	# Trigger muzzle flash
+	if muzzle_flash:
+		muzzle_flash.restart()
+		muzzle_flash.emitting = true

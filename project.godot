@@ -15,10 +15,6 @@ run/main_scene="res://scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 
-[aseprite_importers]
-
-aseprite_executable_path="C:/Program Files (x86)/Steam/steamapps/common/Aseprite/Aseprite.exe"
-
 [autoload]
 
 InputActionsSetup="*res://scripts/autoloads/input_actions_setup.gd"
@@ -69,7 +65,7 @@ window/stretch/mode="canvas_items"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/nklbdev.aseprite_importers/plugin.cfg")
+enabled=PackedStringArray("res://addons/AsepriteWizard/plugin.cfg")
 
 [gui]
 

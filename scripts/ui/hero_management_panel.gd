@@ -31,31 +31,38 @@ signal closed()
 @onready var title_label: Label = $Panel/VBox/TitleBar/TitleLabel
 @onready var close_button: Button = $Panel/VBox/TitleBar/CloseButton if has_node("Panel/VBox/TitleBar/CloseButton") else null
 @onready var back_button: Button = $Panel/VBox/TitleBar/BackButton if has_node("Panel/VBox/TitleBar/BackButton") else null
-@onready var hero_portrait: ColorRect = $Panel/VBox/HeroInfo/Portrait
-@onready var hero_name_label: Label = $Panel/VBox/HeroInfo/VBox/NameLabel
-@onready var stats_label: Label = $Panel/VBox/HeroInfo/VBox/StatsLabel
+@onready var hero_portrait: ColorRect = $Panel/VBox/ContentHBox/LeftColumn/HeroInfo/Portrait
+@onready var hero_name_label: Label = $Panel/VBox/ContentHBox/LeftColumn/HeroInfo/VBox/NameLabel
+@onready var stats_label: Label = $Panel/VBox/ContentHBox/LeftColumn/HeroInfo/VBox/StatsLabel
 @onready var currency_label: Label = $Panel/VBox/TitleBar/CurrencyLabel
 
 # Meta Level UI
-@onready var meta_level_label: Label = $Panel/VBox/MetaLevelSection/MetaLevelLabel
-@onready var xp_progress_bar: ProgressBar = $Panel/VBox/MetaLevelSection/XPProgressBar
-@onready var xp_label: Label = $Panel/VBox/MetaLevelSection/XPLabel
+@onready var meta_level_label: Label = $Panel/VBox/ContentHBox/LeftColumn/MetaLevelSection/MetaLevelLabel
+@onready var xp_progress_bar: ProgressBar = $Panel/VBox/ContentHBox/LeftColumn/MetaLevelSection/XPProgressBar
+@onready var xp_label: Label = $Panel/VBox/ContentHBox/LeftColumn/MetaLevelSection/XPLabel
 
 # Attribute UI
-@onready var attribute_title_label: Label = $Panel/VBox/AttributeSection/AttributeTitle
-@onready var might_value: Label = $Panel/VBox/AttributeSection/AttributeGrid/MightValue
-@onready var might_plus: Button = $Panel/VBox/AttributeSection/AttributeGrid/MightPlus
-@onready var agility_value: Label = $Panel/VBox/AttributeSection/AttributeGrid/AgilityValue
-@onready var agility_plus: Button = $Panel/VBox/AttributeSection/AttributeGrid/AgilityPlus
-@onready var vitality_value: Label = $Panel/VBox/AttributeSection/AttributeGrid/VitalityValue
-@onready var vitality_plus: Button = $Panel/VBox/AttributeSection/AttributeGrid/VitalityPlus
-@onready var wisdom_value: Label = $Panel/VBox/AttributeSection/AttributeGrid/WisdomValue
-@onready var wisdom_plus: Button = $Panel/VBox/AttributeSection/AttributeGrid/WisdomPlus
-@onready var respec_button: Button = $Panel/VBox/AttributeSection/RespecButton
+@onready var attribute_title_label: Label = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeTitle
+@onready var might_value: Label = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid/MightValue
+@onready var might_plus: Button = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid/MightPlus
+@onready var agility_value: Label = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid/AgilityValue
+@onready var agility_plus: Button = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid/AgilityPlus
+@onready var vitality_value: Label = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid/VitalityValue
+@onready var vitality_plus: Button = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid/VitalityPlus
+@onready var wisdom_value: Label = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid/WisdomValue
+@onready var wisdom_plus: Button = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/AttributeGrid/WisdomPlus
+@onready var respec_button: Button = $Panel/VBox/ContentHBox/LeftColumn/AttributeSection/RespecButton
 
-# Loadout UI (NEW - Skill Loadout System)
-@onready var active_loadout_grid = $Panel/VBox/LoadoutSection/ActiveLoadoutGrid if has_node("Panel/VBox/LoadoutSection/ActiveLoadoutGrid") else null
-@onready var passive_loadout_grid = $Panel/VBox/LoadoutSection/PassiveLoadoutGrid if has_node("Panel/VBox/LoadoutSection/PassiveLoadoutGrid") else null
+# Loadout UI (NEW - Unified System)
+# Loadout UI (NEW - Unified System)
+@onready var unified_hero_widget = _find_unified_widget()
+
+func _find_unified_widget() -> Control:
+	if has_node("Panel/VBox/LoadoutSection/UnifiedHeroWidget"):
+		return $Panel/VBox/LoadoutSection/UnifiedHeroWidget
+	elif has_node("Panel/VBox/ContentHBox/RightColumn/LoadoutSection/UnifiedHeroWidget"):
+		return $Panel/VBox/ContentHBox/RightColumn/LoadoutSection/UnifiedHeroWidget
+	return null
 
 # Hero switcher buttons
 @onready var archer_button = $Panel/VBox/TitleBar/HeroButtonsContainer/ArcherButton if has_node("Panel/VBox/TitleBar/HeroButtonsContainer/ArcherButton") else null
@@ -63,8 +70,8 @@ signal closed()
 @onready var wizard_button = $Panel/VBox/TitleBar/HeroButtonsContainer/WizardButton if has_node("Panel/VBox/TitleBar/HeroButtonsContainer/WizardButton") else null
 
 # Skill sections
-@onready var active_skills_container: VBoxContainer = $Panel/VBox/ScrollContainer/SkillsVBox/ActiveSkillsSection/SkillsContainer
-@onready var passive_skills_container: VBoxContainer = $Panel/VBox/ScrollContainer/SkillsVBox/PassiveSkillsSection/SkillsContainer
+@onready var active_skills_container: VBoxContainer = $Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/ActiveSkillsSection/SkillsContainer
+@onready var passive_skills_container: VBoxContainer = $Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/PassiveSkillsSection/SkillsContainer
 
 # ============================================
 # DATA
@@ -97,6 +104,19 @@ func _ready():
 
 	# Setup hero switcher buttons
 	_setup_hero_buttons()
+	
+	# Connect Unified Widget signal
+	if has_node("Panel/VBox/LoadoutSection/UnifiedHeroWidget"):
+		var widget = $Panel/VBox/LoadoutSection/UnifiedHeroWidget
+		if not widget.skill_changed.is_connected(_refresh_display):
+			widget.skill_changed.connect(_refresh_display)
+
+	# Defer layout debug to ensure sizes are calculated
+	call_deferred("_debug_layout")
+
+func _debug_layout():
+	print("--- LAYOUT DEBUG ---")
+	print("Panel Size: ", size)
 
 func _connect_attribute_buttons():
 	if might_plus:
@@ -165,13 +185,6 @@ func _on_hero_button_pressed(new_hero_id: String):
 			var old_skill_count = available_skills.size()
 			_load_class_skills() # Reload available_skills for the new class
 			print("  🎯 Skills reloaded: %d → %d skills" % [old_skill_count, available_skills.size()])
-
-			# Debug: List skill names
-			if available_skills.size() > 0:
-				print("  📋 New skill list:")
-				for skill in available_skills:
-					if skill:
-						print("    - %s (Type: %s)" % [skill.skill_name, "ACTIVE" if skill.skill_type == HeroSkillData.SkillType.ACTIVE else "PASSIVE"])
 		else:
 			print("  ❌ ERROR: Hero data not found for %s" % hero_id)
 	else:
@@ -185,19 +198,10 @@ func _on_hero_button_pressed(new_hero_id: String):
 	print("  🔄 Refreshing display...")
 	_refresh_display()
 
-	# Refresh loadout grids
-	print("  🎨 Refreshing loadout grids...")
-	if active_loadout_grid and active_loadout_grid.has_method("setup"):
-		active_loadout_grid.setup(hero_id, "active")
-		print("    ✅ Active loadout grid refreshed")
-	else:
-		print("    ⚠️  Active loadout grid not available")
-
-	if passive_loadout_grid and passive_loadout_grid.has_method("setup"):
-		passive_loadout_grid.setup(hero_id, "passive")
-		print("    ✅ Passive loadout grid refreshed")
-	else:
-		print("    ⚠️  Passive loadout grid not available")
+	# Refresh Loadout Widget
+	if unified_hero_widget and unified_hero_widget.has_method("setup"):
+		unified_hero_widget.setup(hero_id, HeroCommandWidget.Mode.LOADOUT)
+		print("    ✅ Unified Widget refreshed")
 
 	print("=".repeat(60))
 	print("[HeroManagementPanel] ✅ HERO SWITCH COMPLETE")
@@ -278,13 +282,10 @@ func open_panel(p_hero_id: String, skills: Array[HeroSkillData] = []):
 	# Update currency
 	current_currency = SaveManager.get_gems()
 
-	# Setup loadout grids (NEW - Skill Loadout System)
-	if active_loadout_grid and active_loadout_grid.has_method("setup"):
-		active_loadout_grid.setup(hero_id, "active")
-		print("[HeroPanel] ✅ Setup active loadout grid")
-	if passive_loadout_grid and passive_loadout_grid.has_method("setup"):
-		passive_loadout_grid.setup(hero_id, "passive")
-		print("[HeroPanel] ✅ Setup passive loadout grid")
+	# Setup Unified Widget
+	if unified_hero_widget and unified_hero_widget.has_method("setup"):
+		unified_hero_widget.setup(hero_id, HeroCommandWidget.Mode.LOADOUT)
+		print("[HeroPanel] ✅ Setup Unified Hero Widget")
 
 	# Refresh display
 	_refresh_display()
@@ -770,3 +771,14 @@ func _show_error_feedback(message: String):
 	tween.tween_property(self, "position", original_pos + Vector2(5, 0), 0.05)
 	tween.tween_property(self, "position", original_pos + Vector2(-5, 0), 0.05)
 	tween.tween_property(self, "position", original_pos, 0.05)
+
+# ============================================
+# SKILL EQUIPPED CALLBACK (Drag-Drop Fix)
+# ============================================
+
+func _on_skill_equipped(slot_index: int, skill_id: String):
+	"""Called when a skill is equipped via drag-and-drop"""
+	print("[HeroPanel] 🎯 Skill equipped: %s to slot %d - refreshing display" % [skill_id, slot_index])
+	# Small delay to let SaveManager complete
+	await get_tree().create_timer(0.05).timeout
+	_refresh_display()

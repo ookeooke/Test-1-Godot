@@ -1,11 +1,13 @@
-[gd_resource type="Resource" script_class="HeroSkillData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="HeroSkillData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/hero_skill_data.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/skills/ranger/eagle_eye_icon.png" id="2"]
 
 [resource]
 script = ExtResource("1")
 skill_id = "ranger_eagle_eye"
 skill_name = "Eagle Eye"
+icon = ExtResource("2")
 description = "Passive: Increases attack range and critical strike chance. At higher levels, marked enemies take bonus damage.\n\nRange: +15-35% | Crit: +2-10%\n\nAttribute Scaling: AGILITY +0.5% range/pt, WISDOM +0.2% crit/pt"
 skill_type = 0
 category = 0

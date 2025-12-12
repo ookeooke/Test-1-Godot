@@ -5,17 +5,19 @@
 
 [sub_resource type="Resource" id="EnemySpawnData_1"]
 script = ExtResource("2_enemy")
-enemy_type = "orc"
-count = 10
+enemy_type = "goblin"
+count = 12
+
+[sub_resource type="Resource" id="EnemySpawnData_2"]
+script = ExtResource("2_enemy")
+enemy_type = "wolf"
+count = 8
 
 [resource]
 script = ExtResource("1_wave")
 wave_number = 9
 break_time = 6.0
-enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
-wave_name = "Orc Army"
-is_boss_wave = true
+enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1"), SubResource("EnemySpawnData_2")])
+wave_name = "Enemy Army"
+is_boss_wave = false
 hp_multiplier = 3.2
-custom_hp_multipliers = {
-"orc": 3.5
-}

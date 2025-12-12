@@ -5,9 +5,11 @@
 
 [sub_resource type="Resource" id="EnemySpawnData_1"]
 script = ExtResource("2_enemy")
-enemy_type = "orc"
+enemy_type = "goblin"
+count = 10
 
 [resource]
 script = ExtResource("1_wave")
 wave_number = 2
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
+wave_name = "Goblin Wave"

@@ -15,10 +15,8 @@ extends Node2D
 @export var start_waypoint: PathWaypoint # Starting waypoint (NEW SYSTEM - optional)
 @export var use_waypoint_system: bool = false # Toggle between old Path2D and new waypoint system
 @export var goblin_scene: PackedScene
-@export var orc_scene: PackedScene
 @export var wolf_scene: PackedScene
 @export var troll_scene: PackedScene
-@export var bat_scene: PackedScene
 @export var wave_label: Label # Reference to the UI label
 
 # WAVE CONFIGURATION (using Custom Resources)
@@ -324,14 +322,10 @@ func spawn_enemy():
 
 	if enemy_type == "goblin":
 		enemy_scene_to_use = goblin_scene
-	elif enemy_type == "orc":
-		enemy_scene_to_use = orc_scene
 	elif enemy_type == "wolf":
 		enemy_scene_to_use = wolf_scene
 	elif enemy_type == "troll":
 		enemy_scene_to_use = troll_scene
-	elif enemy_type == "bat":
-		enemy_scene_to_use = bat_scene
 	else:
 		print("ERROR: Unknown enemy type: ", enemy_type)
 		return
@@ -800,16 +794,16 @@ func _get_enemy_tier(enemy) -> String:
 	# Get enemy name/type
 	var enemy_name = enemy.name.to_lower()
 
-	# Tier 1: Weak enemies (goblins, bats)
-	if "goblin" in enemy_name or "bat" in enemy_name:
+	# Tier 1: Weak enemies (goblins)
+	if "goblin" in enemy_name:
 		return "tier1"
 
-	# Tier 2: Medium enemies (wolves, orcs)
-	elif "wolf" in enemy_name or "orc" in enemy_name:
+	# Tier 2: Medium enemies (wolves)
+	elif "wolf" in enemy_name:
 		return "tier2"
 
-	# Tier 3: Strong enemies (trolls, elites)
-	elif "troll" in enemy_name or "elite" in enemy_name:
+	# Tier 3: Strong enemies (trolls, bosses)
+	elif "troll" in enemy_name or "boss" in enemy_name:
 		return "tier3"
 
 	# Default to tier 1

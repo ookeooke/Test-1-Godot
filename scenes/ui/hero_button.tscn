@@ -45,14 +45,6 @@ texture = ExtResource("2_portrait")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="ActiveAbilityButton" type="Button" parent="."]
-layout_mode = 0
-offset_left = 60.0
-offset_top = -10.0
-offset_right = 100.0
-offset_bottom = 30.0
-text = "S"
-script = ExtResource("2_abilitybutton")
 
 [node name="HealthBar" type="ProgressBar" parent="."]
 layout_mode = 0

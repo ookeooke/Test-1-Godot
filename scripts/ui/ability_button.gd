@@ -28,6 +28,11 @@ var hotkey_label: Label
 var cooldown_overlay: ColorRect # Visual overlay during cooldown
 var progress_bar: ProgressBar # Radial or linear cooldown indicator
 
+# Touch input state
+var touch_start_time: float = 0.0
+var is_touch_held: bool = false
+const LONG_PRESS_DURATION: float = 0.5 # 500ms
+
 # State
 var is_ready: bool = true
 var cooldown_remaining: float = 0.0
@@ -44,6 +49,10 @@ func _ready():
 
 	# Create UI hierarchy
 	_setup_ui()
+	
+	# Initial Display Update
+	_update_display()
+	_update_visual_state()
 
 	# Connect button press
 	pressed.connect(_on_pressed)
@@ -116,33 +125,11 @@ func _setup_ui():
 func setup(p_skill_id: String, p_skill_manager: HeroSkillManager, p_skill_data: HeroSkillData, p_hotkey: String = "1"):
 	"""Initialize the button with skill data"""
 	print("🔧 AbilityButton: setup() called for ", p_skill_id)
-	if p_skill_manager == null:
-		print("⚠️ AbilityButton: setup() received NULL skill_manager!")
-	else:
-		print("✅ AbilityButton: setup() received valid skill_manager: ", p_skill_manager)
-
+	
 	skill_id = p_skill_id
 	skill_manager = p_skill_manager
 	skill_data = p_skill_data
 	hotkey = p_hotkey
-
-	# Update hotkey display
-	if hotkey_label:
-		hotkey_label.text = hotkey
-
-	# Set icon
-	if skill_data and skill_data.icon and icon_rect:
-		icon_rect.texture = skill_data.icon
-	else:
-		# Placeholder icon
-		if icon_rect:
-			icon_rect.modulate = Color(0.5, 0.5, 0.8)
-
-	# Set tooltip
-	if skill_data:
-		var upgrade_level = skill_manager.get_skill_level(skill_id)
-		tooltip_text = skill_data.get_display_description(upgrade_level)
-		tooltip_text += "\n\nHotkey: " + hotkey
 
 	# Connect to skill manager signals
 	if skill_manager:
@@ -151,10 +138,32 @@ func setup(p_skill_id: String, p_skill_manager: HeroSkillManager, p_skill_data: 
 		if not skill_manager.skill_ready.is_connected(_on_skill_ready):
 			skill_manager.skill_ready.connect(_on_skill_ready)
 
-	# Initial state
-	_update_visual_state()
-
+	# Update UI if ready (otherwise _ready will handle it)
+	if is_node_ready():
+		_update_display()
+		_update_visual_state()
+	
 	print("✅ AbilityButton setup complete: ", skill_id)
+
+func _update_display():
+	"""Update static visual elements (icon, hotkey, tooltip)"""
+	# Update hotkey display
+	if hotkey_label:
+		hotkey_label.text = hotkey
+
+	# Set icon
+	if skill_data and skill_data.icon:
+		if icon_rect:
+			icon_rect.texture = skill_data.icon
+	else:
+		if icon_rect:
+			icon_rect.modulate = Color(0.5, 0.5, 0.8) # Placeholder tint
+
+	# Set tooltip
+	if skill_data:
+		var upgrade_level = skill_manager.get_skill_level(skill_id) if skill_manager else 1
+		tooltip_text = skill_data.get_display_description(upgrade_level)
+		tooltip_text += "\n\nHotkey: " + hotkey
 
 func _exit_tree():
 	"""Disconnect signals when removed"""
@@ -181,10 +190,61 @@ func _input(event: InputEvent):
 			_activate_ability()
 			get_viewport().set_input_as_handled()
 
+func _gui_input(event: InputEvent):
+	"""Handle touch and mouse input with long-press support"""
+	# Mouse button input (PC)
+	if event is InputEventMouseButton:
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			touch_start_time = Time.get_ticks_msec() / 1000.0
+			is_touch_held = true
+		elif not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			if is_touch_held:
+				var hold_duration = (Time.get_ticks_msec() / 1000.0) - touch_start_time
+				if hold_duration >= LONG_PRESS_DURATION:
+					_show_skill_tooltip()
+				else:
+					_activate_ability()
+				is_touch_held = false
+
+	# Touch input (Mobile)
+	elif event is InputEventScreenTouch:
+		if event.pressed:
+			touch_start_time = Time.get_ticks_msec() / 1000.0
+			is_touch_held = true
+		else:
+			if is_touch_held:
+				var hold_duration = (Time.get_ticks_msec() / 1000.0) - touch_start_time
+				if hold_duration >= LONG_PRESS_DURATION:
+					_show_skill_tooltip()
+				else:
+					_activate_ability()
+				is_touch_held = false
+
 func _on_pressed():
-	"""Handle button click"""
+	"""Handle button click (fallback)"""
 	print("🔘 AbilityButton: Clicked! (Skill ID: ", skill_id, ")")
-	_activate_ability()
+	# Primary handling is done in _gui_input, this is fallback
+
+func _show_skill_tooltip():
+	"""Show detailed skill tooltip on long-press"""
+	if not skill_data:
+		return
+
+	# Create rich tooltip (future: integrate with TooltipManager)
+	var tooltip_lines = []
+	tooltip_lines.append(skill_data.skill_name)
+	tooltip_lines.append("---")
+	var upgrade_level = skill_manager.get_skill_level(skill_id) if skill_manager else 1
+	tooltip_lines.append(skill_data.get_display_description(upgrade_level))
+
+	if skill_data.cooldown > 0:
+		tooltip_lines.append("")
+		tooltip_lines.append("Cooldown: %.1fs" % skill_data.get_current_cooldown(upgrade_level))
+
+	var tooltip_msg = "\n".join(tooltip_lines)
+	# For now, use built-in tooltip (future: TooltipManager)
+	tooltip_text = tooltip_msg
+	print("[AbilityButton] Long-press tooltip: %s" % skill_data.skill_name)
 
 func _activate_ability():
 	"""Try to activate the ability"""
@@ -203,9 +263,17 @@ func _activate_ability():
 
 		# Visual feedback
 		_play_activation_animation()
+
+		# Haptic feedback on mobile (success)
+		if OS.has_feature("mobile"):
+			Input.vibrate_handheld(50) # 50ms vibration
 	else:
 		# Activation failed (probably on cooldown)
 		_play_fail_animation()
+
+		# Haptic feedback on mobile (error - stronger)
+		if OS.has_feature("mobile"):
+			Input.vibrate_handheld(100) # 100ms vibration
 
 # ============================================
 # COOLDOWN TRACKING

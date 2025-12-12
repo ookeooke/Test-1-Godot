@@ -18,6 +18,8 @@ extends BaseTower
 
 # REFERENCES
 var archer_weapon: Node2D
+var archer_visual: Node2D  # The Archer node that contains Body and Weapon
+var archer_body  # The archer body (AnimatedSprite2D for L1, ColorRect for L2+) - untyped to accept both
 
 func _ready():
 	# Archer specific setup (MUST be before super._ready)
@@ -43,16 +45,33 @@ func _process(_delta):
 	if is_under_construction:
 		return
 
-	# Rotate archer's weapon toward the current target
+	# Rotate weapon and flip body sprite based on target direction
 	if current_target and is_instance_valid(current_target):
 		if archer_weapon:
 			archer_weapon.look_at(current_target.global_position)
-			
+
+		# Flip body sprite based on target direction (2D isometric style)
+		if archer_body and archer_body is AnimatedSprite2D:
+			var direction_to_target = (current_target.global_position - global_position).normalized()
+			archer_body.flip_h = direction_to_target.x < 0  # Flip if target is to the left
+
 		# Visual debug
 		if DebugConfig.visual_debug_enabled and debug_line:
 			debug_line.visible = true
 			debug_line.points = [Vector2.ZERO, to_local(current_target.global_position)]
 	else:
+		# No target: reset to default idle state
+		if archer_body and archer_body is AnimatedSprite2D:
+			archer_body.flip_h = false  # Face right (default direction)
+		if archer_weapon:
+			archer_weapon.rotation = 0  # Reset weapon rotation to default
+
+		# Ensure idle animation is playing when no target
+		if has_node("VisualContainer") and $VisualContainer.get_child_count() > 0:
+			var visual = $VisualContainer.get_child(0)
+			if visual.has_method("_play_idle"):
+				visual._play_idle()
+
 		if debug_line:
 			debug_line.visible = false
 			
@@ -110,14 +129,26 @@ func shoot_at(target):
 	# if has_node("ShootSound"): $ShootSound.play()
 
 func _update_weapon_reference(visual_instance):
-	"""Override: Find the weapon node in the new visual scene"""
-	# The pivot is likely "Archer/Weapon" in the new structure
+	"""Override: Find the archer and weapon nodes in the new visual scene"""
+	# Get the Archer node for rotation
+	if visual_instance.has_node("Archer"):
+		archer_visual = visual_instance.get_node("Archer")
+	else:
+		archer_visual = null
+
+	# Get the Weapon node for arrow spawn position
 	if visual_instance.has_node("Archer/Weapon"):
 		archer_weapon = visual_instance.get_node("Archer/Weapon")
 	elif visual_instance.has_node("Visuals/WeaponPivot"): # Fallback for other structures
 		archer_weapon = visual_instance.get_node("Visuals/WeaponPivot")
 	else:
 		archer_weapon = null
+
+	# Get the Body sprite for flipping
+	if visual_instance.has_node("Archer/Body"):
+		archer_body = visual_instance.get_node("Archer/Body")
+	else:
+		archer_body = null
 
 # ============================================
 # PATH CHOICES

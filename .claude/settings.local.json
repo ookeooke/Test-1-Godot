@@ -24,7 +24,9 @@
       "Bash(echo:*)",
       "Bash(done)",
       "Bash(python3:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(Select-Object -First 15 \")",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

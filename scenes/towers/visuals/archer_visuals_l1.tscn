@@ -1,9 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://bxfro6iymcexi"]
+[gd_scene load_steps=4 format=3 uid="uid://bxfro6iymcexi"]
 
 [ext_resource type="Texture2D" uid="uid://d0ngu23x1ql7v" path="res://assets/sprites/towers/archer_level1/archer1.png" id="1_sprite"]
-[ext_resource type="Texture2D" uid="uid://5mdpcy2iv4ks" path="res://archer_body.aseprite" id="2_body"]
-[ext_resource type="Texture2D" uid="uid://cuf2ih4yqqwwt" path="res://archer_bow.aseprite" id="3_bow"]
 [ext_resource type="Script" uid="uid://45r7vpvefcy4" path="res://scripts/towers/visuals/archer_visuals_simple.gd" id="4_script"]
+[ext_resource type="SpriteFrames" uid="uid://cfkoagnvw2r03" path="res://assets/aseprite/archertower_archer.aseprite" id="new_anim"]
 
 [node name="ArcherVisualsL1" type="Node2D"]
 script = ExtResource("4_script")
@@ -16,21 +15,21 @@ texture = ExtResource("1_sprite")
 [node name="Archer" type="Node2D" parent="."]
 position = Vector2(-1, -56)
 
-[node name="Body" type="Sprite2D" parent="Archer"]
-position = Vector2(7.353611, 8.353607)
-scale = Vector2(0.2762001, 0.2762001)
-texture = ExtResource("2_body")
+[node name="Body" type="AnimatedSprite2D" parent="Archer"]
+position = Vector2(7, 8)
+scale = Vector2(0.3, 0.3)
+sprite_frames = ExtResource("new_anim")
+animation = &"idle"
+autoplay = "idle"
 
 [node name="Weapon" type="Node2D" parent="Archer"]
-position = Vector2(7.353611, 8.353607)
-scale = Vector2(0.2762001, 0.2762001)
+position = Vector2(12, 0)
 
-[node name="Bow" type="Sprite2D" parent="Archer/Weapon"]
-position = Vector2(10, 0)
-texture = ExtResource("3_bow")
+[node name="Muzzle" type="Marker2D" parent="Archer/Weapon"]
+position = Vector2(9, 0)
 
 [node name="MuzzleFlash" type="CPUParticles2D" parent="Archer/Weapon"]
-position = Vector2(18, 0)
+position = Vector2(9, 0)
 emitting = false
 amount = 6
 lifetime = 0.2

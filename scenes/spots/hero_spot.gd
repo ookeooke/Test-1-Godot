@@ -14,7 +14,7 @@ var respawn_time_left = 0.0
 
 # Hero scene to spawn
 @export var hero_scene: PackedScene
-@export var squad_index: int = 0  ## Which hero from squad to spawn (0=first, 1=second, 2=third)
+@export var squad_index: int = 0 ## Which hero from squad to spawn (0=first, 1=second, 2=third)
 
 # References
 @onready var sprite = $Sprite2D
@@ -43,7 +43,7 @@ func _ready():
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	auto_spawn_hero()  # Handles null internally now
+	auto_spawn_hero() # Handles null internally now
 
 func auto_spawn_hero():
 	"""Automatically spawn hero at start - uses SaveManager squad if available"""
@@ -91,7 +91,7 @@ func _on_click_area_input_event(_viewport, event, _shape_idx):
 # NEW: Optimized hover detection using Area2D signals
 func _on_mouse_entered():
 	if not has_hero and not is_respawning:
-		sprite.modulate = Color(1.2, 1.5, 1.2)  # Green tint
+		sprite.modulate = Color(1.2, 1.5, 1.2) # Green tint
 
 func _on_mouse_exited():
 	if not has_hero and not is_respawning:
@@ -157,14 +157,21 @@ func spawn_hero(hero_scene_to_spawn: PackedScene):
 		else:
 			print("  WARNING: HeroManager not found!")
 
-	# Connect hero to HeroButton UI
-	print("  Connecting hero to HeroButton...")
-	var hero_button = get_tree().get_first_node_in_group("hero_button")
-	if hero_button and hero_button.has_method("set_hero"):
-		hero_button.set_hero(hero)
-		print("  ✓ Connected to HeroButton")
+	# Connect hero to HeroCommandWidget UI (New System)
+	print("  Connecting hero to HeroCommandWidget...")
+	var command_widget = get_tree().get_first_node_in_group("hero_command_widget")
+	if command_widget and command_widget.has_method("setup_hero"):
+		command_widget.setup_hero(hero)
+		print("  ✓ Connected to HeroCommandWidget")
 	else:
-		print("  WARNING: HeroButton not found!")
+		# Fallback to old system if new one not found
+		print("  ⚠️ HeroCommandWidget not found, trying legacy HeroButton...")
+		var hero_button = get_tree().get_first_node_in_group("hero_button")
+		if hero_button and hero_button.has_method("set_hero"):
+			hero_button.set_hero(hero)
+			print("  ✓ Connected to HeroButton (Legacy)")
+		else:
+			print("  WARNING: No Hero UI found!")
 
 	current_hero = hero
 	has_hero = true

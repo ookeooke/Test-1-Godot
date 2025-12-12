@@ -1373,3 +1373,34 @@ func get_max_skill_slots(hero_id: String) -> Dictionary:
 		"passive": passive_slots
 	}
 
+func get_unlocked_slot_count(hero_id: String) -> Dictionary:
+	"""Get number of UNLOCKED skill slots based on hero level
+	
+	Progression Curve:
+	- Phase 1 (Lv 1-4): 2 Active, 2 Passive (for testing)
+	- Phase 2 (Lv 5-9): 3 Active, 3 Passive
+	- Phase 3 (Lv 10+): 4 Active, 4 Passive
+	"""
+	var max_slots = get_max_skill_slots(hero_id)
+	
+	# Get Hero Level
+	var level = 1
+	if has_current_profile():
+		level = get_meta_level(hero_id)
+		
+	# Define Unlock Curve
+	var active_unlocked = 2 # Start with 2 for testing
+	var passive_unlocked = 2
+	
+	if level >= 5:
+		active_unlocked = 3
+		passive_unlocked = 3
+	if level >= 10:
+		active_unlocked = 4
+		passive_unlocked = 4
+		
+	# Clamp to class maximums
+	return {
+		"active": min(active_unlocked, max_slots.active),
+		"passive": min(passive_unlocked, max_slots.passive)
+	}

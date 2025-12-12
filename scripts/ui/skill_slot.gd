@@ -18,11 +18,11 @@ var equipped_skill_id: String = "" # "" = empty, "fireball" = has skill
 @onready var icon_layer: Control = $IconLayer
 @onready var empty_label: Label = $EmptyLabel
 
-var skill_icon = null  # Will be SkillIcon instance when created
+var skill_icon = null # Will be SkillIcon instance when created
 
 # Signals
 signal skill_equipped(slot_index: int, skill_id: String)
-signal skill_unequipped(slot_index: int)
+
 
 ## ============================================
 ## INITIALIZATION
@@ -33,6 +33,10 @@ func setup(p_slot_index: int, p_slot_type: String, p_hero_id: String):
 	slot_index = p_slot_index
 	slot_type = p_slot_type
 	hero_id = p_hero_id
+	if is_node_ready():
+		_refresh_display()
+
+func _ready():
 	_refresh_display()
 
 func _refresh_display():
@@ -94,6 +98,10 @@ func _get_skill_data(skill_id: String) -> HeroSkillData:
 ## DRAG-AND-DROP HANDLING
 ## ============================================
 
+func _gui_input(event):
+	if event is InputEventMouseButton and not event.pressed:
+		print("[SkillSlot:%d] Input received: %s" % [slot_index, event.as_text()])
+
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	"""Validate if drop is allowed"""
 	if not data is Dictionary:
@@ -124,6 +132,8 @@ func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 
 func _drop_data(_at_position: Vector2, data: Variant):
 	"""Execute the drop - equip or swap skills"""
+	print("[SkillSlot:%d] 🟢 _drop_data triggered!" % slot_index)
+	
 	var dragged_skill_id = data.skill_id
 	var source_slot_index = data.source_slot_index
 
