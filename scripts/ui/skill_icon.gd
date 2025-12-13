@@ -24,6 +24,12 @@ var source_slot_type: String = "" # "active" or "passive"
 func _ready():
 	_update_display()
 
+	# Connect tooltip handlers
+	if not mouse_entered.is_connected(_on_mouse_entered):
+		mouse_entered.connect(_on_mouse_entered)
+	if not mouse_exited.is_connected(_on_mouse_exited):
+		mouse_exited.connect(_on_mouse_exited)
+
 
 ## ============================================
 ## INITIALIZATION
@@ -74,6 +80,9 @@ func _get_drag_data(at_position: Vector2):
 	print("[SkillIcon] 🖱️ _get_drag_data called at %s" % at_position)
 	print("[SkillIcon] >>> Drag started: %s (from slot %d)" % [skill_id, source_slot_index])
 
+	# Hide tooltip when drag starts (prevents tooltip + preview visual conflict)
+	TooltipManager.hide_tooltip()
+
 	# Create visual preview (semi-transparent)
 	var preview = Control.new()
 	var preview_bg = ColorRect.new()
@@ -104,14 +113,23 @@ func _get_drag_data(at_position: Vector2):
 	# Apply ghost effect to source
 	self.modulate.a = 0.3
 
-	# Return drag data dictionary
+	# Return drag data dictionary (unified with inventory structure)
 	return {
+		# Core identification
+		"uuid": skill_id,  # Future: unique skill instance ID (currently same as skill_id)
 		"skill_id": skill_id,
 		"skill_data": skill_data,
 		"hero_id": hero_id,
-		"source_slot_index": source_slot_index,
-		"source_slot_type": source_slot_type,
-		"source_sprite": self
+
+		# Source tracking
+		"source_container_id": "skill_pool" if source_slot_index == -1 else hero_id,  # NEW: Container ID
+		"source_slot_index": source_slot_index,  # -1 = from pool, 0+ = from slot
+		"source_slot_type": source_slot_type,  # "active" or "passive"
+		"source_sprite": self,
+
+		# Grid positioning (for future multi-cell support)
+		"grab_offset_x": 0,  # NEW: Always 0 for 1×1 skills
+		"grab_offset_y": 0   # NEW: Always 0 for 1×1 skills
 	}
 
 func _notification(what):
@@ -120,3 +138,24 @@ func _notification(what):
 		# Restore opacity when drag ends
 		self.modulate.a = 1.0
 		print("[SkillIcon] <<< Drag ended: %s" % skill_id)
+
+
+## ============================================
+## TOOLTIP HANDLERS
+## ============================================
+
+func _on_mouse_entered():
+	"""Show skill tooltip on hover"""
+	if skill_data:
+		TooltipManager.show_tooltip(skill_data, self, hero_id)
+
+	# Visual feedback (brighten)
+	self_modulate = Color(1.2, 1.2, 1.2)
+
+
+func _on_mouse_exited():
+	"""Hide tooltip when mouse leaves"""
+	TooltipManager.hide_tooltip()
+
+	# Reset brightness
+	self_modulate = Color.WHITE

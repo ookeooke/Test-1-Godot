@@ -1245,6 +1245,26 @@ func get_equipped_skills(hero_id: String) -> Dictionary:
 
 	return current_profile["equipped_skills"][hero_id].duplicate()
 
+func update_equipped_skills(hero_id: String, equipped: Dictionary) -> void:
+	"""Update equipped skills for a hero (used by SkillTransactionService)
+
+	Args:
+		hero_id: Hero ID
+		equipped: Dictionary with {active: Array[String], passive: Array[String]}
+
+	Note: This is called by SkillTransactionService after validation.
+	SaveManager is the data layer - validation happens in the service layer.
+	"""
+	if not has_current_profile():
+		push_error("[SaveManager] Cannot update equipped skills - no profile loaded")
+		return
+
+	if not current_profile.has("equipped_skills"):
+		current_profile["equipped_skills"] = {}
+
+	current_profile["equipped_skills"][hero_id] = equipped
+	# Note: mark_dirty() is called by SkillTransactionService after transaction completes
+
 func equip_skill(hero_id: String, skill_type: String, slot_index: int, skill_id: String) -> bool:
 	"""Equip a skill to a specific slot
 
@@ -1256,84 +1276,22 @@ func equip_skill(hero_id: String, skill_type: String, slot_index: int, skill_id:
 
 	Returns: true if successful
 
-	Features:
-	- Handles duplicate removal (if skill already equipped elsewhere)
-	- Validates slot_index against hero's max slots
-	- Calls save_current_profile()
+	Note: This method delegates to SkillTransactionService for validation and business logic.
+	      SaveManager is the data layer - validation happens in the service layer.
+	      Consider using SkillTransactionService.equip_skill() directly for new code.
 	"""
-	if not has_current_profile():
-		push_error("[SaveManager] Cannot equip skill - no profile loaded")
-		return false
-
-	if skill_type != "active" and skill_type != "passive":
-		push_error("[SaveManager] Invalid skill_type: %s" % skill_type)
-		return false
-
-	# Ensure equipped_skills exists
-	if not current_profile.has("equipped_skills"):
-		current_profile["equipped_skills"] = {}
-
-	# Get or create hero's equipped skills
-	var equipped = get_equipped_skills(hero_id)
-	var skills_array = equipped[skill_type]
-
-	# Validate slot_index
-	if slot_index < 0 or slot_index >= skills_array.size():
-		push_error("[SaveManager] Invalid slot_index %d (max: %d)" % [slot_index, skills_array.size() - 1])
-		return false
-
-	# Remove duplicate if skill is already equipped in another slot
-	for i in skills_array.size():
-		if i != slot_index and skills_array[i] == skill_id:
-			skills_array[i] = ""
-			print("[SaveManager] Removed duplicate %s from %s slot %d" % [skill_id, skill_type, i])
-
-	# Equip to target slot
-	skills_array[slot_index] = skill_id
-
-	# Save back to profile
-	current_profile["equipped_skills"][hero_id][skill_type] = skills_array
-	save_current_profile()
-
-	print("[SaveManager] ✅ Equipped %s to %s slot %d for %s" % [skill_id, skill_type, slot_index, hero_id])
-	return true
+	return SkillTransactionService.equip_skill(hero_id, skill_id, skill_type, slot_index)
 
 func unequip_skill(hero_id: String, skill_type: String, slot_index: int) -> bool:
 	"""Unequip a skill from a slot (set to "")
 
 	Returns: true if successful
+
+	Note: This method delegates to SkillTransactionService for validation and business logic.
+	      SaveManager is the data layer - validation happens in the service layer.
+	      Consider using SkillTransactionService.unequip_skill() directly for new code.
 	"""
-	if not has_current_profile():
-		push_error("[SaveManager] Cannot unequip skill - no profile loaded")
-		return false
-
-	if skill_type != "active" and skill_type != "passive":
-		push_error("[SaveManager] Invalid skill_type: %s" % skill_type)
-		return false
-
-	# Get hero's equipped skills
-	var equipped = get_equipped_skills(hero_id)
-	var skills_array = equipped[skill_type]
-
-	# Validate slot_index
-	if slot_index < 0 or slot_index >= skills_array.size():
-		push_error("[SaveManager] Invalid slot_index %d" % slot_index)
-		return false
-
-	# Unequip (set to empty string)
-	skills_array[slot_index] = ""
-
-	# Save back to profile
-	if not current_profile.has("equipped_skills"):
-		current_profile["equipped_skills"] = {}
-	if not current_profile["equipped_skills"].has(hero_id):
-		current_profile["equipped_skills"][hero_id] = equipped
-
-	current_profile["equipped_skills"][hero_id][skill_type] = skills_array
-	save_current_profile()
-
-	print("[SaveManager] ❌ Unequipped %s slot %d for %s" % [skill_type, slot_index, hero_id])
-	return true
+	return SkillTransactionService.unequip_skill(hero_id, skill_type, slot_index)
 
 func get_max_skill_slots(hero_id: String) -> Dictionary:
 	"""Get max skill slots for a hero based on their class config

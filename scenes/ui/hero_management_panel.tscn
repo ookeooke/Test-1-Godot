@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://hero_mgmt_panel"]
+[gd_scene load_steps=4 format=3 uid="uid://hero_mgmt_panel"]
 
 [ext_resource type="Script" path="res://scripts/ui/hero_management_panel.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hero_command_widget.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/skill_pool_grid.tscn" id="3"]
 
 [node name="HeroManagementPanel" type="Control"]
 layout_mode = 3
@@ -233,34 +234,19 @@ current_mode = 1
 [node name="HSeparator5" type="HSeparator" parent="Panel/VBox"]
 layout_mode = 2
 
-[node name="ScrollContainer" type="ScrollContainer" parent="Panel/VBox"]
+[node name="SkillPoolSection" type="VBoxContainer" parent="Panel/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="SkillsVBox" type="VBoxContainer" parent="Panel/VBox/ScrollContainer"]
+[node name="SkillPoolTitle" type="Label" parent="Panel/VBox/SkillPoolSection"]
 layout_mode = 2
-size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "SKILL POOL (Drag to equip)"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Panel/VBox/SkillPoolSection"]
+layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ActiveSkillsSection" type="VBoxContainer" parent="Panel/VBox/ScrollContainer/SkillsVBox"]
-layout_mode = 2
-
-[node name="SectionLabel" type="Label" parent="Panel/VBox/ScrollContainer/SkillsVBox/ActiveSkillsSection"]
-layout_mode = 2
-text = "ACTIVE ABILITIES"
-
-[node name="SkillsContainer" type="VBoxContainer" parent="Panel/VBox/ScrollContainer/SkillsVBox/ActiveSkillsSection"]
-layout_mode = 2
-
-[node name="HSeparator" type="HSeparator" parent="Panel/VBox/ScrollContainer/SkillsVBox"]
-layout_mode = 2
-
-[node name="PassiveSkillsSection" type="VBoxContainer" parent="Panel/VBox/ScrollContainer/SkillsVBox"]
-layout_mode = 2
-
-[node name="SectionLabel" type="Label" parent="Panel/VBox/ScrollContainer/SkillsVBox/PassiveSkillsSection"]
-layout_mode = 2
-text = "PASSIVE UPGRADES"
-
-[node name="SkillsContainer" type="VBoxContainer" parent="Panel/VBox/ScrollContainer/SkillsVBox/PassiveSkillsSection"]
+[node name="SkillPoolGrid" parent="Panel/VBox/SkillPoolSection/ScrollContainer" instance=ExtResource("3")]
 layout_mode = 2

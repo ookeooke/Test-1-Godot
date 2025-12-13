@@ -69,9 +69,22 @@ func _find_unified_widget() -> Control:
 @onready var warrior_button = $Panel/VBox/TitleBar/HeroButtonsContainer/WarriorButton if has_node("Panel/VBox/TitleBar/HeroButtonsContainer/WarriorButton") else null
 @onready var wizard_button = $Panel/VBox/TitleBar/HeroButtonsContainer/WizardButton if has_node("Panel/VBox/TitleBar/HeroButtonsContainer/WizardButton") else null
 
-# Skill sections
-@onready var active_skills_container: VBoxContainer = $Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/ActiveSkillsSection/SkillsContainer
-@onready var passive_skills_container: VBoxContainer = $Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/PassiveSkillsSection/SkillsContainer
+# Skill sections (NEW - Hybrid System Phase 2)
+@onready var skill_pool_grid = _find_skill_pool_grid()
+
+func _find_skill_pool_grid() -> Control:
+	"""Find SkillPoolGrid in either overlay or standalone scene layout"""
+	# Overlay layout (hero_management_panel.tscn)
+	if has_node("Panel/VBox/SkillPoolSection/ScrollContainer/SkillPoolGrid"):
+		return $Panel/VBox/SkillPoolSection/ScrollContainer/SkillPoolGrid
+	# Standalone layout (hero_screen_standalone.tscn)
+	elif has_node("Panel/VBox/ContentHBox/RightColumn/SkillPoolSection/ScrollContainer/SkillPoolGrid"):
+		return $Panel/VBox/ContentHBox/RightColumn/SkillPoolSection/ScrollContainer/SkillPoolGrid
+	return null
+
+# Legacy skill containers (for backward compatibility - will be removed in Phase 3)
+@onready var active_skills_container: VBoxContainer = $Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/ActiveSkillsSection/SkillsContainer if has_node("Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/ActiveSkillsSection/SkillsContainer") else null
+@onready var passive_skills_container: VBoxContainer = $Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/PassiveSkillsSection/SkillsContainer if has_node("Panel/VBox/ContentHBox/RightColumn/ScrollContainer/SkillsVBox/PassiveSkillsSection/SkillsContainer") else null
 
 # ============================================
 # DATA
@@ -360,11 +373,18 @@ func _refresh_display():
 	print("  🔄 Updating hero info...")
 	_update_hero_info()
 
-	# Update skill lists
-	print("  🔄 Updating active skills list...")
-	_update_skill_list(active_skills_container, HeroSkillData.SkillType.ACTIVE)
-	print("  🔄 Updating passive skills list...")
-	_update_skill_list(passive_skills_container, HeroSkillData.SkillType.PASSIVE)
+	# Update skill pool (NEW - Hybrid System Phase 2)
+	print("  🔄 Updating skill pool grid...")
+	if skill_pool_grid:
+		skill_pool_grid.setup(hero_id, available_skills)
+		print("  ✅ Skill pool grid updated with %d skills" % available_skills.size())
+	else:
+		# Fallback to legacy system if grid not found
+		print("  ⚠️  SkillPoolGrid not found - using legacy skill list")
+		if active_skills_container:
+			_update_skill_list(active_skills_container, HeroSkillData.SkillType.ACTIVE)
+		if passive_skills_container:
+			_update_skill_list(passive_skills_container, HeroSkillData.SkillType.PASSIVE)
 
 	print("~".repeat(60))
 	print("[HeroPanel] ✅ DISPLAY REFRESH COMPLETE")

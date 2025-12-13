@@ -1,0 +1,21 @@
+[gd_scene load_steps=2 format=3 uid="uid://cqk5y7n8vtm3r"]
+
+[ext_resource type="Script" path="res://scripts/ui/skill_pool_grid.gd" id="1"]
+
+[node name="SkillPoolGrid" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 500.0
+offset_bottom = 300.0
+script = ExtResource("1")
+columns = 8
+cell_size = Vector2(56, 56)
+cell_gap = 4.0
+show_type_colors = true
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 0
+offset_right = 500.0
+offset_bottom = 23.0
+text = "Skill Pool"
+horizontal_alignment = 1

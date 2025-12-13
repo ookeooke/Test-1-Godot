@@ -22,11 +22,17 @@
 
 extends CanvasLayer
 
-## Reference to the single tooltip instance
+## Reference to the item tooltip instance
 var _tooltip_instance: Control = null
+
+## Reference to the skill tooltip instance
+var _skill_tooltip_instance: Control = null
 
 ## Currently displayed item (for click-outside detection)
 var _current_item: ItemInstance = null
+
+## Currently displayed skill (for click-outside detection)
+var _current_skill: HeroSkillData = null
 
 ## Node that triggered tooltip (for positioning)
 var _anchor_node: Control = null
@@ -57,11 +63,17 @@ func _ready() -> void:
 	# Set as top layer for tooltips (above all modal screens)
 	layer = 101
 
-	# Load tooltip scene
+	# Load item tooltip scene
 	var tooltip_scene = preload("res://scenes/ui/tooltips/item_tooltip.tscn")
 	_tooltip_instance = tooltip_scene.instantiate()
 	_tooltip_instance.visible = false
 	add_child(_tooltip_instance)
+
+	# Load skill tooltip scene
+	var skill_tooltip_scene = preload("res://scenes/ui/tooltips/skill_tooltip.tscn")
+	_skill_tooltip_instance = skill_tooltip_scene.instantiate()
+	_skill_tooltip_instance.visible = false
+	add_child(_skill_tooltip_instance)
 
 	# Connect input for click-outside detection
 	set_process_input(true)
@@ -115,7 +127,25 @@ func _check_click_outside(click_pos: Vector2) -> void:
 ## PUBLIC API
 ## ============================================================================
 
-func show_tooltip(item: ItemInstance, anchor_node: Control, hero_id: String = "") -> void:
+func show_tooltip(data: Variant, anchor_node: Control, hero_id: String = "") -> void:
+	"""
+	Show tooltip for an item or skill.
+
+	Args:
+	    data: The data to display (ItemInstance or HeroSkillData)
+	    anchor_node: Control node to position tooltip near
+	    hero_id: Hero ID for equipment comparison (empty = no comparison)
+	"""
+	# Detect type and delegate to appropriate handler
+	if data is ItemInstance:
+		_show_item_tooltip(data, anchor_node, hero_id)
+	elif data is HeroSkillData:
+		_show_skill_tooltip(data, anchor_node, hero_id)
+	else:
+		push_warning("TooltipManager: Invalid data type: %s" % str(data))
+
+
+func _show_item_tooltip(item: ItemInstance, anchor_node: Control, hero_id: String = "") -> void:
 	"""
 	Show tooltip for an item with optional comparison to equipped item.
 
@@ -184,7 +214,7 @@ func show_tooltip(item: ItemInstance, anchor_node: Control, hero_id: String = ""
 		_tooltip_instance.set_item(item, equipped_item)
 
 	# Position tooltip (await to prevent race condition)
-	await _position_tooltip()
+	await _position_tooltip(_tooltip_instance)
 
 	# Final cancellation check after positioning (in case hide was called during positioning)
 	if _show_request_id != my_request_id:
@@ -200,8 +230,89 @@ func show_tooltip(item: ItemInstance, anchor_node: Control, hero_id: String = ""
 	_is_visible = true
 
 
+func _show_skill_tooltip(skill_data: HeroSkillData, anchor_node: Control, hero_id: String = "") -> void:
+	"""
+	Show tooltip for a skill.
+
+	Args:
+	    skill_data: The skill to display
+	    anchor_node: Control node to position tooltip near
+	    hero_id: Hero ID for skill level/unlock status (empty = show base level)
+	"""
+	# Validate inputs
+	if not skill_data or not anchor_node:
+		push_warning("TooltipManager: Invalid skill_data or anchor_node")
+		return
+
+	# Validate anchor node is in scene tree and visible
+	if not anchor_node.is_inside_tree() or not anchor_node.visible:
+		return
+
+	# Increment request ID to cancel any previous async show operations
+	_show_request_id += 1
+	var my_request_id = _show_request_id
+
+	# Cancel any existing hover timer
+	_hover_timer = null
+
+	# Hide existing tooltip if showing (prevents competing tooltips)
+	if _is_visible:
+		hide_tooltip()
+
+	# Apply hover delay to prevent tooltip flicker during rapid mouse scanning
+	_hover_timer = get_tree().create_timer(HOVER_DELAY)
+	await _hover_timer.timeout
+	_hover_timer = null
+
+	# Check if this request was cancelled by a newer show_tooltip() call or hide_tooltip()
+	if _show_request_id != my_request_id:
+		return # Cancelled - don't show tooltip
+
+	# Revalidate anchor is still valid after delay (user might have moved mouse)
+	if not is_instance_valid(anchor_node) or not anchor_node.is_inside_tree():
+		return
+
+	# Check if mouse is still over the anchor node (prevents showing after mouse exits)
+	var mouse_pos = anchor_node.get_local_mouse_position()
+	var anchor_rect = Rect2(Vector2.ZERO, anchor_node.size)
+	if not anchor_rect.has_point(mouse_pos):
+		return # Mouse has moved away - don't show tooltip
+
+	_current_skill = skill_data
+	_anchor_node = anchor_node
+	_current_hero_id = hero_id
+
+	# Get skill level and unlock status from SaveManager
+	var skill_level = 1
+	var is_unlocked = true
+	# TODO: Get actual skill level/unlock status from SaveManager
+	# if hero_id != "":
+	#     skill_level = SaveManager.get_skill_level(hero_id, skill_data.skill_id)
+	#     is_unlocked = SaveManager.is_skill_unlocked(hero_id, skill_data.skill_id)
+
+	# Populate tooltip with skill data
+	if _skill_tooltip_instance.has_method("set_skill"):
+		_skill_tooltip_instance.set_skill(skill_data, skill_level, is_unlocked)
+
+	# Position tooltip (await to prevent race condition)
+	await _position_tooltip(_skill_tooltip_instance)
+
+	# Final cancellation check after positioning (in case hide was called during positioning)
+	if _show_request_id != my_request_id:
+		return # Cancelled - don't show tooltip
+
+	# Show with fade-in
+	_skill_tooltip_instance.visible = true
+	_skill_tooltip_instance.modulate = Color(1, 1, 1, 0)
+
+	var tween = create_tween()
+	tween.tween_property(_skill_tooltip_instance, "modulate:a", 1.0, 0.15)
+
+	_is_visible = true
+
+
 func hide_tooltip() -> void:
-	"""Hide the tooltip with fade-out animation."""
+	"""Hide all tooltips with fade-out animation."""
 	if not _is_visible:
 		return
 
@@ -210,15 +321,27 @@ func hide_tooltip() -> void:
 
 	_is_visible = false
 
-	# Fade out
-	var tween = create_tween()
-	tween.tween_property(_tooltip_instance, "modulate:a", 0.0, 0.1)
-	tween.tween_callback(func():
-		_tooltip_instance.visible = false
-		_current_item = null
-		_anchor_node = null
-		_current_hero_id = ""
-	)
+	# Fade out item tooltip
+	if _tooltip_instance.visible:
+		var tween = create_tween()
+		tween.tween_property(_tooltip_instance, "modulate:a", 0.0, 0.1)
+		tween.tween_callback(func():
+			_tooltip_instance.visible = false
+		)
+
+	# Fade out skill tooltip
+	if _skill_tooltip_instance.visible:
+		var tween = create_tween()
+		tween.tween_property(_skill_tooltip_instance, "modulate:a", 0.0, 0.1)
+		tween.tween_callback(func():
+			_skill_tooltip_instance.visible = false
+		)
+
+	# Clear state
+	_current_item = null
+	_current_skill = null
+	_anchor_node = null
+	_current_hero_id = ""
 
 
 func is_tooltip_visible() -> bool:
@@ -230,9 +353,9 @@ func is_tooltip_visible() -> bool:
 ## POSITIONING
 ## ============================================================================
 
-func _position_tooltip() -> void:
+func _position_tooltip(tooltip_instance: Control) -> void:
 	"""Position tooltip near anchor node, keeping it on screen."""
-	if not _anchor_node or not _tooltip_instance:
+	if not _anchor_node or not tooltip_instance:
 		return
 
 	# Wait for tooltip to calculate its size
@@ -247,7 +370,7 @@ func _position_tooltip() -> void:
 
 	# Get screen bounds
 	var screen_size = get_viewport().get_visible_rect().size
-	var tooltip_size = _tooltip_instance.size
+	var tooltip_size = tooltip_instance.size
 
 	# Adjust X if tooltip would overflow right edge
 	if tooltip_pos.x + tooltip_size.x > screen_size.x - SCREEN_MARGIN:
@@ -268,7 +391,7 @@ func _position_tooltip() -> void:
 			tooltip_pos.y = SCREEN_MARGIN
 
 	# Apply final position
-	_tooltip_instance.global_position = tooltip_pos
+	tooltip_instance.global_position = tooltip_pos
 
 
 ## ============================================================================
