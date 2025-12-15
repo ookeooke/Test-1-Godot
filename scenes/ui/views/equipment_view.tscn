@@ -66,7 +66,7 @@ tooltip_text = "Show shared stash for item storage and transfers (C)"
 text = "📦 Common Chest"
 
 [node name="EquipmentPaperDoll" type="Control" parent="MarginContainer/VBoxContainer"]
-custom_minimum_size = Vector2(400, 700)
+custom_minimum_size = Vector2(700, 700)
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -144,9 +144,9 @@ vertical_alignment = 1
 
 [node name="RightHandSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
 layout_mode = 0
-offset_left = 470.0
+offset_left = 420.0
 offset_top = 200.0
-offset_right = 675.0
+offset_right = 625.0
 offset_bottom = 575.0
 
 [node name="RightHandContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/RightHandSlot"]
@@ -231,9 +231,9 @@ vertical_alignment = 1
 
 [node name="Accessory2Slot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
 layout_mode = 0
-offset_left = 500.0
+offset_left = 450.0
 offset_top = 570.0
-offset_right = 620.0
+offset_right = 570.0
 offset_bottom = 690.0
 
 [node name="Accessory2Container" type="MarginContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll/Accessory2Slot"]

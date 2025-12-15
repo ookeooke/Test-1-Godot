@@ -131,6 +131,28 @@ func _notification(what):
 				var ui_layer = get_tree().root.find_child("UI", true, false)
 				if ui_layer and ui_layer.has_method("show_pause_menu"):
 					ui_layer.show_pause_menu()
+	
+	# Auto-unpause on focus gain (optional, but requested to fix "stuck" pause state)
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		# Check if we are paused
+		if get_tree().paused:
+			# If the pause menu is open, we generally might want to leave it open?
+			# But the user specifically reported "actions don't run" and requested an unpause handler.
+			# We'll try to resume gracefully via UI if possible (to hide menu), 
+			# or fallback to unpausing tree.
+			var ui_layer = get_tree().root.find_child("UI", true, false)
+			# Inspect if UI has a resume function to handle UI state cleanup
+			if ui_layer and ui_layer.has_method("resume_game"):
+				ui_layer.resume_game()
+				print("[GameStateManager] Checkpoint: Focus regained - Called UI resume_game()")
+			elif ui_layer and ui_layer.has_method("hide_pause_menu"):
+				ui_layer.hide_pause_menu()
+				get_tree().paused = false
+				print("[GameStateManager] Checkpoint: Focus regained - Called UI hide_pause_menu()")
+			else:
+				# Fallback: Just unpause the tree
+				get_tree().paused = false
+				print("[GameStateManager] Checkpoint: Focus regained - Hard unpause")
 
 ## Called by LevelManager when a level is loaded
 ## This is the ONLY place where base values should be set

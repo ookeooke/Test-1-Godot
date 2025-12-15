@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://archer_l4_range_visuals"]
 
-[ext_resource type="Texture2D" uid="uid://archer4_range_png" path="res://assets/sprites/towers/archer4_range.png" id="1_sprite"]
+[ext_resource type="Texture2D" uid="uid://bpexx6kc5pmen" path="res://assets/sprites/towers/archer4_range.png" id="1_sprite"]
 
 [node name="ArcherVisualsL4Range" type="Node2D"]
 

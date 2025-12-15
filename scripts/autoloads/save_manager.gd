@@ -4,7 +4,7 @@ extends Node
 # Singleton autoload for global save access
 
 # Preload DifficultyConstants for 5-star rating system
-const DifficultyConstants = preload("res://scripts/constants/difficulty_constants.gd")
+# const DifficultyConstants = preload("res://scripts/constants/difficulty_constants.gd")
 
 signal profile_loaded(profile_data: Dictionary)
 signal profile_saved(profile_name: String)

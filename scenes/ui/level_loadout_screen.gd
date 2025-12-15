@@ -3,7 +3,7 @@ extends Control
 signal back_pressed
 
 # Preload DifficultyConstants for 5-star rating system
-const DifficultyConstants = preload("res://scripts/constants/difficulty_constants.gd")
+# const DifficultyConstants = preload("res://scripts/constants/difficulty_constants.gd")
 
 @onready var hero_container = $CenterContainer/HBoxContainer
 @onready var level_info_label = $VBoxContainer/LevelInfoLabel

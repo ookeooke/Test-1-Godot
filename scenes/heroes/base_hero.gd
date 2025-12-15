@@ -906,7 +906,7 @@ func get_closest_ranged_enemy():
 # ============================================
 
 func cycle_targeting_mode() -> int:
-	targeting_mode = (targeting_mode + 1) % TargetingMode.size()
+	targeting_mode = ((targeting_mode + 1) % TargetingMode.size()) as TargetingMode
 	print("[BaseHero] Targeting mode changed to: %s" % TargetingMode.keys()[targeting_mode])
 	return targeting_mode
 

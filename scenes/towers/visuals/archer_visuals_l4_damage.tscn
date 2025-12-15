@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://archer_l4_damage_visuals"]
 
-[ext_resource type="Texture2D" uid="uid://archer4_damage_png" path="res://assets/sprites/towers/archer4_damage.png" id="1_sprite"]
+[ext_resource type="Texture2D" uid="uid://6h73nh2paq25" path="res://assets/sprites/towers/archer4_damage.png" id="1_sprite"]
 
 [node name="ArcherVisualsL4Damage" type="Node2D"]
 
