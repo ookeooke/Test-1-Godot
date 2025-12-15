@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="LevelNodeData" load_steps=2 format=3 uid="uid://level_03_node_data"]
+
+[ext_resource type="Script" path="res://scripts/resources/level_node_data.gd" id="1_1"]
+
+[resource]
+script = ExtResource("1_1")
+level_id = "level_03"
+level_name = "Troll's Bridge"
+level_scene_path = "res://scenes/levels/level_03.tscn"
+position = Vector2(1100, 450)
+campaign_type = "forest"
+required_level_id = "level_02"
+required_stars = 0
+path_to_next_level = Array[Vector2]([])
+difficulty_levels = Array[String](["Normal", "Hard", "Heroic"])
+recommended_difficulty = "Normal"
+description = "Cross the treacherous bridge and face the Trolls blocking your path."

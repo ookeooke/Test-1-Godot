@@ -1,8 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://loot_distribution_screen"]
+[gd_scene load_steps=3 format=3 uid="uid://p70v44equtja"]
 
-[ext_resource type="Script" path="res://scripts/ui/loot_distribution_screen.gd" id="1_loot_dist"]
-[ext_resource type="Script" path="res://scripts/ui/inventory_grid_container.gd" id="2_grid"]
-[ext_resource type="PackedScene" path="res://scenes/ui/views/inventory_view.tscn" id="3_inventory_view"]
+[ext_resource type="Script" uid="uid://dhaesoa2xnfnb" path="res://scripts/ui/loot_distribution_screen.gd" id="1_loot_dist"]
+[ext_resource type="PackedScene" uid="uid://dr2o3aihpdopc" path="res://scenes/ui/views/inventory_view.tscn" id="3_inventory_view"]
 
 [node name="LootDistributionScreen" type="Control"]
 process_mode = 3
@@ -26,15 +25,15 @@ color = Color(0.1, 0.1, 0.15, 0.85)
 
 [node name="MainPanel" type="Panel" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -640.0
-offset_top = -480.0
-offset_right = 640.0
-offset_bottom = 480.0
+anchors_preset = 15
+anchor_left = 0.05
+anchor_top = 0.05
+anchor_right = 0.95
+anchor_bottom = 0.95
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -69,13 +68,10 @@ size_flags_vertical = 3
 theme_override_constants/separation = 15
 
 [node name="StashPanel" type="MarginContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
-custom_minimum_size = Vector2(520, 0)
+custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-
-[node name="Panel" type="Panel" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel"]
-layout_mode = 2
 
 [node name="VBox" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel"]
 layout_mode = 2
@@ -102,16 +98,11 @@ text = "Ranger"
 [node name="HeroDropdown" type="OptionButton" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox/HeroSelector/HeroInfo"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = "Select Hero"
 alignment = 1
 
 [node name="HeroInventoryView" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/StashPanel/VBox" instance=ExtResource("3_inventory_view")]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/margin_left = 0
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 0
 
 [node name="MiddleButtons" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
 layout_mode = 2
@@ -134,13 +125,10 @@ Rare+
 →"
 
 [node name="LootPanel" type="MarginContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox"]
-custom_minimum_size = Vector2(520, 0)
+custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-
-[node name="Panel" type="Panel" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel"]
-layout_mode = 2
 
 [node name="VBox" type="VBoxContainer" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel"]
 layout_mode = 2
@@ -148,10 +136,6 @@ layout_mode = 2
 [node name="LootInventoryView" parent="MainPanel/MarginContainer/VBoxContainer/ContentHBox/LootPanel/VBox" instance=ExtResource("3_inventory_view")]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/margin_left = 0
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 0
 
 [node name="HSeparator2" type="HSeparator" parent="MainPanel/MarginContainer/VBoxContainer"]
 layout_mode = 2

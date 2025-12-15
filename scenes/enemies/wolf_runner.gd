@@ -9,16 +9,16 @@ var previous_velocity: Vector2 = Vector2.ZERO
 
 func _init():
 	# Set wolf-specific stats
-	speed = 81.0  # PACING FIX: Reduced from 135 (-40% total: -25% KR pacing, -20% strategic slowdown)
+	speed = 81.0 # PACING FIX: Reduced from 135 (-40% total: -25% KR pacing, -20% strategic slowdown)
 	max_health = 80.0
 	melee_damage = 5.0
 	attack_cooldown = 0.7
-	gold_reward = 7  # Increased from 6 (+17% gold rewards)
+	gold_reward = 7 # Increased from 6 (+17% gold rewards)
 	life_damage = 1
 	can_be_blocked = true
 	melee_detection_range = 100.0
 	death_shake = "None"
-	armor = 0.10  # 10% damage reduction for fast enemy
+	armor = 0.10 # 10% damage reduction for fast enemy
 
 	# Hit point for arrows (slightly forward/center on wolf)
 	hit_point_offset = Vector2(0, -5)
@@ -30,8 +30,13 @@ func _physics_process(delta):
 	# Update directional animations based on movement
 	_update_directional_animation()
 
+func _continue_movement(delta):
+	# Override base class to prevent "walk" animation call
+	# Directional animations are handled in _update_directional_animation()
+	_path2d_movement(delta)
+
 func _update_directional_animation():
-	"""Kingdom Rush style 4-directional animations with flipping"""
+	"""Kingdom Rush style 4-directional animations with diagonal support"""
 	if not sprite or not sprite.sprite_frames:
 		return
 
@@ -46,29 +51,39 @@ func _update_directional_animation():
 		direction = (blocking_hero.global_position - global_position).normalized()
 	else:
 		# Use velocity for running animation
-		if direction.length() < 1.0:
+		if direction.length() < 0.1:
 			# Not moving much, use previous direction or default to right
-			direction = previous_velocity if previous_velocity.length() > 1.0 else Vector2.RIGHT
+			direction = previous_velocity if previous_velocity.length() > 0.1 else Vector2.RIGHT
 		else:
 			previous_velocity = direction
 
 		direction = direction.normalized()
 
-		# Choose animation based on direction (Kingdom Rush approach)
-		if abs(direction.x) > abs(direction.y):
+		# Threshold for directional detection (0.4 ≈ 22° from axis)
+		const DIAGONAL_THRESHOLD = 0.4
+
+		# Animation selection: Check diagonal FIRST to utilize run_diagonal animation
+		if abs(direction.x) > DIAGONAL_THRESHOLD and abs(direction.y) > DIAGONAL_THRESHOLD:
+			# True diagonal movement - use dedicated diagonal animation
+			if sprite.sprite_frames.has_animation("run_diagonal"):
+				if sprite.animation != "run_diagonal":
+					sprite.play("run_diagonal")
+			sprite.flip_h = direction.x < 0  # Flip horizontally when moving left
+		# Cardinal directions (pure horizontal/vertical)
+		elif abs(direction.x) > DIAGONAL_THRESHOLD:
 			# Moving horizontally - use run_side
 			if sprite.sprite_frames.has_animation("run_side"):
 				if sprite.animation != "run_side":
 					sprite.play("run_side")
-			sprite.flip_h = direction.x < 0  # Flip when moving left
-		elif direction.y < 0:
-			# Moving up/away from camera
+			sprite.flip_h = direction.x < 0
+		elif direction.y < -DIAGONAL_THRESHOLD:
+			# Moving upward (away from camera)
 			if sprite.sprite_frames.has_animation("run_up"):
 				if sprite.animation != "run_up":
 					sprite.play("run_up")
 			sprite.flip_h = false
-		else:
-			# Moving down/toward camera
+		elif direction.y > DIAGONAL_THRESHOLD:
+			# Moving downward (toward camera)
 			if sprite.sprite_frames.has_animation("run_down"):
 				if sprite.animation != "run_down":
 					sprite.play("run_down")

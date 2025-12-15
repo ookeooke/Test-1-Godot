@@ -65,8 +65,7 @@ var melee_attack_speed = 0.8
 var combat_distance = 50.0
 
 # MOVEMENT
-var max_distance_from_home = 100.0 # LEASH: Increased to 100px to prevent deadlock with 50px stop distance
-var max_chase_distance = 150.0 # LEASH: Max distance to chase enemies
+# LEASH REMOVED: Heroes can now move freely without distance restrictions
 var home_position = Vector2.ZERO
 var target_position = Vector2.ZERO
 
@@ -739,13 +738,7 @@ func handle_melee_combat_state():
 		if combat_movement_enabled:
 			var distance_to_enemy = global_position.distance_to(closest.global_position)
 
-			# Leash check - don't chase beyond home range
-			if global_position.distance_to(home_position) > max_distance_from_home:
-				if closest.has_method("unblock"):
-					closest.unblock(self)
-				combat_target = null
-				enter_returning_state()
-				return
+			# LEASH REMOVED: Heroes can chase enemies freely without distance restrictions
 
 			# STOPPING DISTANCE: Increased to 50.0 to prevent jitter
 			# (Hero Radius 25 + Enemy Radius 15 = 40 collision)
@@ -834,13 +827,7 @@ func _draw():
 		if "velocity" in combat_target and combat_target.velocity.length() > 1.0:
 			draw_string(font, Vector2(0, -95), "⚠️ DRAGGING", HORIZONTAL_ALIGNMENT_CENTER, -1, 14, Color.ORANGE)
 
-	# Draw Leash Line (Home -> Hero)
-	if max_distance_from_home > 0:
-		var dist_home = global_position.distance_to(home_position)
-		var leash_color = Color.GREEN if dist_home < max_distance_from_home else Color.RED
-		draw_line(Vector2.ZERO, home_position - global_position, Color(leash_color, 0.3), 1.0)
-		if dist_home > max_distance_from_home * 0.8:
-			draw_string(font, Vector2(0, 20), "Leash: %.0f/%.0f" % [dist_home, max_distance_from_home], HORIZONTAL_ALIGNMENT_CENTER, -1, 12, leash_color)
+	# LEASH REMOVED: Heroes can now move freely
 
 	# Draw state info
 

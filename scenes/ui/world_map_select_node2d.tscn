@@ -1,15 +1,16 @@
-[gd_scene load_steps=7 format=3 uid="uid://cfsa2lfxmkrc5"]
+[gd_scene load_steps=8 format=3 uid="uid://cfsa2lfxmkrc5"]
 
 [ext_resource type="Script" uid="uid://vwyw3jdktv2" path="res://scripts/ui/world_map_select_node2d.gd" id="1"]
 [ext_resource type="Resource" path="res://data/levels/level_01_data.tres" id="2"]
 [ext_resource type="Script" uid="uid://dgpmoeljelfp2" path="res://scripts/resources/level_node_data.gd" id="2_0csuo"]
 [ext_resource type="Script" uid="uid://b1r6b3vwpnkst" path="res://scripts/camera/camera_controller_improved.gd" id="2_camera"]
 [ext_resource type="Resource" path="res://data/levels/level_02_data.tres" id="3"]
+[ext_resource type="Resource" path="res://data/levels/level_03_data.tres" id="4"]
 [ext_resource type="Texture2D" uid="uid://1qibfu3gvxev" path="res://map1.png" id="4_map_texture"]
 
 [node name="WorldMapSelect" type="Node2D"]
 script = ExtResource("1")
-level_nodes_data = Array[ExtResource("2_0csuo")]([ExtResource("2"), ExtResource("3")])
+level_nodes_data = Array[ExtResource("2_0csuo")]([ExtResource("2"), ExtResource("3"), ExtResource("4")])
 map_texture = ExtResource("4_map_texture")
 
 [node name="MapBackground" type="Sprite2D" parent="."]

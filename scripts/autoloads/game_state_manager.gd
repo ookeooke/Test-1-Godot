@@ -44,6 +44,9 @@ var lives: int = 0
 ## Reference to current level config
 var current_level_config: LevelConfig = null
 
+## Current difficulty for 5-star rating system (normal, hard, unlimited)
+var current_difficulty: String = "normal"
+
 # ============================================
 # MODIFIER COLLECTIONS
 # ============================================
@@ -131,12 +134,13 @@ func _notification(what):
 
 ## Called by LevelManager when a level is loaded
 ## This is the ONLY place where base values should be set
-func initialize_level(level_config: LevelConfig):
+func initialize_level(level_config: LevelConfig, difficulty: String = "normal"):
 	if not level_config:
 		push_error("[GameStateManager] Cannot initialize with null level config!")
 		return
 
 	current_level_config = level_config
+	current_difficulty = difficulty
 	_base_starting_gold = level_config.starting_gold
 	_base_starting_lives = level_config.starting_lives
 
@@ -145,6 +149,7 @@ func initialize_level(level_config: LevelConfig):
 	lives = _base_starting_lives # Lives typically don't have modifiers
 
 	print("[GameStateManager] Level initialized:")
+	print("  Difficulty: %s" % difficulty)
 	print("  Base starting gold: %d" % _base_starting_gold)
 	print("  Modifiers applied: %d" % _starting_gold_modifiers.size())
 	print("  Final starting gold: %d" % gold)
@@ -162,6 +167,7 @@ func reset_for_new_run():
 	gold = 0
 	lives = 0
 	current_level_config = null
+	current_difficulty = "normal"
 	print("[GameStateManager] Reset for new run")
 
 # ============================================

@@ -18,8 +18,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hero_command_widget.tscn" id="10_hero_widget"]
 [ext_resource type="PackedScene" path="res://scenes/ui/menu_layer.tscn" id="10_menu_layer"]
 [ext_resource type="PackedScene" uid="uid://levelbg001" path="res://scenes/levels/visuals/level_background.tscn" id="11_background"]
-[ext_resource type="PackedScene" path="res://scenes/pathfinding/road_renderer.tscn" id="11_roadrenderer"]
-[ext_resource type="Script" uid="uid://csy5gucpi134" path="res://scripts/pathfinding/path_waypoint.gd" id="12_waypoint"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
@@ -40,11 +38,10 @@ script = ExtResource("1_level_controller")
 
 [node name="LevelBackground" parent="." instance=ExtResource("11_background")]
 
-[node name="WaveManager" type="Node2D" parent="." node_paths=PackedStringArray("enemy_path", "start_waypoint", "wave_label")]
+[node name="WaveManager" type="Node2D" parent="." node_paths=PackedStringArray("enemy_path", "wave_label")]
 script = ExtResource("1_0e48y")
 enemy_path = NodePath("../EnemyPath")
-start_waypoint = NodePath("../Waypoints/Waypoint_0")
-use_waypoint_system = true
+use_waypoint_system = false
 goblin_scene = ExtResource("1_wtcfe")
 wolf_scene = ExtResource("3_wolf")
 troll_scene = ExtResource("4_troll")
@@ -193,25 +190,5 @@ ranger_hero_scene = ExtResource("8_ir8iy")
 [node name="HeroSpot" parent="HeroSpots" instance=ExtResource("9_hqns4")]
 position = Vector2(802, 393)
 
-[node name="RoadRenderer" parent="." instance=ExtResource("11_roadrenderer")]
-
-[node name="Waypoints" type="Node2D" parent="."]
-
-[node name="Waypoint_0" type="Node2D" parent="Waypoints" node_paths=PackedStringArray("next_waypoints")]
-position = Vector2(-174, 140)
-script = ExtResource("12_waypoint")
-next_waypoints = [NodePath("../Waypoint_1")]
-
-[node name="Waypoint_1" type="Node2D" parent="Waypoints" node_paths=PackedStringArray("next_waypoints")]
-position = Vector2(479, 632)
-script = ExtResource("12_waypoint")
-next_waypoints = [NodePath("../Waypoint_2")]
-
-[node name="Waypoint_2" type="Node2D" parent="Waypoints" node_paths=PackedStringArray("next_waypoints")]
-position = Vector2(1086, 210)
-script = ExtResource("12_waypoint")
-next_waypoints = [NodePath("../Waypoint_3")]
-
-[node name="Waypoint_3" type="Node2D" parent="Waypoints"]
-position = Vector2(1774, 699)
-script = ExtResource("12_waypoint")
+[node name="EnemyPath" type="Path2D" parent="."]
+curve = SubResource("Curve2D_y32ns")

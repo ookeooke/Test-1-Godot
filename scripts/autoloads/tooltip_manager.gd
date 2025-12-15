@@ -283,12 +283,9 @@ func _show_skill_tooltip(skill_data: HeroSkillData, anchor_node: Control, hero_i
 	_current_hero_id = hero_id
 
 	# Get skill level and unlock status from SaveManager
-	var skill_level = 1
-	var is_unlocked = true
-	# TODO: Get actual skill level/unlock status from SaveManager
-	# if hero_id != "":
-	#     skill_level = SaveManager.get_skill_level(hero_id, skill_data.skill_id)
-	#     is_unlocked = SaveManager.is_skill_unlocked(hero_id, skill_data.skill_id)
+	var progression = _get_skill_progression(hero_id, skill_data)
+	var skill_level = progression.level
+	var is_unlocked = progression.is_unlocked
 
 	# Populate tooltip with skill data
 	if _skill_tooltip_instance.has_method("set_skill"):
@@ -411,3 +408,32 @@ func _get_slot_name_from_enum(equip_slot: ItemData.EquipSlot) -> String:
 			return "helmet"
 		_:
 			return ""
+
+
+## ============================================================================
+## SKILL PROGRESSION HELPERS
+## ============================================================================
+
+func _get_skill_progression(hero_id: String, skill_data: HeroSkillData) -> Dictionary:
+	"""
+	Get skill level and unlock status for a hero.
+
+	Returns: {level: int, is_unlocked: bool}
+	- level: Current skill level (0 = not owned)
+	- is_unlocked: Whether hero has unlocked this skill
+	"""
+	if hero_id.is_empty() or not skill_data:
+		return {"level": 1, "is_unlocked": true}  # Default for preview mode
+
+	# Integration point - ready for SaveManager
+	if SaveManager:
+		var skill_id = skill_data.skill_id
+		var level = SaveManager.get_hero_skill_level(hero_id, skill_id)
+		var is_unlocked = SaveManager.has_hero_skill(hero_id, skill_id)
+
+		# Return actual progression data
+		return {"level": max(1, level), "is_unlocked": is_unlocked}
+	else:
+		# Fallback if SaveManager not available (shouldn't happen)
+		push_warning("[TooltipManager] SaveManager not found - using defaults")
+		return {"level": 1, "is_unlocked": true}

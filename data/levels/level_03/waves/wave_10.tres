@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=6 format=3 uid="uid://dlqrflxuppjkt"]
+
+[ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" uid="uid://cmgol7ax0wy0t" path="res://scripts/resources/enemy_spawn_data.gd" id="2_enemy"]
+
+[sub_resource type="Resource" id="EnemySpawnData_1"]
+script = ExtResource("2_enemy")
+count = 10
+
+[sub_resource type="Resource" id="EnemySpawnData_2"]
+script = ExtResource("2_enemy")
+enemy_type = "wolf"
+spawn_delay = 0.8
+
+[sub_resource type="Resource" id="EnemySpawnData_3"]
+script = ExtResource("2_enemy")
+enemy_type = "troll"
+count = 2
+spawn_delay = 4.0
+
+[resource]
+script = ExtResource("1_wave")
+enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1"), SubResource("EnemySpawnData_2"), SubResource("EnemySpawnData_3")])

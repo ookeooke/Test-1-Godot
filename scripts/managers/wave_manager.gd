@@ -12,6 +12,7 @@ extends Node2D
 
 # REFERENCES (drag these from Scene tree in Inspector)
 @export var enemy_path: Path2D # The path enemies follow (OLD SYSTEM - Optional if using waypoints)
+@export var extra_paths: Array[Path2D] = [] # Additional paths for multi-spawn setups (Index 1+)
 @export var start_waypoint: PathWaypoint # Starting waypoint (NEW SYSTEM - optional)
 @export var use_waypoint_system: bool = false # Toggle between old Path2D and new waypoint system
 @export var goblin_scene: PackedScene
@@ -360,7 +361,27 @@ func spawn_enemy():
 
 	else:
 		# OLD PATH2D SYSTEM
-		if enemy_path == null:
+		var selected_path = enemy_path
+		
+		# Check for custom spawn point (Multi-Path Support)
+		var spawn_index = enemy_info.get("spawn_point", 0)
+		if spawn_index > 0:
+			if spawn_index <= extra_paths.size():
+				selected_path = extra_paths[spawn_index - 1]
+				# print("Spawning on Extra Path ", spawn_index)
+			else:
+				print("WARNING: Spawn index ", spawn_index, " requested but only ", extra_paths.size(), " extra paths defined!")
+		
+		# DEBUG
+		# print("Spawn Logic: Index=", spawn_index, " SelectedPath=", selected_path)
+		if selected_path == null:
+			print("ERROR: selected_path is NULL! enemy_path=", enemy_path, " extra_paths=", extra_paths)
+			return
+		if typeof(selected_path) != TYPE_OBJECT or not selected_path is Node:
+			print("ERROR: selected_path is NOT a Node! It is: ", selected_path)
+			return
+
+		if selected_path == null:
 			print("ERROR: No enemy path assigned!")
 			return
 
@@ -368,7 +389,7 @@ func spawn_enemy():
 		var path_follower = PathFollow2D.new()
 		path_follower.loop = false
 		path_follower.rotates = false # Don't rotate enemy to follow path direction
-		enemy_path.add_child(path_follower)
+		selected_path.add_child(path_follower)
 
 		# Create the enemy
 		enemy = enemy_scene_to_use.instantiate()
@@ -393,7 +414,7 @@ func spawn_enemy():
 		else:
 			enemy.path_follower = path_follower
 
-		# print("[WaveManager] Spawned ", enemy_type, " using PATH2D system")
+		print("[WaveManager] Spawned ", enemy_type, " on ", selected_path.name, " (Index: ", spawn_index, ")")
 	
 	# Connect death signal with enemy reference binding
 	if enemy.has_signal("enemy_died"):
@@ -494,7 +515,7 @@ func _show_victory_screen():
 
 	if loot_count > 0:
 		print("[WaveManager] Showing loot distribution screen (%d items pending)" % loot_count)
-		await _show_loot_distribution_screen(gems_earned)
+		await _show_loot_distribution_screen(gems_earned, stars)
 	else:
 		print("[WaveManager] No loot to distribute, skipping loot screen")
 
@@ -515,7 +536,7 @@ func _show_victory_screen():
 	print("[WaveManager] Scene change to world map initiated")
 
 
-func _show_loot_distribution_screen(gems_earned: int):
+func _show_loot_distribution_screen(gems_earned: int, stars_earned: int = 0):
 	"""Show loot distribution screen and wait for user to continue"""
 	# Get heroes who participated in this level
 	var participating_heroes = _get_participating_heroes()
@@ -535,6 +556,12 @@ func _show_loot_distribution_screen(gems_earned: int):
 	# Set gems earned (must set BEFORE adding to tree)
 	if loot_screen.has_method("set_gems_earned") or "gems_earned" in loot_screen:
 		loot_screen.gems_earned = gems_earned
+
+	# NEW: Pass star and level data for victory star display
+	loot_screen.stars_earned = stars_earned
+	if LevelManager.current_level:
+		loot_screen.level_id = LevelManager.current_level.level_id
+	loot_screen.difficulty = GameStateManager.current_difficulty
 
 	# CRITICAL: Pass hero data to loot screen
 	loot_screen.participating_heroes = participating_heroes

@@ -18,8 +18,8 @@ extends BaseTower
 
 # REFERENCES
 var archer_weapon: Node2D
-var archer_visual: Node2D  # The Archer node that contains Body and Weapon
-var archer_body  # The archer body (AnimatedSprite2D for L1, ColorRect for L2+) - untyped to accept both
+var archer_visual: Node2D # The Archer node that contains Body and Weapon
+var archer_body # The archer body (AnimatedSprite2D for L1, ColorRect for L2+) - untyped to accept both
 
 func _ready():
 	# Archer specific setup (MUST be before super._ready)
@@ -53,7 +53,7 @@ func _process(_delta):
 		# Flip body sprite based on target direction (2D isometric style)
 		if archer_body and archer_body is AnimatedSprite2D:
 			var direction_to_target = (current_target.global_position - global_position).normalized()
-			archer_body.flip_h = direction_to_target.x < 0  # Flip if target is to the left
+			archer_body.flip_h = direction_to_target.x < 0 # Flip if target is to the left
 
 		# Visual debug
 		if DebugConfig.visual_debug_enabled and debug_line:
@@ -62,9 +62,9 @@ func _process(_delta):
 	else:
 		# No target: reset to default idle state
 		if archer_body and archer_body is AnimatedSprite2D:
-			archer_body.flip_h = false  # Face right (default direction)
+			archer_body.flip_h = false # Face right (default direction)
 		if archer_weapon:
-			archer_weapon.rotation = 0  # Reset weapon rotation to default
+			archer_weapon.rotation = 0 # Reset weapon rotation to default
 
 		# Ensure idle animation is playing when no target
 		if has_node("VisualContainer") and $VisualContainer.get_child_count() > 0:
@@ -82,9 +82,9 @@ func _on_shoot_timer_timeout():
 	if is_under_construction:
 		return
 		
-	# Ensure we have a valid target
-	if not current_target or not is_instance_valid(current_target):
-		current_target = get_target_by_mode()
+	# Refresh target selection every shot to ensure we use the "Best" target (First, Strong, etc.)
+	# The base class get_target_by_mode() handles stickiness/hysteresis, so we can safely call it often.
+	current_target = get_target_by_mode()
 		
 	if current_target:
 		shoot_at(current_target)

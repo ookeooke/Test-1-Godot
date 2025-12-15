@@ -31,6 +31,9 @@ var current_level: LevelConfig = null
 ## Currently active campaign
 var current_campaign: CampaignData = null
 
+## Current difficulty for 5-star rating system (normal, hard, unlimited)
+var current_difficulty: String = "normal"
+
 # ============================================
 # INITIALIZATION
 # ============================================
@@ -101,10 +104,13 @@ func load_level(campaign_id: String, level_id: String) -> void:
 ## If level_scene is NULL, caller should use direct scene loading:
 ##   LevelManager.load_level_config(config)  # Initialize game state
 ##   get_tree().change_scene_to_file(node_data.level_scene_path)  # Load scene
-func load_level_config(level_config: LevelConfig, campaign: CampaignData = null) -> void:
+func load_level_config(level_config: LevelConfig, campaign: CampaignData = null, difficulty: String = "normal") -> void:
 	if not level_config:
 		push_error("LevelManager: Invalid level config!")
 		return
+
+	# Store current difficulty
+	current_difficulty = difficulty
 
 	# Note: level_scene is optional in separated architecture
 	# If NULL, caller is responsible for loading the scene separately
@@ -113,7 +119,7 @@ func load_level_config(level_config: LevelConfig, campaign: CampaignData = null)
 		print("[LevelManager] Initializing game state only - caller must load scene separately")
 		current_level = level_config
 		current_campaign = campaign
-		GameStateManager.initialize_level(level_config)
+		GameStateManager.initialize_level(level_config, difficulty)
 		level_loaded.emit(level_config)
 		return
 
@@ -123,7 +129,7 @@ func load_level_config(level_config: LevelConfig, campaign: CampaignData = null)
 	# print("LevelManager: Loading level '", level_config.level_id, "' (", level_config.level_name, ")")
 
 	# Initialize game state with level config (calculates starting values with modifiers)
-	GameStateManager.initialize_level(level_config)
+	GameStateManager.initialize_level(level_config, difficulty)
 
 	# Emit signal before loading
 	level_loaded.emit(level_config)
@@ -166,7 +172,7 @@ func complete_level(stars: int) -> void:
 		push_error("LevelManager: No current level to complete!")
 		return
 
-	print("LevelManager: Level '", current_level.level_id, "' completed with ", stars, " stars")
+	print("LevelManager: Level '", current_level.level_id, "' completed with ", stars, " stars on ", current_difficulty, " difficulty")
 
 	# Award bonus gold based on stars
 	var bonus_gold = 0
@@ -184,8 +190,8 @@ func complete_level(stars: int) -> void:
 	# Emit completion signal
 	level_completed.emit(current_level.level_id, stars)
 
-	# Save progress (handled by SaveManager)
-	SaveManager.mark_level_complete(current_level.level_id, stars)
+	# Save progress with difficulty (handled by SaveManager)
+	SaveManager.mark_level_complete(current_level.level_id, stars, current_difficulty)
 
 # ============================================
 # HELPER METHODS

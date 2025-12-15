@@ -32,10 +32,18 @@ var loot_container: InventoryContainer # Temporary loot container backend
 var hero_container: InventoryContainer # NEW: Reference to selected hero's inventory container
 var gems_earned: int = 0 # Gems earned from star bonus (awarded but not displayed here)
 
+# Victory star data (NEW - Phase 5)
+var stars_earned: int = 0 # Stars earned this run
+var level_id: String = "" # Current level ID
+var difficulty: String = "normal" # Current difficulty
+
 # Hero data (passed from WaveManager)
 var participating_heroes: Array = [] # [{hero_id, hero_name, hero_class}]
 var selected_hero_id: String = "" # Currently selected hero's ID
 var selected_hero_info: Dictionary = {} # Full hero data
+
+# Star display nodes (Phase 5)
+var star_nodes: Array[Polygon2D] = []
 
 # Drag state
 var dragged_item: Control = null
@@ -111,16 +119,264 @@ func _show_error_message(message: String):
 
 
 ## ============================================
+## PANEL STYLING (PHASE 6)
+## ============================================
+
+func _create_panel_style(border_color: Color, bg_color: Color = Color(0.12, 0.12, 0.18, 0.95)) -> StyleBoxFlat:
+	"""Create consistent panel styling with borders"""
+	var style = StyleBoxFlat.new()
+	style.bg_color = bg_color
+	style.border_color = border_color
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(8)
+	return style
+
+
+func _apply_panel_styling():
+	"""Apply visual styling to hero and loot panels"""
+
+	# Get panel containers from InventoryViews
+	var hero_panel = hero_inventory_view.get_parent()
+	var loot_panel = loot_inventory_view.get_parent()
+
+	# Apply bronze borders (Option 1: Subtle Game Frame)
+	var bronze_color = Color(0.6, 0.5, 0.3)
+	if hero_panel and hero_panel is PanelContainer:
+		hero_panel.add_theme_stylebox_override("panel", _create_panel_style(bronze_color))
+	if loot_panel and loot_panel is PanelContainer:
+		loot_panel.add_theme_stylebox_override("panel", _create_panel_style(bronze_color))
+
+	print("[LootDistScreen] ✅ Panel styling applied")
+
+
+## ============================================
+## VICTORY STAR DISPLAY (PHASE 5)
+## ============================================
+
+func _create_victory_star_display() -> Control:
+	"""Create the star display panel for top of loot screen"""
+
+	# Main container
+	var star_panel = PanelContainer.new()
+	star_panel.name = "VictoryStarPanel"
+	star_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Allow input to pass through
+
+	# Gradient background style
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.15, 0.95)
+	style.set_border_width_all(2)
+	style.border_color = Color(0.8, 0.6, 0.3, 0.5)
+	style.set_corner_radius_all(8)
+	star_panel.add_theme_stylebox_override("panel", style)
+
+	# Inner margin
+	var margin = MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Allow input to pass through
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 15)
+	margin.add_theme_constant_override("margin_bottom", 15)
+	star_panel.add_child(margin)
+
+	# Horizontal layout
+	var hbox = HBoxContainer.new()
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Allow input to pass through
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.add_theme_constant_override("separation", 30)
+	margin.add_child(hbox)
+
+	# === LEFT: "VICTORY!" Label ===
+	var victory_label = Label.new()
+	victory_label.text = "VICTORY!"
+	victory_label.add_theme_font_size_override("font_size", 32)
+	victory_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))
+	hbox.add_child(victory_label)
+
+	# === CENTER: Star Display ===
+	var stars_container = Control.new()
+	stars_container.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Allow input to pass through
+	stars_container.custom_minimum_size = Vector2(350, 50)
+	hbox.add_child(stars_container)
+
+	# Get star data for all difficulties
+	var normal_stars = SaveManager.get_level_stars(level_id, "normal") if level_id != "" else stars_earned
+
+	var center_x = 175.0  # Center of container
+	var y_pos = 25.0
+
+	# Normal stars (3x) - Left group
+	for i in range(3):
+		var star = Polygon2D.new()
+		star.polygon = _get_star_polygon(12.0)  # Larger for visibility
+		star.name = "NormalStar%d" % i
+		star.modulate = Color(1, 1, 1, 0)  # Start invisible
+
+		# Position calculation
+		var x_offset = (i - 1) * 35.0  # -35, 0, +35
+		star.position = Vector2(center_x - 100 + x_offset, y_pos)
+
+		stars_container.add_child(star)
+		star_nodes.append(star)
+
+	# Hard star (1x) - Right group
+	var hard_star = Polygon2D.new()
+	hard_star.polygon = _get_star_polygon(14.0)  # Slightly larger
+	hard_star.name = "HardStar"
+	hard_star.modulate = Color(1, 1, 1, 0)
+	hard_star.position = Vector2(center_x + 80, y_pos)
+	stars_container.add_child(hard_star)
+	star_nodes.append(hard_star)
+
+	# Unlimited star (1x) - Right group
+	var unlimited_star = Polygon2D.new()
+	unlimited_star.polygon = _get_star_polygon(14.0)
+	unlimited_star.name = "UnlimitedStar"
+	unlimited_star.modulate = Color(1, 1, 1, 0)
+	unlimited_star.position = Vector2(center_x + 120, y_pos)
+	stars_container.add_child(unlimited_star)
+	star_nodes.append(unlimited_star)
+
+	# === RIGHT: Unlock Message ===
+	var unlock_label = Label.new()
+	unlock_label.name = "UnlockLabel"
+	unlock_label.add_theme_font_size_override("font_size", 14)
+	unlock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+	# Determine unlock message
+	if difficulty == "normal" and normal_stars == 3:
+		if not SaveManager.is_difficulty_unlocked(level_id, "hard"):
+			unlock_label.text = "🎉 Hard & Unlimited\nDifficulties Unlocked!"
+			unlock_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+		else:
+			unlock_label.text = ""
+	elif normal_stars < 3:
+		unlock_label.text = "Get 3⭐ on Normal\nto unlock Hard!"
+		unlock_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+
+	hbox.add_child(unlock_label)
+
+	return star_panel
+
+
+func _get_star_polygon(star_size: float) -> PackedVector2Array:
+	"""Create 5-pointed star polygon"""
+	var points = PackedVector2Array()
+	var outer_radius = star_size
+	var inner_radius = star_size * 0.4
+
+	for i in range(10):
+		var angle = deg_to_rad(i * 36.0 - 90.0)
+		var radius = outer_radius if i % 2 == 0 else inner_radius
+		points.append(Vector2(cos(angle) * radius, sin(angle) * radius))
+
+	return points
+
+
+func _animate_star_reveal():
+	"""Sequentially reveal stars with pulse effect + confetti"""
+
+	await get_tree().create_timer(0.3).timeout  # Brief delay
+
+	# Get star counts
+	var normal_stars = SaveManager.get_level_stars(level_id, "normal") if level_id != "" else stars_earned
+	var hard_stars = SaveManager.get_level_stars(level_id, "hard") if level_id != "" else 0
+	var unlimited_stars = SaveManager.get_level_stars(level_id, "unlimited") if level_id != "" else 0
+
+	# Reveal normal stars (indices 0-2)
+	for i in range(3):
+		if i < normal_stars:
+			await _reveal_star(i, Color("#FFD700"), 0.15)  # Gold
+		else:
+			await _reveal_star(i, Color(0.3, 0.3, 0.3, 0.5), 0.1)  # Gray
+
+	await get_tree().create_timer(0.2).timeout
+
+	# Reveal hard star (index 3)
+	if hard_stars > 0:
+		await _reveal_star(3, Color("#9B30FF"), 0.15)  # Purple
+	else:
+		await _reveal_star(3, Color(0.3, 0.3, 0.3, 0.5), 0.1)  # Gray (locked)
+
+	# Reveal unlimited star (index 4)
+	if unlimited_stars > 0:
+		await _reveal_star(4, Color("#FFA500"), 0.15)  # Orange
+	else:
+		await _reveal_star(4, Color(0.3, 0.3, 0.3, 0.5), 0.1)  # Gray (locked)
+
+	# Confetti for 3 stars!
+	if normal_stars == 3:
+		_spawn_confetti()
+
+
+func _reveal_star(index: int, color: Color, duration: float):
+	"""Reveal a single star with pulse effect"""
+	if index >= star_nodes.size():
+		return
+
+	var star = star_nodes[index]
+	star.color = color
+
+	# Instant appear + pulse
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(star, "modulate:a", 1.0, duration)
+	tween.tween_property(star, "scale", Vector2(1.3, 1.3), duration * 0.5)
+	tween.chain().tween_property(star, "scale", Vector2(1.0, 1.0), duration * 0.5)
+
+	await tween.finished
+
+
+func _spawn_confetti():
+	"""Spawn confetti particles for 3-star victory"""
+	# Simple particle effect using CPUParticles2D
+	var confetti = CPUParticles2D.new()
+	confetti.position = Vector2(get_viewport_rect().size.x / 2, 100)
+	confetti.amount = 50
+	confetti.lifetime = 2.0
+	confetti.one_shot = true
+	confetti.explosiveness = 0.8
+
+	# Visual properties
+	confetti.color = Color(1, 0.8, 0.2)
+	var gradient = Gradient.new()
+	gradient.set_color(0, Color(1, 0.8, 0.2))
+	gradient.set_color(1, Color(1, 0.4, 0.1, 0))
+	var gradient_texture = GradientTexture1D.new()
+	gradient_texture.gradient = gradient
+	confetti.color_ramp = gradient_texture
+
+	# Physics
+	confetti.direction = Vector2(0, 1)
+	confetti.spread = 45.0
+	confetti.gravity = Vector2(0, 200)
+	confetti.initial_velocity_min = 150.0
+	confetti.initial_velocity_max = 300.0
+
+	add_child(confetti)
+	confetti.emitting = true
+
+	# Auto-cleanup
+	await get_tree().create_timer(3.0).timeout
+	confetti.queue_free()
+
+
+## ============================================
 ## INITIALIZATION
 ## ============================================
 
 func _ready():
 	"""Initialize loot distribution screen on load"""
+	print("[LootDistScreen] ========== INITIALIZATION START ==========")
+
 	# Load heroes and select first one
+	print("[LootDistScreen] Step 1: Loading heroes...")
 	_load_heroes()
+	print("[LootDistScreen] ✓ Heroes loaded: %d heroes" % participating_heroes.size())
 
 	# PHASE 1: Initialize inventory containers
+	print("[LootDistScreen] Step 2: Initializing containers...")
 	_initialize_containers()
+	print("[LootDistScreen] ✓ Containers initialized")
 
 	# PHASE 1.5: Create static grid slots (Diablo 2 / Path of Exile style)
 	# Must happen AFTER containers are initialized but BEFORE display functions
@@ -135,19 +391,54 @@ func _ready():
 		print("[LootDistScreen] Initialized LootInventoryView for: %s" % loot_container.container_id)
 
 	# Load and display loot
+	print("[LootDistScreen] Step 3: Loading and displaying loot...")
 	_load_loot_data()
 	_display_stash()
 	_display_found_loot()
 	_update_counters()
+	print("[LootDistScreen] ✓ Loot loaded and displayed")
+
+	# NEW (Phase 6): Apply panel styling with borders
+	print("[LootDistScreen] Step 4: Applying panel styling...")
+	_apply_panel_styling()
+
+	# NEW (Phase 9): Increase separation between inventory panels
+	var content_hbox = $MainPanel/MarginContainer/VBoxContainer/ContentHBox
+	if content_hbox:
+		content_hbox.add_theme_constant_override("separation", 30)
+	else:
+		push_error("[LootDistScreen] CRITICAL: ContentHBox not found!")
+
+	# NEW (Phase 5): Insert victory star display at top of MainPanel VBoxContainer
+	print("[LootDistScreen] Step 5: Creating victory star display...")
+	var main_vbox = $MainPanel/MarginContainer/VBoxContainer
+	if main_vbox:
+		var star_display = _create_victory_star_display()
+		main_vbox.add_child(star_display)
+		main_vbox.move_child(star_display, 0)  # Move to top
+		print("[LootDistScreen] ✓ Victory star display created")
+	else:
+		push_error("[LootDistScreen] CRITICAL: MainPanel VBoxContainer not found!")
 
 	# Animate entrance
-	_animate_entrance()
+	print("[LootDistScreen] Step 6: Animating entrance...")
+	await _animate_entrance()
+	print("[LootDistScreen] ✓ Entrance animation complete")
+
+	# NEW (Phase 5): Start star reveal animation after entrance completes
+	print("[LootDistScreen] Step 7: Animating star reveal...")
+	await _animate_star_reveal()
+	print("[LootDistScreen] ✓ Star reveal animation complete")
 
 	# Connect signals
+	print("[LootDistScreen] Step 8: Connecting signals...")
 	hero_dropdown.item_selected.connect(_on_hero_selected)
 	take_all_button.pressed.connect(_on_take_all_pressed)
 	take_rare_button.pressed.connect(_on_take_rare_pressed)
 	leave_button.pressed.connect(_on_leave_pressed)
+	print("[LootDistScreen] ✓ Signals connected")
+
+	print("[LootDistScreen] ========== INITIALIZATION COMPLETE ==========")
 
 	# AI AUTO-SKIP: If AI is active, automatically take all loot and leave
 	_check_ai_auto_skip()
@@ -371,6 +662,8 @@ func _animate_entrance():
 	tween.tween_property(self, "modulate:a", 1.0, 0.3)
 	tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
+	await tween.finished
+
 
 func _on_take_all_pressed():
 	"""Take all items from loot to currently selected hero's inventory"""
@@ -379,6 +672,7 @@ func _on_take_all_pressed():
 
 	if not loot_container or not hero_container:
 		push_warning("[LootDistScreen] Cannot take all - containers not initialized")
+		_is_processing_buttons = false  # Release lock before returning
 		return
 
 	if loot_container.get_item_count() == 0:
@@ -407,9 +701,16 @@ func _on_take_all_pressed():
 
 	print("[LootDistScreen] ✅ Took %d items, %d failed (hero inventory full?)" % [taken_count, failed_count])
 
-	# Refresh displays
-	_update_counters()
-	
+	# Show error message if any items failed to transfer
+	if failed_count > 0:
+		_show_error_message("%d items couldn't fit in hero inventory!" % failed_count)
+
+	# Refresh displays (show items moved)
+	if hero_inventory_view:
+		hero_inventory_view.refresh_view()
+	if loot_inventory_view:
+		loot_inventory_view.refresh_view()
+
 	# Release lock after a short delay to prevent accidental double-clicks
 	await get_tree().create_timer(0.2).timeout
 	_is_processing_buttons = false
@@ -417,14 +718,19 @@ func _on_take_all_pressed():
 
 func _on_take_rare_pressed():
 	"""Take only Rare/Set/Unique items from loot to hero's inventory"""
+	if _is_processing_buttons:
+		return
+
 	if not loot_container or not hero_container:
 		push_warning("[LootDistScreen] Cannot take rare - containers not initialized")
+		_is_processing_buttons = false  # Release lock before returning
 		return
 
 	if loot_container.get_item_count() == 0:
 		print("[LootDistScreen] No items to take")
 		return
 
+	_is_processing_buttons = true
 	print("[LootDistScreen] Taking rare+ items to hero: %s" % selected_hero_id)
 
 	var items_to_check = loot_container.get_all_items()
@@ -453,8 +759,19 @@ func _on_take_rare_pressed():
 
 	print("[LootDistScreen] ✅ Took %d rare+ items, %d failed, %d filtered (common/magic)" % [taken_count, failed_count, filtered_count])
 
-	# Refresh displays
-	_update_counters()
+	# Show error message if any items failed to transfer
+	if failed_count > 0:
+		_show_error_message("%d rare+ items couldn't fit in hero inventory!" % failed_count)
+
+	# Refresh displays (show items moved)
+	if hero_inventory_view:
+		hero_inventory_view.refresh_view()
+	if loot_inventory_view:
+		loot_inventory_view.refresh_view()
+
+	# Release lock after a short delay to prevent accidental double-clicks
+	await get_tree().create_timer(0.2).timeout
+	_is_processing_buttons = false
 
 
 func _on_leave_pressed():

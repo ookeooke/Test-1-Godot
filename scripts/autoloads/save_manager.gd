@@ -3,6 +3,9 @@ extends Node
 # SaveManager - Handles all save/load operations for player profiles
 # Singleton autoload for global save access
 
+# Preload DifficultyConstants for 5-star rating system
+const DifficultyConstants = preload("res://scripts/constants/difficulty_constants.gd")
+
 signal profile_loaded(profile_data: Dictionary)
 signal profile_saved(profile_name: String)
 signal profile_created(profile_name: String)
@@ -334,6 +337,32 @@ func load_profile(profile_name: String) -> bool:
 
 				mark_dirty()
 
+			# MIGRATION: Migrate star system from 3-star (int/float) to 5-star (nested dict) format
+			if profile_data.has("level_stars"):
+				var needs_migration = false
+				for level_id in profile_data["level_stars"].keys():
+					var star_type = typeof(profile_data["level_stars"][level_id])
+					if star_type == TYPE_INT or star_type == TYPE_FLOAT:
+						needs_migration = true
+						break
+
+				if needs_migration:
+					print("[SaveManager] Migration: Converting 3-star system to 5-star system...")
+					for level_id in profile_data["level_stars"].keys():
+						var stars = profile_data["level_stars"][level_id]
+						var star_type = typeof(stars)
+						if star_type == TYPE_INT or star_type == TYPE_FLOAT:
+							var stars_int = int(stars)
+							profile_data["level_stars"][level_id] = {
+								"normal": stars_int,
+								"hard": 0,
+								"unlimited": 0
+							}
+							print("  └─ Migrated %s: %s stars → {normal: %d, hard: 0, unlimited: 0}" % [level_id, str(stars), stars_int])
+
+					mark_dirty()
+					print("[SaveManager] Migration: 5-star system migration complete!")
+
 			# Load inventory data into InventoryManager (shared stash)
 			if InventoryManager and profile_data.has("inventory"):
 				InventoryManager.load_from_dict(profile_data["inventory"])
@@ -445,36 +474,112 @@ func get_last_played_profile() -> String:
 
 	return last_profile
 
-func mark_level_complete(level_id: String, stars: int = 1) -> void:
+func mark_level_complete(level_id: String, stars: int = 1, difficulty: String = "normal") -> void:
 	if not has_current_profile():
 		push_error("SaveManager: No profile loaded")
+		return
+
+	# Validate difficulty
+	if not DifficultyConstants.is_valid_difficulty(difficulty):
+		push_error("SaveManager: Invalid difficulty: ", difficulty)
 		return
 
 	# Add to completed levels if not already there
 	if not current_profile["completed_levels"].has(level_id):
 		current_profile["completed_levels"].append(level_id)
 
-	# Update stars (keep highest)
+	# Initialize level_stars entry if needed (support for nested difficulty structure)
 	if not current_profile["level_stars"].has(level_id):
-		current_profile["level_stars"][level_id] = stars
+		current_profile["level_stars"][level_id] = {}
+
+	# Migrate old format (int/float) to new format (Dictionary) if needed
+	var level_data_type = typeof(current_profile["level_stars"][level_id])
+	if level_data_type == TYPE_INT or level_data_type == TYPE_FLOAT:
+		var old_stars = int(current_profile["level_stars"][level_id])
+		current_profile["level_stars"][level_id] = {
+			"normal": old_stars,
+			"hard": 0,
+			"unlimited": 0
+		}
+		print("[SaveManager] Migrated star data for ", level_id, " from number to Dictionary")
+
+	# Update stars for this difficulty (keep highest)
+	var level_data = current_profile["level_stars"][level_id]
+	if not level_data.has(difficulty):
+		level_data[difficulty] = stars
 	else:
-		current_profile["level_stars"][level_id] = max(current_profile["level_stars"][level_id], stars)
+		level_data[difficulty] = max(level_data[difficulty], stars)
 
 	# Save profile
 	save_profile(current_profile)
-	print("SaveManager: Level completed: ", level_id, " with ", stars, " stars")
+	print("SaveManager: Level completed: ", level_id, " with ", stars, " stars on ", difficulty, " difficulty")
 
 func is_level_completed(level_id: String) -> bool:
 	if not has_current_profile():
 		return false
 	return current_profile["completed_levels"].has(level_id)
 
-func get_level_stars(level_id: String) -> int:
+func get_level_stars(level_id: String, difficulty: String = "normal") -> int:
+	"""Get star count for a specific level and difficulty (0-3)"""
 	if not has_current_profile():
 		return 0
-	if current_profile["level_stars"].has(level_id):
-		return current_profile["level_stars"][level_id]
+
+	if not current_profile["level_stars"].has(level_id):
+		return 0
+
+	var level_data = current_profile["level_stars"][level_id]
+	var level_data_type = typeof(level_data)
+
+	# Handle old format (int/float from JSON) - treat as normal difficulty stars
+	if level_data_type == TYPE_INT or level_data_type == TYPE_FLOAT:
+		return int(level_data) if difficulty == "normal" else 0
+
+	# New format (Dictionary)
+	if level_data_type == TYPE_DICTIONARY:
+		return level_data.get(difficulty, 0)
+
 	return 0
+
+func get_level_5star_count(level_id: String) -> int:
+	"""Get total star count across all difficulties (0-5 total)
+	- 0-3 stars from normal difficulty
+	- +1 if hard completed (any stars)
+	- +1 if unlimited completed (any stars)
+	"""
+	if not has_current_profile():
+		return 0
+
+	var normal_stars = get_level_stars(level_id, "normal")
+	var hard_stars = get_level_stars(level_id, "hard")
+	var unlimited_stars = get_level_stars(level_id, "unlimited")
+
+	# Normal contributes 0-3 stars
+	# Hard and Unlimited each contribute 0 or 1 star (binary achievement)
+	var total = normal_stars
+	if hard_stars > 0:
+		total += 1
+	if unlimited_stars > 0:
+		total += 1
+
+	return total
+
+func is_difficulty_unlocked(level_id: String, difficulty: String) -> bool:
+	"""Check if a difficulty is unlocked for a level
+	- Normal: Always unlocked (for unlocked levels)
+	- Hard/Unlimited: Requires 3 stars on Normal
+	"""
+	if not has_current_profile():
+		return false
+
+	# Normal is always available for unlocked levels
+	if difficulty == "normal":
+		return true
+
+	# Hard and Unlimited require 3 stars on normal
+	if difficulty == "hard" or difficulty == "unlimited":
+		return get_level_stars(level_id, "normal") >= 3
+
+	return false
 
 func update_stat(stat_name: String, value: float) -> void:
 	if not has_current_profile():

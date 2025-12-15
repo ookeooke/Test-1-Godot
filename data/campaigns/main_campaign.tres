@@ -1,13 +1,12 @@
-[gd_resource type="Resource" script_class="CampaignData" load_steps=3 format=3 uid="uid://campaign_main"]
+[gd_resource type="Resource" script_class="CampaignData" load_steps=5 format=3 uid="uid://5efsyplso3u5"]
 
-[ext_resource type="Script" path="res://scripts/resources/campaign_data.gd" id="1_campaign"]
-[ext_resource type="Resource" path="res://data/level_configs/level_01_config.tres" id="2_level01"]
+[ext_resource type="Script" uid="uid://bhr4lqjvfjrx1" path="res://scripts/resources/campaign_data.gd" id="1_campaign"]
+[ext_resource type="Script" uid="uid://tkrhowp0yebt" path="res://scripts/resources/level_config.gd" id="1_suxmv"]
+[ext_resource type="Resource" uid="uid://bam2alcte4wjx" path="res://data/level_configs/level_01_config.tres" id="2_level01"]
+[ext_resource type="Resource" uid="uid://dn2nfv7tj8nyw" path="res://data/level_configs/level_02_config.tres" id="3_level02"]
+[ext_resource type="Resource" path="res://data/level_configs/level_03_config.tres" id="4_level03"]
 
 [resource]
 script = ExtResource("1_campaign")
-campaign_id = "main"
-campaign_name = "Main Campaign"
 campaign_description = "Defend the kingdom from invading forces!"
-levels = Array[Resource("res://scripts/resources/level_config.gd")]([ExtResource("2_level01")])
-unlocked_by_default = true
-required_stars = 0
+levels = Array[ExtResource("1_suxmv")]([ExtResource("2_level01"), ExtResource("3_level02"), ExtResource("4_level03")])

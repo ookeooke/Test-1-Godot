@@ -22,8 +22,9 @@ func _ready():
 	# Set default size (same as EquipmentSlot)
 	custom_minimum_size = Vector2(80, 80)
 
-	# Ensure mouse filter allows drops
-	mouse_filter = Control.MOUSE_FILTER_PASS
+	# Set IGNORE so ItemSprite on top receives all input (hover + drop)
+	# The parent InventoryGridContainer handles drops on empty cells as fallback
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# FIX: Make background transparent so parent's grid texture shows through
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())

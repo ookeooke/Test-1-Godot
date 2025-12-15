@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://calokdvx6cu0i"
-valid=false
+uid="uid://cd2clpkcskt52"
+path="res://.godot/imported/warrior_inventory_back.png-ed23e409619be3ce9045a501773a5eeb.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
-source_file="res://assets/sprites/map/level_01_bg_v2.png"
+source_file="res://assets/sprites/heroes/warrior/warrior_inventory_back.png"
+dest_files=["res://.godot/imported/warrior_inventory_back.png-ed23e409619be3ce9045a501773a5eeb.ctex"]
 
 [params]
 

@@ -5,7 +5,6 @@
 
 [sub_resource type="Resource" id="EnemySpawnData_1"]
 script = ExtResource("2_enemy")
-enemy_type = "goblin"
 count = 10
 
 [resource]

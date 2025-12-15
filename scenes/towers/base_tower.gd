@@ -39,7 +39,7 @@ var attack_speed: float:
 var range_radius: float:
 	get: return stat_range.get_value() if stat_range else 0.0
 
-var targeting_mode = TargetingMode.FIRST
+@export var targeting_mode: TargetingMode = TargetingMode.FIRST
 var build_cost = 0
 
 # UPGRADE SYSTEM

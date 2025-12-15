@@ -70,6 +70,20 @@ custom_minimum_size = Vector2(400, 700)
 layout_mode = 2
 size_flags_vertical = 3
 
+[node name="HeroSilhouette" type="TextureRect" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_right = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("4_bg")
+expand_mode = 1
+stretch_mode = 5
+modulate = Color(1, 1, 1, 0.5)
+
 [node name="HelmetSlot" type="VBoxContainer" parent="MarginContainer/VBoxContainer/EquipmentPaperDoll"]
 layout_mode = 0
 offset_left = 240.0

@@ -21,10 +21,23 @@ class_name SkillTooltip
 const ACTIVE_COLOR = Color("#3D7FFF")  # Blue for active skills
 const PASSIVE_COLOR = Color("#4CAF50")  # Green for passive skills
 
+# Label pool for stats (reused to prevent GC pressure)
+var _stat_label_pool: Array[Label] = []
+const MAX_STAT_LABELS: int = 12  # Max possible stat lines
+
 
 func _ready():
 	# Set initial style
 	_apply_style()
+
+	# Pre-create label pool (prevent GC pressure from dynamic creation)
+	for i in range(MAX_STAT_LABELS):
+		var label = Label.new()
+		label.add_theme_font_size_override("font_size", 12)
+		label.add_theme_color_override("font_color", Color.WHITE)
+		label.visible = false
+		stats_container.add_child(label)
+		_stat_label_pool.append(label)
 
 
 func set_skill(skill_data: HeroSkillData, current_level: int = 1, is_unlocked: bool = true):
@@ -67,55 +80,70 @@ func set_skill(skill_data: HeroSkillData, current_level: int = 1, is_unlocked: b
 
 func _populate_stats(skill_data: HeroSkillData, level: int):
 	"""Populate stats container with relevant skill statistics"""
-	# Clear existing stats
-	for child in stats_container.get_children():
-		child.queue_free()
+	# Reset pool - hide all labels (reuse instead of destroy)
+	for label in _stat_label_pool:
+		label.visible = false
+
+	var label_index = 0
 
 	# Active skill stats
 	if skill_data.skill_type == HeroSkillData.SkillType.ACTIVE:
 		if skill_data.cooldown > 0:
 			var cooldown = skill_data.get_current_cooldown(level)
-			_add_stat_line("Cooldown: %.1fs" % cooldown)
+			_set_pooled_label(label_index, "Cooldown: %.1fs" % cooldown)
+			label_index += 1
 
 		if skill_data.duration > 0:
 			var duration = skill_data.get_current_duration(level)
-			_add_stat_line("Duration: %.1fs" % duration)
+			_set_pooled_label(label_index, "Duration: %.1fs" % duration)
+			label_index += 1
 
 		if skill_data.mana_cost > 0:
-			_add_stat_line("Mana Cost: %d" % skill_data.mana_cost)
+			_set_pooled_label(label_index, "Mana Cost: %d" % skill_data.mana_cost)
+			label_index += 1
 
 		if skill_data.cast_range > 0:
-			_add_stat_line("Range: %.0f" % skill_data.cast_range)
+			_set_pooled_label(label_index, "Range: %.0f" % skill_data.cast_range)
+			label_index += 1
 
 	# Passive skill bonuses
 	if skill_data.skill_type == HeroSkillData.SkillType.PASSIVE:
 		var dmg_mult = skill_data.get_current_damage_multiplier(level)
 		if dmg_mult > 1.0:
-			_add_stat_line("Damage: +%d%%" % int((dmg_mult - 1.0) * 100))
+			_set_pooled_label(label_index, "Damage: +%d%%" % int((dmg_mult - 1.0) * 100))
+			label_index += 1
 
 		if skill_data.attack_speed_multiplier > 1.0:
-			_add_stat_line("Attack Speed: +%d%%" % int((skill_data.attack_speed_multiplier - 1.0) * 100))
+			_set_pooled_label(label_index, "Attack Speed: +%d%%" % int((skill_data.attack_speed_multiplier - 1.0) * 100))
+			label_index += 1
 
 		if skill_data.movement_speed_multiplier > 1.0:
-			_add_stat_line("Move Speed: +%d%%" % int((skill_data.movement_speed_multiplier - 1.0) * 100))
+			_set_pooled_label(label_index, "Move Speed: +%d%%" % int((skill_data.movement_speed_multiplier - 1.0) * 100))
+			label_index += 1
 
 		if skill_data.max_health_bonus > 0:
-			_add_stat_line("Health: +%d" % int(skill_data.max_health_bonus))
+			_set_pooled_label(label_index, "Health: +%d" % int(skill_data.max_health_bonus))
+			label_index += 1
 
 		if skill_data.range_bonus > 0:
-			_add_stat_line("Range: +%d" % int(skill_data.range_bonus))
+			_set_pooled_label(label_index, "Range: +%d" % int(skill_data.range_bonus))
+			label_index += 1
 
 		if skill_data.crit_chance > 0:
-			_add_stat_line("Crit Chance: +%d%%" % int(skill_data.crit_chance * 100))
+			_set_pooled_label(label_index, "Crit Chance: +%d%%" % int(skill_data.crit_chance * 100))
+			label_index += 1
 
 		if skill_data.lifesteal_percent > 0:
-			_add_stat_line("Lifesteal: +%d%%" % int(skill_data.lifesteal_percent * 100))
+			_set_pooled_label(label_index, "Lifesteal: +%d%%" % int(skill_data.lifesteal_percent * 100))
+			label_index += 1
 
 		if skill_data.dodge_chance > 0:
-			_add_stat_line("Dodge Chance: +%d%%" % int(skill_data.dodge_chance * 100))
+			_set_pooled_label(label_index, "Dodge Chance: +%d%%" % int(skill_data.dodge_chance * 100))
+			label_index += 1
 
 		if skill_data.cooldown_reduction > 0:
-			_add_stat_line("CDR: -%d%%" % int(skill_data.cooldown_reduction * 100))
+			_set_pooled_label(label_index, "CDR: -%d%%" % int(skill_data.cooldown_reduction * 100))
+			label_index += 1
 
 
 func _populate_cost(skill_data: HeroSkillData, current_level: int, is_unlocked: bool):
@@ -135,13 +163,15 @@ func _populate_cost(skill_data: HeroSkillData, current_level: int, is_unlocked: 
 		cost_label.visible = true
 
 
-func _add_stat_line(text: String):
-	"""Add a stat line to the stats container"""
-	var label = Label.new()
+func _set_pooled_label(index: int, text: String):
+	"""Reuse a label from the pool instead of creating new one"""
+	if index >= _stat_label_pool.size():
+		push_warning("[SkillTooltip] Label pool exhausted at index %d" % index)
+		return
+
+	var label = _stat_label_pool[index]
 	label.text = text
-	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", Color.WHITE)
-	stats_container.add_child(label)
+	label.visible = true
 
 
 func _get_category_name(category: HeroSkillData.SkillCategory) -> String:

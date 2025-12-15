@@ -28,6 +28,15 @@ const STAR_SIZE = 10.0 # Size of star polygon (radius) - made bigger
 const STAR_SPACING = 25.0 # Horizontal spacing between stars
 const STAR_OFFSET_Y = 35.0 # Vertical offset BELOW button (outside the button rectangle)
 
+# 5-Star system constants (3 normal + 2 special)
+const STAR_HARD_COLOR = Color("#9B30FF") # Purple for hard difficulty
+const STAR_UNLIMITED_COLOR = Color("#FFA500") # Orange/Gold for unlimited difficulty
+const NORMAL_STAR_SIZE = 10.0 # Size of normal stars
+const SPECIAL_STAR_SIZE = 12.0 # Size of special stars (slightly larger)
+const SPECIAL_STAR_SPACING = 22.0 # Spacing between special stars
+const NORMAL_GROUP_OFFSET_X = -35.0 # X offset for normal stars group
+const SPECIAL_GROUP_OFFSET_X = 35.0 # X offset for special stars group
+
 # References
 @onready var camera: Camera2D = $Camera2D
 @onready var map_background: Sprite2D = $MapBackground
@@ -105,11 +114,11 @@ func _process(_delta):
 			if is_instance_valid(button_node):
 				button_node.scale = inverse_zoom
 
-func _get_star_polygon() -> PackedVector2Array:
-	"""Create a 5-pointed star polygon shape"""
+func _get_star_polygon(size: float = STAR_SIZE) -> PackedVector2Array:
+	"""Create a 5-pointed star polygon shape with configurable size"""
 	var points = PackedVector2Array()
-	var outer_radius = STAR_SIZE
-	var inner_radius = STAR_SIZE * 0.4 # Inner points are 40% of outer radius
+	var outer_radius = size
+	var inner_radius = size * 0.4 # Inner points are 40% of outer radius
 
 	# Create 5-pointed star (10 points total - 5 outer, 5 inner)
 	for i in range(10):
@@ -121,47 +130,70 @@ func _get_star_polygon() -> PackedVector2Array:
 
 	return points
 
-func _create_star_display(parent: Node2D, stars_earned: int) -> Node2D:
-	"""Create star display showing 3 stars (earned in gold, unearned in gray)
+func _create_star_display(parent: Node2D, level_id: String) -> Node2D:
+	"""Create 5-star display (3 normal + 2 special difficulty stars)
 
 	Args:
 		parent: The parent Node2D to attach stars to
-		stars_earned: Number of stars earned (0-3)
+		level_id: The level ID to query star data from SaveManager
 
 	Returns:
 		The container Node2D holding all star polygons
 	"""
-	# Create container for stars
+	# Query star data for all difficulties
+	var normal_stars = SaveManager.get_level_stars(level_id, "normal")
+	var hard_stars = SaveManager.get_level_stars(level_id, "hard")
+	var unlimited_stars = SaveManager.get_level_stars(level_id, "unlimited")
+
+	# Create container for all stars
 	var star_container = Node2D.new()
 	star_container.name = "StarDisplay"
 	star_container.position = Vector2(0, STAR_OFFSET_Y)
 	star_container.z_index = 10 # Render on top of everything else
 
-	# Calculate starting X position to center 3 stars
-	var total_width = (3 - 1) * STAR_SPACING # Width of 3 stars with spacing
-	var start_x = - total_width / 2.0
-
-	# Create 3 star polygons
+	# === NORMAL STARS GROUP (3 stars, left side) ===
 	for i in range(3):
 		var star = Polygon2D.new()
-		star.polygon = _get_star_polygon()
-		star.name = "Star%d" % i
+		star.polygon = _get_star_polygon(NORMAL_STAR_SIZE)
+		star.name = "NormalStar%d" % i
 
 		# Color: gold if earned, gray if not
-		if i < stars_earned:
+		if i < normal_stars:
 			star.color = STAR_EARNED_COLOR
 		else:
 			star.color = STAR_UNEARNED_COLOR
 
-		# Position horizontally
-		star.position = Vector2(start_x + i * STAR_SPACING, 0)
-
+		# Position in left group
+		star.position = Vector2(NORMAL_GROUP_OFFSET_X + i * STAR_SPACING, 0)
 		star_container.add_child(star)
+
+	# === SPECIAL STARS GROUP (2 stars, right side) ===
+
+	# Hard difficulty star (purple)
+	var hard_star = Polygon2D.new()
+	hard_star.polygon = _get_star_polygon(SPECIAL_STAR_SIZE)
+	hard_star.name = "HardStar"
+	hard_star.color = STAR_HARD_COLOR if hard_stars > 0 else STAR_UNEARNED_COLOR
+	hard_star.position = Vector2(SPECIAL_GROUP_OFFSET_X, 0)
+	star_container.add_child(hard_star)
+
+	# Unlimited difficulty star (orange/gold)
+	var unlimited_star = Polygon2D.new()
+	unlimited_star.polygon = _get_star_polygon(SPECIAL_STAR_SIZE)
+	unlimited_star.name = "UnlimitedStar"
+	unlimited_star.color = STAR_UNLIMITED_COLOR if unlimited_stars > 0 else STAR_UNEARNED_COLOR
+	unlimited_star.position = Vector2(SPECIAL_GROUP_OFFSET_X + SPECIAL_STAR_SPACING, 0)
+	star_container.add_child(unlimited_star)
 
 	parent.add_child(star_container)
 
 	# Debug output
-	print("  └─ StarDisplay created at position: ", star_container.position, " with z_index: ", star_container.z_index)
+	var total_stars = normal_stars
+	if hard_stars > 0: total_stars += 1
+	if unlimited_stars > 0: total_stars += 1
+	print("  └─ StarDisplay created for %s: %d/5 stars (Normal: %d/3, Hard: %d, Unlimited: %d)" % [
+		level_id, total_stars, normal_stars, 1 if hard_stars > 0 else 0, 1 if unlimited_stars > 0 else 0
+	])
 
 	return star_container
 
@@ -573,10 +605,9 @@ func _setup_level_nodes():
 		# Add button to container
 		button_node.add_child(button)
 
-		# Add star display (Kingdom Rush style)
-		var stars_earned = SaveManager.get_level_stars(level_data.level_id)
-		_create_star_display(button_node, stars_earned)
-		# print("⭐ Created star display for %s: %d stars" % [level_data.level_name, stars_earned])
+		# Add 5-star display (3 normal + 2 special difficulty stars)
+		_create_star_display(button_node, level_data.level_id)
+		# print("⭐ Created star display for %s" % level_data.level_name)
 
 		# Store reference for zoom compensation
 		level_button_nodes.append(button_node)

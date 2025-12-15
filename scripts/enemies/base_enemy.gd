@@ -77,14 +77,6 @@ var last_damage_source = null
 var last_damage_source_type = "unknown"
 var _has_died: bool = false # Guard to prevent die() from being called multiple times
 
-# WAYPOINT NAVIGATION SYSTEM (new)
-var use_waypoint_navigation: bool = false # Set by wave_manager when spawning
-var current_waypoint: PathWaypoint = null
-var target_position: Vector2 = Vector2.ZERO
-var waypoint_reached_distance: float = 30.0
-var lateral_wander: Vector2 = Vector2.ZERO # Random drift within road
-var wander_timer: float = 0.0
-
 # ============================================
 # REFERENCES
 # ============================================
@@ -105,6 +97,8 @@ func _ready():
 	# CRITICAL: Add to enemies group for hero detection
 	# This ensures ALL enemies (including manually created test nodes) are detectable
 	add_to_group("enemies")
+
+	print("[BaseEnemy] READY: ", name, " at ", global_position, " | Speed: ", speed)
 
 	# Set collision
 	# Layer 1: Default/Enemy (Required for Towers)
@@ -317,68 +311,33 @@ func _physics_process(delta):
 		_continue_movement(delta)
 
 func _continue_movement(delta):
-	"""Handle movement based on current navigation system"""
+	"""Handle Path2D movement"""
 	# Ensure we are walking (unless attacking)
 	_play_animation("walk")
 
-	if use_waypoint_navigation:
-		_waypoint_movement(delta)
-	else:
-		_path2d_movement(delta)
+	# Use Path2D movement (only system)
+	_path2d_movement(delta)
 
 func _path2d_movement(delta):
-	"""Original Path2D movement system"""
+	"""Path2D movement system - enemies follow predefined paths"""
 	if path_follower:
+		var start_pos = global_position # Capture position before move
+
 		path_follower.progress += speed * delta
+
 		# CRITICAL: Manual position sync to fix collision detection
 		# This ensures collision shape position matches visual position
 		# Fixes Godot engine bug with PathFollow2D physics desync
 		global_position = path_follower.global_position
+
+		# Calculate velocity for animations (direction-aware enemies need this)
+		if delta > 0:
+			velocity = (global_position - start_pos) / delta
+
 		if path_follower.progress_ratio >= 1.0:
 			reached_end()
-
-func _waypoint_movement(delta):
-	"""New waypoint navigation system with natural spread"""
-	if not current_waypoint:
-		print("ERROR: Enemy using waypoint navigation but no current waypoint!")
-		return
-
-	# Update wander timer for natural side-to-side movement
-	wander_timer -= delta
-	if wander_timer <= 0:
-		wander_timer = randf_range(1.0, 3.0)
-		# Create new random drift within road bounds
-		lateral_wander = Vector2(
-			randf_range(-20, 20),
-			randf_range(-20, 20)
-		)
-
-	# Calculate direction to target
-	var to_target = target_position - global_position
-	var distance_to_target = to_target.length()
-
-	# Gradually blend in the lateral wander
-	var direction = to_target.normalized()
-	var wander_influence = clamp(distance_to_target / 100.0, 0.0, 1.0)
-	direction = (direction + lateral_wander.normalized() * wander_influence * 0.3).normalized()
-
-	# Move toward target with wander
-	velocity = direction * speed
-	move_and_slide()
-
-	# Check if reached waypoint
-	if distance_to_target < waypoint_reached_distance:
-		# Move to next waypoint
-		if current_waypoint.next_waypoints.is_empty():
-			reached_end()
-		else:
-			# Pick next waypoint (random if multiple branches)
-			current_waypoint = current_waypoint.get_next_waypoint()
-			if current_waypoint:
-				target_position = current_waypoint.get_random_position_in_road()
-				print(get_enemy_name(), " moving to next waypoint: ", current_waypoint.name)
-			else:
-				reached_end()
+	else:
+		print("[BaseEnemy] ERROR: No path_follower found in _path2d_movement!")
 
 # ============================================
 # COMBAT
@@ -579,19 +538,6 @@ func set_path_follower(follower: PathFollow2D):
 	"""Set the path follower for this enemy"""
 	path_follower = follower
 
-func set_waypoint_navigation(start_waypoint: PathWaypoint):
-	"""Initialize waypoint navigation system (new way)"""
-	use_waypoint_navigation = true
-	current_waypoint = start_waypoint
-
-	if current_waypoint:
-		# Set initial target to random position within first waypoint's road width
-		target_position = current_waypoint.get_random_position_in_road()
-		global_position = target_position # Start at first waypoint
-		print(get_enemy_name(), " starting waypoint navigation at: ", current_waypoint.name)
-	else:
-		print("ERROR: No start waypoint provided!")
-
 # ============================================
 # COMBAT ANCHOR SYSTEM (New)
 # ============================================
@@ -712,8 +658,10 @@ func _play_hit_flash():
 
 func _spawn_damage_number(damage: float):
 	"""Spawn floating damage number above enemy - satisfying feedback"""
-	# Use centralized manager for cleanup safety
-	FloatingTextManager.spawn_damage_number(damage, global_position, get_parent())
+	# Use dedicated FloatingTextManager
+	# CRITICAL FIX: Use current_scene as parent instead of get_parent()
+	# This avoids issues where PathFollow2D (parent) might rotate/scale the text or hide it
+	FloatingTextManager.spawn_damage_number(damage, global_position, get_tree().current_scene)
 
 func _spawn_death_particles():
 	"""Create subtle death particles when enemy dies"""
@@ -908,23 +856,16 @@ func get_effective_speed() -> float:
 	"""Get current speed with slow applied"""
 	return speed * (1.0 - current_slow)
 
-func apply_knockback(force: float, explosion_pos: Vector2):
+func apply_knockback(force: float, _explosion_pos: Vector2):
 	"""Push enemy backward from explosion (artillery cannon path)"""
-	# Get direction away from explosion
-	var knockback_dir = (global_position - explosion_pos).normalized()
 	var knockback_distance = force / 10.0 # Scale force to pixels
 
-	# Apply knockback by moving enemy backward
-	if use_waypoint_navigation:
-		# Waypoint system: just offset position
-		global_position += knockback_dir * knockback_distance
-	else:
-		# PathFollow2D system: reduce progress
-		var parent = get_parent()
-		if parent is PathFollow2D:
-			parent.progress -= knockback_distance
-			# Clamp to prevent negative progress
-			parent.progress = max(0, parent.progress)
+	# Apply knockback by reducing progress on Path2D
+	var parent = get_parent()
+	if parent is PathFollow2D:
+		parent.progress -= knockback_distance
+		# Clamp to prevent negative progress
+		parent.progress = max(0, parent.progress)
 
 # ============================================
 # CROWD CONTROL (Stun & Taunt)

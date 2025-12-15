@@ -231,13 +231,16 @@ All stats calculated as: `(base + flat_mods + additive_mods) × multiplicative_m
 
 Implemented in: [scripts/autoloads/game_state_manager.gd](scripts/autoloads/game_state_manager.gd)
 
-### 5. Dual Navigation Systems
+### 5. Enemy Navigation System
 
-Both systems supported via `use_waypoint_system` flag:
-- **Path2D** - Legacy curve-based pathfinding
-- **PathWaypoint** - Manual placement with visual road rendering
+**Path2D Movement** - Enemies follow predefined curved paths:
+- **System:** Path2D + PathFollow2D nodes in Godot
+- **How it works:** Enemies move along curves defined in the editor
+- **Direction:** Automatically calculated from velocity (`velocity = (position_delta / delta)`)
+- **Supports:** Diagonal movement, smooth curves, branching paths
+- **Implementation:** See `base_enemy.gd:_path2d_movement()`
 
-**Full documentation:** [docs/WAYPOINT_SYSTEM_GUIDE.md](docs/WAYPOINT_SYSTEM_GUIDE.md)
+**No Waypoint System** - Path2D is the only navigation system (waypoint code removed for simplicity)
 
 ### 6. Wave System
 

@@ -38,6 +38,13 @@ const HAND_GRID: Vector2i = Vector2i(2, 4) # 2×4 tiles for weapons (bows, sword
 const ARMOR_GRID: Vector2i = Vector2i(2, 3) # 2×3 tiles for body armor
 const ACCESSORY_GRID: Vector2i = Vector2i(1, 1) # 1×1 tiles for rings/amulets
 
+# Hero background images
+const HERO_BACKGROUNDS = {
+	"ranger": "res://assets/sprites/heroes/archer/archer_background_final.png",
+	"warrior": "res://assets/sprites/heroes/warrior/warrior_inventory_back.png",
+	"mage": "res://assets/sprites/heroes/mage/mage_idle.png" # Fallback/Placeholder
+}
+
 # Equipment slots (EquipmentSlot instances)
 var hand_left_slot: EquipmentSlot
 var hand_right_slot: EquipmentSlot
@@ -84,6 +91,11 @@ var accessory2_slot: EquipmentSlot
 func _ready():
 	super._ready()
 	view_name = "Equipment"
+
+	# Set default hero silhouette (Archer Custom)
+	if has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/HeroSilhouette"):
+		var silhouette = $MarginContainer/VBoxContainer/EquipmentPaperDoll/HeroSilhouette
+		silhouette.texture = load("res://assets/sprites/heroes/archer/archer_background_final.png")
 
 	# Make stats text 30% smaller
 	if stats_label:
@@ -275,6 +287,9 @@ func _setup_equipment_manager():
 	if accessory1_slot: accessory1_slot.hero_id = hero_id
 	if accessory2_slot: accessory2_slot.hero_id = hero_id
 	
+	# Update hero background image
+	_update_hero_background()
+	
 	print("[EquipmentView] Switched to hero: %s (Slots updated)" % hero_id)
 
 
@@ -359,6 +374,27 @@ func _refresh_equipment():
 
 	# Update stats display
 	_update_stats_display()
+
+
+func _update_hero_background():
+	"""Update the background silhouette based on selected hero"""
+	if not has_node("MarginContainer/VBoxContainer/EquipmentPaperDoll/HeroSilhouette"):
+		return
+		
+	var silhouette = $MarginContainer/VBoxContainer/EquipmentPaperDoll/HeroSilhouette
+	
+	if hero_id in HERO_BACKGROUNDS:
+		var texture_path = HERO_BACKGROUNDS[hero_id]
+		# Load the texture (if it exists)
+		if ResourceLoader.exists(texture_path):
+			silhouette.texture = load(texture_path)
+			# Ensure offsets are correct (re-applying the 5% shift if needed, though Scene settings persist)
+			# But if textures have different sizes, expand_mode=KEEP_ASPECT_CENTERED handles it.
+		else:
+			print("[EquipmentView] Background not found for: %s" % hero_id)
+	else:
+		# Default fallback
+		print("[EquipmentView] No background defined for hero: %s" % hero_id)
 
 
 func _update_stats_display():
