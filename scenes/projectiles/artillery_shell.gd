@@ -10,8 +10,11 @@ extends "res://scenes/projectiles/arrow.gd"
 # ============================================
 
 # AOE PROPERTIES
-var splash_radius: float = 0.0  # AOE damage radius
-var knockback: float = 0.0      # Knockback force
+var splash_radius: float = 0.0 # AOE damage radius
+var knockback: float = 0.0 # Knockback force
+
+# VISUAL EFFECTS
+var explosion_scene: PackedScene = preload("res://scenes/effects/explosion_effect.tscn")
 
 # ============================================
 # SETUP
@@ -59,11 +62,23 @@ func _deal_aoe_damage(primary_target):
 	# Create circle shape for AOE detection
 	var shape = CircleShape2D.new()
 	shape.radius = splash_radius
+	
+	# SPAWN VISUAL EXPLOSION
+	if explosion_scene:
+		if DebugConfig.explosion_debug_enabled:
+			print("[ArtilleryShell] 💥 BOOM! Expanding explosion at ", hit_position, " rad=", splash_radius)
+			DebugConfig.log_targeting("💥 Explosion physics query at %s" % hit_position)
+			
+		var effect = explosion_scene.instantiate()
+		get_tree().root.add_child(effect)
+		effect.global_position = hit_position
+		effect.radius = splash_radius # Pass splash radius to visual
+		effect.color = Color(1.0, 0.5, 0.0) # Orange fire
 
 	var query = PhysicsShapeQueryParameters2D.new()
 	query.shape = shape
 	query.transform = Transform2D(0, hit_position)
-	query.collision_mask = 1  # Enemy layer
+	query.collision_mask = 1 # Enemy layer
 	query.collide_with_areas = false
 	query.collide_with_bodies = true
 

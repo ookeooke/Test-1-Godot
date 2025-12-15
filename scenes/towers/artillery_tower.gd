@@ -12,13 +12,16 @@ extends BaseTower
 @export_group("Visual Scenes")
 @export var visual_scene_l1_default: PackedScene = preload("res://scenes/towers/visuals/artillery_visuals_l1.tscn")
 @export var visual_scene_l2_default: PackedScene = preload("res://scenes/towers/visuals/artillery_visuals_l2.tscn")
-
 # ARTILLERY SPECIFIC STATS
 var stat_splash_radius: Stat
 var stat_min_range: Stat # Artillery cannot shoot too close
+@export var debug_force_splash_radius: float = 0.0 # Set >0 to force splash radius for testing
 
 var splash_radius: float:
-	get: return stat_splash_radius.get_value() if stat_splash_radius else 0.0
+	get:
+		if debug_force_splash_radius > 0.0:
+			return debug_force_splash_radius
+		return stat_splash_radius.get_value() if stat_splash_radius else 0.0
 
 var min_range: float:
 	get: return stat_min_range.get_value() if stat_min_range else 0.0
