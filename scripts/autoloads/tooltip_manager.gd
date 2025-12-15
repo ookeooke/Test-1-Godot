@@ -178,10 +178,14 @@ func _show_item_tooltip(item: ItemInstance, anchor_node: Control, hero_id: Strin
 		hide_tooltip()
 
 	# Apply hover delay to prevent tooltip flicker during rapid mouse scanning
-	# pass process_always=true (3rd arg) to create_timer so it works while paused
-	_hover_timer = get_tree().create_timer(HOVER_DELAY, false, true)
-	await _hover_timer.timeout
-	_hover_timer = null
+	# NOTE: When the game tree is paused (victory/loot screens), SceneTreeTimers
+	#       will never time out. Skip the delay so tooltips still appear.
+	if get_tree().paused:
+		_hover_timer = null
+	else:
+		_hover_timer = get_tree().create_timer(HOVER_DELAY)
+		await _hover_timer.timeout
+		_hover_timer = null
 
 	# Check if this request was cancelled by a newer show_tooltip() call or hide_tooltip()
 	if _show_request_id != my_request_id:
@@ -264,10 +268,14 @@ func _show_skill_tooltip(skill_data: HeroSkillData, anchor_node: Control, hero_i
 		hide_tooltip()
 
 	# Apply hover delay to prevent tooltip flicker during rapid mouse scanning
-	# pass process_always=true (3rd arg) to create_timer so it works while paused
-	_hover_timer = get_tree().create_timer(HOVER_DELAY, false, true)
-	await _hover_timer.timeout
-	_hover_timer = null
+	# NOTE: When the game tree is paused (victory/loot screens), SceneTreeTimers
+	#       will never time out. Skip the delay so tooltips still appear.
+	if get_tree().paused:
+		_hover_timer = null
+	else:
+		_hover_timer = get_tree().create_timer(HOVER_DELAY)
+		await _hover_timer.timeout
+		_hover_timer = null
 
 	# Check if this request was cancelled by a newer show_tooltip() call or hide_tooltip()
 	if _show_request_id != my_request_id:

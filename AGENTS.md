@@ -270,6 +270,11 @@ Tiered drop rates:
 - Tracks tower efficiency, enemy difficulty, gold economy
 - See: [scripts/debug/balance_tracker.gd](scripts/debug/balance_tracker.gd)
 
+### 10. Tooltip System
+- **TooltipManager** handles hovering for items/skills
+- **CRITICAL:** `process_mode` set to `ALWAYS` to work during pause menus (Loot/Victory)
+- **Timers:** Must check `get_tree().paused` to skip delays in menus (instant tooltips)
+
 ---
 
 ## 🏰 Tower Upgrade Architecture
