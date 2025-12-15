@@ -63,6 +63,9 @@ func _ready() -> void:
 	# Set as top layer for tooltips (above all modal screens)
 	layer = 101
 
+	# Ensure tooltips still work when the game tree is paused (e.g., victory/loot screens)
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
 	# Load item tooltip scene
 	var tooltip_scene = preload("res://scenes/ui/tooltips/item_tooltip.tscn")
 	_tooltip_instance = tooltip_scene.instantiate()
@@ -175,7 +178,8 @@ func _show_item_tooltip(item: ItemInstance, anchor_node: Control, hero_id: Strin
 		hide_tooltip()
 
 	# Apply hover delay to prevent tooltip flicker during rapid mouse scanning
-	_hover_timer = get_tree().create_timer(HOVER_DELAY)
+	# pass process_always=true (3rd arg) to create_timer so it works while paused
+	_hover_timer = get_tree().create_timer(HOVER_DELAY, false, true)
 	await _hover_timer.timeout
 	_hover_timer = null
 
@@ -260,7 +264,8 @@ func _show_skill_tooltip(skill_data: HeroSkillData, anchor_node: Control, hero_i
 		hide_tooltip()
 
 	# Apply hover delay to prevent tooltip flicker during rapid mouse scanning
-	_hover_timer = get_tree().create_timer(HOVER_DELAY)
+	# pass process_always=true (3rd arg) to create_timer so it works while paused
+	_hover_timer = get_tree().create_timer(HOVER_DELAY, false, true)
 	await _hover_timer.timeout
 	_hover_timer = null
 
@@ -423,7 +428,7 @@ func _get_skill_progression(hero_id: String, skill_data: HeroSkillData) -> Dicti
 	- is_unlocked: Whether hero has unlocked this skill
 	"""
 	if hero_id.is_empty() or not skill_data:
-		return {"level": 1, "is_unlocked": true}  # Default for preview mode
+		return {"level": 1, "is_unlocked": true} # Default for preview mode
 
 	# Integration point - ready for SaveManager
 	if SaveManager:

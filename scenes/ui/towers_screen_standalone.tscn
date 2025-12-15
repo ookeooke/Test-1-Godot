@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://towers_screen_standalone"]
+[gd_scene load_steps=3 format=3 uid="uid://towers_screen_standalone"]
 
 [ext_resource type="Script" path="res://scripts/ui/towers_screen.gd" id="1_towers"]
+[ext_resource type="Texture2D" path="res://assets/ui/inventory/button_calcel.png" id="back_icon"]
 
 [node name="TowersScreenStandalone" type="Control"]
 layout_mode = 3
@@ -56,8 +57,12 @@ theme_override_font_sizes/font_size = 28
 
 [node name="BackButton" type="Button" parent="PanelContainer/MarginContainer/VBoxContainer/TopBar"]
 layout_mode = 2
-text = "← BACK TO MAP"
-custom_minimum_size = Vector2(160, 50)
+text = ""
+icon = ExtResource("back_icon")
+flat = true
+icon_alignment = 1
+expand_icon = true
+custom_minimum_size = Vector2(116, 86)
 
 [node name="HSeparator" type="HSeparator" parent="PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2

@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://hero_screen_standalone"]
+[gd_scene load_steps=5 format=3 uid="uid://hero_screen_standalone"]
 
 [ext_resource type="Script" path="res://scripts/ui/hero_management_panel.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hero_command_widget.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/skill_pool_grid.tscn" id="3"]
+[ext_resource type="Texture2D" path="res://assets/ui/inventory/button_calcel.png" id="back_icon"]
 
 [node name="HeroScreenStandalone" type="Control"]
 layout_mode = 3
@@ -83,8 +84,12 @@ vertical_alignment = 1
 
 [node name="BackButton" type="Button" parent="Panel/VBox/TitleBar"]
 layout_mode = 2
-text = "< BACK"
-custom_minimum_size = Vector2(100, 40)
+text = ""
+icon = ExtResource("back_icon")
+flat = true
+icon_alignment = 1
+expand_icon = true
+custom_minimum_size = Vector2(116, 86)
 
 [node name="HSeparator" type="HSeparator" parent="Panel/VBox"]
 layout_mode = 2

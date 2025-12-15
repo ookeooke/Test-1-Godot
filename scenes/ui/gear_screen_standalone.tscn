@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/ui/dual_panel_screen.gd" id="1_dual"]
 [ext_resource type="PackedScene" path="res://scenes/ui/flexible_panel.tscn" id="2_panel"]
+[ext_resource type="Texture2D" path="res://assets/ui/inventory/button_calcel.png" id="back_icon"]
 
 [node name="GearScreenStandalone" type="Control"]
 process_mode = 3
@@ -67,9 +68,13 @@ layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="BackButton" type="Button" parent="CanvasLayer/MainMargin/MainContainer/HeaderBar/MarginContainer/HBox"]
-custom_minimum_size = Vector2(120, 40)
+custom_minimum_size = Vector2(116, 86)
 layout_mode = 2
-text = "← BACK"
+text = ""
+icon = ExtResource("back_icon")
+flat = true
+icon_alignment = 1
+expand_icon = true
 
 [node name="PanelsContainer" type="HBoxContainer" parent="CanvasLayer/MainMargin/MainContainer"]
 layout_mode = 2

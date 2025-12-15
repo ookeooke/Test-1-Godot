@@ -388,13 +388,18 @@ func _update_hero_background():
 		# Load the texture (if it exists)
 		if ResourceLoader.exists(texture_path):
 			silhouette.texture = load(texture_path)
+			silhouette.visible = true
 			# Ensure offsets are correct (re-applying the 5% shift if needed, though Scene settings persist)
 			# But if textures have different sizes, expand_mode=KEEP_ASPECT_CENTERED handles it.
 		else:
 			print("[EquipmentView] Background not found for: %s" % hero_id)
+			silhouette.texture = null
+			silhouette.visible = false
 	else:
 		# Default fallback
 		print("[EquipmentView] No background defined for hero: %s" % hero_id)
+		silhouette.texture = null
+		silhouette.visible = false
 
 
 func _update_stats_display():
