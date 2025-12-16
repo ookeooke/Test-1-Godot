@@ -9,7 +9,7 @@ class_name FloatingTextManager
 static var active_labels: Array[Label] = []
 
 ## Spawn a floating damage number
-static func spawn_damage_number(value: float, position: Vector2, parent: Node) -> void:
+static func spawn_damage_number(value: float, position: Vector2, parent: Node, color_override: Color = Color(0, 0, 0, 0)) -> void:
 	if not is_instance_valid(parent):
 		return
 
@@ -27,13 +27,18 @@ static func spawn_damage_number(value: float, position: Vector2, parent: Node) -
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.z_index = 100 # Above most things
 	
-	# Color based on damage
-	if value >= 20:
-		label.modulate = Color(1.0, 0.3, 0.3) # Red
-	elif value >= 10:
-		label.modulate = Color(1.0, 0.7, 0.2) # Orange
+	# Color Logic
+	if color_override.a > 0:
+		# Use override if provided (alpha > 0)
+		label.modulate = color_override
 	else:
-		label.modulate = Color(1.0, 1.0, 0.5) # Yellow
+		# Default color based on damage value
+		if value >= 20:
+			label.modulate = Color(1.0, 0.3, 0.3) # Red
+		elif value >= 10:
+			label.modulate = Color(1.0, 0.7, 0.2) # Orange
+		else:
+			label.modulate = Color(1.0, 1.0, 0.5) # Yellow
 		
 	# Add to scene and tracking
 	parent.add_child(label)

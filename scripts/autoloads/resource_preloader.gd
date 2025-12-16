@@ -46,6 +46,17 @@ var _skl_5 = preload("res://resources/skills/ranger/sniper_shot.tres")
 var _thm_1 = preload("res://resources/themes/main_theme.tres")
 var _ui_1 = preload("res://resources/ui/hero_selection_group.tres")
 
+# DYNAMICALLY LOADED SPRITES (Force Export)
+# Map UI Buttons
+var _spr_1 = preload("res://assets/sprites/map/UI/button_gear.png")
+var _spr_2 = preload("res://assets/sprites/map/UI/button_heroes.png")
+var _spr_3 = preload("res://assets/sprites/map/UI/button_towers.png")
+var _spr_4 = preload("res://assets/sprites/map/UI/button_village.png")
+# Hero Backgrounds
+var _spr_5 = preload("res://assets/sprites/heroes/archer/archer_background_final.png")
+# Misc
+# var _spr_6 = preload("res://assets/sprites/...")
+
 func _ready():
 	print("[ResourcePreloader] ☢️ FORCE-LOADED 26 RESOURCES FOR EXPORT ☢️")
 	# Dummy usage to silence warnings and ensure export
@@ -58,5 +69,6 @@ func _ready():
 		_pfx_1, _pfx_2, _pfx_3,
 		_sfx_1, _sfx_2, _sfx_3,
 		_skl_1, _skl_2, _skl_3, _skl_4, _skl_5,
-		_thm_1, _ui_1
+		_thm_1, _ui_1,
+		_spr_1, _spr_2, _spr_3, _spr_4, _spr_5
 	]

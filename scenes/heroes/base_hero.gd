@@ -1207,7 +1207,8 @@ func perform_melee_attack(target) -> bool:
 		if DebugConfig.visual_debug_enabled:
 			print("[ATTACK] ✅ HITTING '%s' for %.1f damage (distance: %.1fpx)" % [target.name, melee_damage, distance_to_target])
 		else:
-			print("[BaseHero] Attacking %s for %.1f damage" % [target.name, melee_damage])
+			pass
+			# print("[BaseHero] Attacking %s for %.1f damage" % [target.name, melee_damage])
 		target.take_damage(melee_damage, self, "hero_melee")
 		return true
 	return false
@@ -1287,6 +1288,7 @@ func _on_tower_exited_aura(body):
 			body.remove_hero_buff(self)
 
 func take_damage(amount):
+	# print("⚔️ [BaseHero] %s took %.1f damage! (Health: %.1f -> %.1f)" % [name, amount, current_health, current_health - max(0, amount - defense)])
 	var damage_taken = max(0, amount - defense)
 	current_health -= damage_taken
 	time_since_last_damage = 0.0
@@ -1295,10 +1297,17 @@ func take_damage(amount):
 	
 	# Visual feedback
 	_flash_hero(Color(1.5, 0.5, 0.5)) # Red flash for damage
-
+	_spawn_damage_number(damage_taken)
 	
 	if current_health <= 0:
 		die()
+
+func _spawn_damage_number(damage: float):
+	"""Spawn floating damage number above hero"""
+	# Use dedicated FloatingTextManager
+	if FloatingTextManager:
+		# Use Red color (Color(1.0, 0.3, 0.3)) and higher offset (-60) to be on top of hero
+		FloatingTextManager.spawn_damage_number(damage, global_position + Vector2(0, -60), get_tree().current_scene, Color(1.0, 0.3, 0.3, 1.0))
 
 func heal(amount):
 	current_health = min(current_health + amount, max_health)

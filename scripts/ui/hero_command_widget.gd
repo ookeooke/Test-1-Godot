@@ -30,7 +30,7 @@ const PASSIVE_ARC_END = 45.0 # Degrees (Bottom Right)
 
 # REFERENCES
 @onready var portrait_button: TextureButton = $PortraitButton
-@onready var health_bar: ProgressBar = $PortraitButton/HealthBar
+@onready var health_bar: Control = $PortraitButton/HealthBar
 @onready var xp_bar: ProgressBar = $PortraitButton/XPBar
 
 @onready var slots_container: Control = $SlotsContainer
@@ -54,8 +54,21 @@ func _ready():
 
 	# Connect portrait click
 	if portrait_button:
+		# Ensure mouse filter is correct
+		portrait_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		
+		# Connect pressed
 		if not portrait_button.pressed.is_connected(_on_portrait_pressed):
 			portrait_button.pressed.connect(_on_portrait_pressed)
+			print("✅ [UnifiedHeroWidget] Connected portrait_button.pressed signal")
+		
+		# Connect gui_input for debugging
+		if not portrait_button.gui_input.is_connected(_on_portrait_gui_input):
+			portrait_button.gui_input.connect(_on_portrait_gui_input)
+
+func _on_portrait_gui_input(event):
+	if event is InputEventMouseButton and event.pressed:
+		print("🖱️ [UnifiedHeroWidget] Portrait received input: ", event.button_index)
 
 func _process(_delta):
 	if current_mode == Mode.COMBAT and is_instance_valid(_hero_reference):
@@ -102,6 +115,7 @@ func setup_hero(hero_node: Node):
 	else:
 		h_id = hero_node.name.to_lower().replace("hero", "")
 		
+	print("🔗 [UnifiedHeroWidget] Linking Hero Node: ", hero_node.name, " (ID: ", h_id, ")")
 	setup(h_id, Mode.COMBAT, hero_node)
 
 func setup(p_hero_id: String, p_mode: Mode = Mode.COMBAT, p_hero_node: Node = null):
@@ -132,8 +146,15 @@ func _update_hud_bars():
 			max_h = _hero_reference.max_health
 			
 		if max_h != null:
-			health_bar.max_value = max_h
-			health_bar.value = cur
+			# ColorRect Implementation Logic
+			var fill_rect = health_bar.get_node_or_null("Fill")
+			if fill_rect:
+				var pct = clamp(cur / max_h, 0.0, 1.0)
+				# Width is parent width (80) minus padding (2) potentially?
+				# Actually, using anchors for height, we just need to set the right anchor or width.
+				# Easier: Set anchor_right to percentage.
+				fill_rect.anchor_right = pct
+				fill_rect.offset_right = -1.0 if pct >= 1.0 else 0.0 # Small tweak if needed, or just anchor.
 		
 	# XP Logic if needed
 	# if xp_bar ...

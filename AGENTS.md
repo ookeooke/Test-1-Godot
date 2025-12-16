@@ -730,6 +730,7 @@ When adding a new **Hero**, **Item**, or **Icon**, you MUST perform these 2 step
 Open `scripts/autoloads/resource_preloader.gd` and add a `preload()` line:
 ```gdscript
 var _new_item = preload("res://resources/items/weapons/new_super_sword.tres")
+var _new_bg = preload("res://assets/sprites/heroes/archer_background.png") # Also textures!
 ```
 *Why? This forces Godot to see the file as a dependency and include it in the .pck file.*
 

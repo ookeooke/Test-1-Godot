@@ -165,7 +165,7 @@ func start_next_wave():
 
 	current_wave += 1
 
-	print("=== WAVE ", current_wave, " STARTING ===")
+	# print("=== WAVE ", current_wave, " STARTING ===")
 	if current_wave_data.wave_name and current_wave_data.wave_name != "":
 		print("Wave Name: ", current_wave_data.wave_name)
 
@@ -180,7 +180,7 @@ func start_next_wave():
 				"spawn_point": enemy_group.spawn_point_index
 			})
 
-	print("Total enemies to spawn: ", current_enemy_groups.size())
+	# print("Total enemies to spawn: ", current_enemy_groups.size())
 
 	# Update UI
 	if wave_label:
@@ -431,7 +431,7 @@ func spawn_enemy():
 	# Check if all enemies have been spawned
 	if current_spawn_index >= current_enemy_groups.size():
 		spawn_timer.stop()
-		print("All enemies spawned for wave ", current_wave)
+		# print("All enemies spawned for wave ", current_wave)
 
 func _on_spawn_timer_timeout():
 	# This gets called every 'spawn_delay' seconds

@@ -98,7 +98,7 @@ func _ready():
 	# This ensures ALL enemies (including manually created test nodes) are detectable
 	add_to_group("enemies")
 
-	print("[BaseEnemy] READY: ", name, " at ", global_position, " | Speed: ", speed)
+	# print("[BaseEnemy] READY: ", name, " at ", global_position, " | Speed: ", speed)
 
 	# Set collision
 	# Layer 1: Default/Enemy (Required for Towers)
@@ -348,6 +348,7 @@ func handle_hero_combat(delta):
 	attack_timer += delta
 	if attack_timer >= attack_cooldown:
 		attack_timer = 0.0
+		# print("[BaseEnemy] %s attacking hero!" % name)
 		if blocking_hero.has_method("take_damage"):
 			# Don't attack dead heroes
 			if blocking_hero.has_method("is_dead") and blocking_hero.is_dead():
