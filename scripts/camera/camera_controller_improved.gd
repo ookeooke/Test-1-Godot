@@ -597,7 +597,9 @@ func handle_touch(event: InputEventScreenTouch):
 		if touch_points.size() == 1:
 			start_drag(event.position)
 			is_pinch_zooming = false
-			get_viewport().set_input_as_handled() # Consume touch to prevent tower placement
+			# REMOVED: get_viewport().set_input_as_handled() - Allow tap to propagate to Hero/World
+			if debug_input:
+				print("[Camera TOUCH] Pointer pressed - starting drag check")
 		# Two fingers - start pinch-zoom
 		elif touch_points.size() == 2:
 			var points = touch_points.values()
@@ -629,7 +631,10 @@ func handle_touch(event: InputEventScreenTouch):
 					get_viewport().set_input_as_handled()
 
 		touch_points.erase(event.index)
-		get_viewport().set_input_as_handled() # Always consume touch releases
+		
+		# Only consume release if we were actually manipulating the camera
+		if is_dragging or is_pinch_zooming:
+			get_viewport().set_input_as_handled()
 
 		if touch_points.is_empty():
 			# If was pinching, add cooldown to prevent accidental taps
@@ -651,9 +656,12 @@ func handle_touch_drag(event: InputEventScreenDrag):
 	touch_points[event.index] = event.position
 
 	# Single finger drag
-	if touch_points.size() == 1 and is_dragging:
-		update_drag(event.position)
-		get_viewport().set_input_as_handled() # Consume drag input
+	if touch_points.size() == 1:
+		update_drag(event.position) # Update drag (checks threshold)
+		
+		# Only consume drag input if we are actually past the threshold
+		if is_dragging:
+			get_viewport().set_input_as_handled()
 	# Two finger pinch-zoom
 	elif touch_points.size() == 2 and is_pinch_zooming:
 		update_pinch_zoom()
