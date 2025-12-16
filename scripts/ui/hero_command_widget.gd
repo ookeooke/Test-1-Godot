@@ -52,9 +52,44 @@ func _ready():
 	if hero_id != "":
 		setup(hero_id, current_mode)
 
+	# Connect portrait click
+	if portrait_button:
+		if not portrait_button.pressed.is_connected(_on_portrait_pressed):
+			portrait_button.pressed.connect(_on_portrait_pressed)
+
 func _process(_delta):
 	if current_mode == Mode.COMBAT and is_instance_valid(_hero_reference):
 		_update_hud_bars()
+
+## ============================================
+## INTERACTION
+## ============================================
+
+func _on_portrait_pressed():
+	print("🔘 [UnifiedHeroWidget] Portrait clicked for: ", hero_id)
+	if _hero_reference and is_instance_valid(_hero_reference):
+		# Create a visual bounce effect
+		var tween = create_tween()
+		tween.tween_property(portrait_button, "scale", Vector2(0.9, 0.9), 0.05)
+		tween.tween_property(portrait_button, "scale", Vector2(1.0, 1.0), 0.05)
+		
+		# Select the hero
+		if _hero_reference.has_method("select"):
+			print("  -> Calling hero.select()")
+			_hero_reference.select()
+		
+		# Emit signal for managers
+		if _hero_reference.has_signal("hero_selected"):
+			_hero_reference.hero_selected.emit(_hero_reference)
+
+func set_selected(is_selected: bool):
+	"""Called by HeroManager to update visual selection state"""
+	if not portrait_button: return
+	
+	if is_selected:
+		portrait_button.modulate = Color(1.3, 1.3, 1.3) # Highlight
+	else:
+		portrait_button.modulate = Color.WHITE
 
 ## COMPATIBILITY METHOD for HeroSpot
 func setup_hero(hero_node: Node):
@@ -87,9 +122,18 @@ func setup(p_hero_id: String, p_mode: Mode = Mode.COMBAT, p_hero_node: Node = nu
 func _update_hud_bars():
 	if not _hero_reference: return
 	
-	if health_bar and "current_health" in _hero_reference and "max_health" in _hero_reference:
-		health_bar.max_value = _hero_reference.max_health
-		health_bar.value = _hero_reference.current_health
+	# Relaxed check: "max_health" property with getter sometimes fails 'in' check
+	if health_bar and "current_health" in _hero_reference:
+		var cur = _hero_reference.current_health
+		var max_h = _hero_reference.get("max_health") # Use get() for computed properties safety
+		
+		# Fallback if get() returns null (shouldn't happen for BaseHero)
+		if max_h == null and "max_health" in _hero_reference:
+			max_h = _hero_reference.max_health
+			
+		if max_h != null:
+			health_bar.max_value = max_h
+			health_bar.value = cur
 		
 	# XP Logic if needed
 	# if xp_bar ...

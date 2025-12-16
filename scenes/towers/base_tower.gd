@@ -489,6 +489,40 @@ func draw_range_circle():
 		range_indicator.color = Color(0.3, 0.5, 1.0, 0.3)
 
 # ============================================
+# RANGE PREVIEW SYSTEM
+# ============================================
+
+var range_preview_indicator: Polygon2D = null
+
+func show_range_preview(preview_radius: float):
+	"""Show a secondary ghost range circle to preview upgrade range"""
+	
+	if not range_preview_indicator:
+		# Create indicator if it doesn't exist
+		range_preview_indicator = Polygon2D.new()
+		range_preview_indicator.name = "RangePreviewIndicator"
+		add_child(range_preview_indicator)
+		# Use a distinct color (e.g., Green tint for upgrade)
+		range_preview_indicator.color = Color(0.2, 1.0, 0.2, 0.3)
+		range_preview_indicator.z_index = 100 # FORCE ON TOP for debugging
+	
+	# Draw the circle for the new radius
+	var points = []
+	var steps = 64
+	for i in range(steps + 1):
+		var angle = i * TAU / steps
+		points.append(Vector2(cos(angle), sin(angle)) * preview_radius)
+	
+	range_preview_indicator.polygon = points
+	range_preview_indicator.visible = true
+
+func hide_range_preview():
+	"""Hide the ghost range preview"""
+	if range_preview_indicator:
+		range_preview_indicator.visible = false
+
+
+# ============================================
 # INTERACTION
 # ============================================
 

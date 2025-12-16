@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/units/soldier_unit.tscn" id="2_soldier_unit"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_range"]
+resource_local_to_scene = true
 radius = 250.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_click"]

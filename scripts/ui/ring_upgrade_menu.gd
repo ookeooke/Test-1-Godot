@@ -644,6 +644,11 @@ func _enter_preview_mode(button_id: String):
 				preview_stats = tower.get_upgrade_stats()
 				_update_center_stats()
 				_update_button_preview_visual(button_id, "CONFIRM")
+				
+				# Show range preview on map if range is changing
+				if preview_stats.has("range") and tower.has_method("show_range_preview"):
+					tower.show_range_preview(preview_stats["range"])
+
 
 		"sell":
 			_update_button_preview_visual(button_id, "CONFIRM")
@@ -684,6 +689,10 @@ func _confirm_action(button_id: String):
 	match button_id:
 		"upgrade":
 			if not is_max_level:
+				# Hide range preview before upgrading
+				if tower.has_method("hide_range_preview"):
+					tower.hide_range_preview()
+					
 				upgrade_selected.emit(tower)
 				# Menu will auto-close after upgrade in PlacementManager
 
@@ -703,6 +712,10 @@ func _confirm_action(button_id: String):
 		_:
 			# Generic path button handler (cannon_path, mortar_path, inferno_path, frost_path, defense_path, offense_path, etc.)
 			if button_id.ends_with("_path"):
+				# Hide range preview before upgrading
+				if tower.has_method("hide_range_preview"):
+					tower.hide_range_preview()
+					
 				_handle_path_button_confirm(button_id)
 			# Targeting modes
 			elif button_id in ["first", "last", "close", "strong", "weak"]:
@@ -733,6 +746,10 @@ func _cancel_preview():
 
 	# Update stats
 	_update_center_stats()
+	
+	# Hide range preview
+	if tower and is_instance_valid(tower) and tower.has_method("hide_range_preview"):
+		tower.hide_range_preview()
 
 func _update_button_preview_visual(button_id: String, confirm_text: String):
 	"""Update button to show preview/confirm state"""
@@ -796,6 +813,10 @@ func _handle_path_button_preview(button_id: String):
 	# Get preview stats from tower
 	if tower.has_method("get_upgrade_stats"):
 		preview_stats = tower.get_upgrade_stats(internal_name)
+		
+		# Show range preview on map if range is changing
+		if preview_stats.has("range") and tower.has_method("show_range_preview"):
+			tower.show_range_preview(preview_stats["range"])
 
 	_update_center_stats()
 	_update_button_preview_visual(button_id, "CONFIRM")

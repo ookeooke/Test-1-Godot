@@ -414,7 +414,7 @@ func spawn_enemy():
 		else:
 			enemy.path_follower = path_follower
 
-		print("[WaveManager] Spawned ", enemy_type, " on ", selected_path.name, " (Index: ", spawn_index, ")")
+		# print("[WaveManager] Spawned ", enemy_type, " on ", selected_path.name, " (Index: ", spawn_index, ")")
 	
 	# Connect death signal with enemy reference binding
 	if enemy.has_signal("enemy_died"):

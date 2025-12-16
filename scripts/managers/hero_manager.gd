@@ -41,8 +41,15 @@ func connect_existing_heroes():
 			hero_button.set_hero(spawned_heroes[0])
 
 func connect_hero_button():
-	"""Find and connect to the HeroButton in the UI"""
-	# Search for HeroButton in the scene tree
+	"""Find and connect to the HeroButton (or HeroCommandWidget) in the UI"""
+	# 1. Try finding the new UnifiedHeroWidget first (Group-based)
+	var widgets = get_tree().get_nodes_in_group("hero_command_widget")
+	if not widgets.is_empty():
+		hero_button = widgets[0] # Use the first one found
+		print("✅ [HeroManager] Connected to HeroCommandWidget")
+		return
+
+	# 2. Fallback: Search for classic HeroButton in the scene tree
 	var ui_layer = get_tree().get_first_node_in_group("ui")
 	if not ui_layer:
 		# Try to find by path
@@ -50,7 +57,7 @@ func connect_hero_button():
 		if root.has_node("UI/HeroButton"):
 			hero_button = root.get_node("UI/HeroButton")
 		else:
-			print("WARNING: HeroButton not found")
+			print("WARNING: HeroButton/HeroCommandWidget not found")
 	else:
 		if ui_layer.has_node("HeroButton"):
 			hero_button = ui_layer.get_node("HeroButton")

@@ -26,6 +26,10 @@ var stats_popup: HeroStatsPopup = null
 var hero_reference = null # Reference to the actual hero in the game world
 var is_selected = false
 
+# DEBUG STATE
+var last_printed_health = -1.0
+
+
 ## ============================================
 ## INITIALIZATION
 ## ============================================
@@ -155,6 +159,11 @@ func _process(_delta):
 		if "current_health" in hero_reference and "max_health" in hero_reference:
 			var health_percent = (hero_reference.current_health / hero_reference.max_health) * 100.0
 			health_bar.value = health_percent
+			
+			# DEBUG: Log health changes only
+			if abs(hero_reference.current_health - last_printed_health) > 0.1:
+				last_printed_health = hero_reference.current_health
+				print("❤️ [HeroButton] Health updated: %.1f / %.1f (%.1f%%)" % [hero_reference.current_health, hero_reference.max_health, health_percent])
 
 		# Update XP and level
 		_update_xp_display()
@@ -193,33 +202,31 @@ func _update_xp_display():
 
 func _on_button_pressed():
 	"""Called when button is clicked"""
-	print("🔘 HeroButton pressed signal triggered!")
+	print("\n🔘 [HeroButton] CLICKED!")
 
 	if not hero_reference:
-		print("  ⚠ No hero reference set!")
+		print("  ❌ [HeroButton] No hero linked!")
 		return
 
 	if not is_instance_valid(hero_reference):
-		print("  ⚠ Hero reference is invalid!")
+		print("  ❌ [HeroButton] Linked hero is invalid (freed)!")
 		return
 
-	print("  ✓ Hero reference valid: ", hero_reference.name)
+	print("  ✅ [HeroButton] Selecting connected hero: %s" % hero_reference.name)
 
 	# Try to call the hero's select method directly
 	if hero_reference.has_method("select"):
-		print("  ✓ Calling hero.select()")
 		hero_reference.select()
+		print("  -> called hero.select()")
 
 	# Also emit the hero_selected signal for HeroManager
 	if hero_reference.has_signal("hero_selected"):
-		print("  ✓ Emitting hero_selected signal")
 		hero_reference.hero_selected.emit(hero_reference)
-	else:
-		print("  ⚠ Hero doesn't have hero_selected signal")
-
+		print("  -> emitted hero_selected signal")
+	
 	# Update visual state
 	set_selected(true)
-	print("  ✓ Button visual state set to selected")
+
 
 func set_selected(selected: bool):
 	"""Update button visual state when hero is selected/deselected"""

@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://artillery_shell_scene" path="res://scenes/projectiles/artillery_shell.tscn" id="2_projectile"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_range"]
+resource_local_to_scene = true
 radius = 350.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_click"]

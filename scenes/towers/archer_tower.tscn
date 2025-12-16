@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://archer_visuals_l2" path="res://scenes/towers/visuals/archer_visuals_l2.tscn" id="3_visual_l2"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_cbvk8"]
+resource_local_to_scene = true
 radius = 300.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_click"]

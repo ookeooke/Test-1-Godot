@@ -427,7 +427,7 @@ func _set_combat_state_visual(in_combat: bool):
 
 func take_damage(amount: float, damage_source = null, damage_source_type = "unknown"):
 	"""Apply damage to this enemy (reduced by armor)"""
-	print("[BaseEnemy] %s taking damage: %.1f (Armor: %.1f)" % [name, amount, armor])
+	# print("[BaseEnemy] %s taking damage: %.1f (Armor: %.1f)" % [name, amount, armor])
 	# Apply armor reduction
 	var actual_damage = amount * (1.0 - armor)
 	current_health -= actual_damage
