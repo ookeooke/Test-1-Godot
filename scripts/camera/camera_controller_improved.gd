@@ -151,7 +151,7 @@ const PINCH_TAP_COOLDOWN: float = 0.15 # 150ms after pinch ends
 var pinch_cooldown_timer: float = 0.0
 
 # Pinch detection thresholds (DPI-scaled on mobile)
-var min_pinch_distance: float = 30.0 # Fingers must be 30px apart (base value for 160 DPI)
+var min_pinch_distance: float = 20.0 # Fingers must be 20px apart (base value for 160 DPI) - Lowered for better responsiveness
 var min_pinch_change: float = 15.0 # Must change by 15px to register zoom (base value)
 var pinch_dead_zone: float = 5.0 # Ignore changes < 5px - jitter filter (base value)
 
@@ -662,10 +662,29 @@ func handle_touch_drag(event: InputEventScreenDrag):
 		# Only consume drag input if we are actually past the threshold
 		if is_dragging:
 			get_viewport().set_input_as_handled()
-	# Two finger pinch-zoom
-	elif touch_points.size() == 2 and is_pinch_zooming:
-		update_pinch_zoom()
-		get_viewport().set_input_as_handled() # Consume pinch drag input
+	# Two finger pinch-zoom (or start pinch)
+	elif touch_points.size() == 2:
+		# If already pinching, update it
+		if is_pinch_zooming:
+			update_pinch_zoom()
+			get_viewport().set_input_as_handled()
+			
+		# If NOT pinching yet, check if we SHOULD start (late initiation)
+		else:
+			var points = touch_points.values()
+			var distance = points[0].distance_to(points[1])
+			
+			if distance >= min_pinch_distance:
+				is_dragging = false
+				is_pinch_zooming = true
+				last_pinch_distance = distance
+				tap_start_time = 0.0
+				
+				if debug_input:
+					print("[Camera PINCH] Started (Late/Drag) - distance: ", distance)
+					
+				# Consume this input now that we are pinching
+				get_viewport().set_input_as_handled()
 
 # ============================================
 # DRAG FUNCTIONS
