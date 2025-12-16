@@ -378,11 +378,11 @@ func _calculate_preview_stats():
 
 	preview_stats = {
 		"damage": current_damage,
-		"damage_bonus": damage_bonus,
+		"damage_delta": damage_bonus,
 		"attack_speed": current_attack_speed,
-		"attack_speed_bonus": attack_speed_bonus,
+		"attack_speed_delta": attack_speed_bonus,
 		"range": current_range,
-		"range_bonus": range_bonus
+		"range_delta": range_bonus
 	}
 
 func _update_stats_with_preview():
@@ -402,36 +402,36 @@ func _update_stats_with_preview():
 
 	# ARCHER TOWER PREVIEW
 	var damage = preview_stats.get("damage", tower.damage)
-	var damage_bonus = preview_stats.get("damage_bonus", 0)
+	var damage_delta = preview_stats.get("damage_delta", 0)
 	var attack_speed = preview_stats.get("attack_speed", tower.attack_speed)
-	var attack_speed_bonus = preview_stats.get("attack_speed_bonus", 0.0)
+	var attack_speed_delta = preview_stats.get("attack_speed_delta", 0.0)
 	var range_val = preview_stats.get("range", tower.range_radius)
-	var range_bonus = preview_stats.get("range_bonus", 0)
+	var range_delta = preview_stats.get("range_delta", 0)
 
 	# Build stats text with green bonuses (or red penalties)
 	var stats_text = ""
 
 	# Damage line
-	if damage_bonus > 0:
-		stats_text += "Damage: %d [color=green]+%d[/color]\n" % [damage, damage_bonus]
-	elif damage_bonus < 0:
-		stats_text += "Damage: %d [color=red]%d[/color]\n" % [damage, damage_bonus]
+	if damage_delta > 0:
+		stats_text += "Damage: %d [color=green]+%d[/color]\n" % [damage, damage_delta]
+	elif damage_delta < 0:
+		stats_text += "Damage: %d [color=red]%d[/color]\n" % [damage, damage_delta]
 	else:
 		stats_text += "Damage: %d\n" % damage
 
 	# Attack Speed line
-	if attack_speed_bonus > 0:
-		stats_text += "Attack Speed: %.1f/s [color=green]+%.1f/s[/color]\n" % [attack_speed, attack_speed_bonus]
-	elif attack_speed_bonus < 0:
-		stats_text += "Attack Speed: %.1f/s [color=red]%.1f/s[/color]\n" % [attack_speed, attack_speed_bonus]
+	if attack_speed_delta > 0:
+		stats_text += "Attack Speed: %.1f/s [color=green]+%.1f/s[/color]\n" % [attack_speed, attack_speed_delta]
+	elif attack_speed_delta < 0:
+		stats_text += "Attack Speed: %.1f/s [color=red]%.1f/s[/color]\n" % [attack_speed, attack_speed_delta]
 	else:
 		stats_text += "Attack Speed: %.1f/s\n" % attack_speed
 
 	# Range line
-	if range_bonus > 0:
-		stats_text += "Range: %d [color=green]+%d[/color]" % [range_val, range_bonus]
-	elif range_bonus < 0:
-		stats_text += "Range: %d [color=red]%d[/color]" % [range_val, range_bonus]
+	if range_delta > 0:
+		stats_text += "Range: %d [color=green]+%d[/color]" % [range_val, range_delta]
+	elif range_delta < 0:
+		stats_text += "Range: %d [color=red]%d[/color]" % [range_val, range_delta]
 	else:
 		stats_text += "Range: %d" % range_val
 
