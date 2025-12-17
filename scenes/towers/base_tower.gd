@@ -306,6 +306,16 @@ func upgrade_tower():
 
 	is_under_construction = true
 	current_build_time = 1.5
+	
+	# SHOW SPOT SPRITE DURING UPGRADE
+	# Acts as foundation while construction animation plays
+	if parent_spot:
+		if "sprite" in parent_spot:
+			parent_spot.sprite.visible = true
+		if parent_spot.has_method("play_construction_intro"):
+			print("[BaseTower] Triggering Intro Animation on Spot")
+			parent_spot.play_construction_intro(self)
+		
 	_update_tower_visual()
 
 	if shoot_timer and attack_speed > 0:
@@ -465,6 +475,16 @@ func _on_construction_finished():
 	if construction_instance:
 		construction_instance.queue_free()
 		construction_instance = null
+	
+	# HIDE SPOT SPRITE NOW
+	# Upgrade complete, new tower covers the spot
+	if parent_spot:
+		if "sprite" in parent_spot:
+			parent_spot.sprite.visible = false
+		if parent_spot.has_method("play_construction_complete"):
+			print("[BaseTower] Triggering Complete Animation on Spot")
+			parent_spot.play_construction_complete(self)
+		
 	_update_tower_visual()
 
 func _get_tower_sprite() -> Sprite2D:

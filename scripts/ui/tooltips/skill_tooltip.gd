@@ -18,12 +18,12 @@ class_name SkillTooltip
 @onready var cost_label: Label = $VBox/CostLabel
 
 # Style constants
-const ACTIVE_COLOR = Color("#3D7FFF")  # Blue for active skills
-const PASSIVE_COLOR = Color("#4CAF50")  # Green for passive skills
+const ACTIVE_COLOR = Color("#3D7FFF") # Blue for active skills
+const PASSIVE_COLOR = Color("#4CAF50") # Green for passive skills
 
 # Label pool for stats (reused to prevent GC pressure)
 var _stat_label_pool: Array[Label] = []
-const MAX_STAT_LABELS: int = 12  # Max possible stat lines
+const MAX_STAT_LABELS: int = 12 # Max possible stat lines
 
 
 func _ready():
@@ -31,10 +31,17 @@ func _ready():
 	_apply_style()
 
 	# Pre-create label pool (prevent GC pressure from dynamic creation)
+	# Pre-create label pool
+	if vbox:
+		vbox.add_theme_constant_override("separation", 2) # Tighter vertical spacing for main elements
+
+	if stats_container:
+		stats_container.add_theme_constant_override("separation", 0) # No gap between stat lines
+
 	for i in range(MAX_STAT_LABELS):
 		var label = Label.new()
-		label.add_theme_font_size_override("font_size", 12)
-		label.add_theme_color_override("font_color", Color.WHITE)
+		label.add_theme_font_size_override("font_size", 11) # Slightly smaller font for stats
+		label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 1.0)) # Slightly dimmer than headers
 		label.visible = false
 		stats_container.add_child(label)
 		_stat_label_pool.append(label)
@@ -192,7 +199,7 @@ func _get_category_name(category: HeroSkillData.SkillCategory) -> String:
 func _apply_style():
 	"""Apply visual style to tooltip panel"""
 	var stylebox = StyleBoxFlat.new()
-	stylebox.bg_color = Color("#1A1A1AE6")  # Dark semi-transparent
+	stylebox.bg_color = Color("#1A1A1AE6") # Dark semi-transparent
 	stylebox.border_width_left = 2
 	stylebox.border_width_right = 2
 	stylebox.border_width_top = 2
@@ -202,9 +209,9 @@ func _apply_style():
 	stylebox.corner_radius_top_right = 4
 	stylebox.corner_radius_bottom_left = 4
 	stylebox.corner_radius_bottom_right = 4
-	stylebox.content_margin_left = 12
-	stylebox.content_margin_right = 12
-	stylebox.content_margin_top = 10
-	stylebox.content_margin_bottom = 10
+	stylebox.content_margin_left = 8
+	stylebox.content_margin_right = 8
+	stylebox.content_margin_top = 6
+	stylebox.content_margin_bottom = 6
 
 	add_theme_stylebox_override("panel", stylebox)

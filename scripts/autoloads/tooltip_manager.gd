@@ -228,6 +228,9 @@ func _show_item_tooltip(item: ItemInstance, anchor_node: Control, hero_id: Strin
 	if _show_request_id != my_request_id:
 		return # Cancelled - don't show tooltip
 
+	# Reset size to minimum to fit new content (auto-height)
+	_tooltip_instance.reset_size()
+
 	# Show with fade-in
 	_tooltip_instance.visible = true
 	_tooltip_instance.modulate = Color(1, 1, 1, 0)
@@ -310,6 +313,9 @@ func _show_skill_tooltip(skill_data: HeroSkillData, anchor_node: Control, hero_i
 	# Final cancellation check after positioning (in case hide was called during positioning)
 	if _show_request_id != my_request_id:
 		return # Cancelled - don't show tooltip
+
+	# Reset size to minimum to fit new content (auto-height)
+	_skill_tooltip_instance.reset_size()
 
 	# Show with fade-in
 	_skill_tooltip_instance.visible = true

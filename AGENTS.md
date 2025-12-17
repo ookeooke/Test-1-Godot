@@ -277,6 +277,8 @@ Tiered drop rates:
 
 ---
 
+---
+
 ## 🏰 Tower Upgrade Architecture
 
 ### Split Path System (Level 3 → 4)
@@ -293,6 +295,23 @@ Towers branch into two distinct paths at Level 3. This is handled by the `RingUp
    ```
 3. **Path Methods**: Must implement `choose_path_a()` and `choose_path_b()` returning `bool`.
 4. **Stats**: `TowerData` must have `path_a_path` and `path_b_path` entries for Level 4+.
+
+### Construction & Visuals Sync (CRITICAL)
+To ensure construction animations match variable build times (e.g., 0.5s or 10.0s), we use a **Split Animation Pattern**:
+
+1. **Responsibility:**
+   - `TowerSpot.gd`: Handles visual effects ("Intro Puff", "Foundation", "Completion Flash").
+   - `BaseTower.gd`: Handles the actual build timer and state.
+
+2. **The Flow:**
+   - **Start:** `BaseTower` (or placement logic) calls `parent_spot.play_construction_intro()`.
+   - **Wait:** `BaseTower` runs its timer (showing the crate/progress bar).
+   - **End:** `BaseTower` calls `parent_spot.play_construction_complete()` explicitly when finished.
+
+3. **Visibility Rule (Foundation):**
+   - The `TowerSpot` sprite (dirt mound) **MUST remain visible** during the entire construction phase.
+   - **NEVER** hide the sprite inside `TowerSpot.gd`.
+   - `BaseTower` is responsible for hiding the spot sprite ONLY when construction is fully complete (`_on_construction_finished`).
 
 ---
 

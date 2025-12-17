@@ -8,7 +8,7 @@ script = ExtResource("1")
 skill_id = "ranger_sniper_shot"
 skill_name = "Sniper Shot"
 icon = ExtResource("2")
-description = "Charge a powerful shot that deals massive damage to a single target. Longer charge = more damage. Can execute low-HP enemies.\n\nMin Damage: 200-400% | Max Damage (3s): 500-1200%\nExecute Threshold: <10-20% HP | Cooldown: {cooldown}s\n\nAttribute Scaling: MIGHT +50% max dmg/15pts, AGILITY -0.2s charge/10pts"
+description = "Min Damage: 200-400% | Max Damage (3s): 500-1200%\nExecute Threshold: <10-20% HP | Cooldown: {cooldown}s\n\nAttribute Scaling: MIGHT +50% max dmg/15pts, AGILITY -0.2s charge/10pts"
 skill_type = 1
 category = 0
 unlock_cost = 500

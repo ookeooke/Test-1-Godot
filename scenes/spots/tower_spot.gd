@@ -69,7 +69,7 @@ func place_tower(tower_scene: PackedScene):
 	# This ensures tower's _ready() and collision detection use the correct position
 	# Setting position after add_child() causes timing issues where get_overlapping_bodies()
 	# checks from the wrong position (0,0 relative to parent)
-	tower.position = Vector2.ZERO  # Position relative to this spot (spot is already at correct position)
+	tower.position = Vector2.ZERO # Position relative to this spot (spot is already at correct position)
 
 	# Start tower invisible and small for build animation
 	tower.scale = Vector2.ZERO
@@ -84,47 +84,60 @@ func place_tower(tower_scene: PackedScene):
 	current_tower = tower
 	has_tower = true
 
-	sprite.visible = false
+	# Note: sprite.visible is NOT set to false here anymore.
+	# We interpret the spot sprite as the "foundation" during construction.
+	# It is hidden at the END of _play_build_animation.
 
 	# Disable clicking on this spot now that tower is here
 	if click_area:
 		click_area.input_pickable = false
 
 	# Play quick build animation (instant gameplay, visual polish)
-	_play_build_animation(tower)
+	play_construction_intro(tower)
 
 	# Camera effects: focus on new tower (shake disabled)
 	# var camera = get_viewport().get_camera_2d()
 	# CameraEffects.medium_shake(camera)  # Disabled - adjust in inspector if needed
 	# CameraEffects.focus_on_tower(camera, tower)  # Disabled - no auto-focus
 
-func _play_build_animation(tower: Node2D):
-	"""Kingdom Rush style multi-stage construction animation"""
-	# Tower is fully functional immediately (no construction time)
-	# This is just a visual effect - total duration ~0.85 seconds
-
+func play_construction_intro(tower: Node2D):
+	"""Kingdom Rush style intro: Flash & Foundation"""
+	print("[TowerSpot] 🏗️ Playing Construction Intro for %s" % tower.name)
 	# STAGE 1: Initial Flash & Foundation (0.15s)
 	_play_construction_flash()
 	await _play_foundation_stage(tower)
+	
+	# NOTE: We stop here. The 'Construction Loop' is handled by BaseTower's ConstructionSite.
 
-	# STAGE 2: Build-up with construction particles (0.5s)
-	await _play_construction_stage(tower)
-
-	# STAGE 3: Completion flash and bounce (0.2s)
+func play_construction_complete(tower: Node2D):
+	"""Stage 4: Completion flash and bounce"""
+	print("[TowerSpot] ✨ Playing Construction Complete for %s" % tower.name)
+	
+	# CRITICAL FIX: Ensure tower is fully visible/solid before playing completion
+	# (In case the Intro left it desaturated/transparent)
+	tower.modulate = Color(1, 1, 1, 1)
+	tower.scale = Vector2.ONE
+	
 	await _play_completion_stage(tower)
+	
+	# NOTE: We DO NOT hide sprite.visible here anymore.
+	# BaseTower._on_construction_finished() will handle hiding the spot.
+
+# Legacy / Internal helper
+# _play_construction_stage is skipped in the sync model as BaseTower handles the "loop".
 
 func _play_construction_flash():
 	"""Stage 1: Initial bright flash when construction starts"""
 	var flash = ColorRect.new()
 	add_child(flash)
-	flash.position = Vector2(-30, -30)
+	flash.position = Vector2(-30, -30) # Centered on 60x60
 	flash.size = Vector2(60, 60)
-	flash.color = Color(1.0, 1.0, 0.8, 0.8)  # Bright yellow-white
+	flash.color = Color(1.2, 1.2, 1.0, 1.0) # OVERBRIGHT (HDR) for extra pop
 	flash.modulate.a = 0.0
 
 	var tween = create_tween()
-	tween.tween_property(flash, "modulate:a", 0.8, 0.05)
-	tween.tween_property(flash, "modulate:a", 0.0, 0.1)
+	tween.tween_property(flash, "modulate:a", 1.0, 0.05).set_ease(Tween.EASE_OUT)
+	tween.tween_property(flash, "modulate:a", 0.0, 0.2).set_ease(Tween.EASE_IN)
 
 	await tween.finished
 	flash.queue_free()
@@ -144,7 +157,7 @@ func _play_foundation_stage(tower: Node2D):
 	# Ground dust spreading outward
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
 	particles.emission_sphere_radius = 10.0
-	particles.direction = Vector2(0, 0)  # Radial
+	particles.direction = Vector2(0, 0) # Radial
 	particles.spread = 180.0
 	particles.initial_velocity_min = 40.0
 	particles.initial_velocity_max = 80.0
@@ -161,7 +174,7 @@ func _play_foundation_stage(tower: Node2D):
 	# Tower starts to appear (small scale)
 	tower.scale = Vector2(0.3, 0.3)
 	tower.modulate.a = 0.5
-	tower.modulate = Color(0.8, 0.8, 0.8, 0.5)  # Desaturated during construction
+	tower.modulate = Color(0.8, 0.8, 0.8, 0.5) # Desaturated during construction
 
 	var tween = create_tween()
 	tween.set_parallel(true)
@@ -176,55 +189,7 @@ func _play_foundation_stage(tower: Node2D):
 			particles.queue_free()
 	)
 
-func _play_construction_stage(tower: Node2D):
-	"""Stage 3: Tower builds upward with rising particles (Kingdom Rush style)"""
-	# Create rising construction sparkles
-	var particles = CPUParticles2D.new()
-	add_child(particles)
-	particles.position = Vector2(0, 20)  # Start at base
-	particles.emitting = true
-	particles.amount = 20
-	particles.lifetime = 0.6
-	particles.preprocess = 0.0
-
-	# Rising sparkles and dust
-	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
-	particles.emission_sphere_radius = 15.0
-	particles.direction = Vector2(0, -1)  # Upward
-	particles.spread = 30.0
-	particles.initial_velocity_min = 20.0
-	particles.initial_velocity_max = 50.0
-	particles.gravity = Vector2(0, -20)  # Slight upward float
-	particles.scale_amount_min = 1.5
-	particles.scale_amount_max = 3.0
-	particles.color = Color(1.0, 0.9, 0.6, 0.8)  # Golden sparkles
-
-	# Sparkle gradient
-	var gradient = Gradient.new()
-	gradient.add_point(0.0, Color(1.0, 0.9, 0.6, 1.0))
-	gradient.add_point(0.5, Color(0.9, 0.8, 0.5, 0.6))
-	gradient.add_point(1.0, Color(0.7, 0.6, 0.4, 0.0))
-	particles.color_ramp = gradient
-
-	# Tower grows to full size with construction tint
-	var tween = create_tween()
-	tween.set_parallel(true)
-
-	# Scale up smoothly (building upward effect)
-	tween.tween_property(tower, "scale", Vector2.ONE, 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-
-	# Fade to full opacity and color
-	tween.tween_property(tower, "modulate:a", 1.0, 0.5)
-	tween.tween_property(tower, "modulate", Color(1, 1, 1, 1), 0.5)  # Full color
-
-	await tween.finished
-
-	# Stop particle emission but let existing particles finish
-	particles.emitting = false
-	get_tree().create_timer(particles.lifetime).timeout.connect(func():
-		if is_instance_valid(particles):
-			particles.queue_free()
-	)
+# _play_construction_stage removed (Moved logic to ConstructionSite.tscn)
 
 func _play_completion_stage(tower: Node2D):
 	"""Stage 4: Completion flash, bounce, and celebration particles"""
@@ -233,7 +198,7 @@ func _play_completion_stage(tower: Node2D):
 	add_child(flash)
 	flash.position = Vector2(-40, -40)
 	flash.size = Vector2(80, 80)
-	flash.color = Color(1.0, 0.9, 0.4, 0.0)  # Golden
+	flash.color = Color(1.0, 0.9, 0.4, 0.0) # Golden
 
 	var flash_tween = create_tween()
 	flash_tween.tween_property(flash, "modulate:a", 0.6, 0.1)
@@ -259,7 +224,7 @@ func _play_completion_stage(tower: Node2D):
 	particles.gravity = Vector2(0, 150)
 	particles.scale_amount_min = 2.0
 	particles.scale_amount_max = 4.0
-	particles.color = Color(1.0, 0.95, 0.6, 1.0)  # Bright golden
+	particles.color = Color(1.0, 0.95, 0.6, 1.0) # Bright golden
 
 	var gradient = Gradient.new()
 	gradient.add_point(0.0, Color(1.0, 0.95, 0.6, 1.0))

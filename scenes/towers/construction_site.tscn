@@ -48,3 +48,19 @@ scale_amount_min = 4.0
 scale_amount_max = 8.0
 color = Color(0.9, 0.85, 0.7, 0.8)
 color_ramp = SubResource("Gradient_dust")
+
+[node name="RisingSparkles" type="CPUParticles2D" parent="."]
+position = Vector2(0, 20)
+amount = 20
+lifetime = 0.6
+preprocess = 0.5
+emission_shape = 1
+emission_sphere_radius = 15.0
+direction = Vector2(0, -1)
+spread = 30.0
+gravity = Vector2(0, -20)
+initial_velocity_min = 20.0
+initial_velocity_max = 50.0
+scale_amount_min = 1.5
+scale_amount_max = 3.0
+color = Color(1, 0.9, 0.6, 0.9)
