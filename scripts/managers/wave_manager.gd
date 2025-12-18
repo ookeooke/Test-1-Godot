@@ -672,20 +672,20 @@ func _apply_wave_modifiers(enemy, enemy_type: String):
 		var original_hp = enemy.max_health
 		var new_hp = int(original_hp * hp_mult)
 		enemy.set_max_health(new_hp)
-		print("[WaveManager] Wave %d: %s HP scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_hp, new_hp, hp_mult])
+		# print("[WaveManager] Wave %d: %s HP scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_hp, new_hp, hp_mult])
 	elif hp_mult != 1.0 and "max_health" in enemy:
 		var original_hp = enemy.max_health
 		var new_hp = int(original_hp * hp_mult)
 		enemy.max_health = new_hp
 		enemy.current_health = new_hp # Also update current health
-		print("[WaveManager] Wave %d: %s HP scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_hp, new_hp, hp_mult])
+		# print("[WaveManager] Wave %d: %s HP scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_hp, new_hp, hp_mult])
 
 	# Apply gold multiplier
 	if gold_mult != 1.0 and "gold_reward" in enemy:
 		var original_gold = enemy.gold_reward
 		var new_gold = int(original_gold * gold_mult)
 		enemy.gold_reward = new_gold
-		print("[WaveManager] Wave %d: %s gold scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_gold, new_gold, gold_mult])
+		# print("[WaveManager] Wave %d: %s gold scaled %d → %d (×%.1f)" % [current_wave, enemy_type, original_gold, new_gold, gold_mult])
 
 # ============================================
 # CALL WAVE BUTTON SYSTEM

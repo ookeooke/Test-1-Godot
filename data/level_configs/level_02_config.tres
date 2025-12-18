@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="LevelConfig" load_steps=14 format=3 uid="uid://dn2nfv7tj8nyw"]
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=13 format=3 uid="uid://dn2nfv7tj8nyw"]
 
 [ext_resource type="Script" uid="uid://tkrhowp0yebt" path="res://scripts/resources/level_config.gd" id="1_config"]
 [ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="2_7psdc"]
@@ -12,7 +12,6 @@
 [ext_resource type="Resource" uid="uid://b1tc3w5nmcx8w" path="res://data/levels/level_01/waves/wave_08.tres" id="10_w08"]
 [ext_resource type="Resource" uid="uid://dqynsaug13apf" path="res://data/levels/level_01/waves/wave_09.tres" id="11_w09"]
 [ext_resource type="Resource" uid="uid://c56kt27sh5ush" path="res://data/levels/level_01/waves/wave_10.tres" id="12_w10"]
-[ext_resource type="PackedScene" uid="uid://cfbyucqvikxxd" path="res://scenes/levels/level_02.tscn" id="13_scene"]
 
 [resource]
 script = ExtResource("1_config")
@@ -22,7 +21,7 @@ level_description = "The same forest, but using the simplified Path2D system log
 starting_gold = 250
 starting_lives = 15
 waves = Array[ExtResource("2_7psdc")]([ExtResource("3_w01"), ExtResource("4_w02"), ExtResource("5_w03"), ExtResource("6_w04"), ExtResource("7_w05"), ExtResource("8_w06"), ExtResource("9_w07"), ExtResource("10_w08"), ExtResource("11_w09"), ExtResource("12_w10")])
-level_scene = ExtResource("13_scene")
-camera_bounds = Rect2(-1000, -1000, 4000, 3000)
+level_scene_path = "res://scenes/levels/level_02.tscn"
+camera_bounds = Rect2(-257, -130, 2117, 1290)
 auto_calculate_bounds = false
 bounds_padding = 500.0

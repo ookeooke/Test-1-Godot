@@ -92,8 +92,8 @@ func load_level(level_config: LevelConfig) -> void:
 		push_error("[NavigationManager] Cannot load level: level_config is null")
 		return
 
-	if not level_config.level_scene:
-		# Note: This is expected if level_scene is not set in .tres file
+	if level_config.level_scene_path.is_empty():
+		# Note: This is expected if level_scene_path is not set in .tres file
 		# WorldMapSelect will use fallback loading with direct scene path
 		print("[NavigationManager] Note: Level %s has no scene assigned in config (using fallback)" % level_config.level_id)
 		return
@@ -104,7 +104,7 @@ func load_level(level_config: LevelConfig) -> void:
 	LevelManager.load_level_config(level_config)
 
 	# Navigate to level scene
-	var scene_path = level_config.level_scene.resource_path
+	var scene_path = level_config.level_scene_path
 	_navigate_to(scene_path)
 
 func can_go_back() -> bool:

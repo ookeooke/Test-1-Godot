@@ -339,14 +339,14 @@ func _calculate_final_value(base_value: float, modifiers: Array[StatModifier]) -
 func add_gold(amount: int):
 	gold += amount
 	gold_changed.emit(gold)
-	print("[GameStateManager] Gold: %d (+%d)" % [gold, amount])
+	# print("[GameStateManager] Gold: %d (+%d)" % [gold, amount])
 
 ## Spend gold (returns true if successful)
 func spend_gold(amount: int) -> bool:
 	if gold >= amount:
 		gold -= amount
 		gold_changed.emit(gold)
-		print("[GameStateManager] Gold: %d (-%d)" % [gold, amount])
+		# print("[GameStateManager] Gold: %d (-%d)" % [gold, amount])
 		return true
 	else:
 		print("[GameStateManager] Not enough gold! Have: %d, Need: %d" % [gold, amount])
@@ -356,7 +356,7 @@ func spend_gold(amount: int) -> bool:
 func lose_life(amount: int = 1):
 	lives -= amount
 	lives_changed.emit(lives)
-	print("[GameStateManager] Lives: %d (-%d)" % [lives, amount])
+	# print("[GameStateManager] Lives: %d (-%d)" % [lives, amount])
 
 	if lives <= 0:
 		game_over()

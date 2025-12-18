@@ -24,11 +24,11 @@ class_name LevelConfig
 ##
 ## USAGE PATTERNS:
 ##
-## Pattern 1: Unified Loading (if level_scene is set)
+## Pattern 1: Unified Loading (if level_scene_path is set)
 ##   NavigationManager.load_level(level_config)
-##   └─ Loads scene from level_config.level_scene (PackedScene)
+##   └─ Loads scene from level_config.level_scene_path (String)
 ##
-## Pattern 2: Separated Loading (current - level_scene is NULL)
+## Pattern 2: Separated Loading (current - level_scene_path is empty)
 ##   LevelManager.load_level_config(level_config)  # Init game state
 ##   get_tree().change_scene_to_file(node_data.level_scene_path)  # Load scene
 ##   └─ WorldMapSelectNode2D uses this pattern automatically
@@ -81,8 +81,8 @@ class_name LevelConfig
 # SCENE REFERENCES
 # ============================================
 
-## The actual level scene to load
-@export var level_scene: PackedScene
+## The actual level scene to load (File Path String to avoid cyclic ref)
+@export_file("*.tscn") var level_scene_path: String
 
 # ============================================
 # CAMERA BOUNDS
@@ -91,7 +91,7 @@ class_name LevelConfig
 ## Playable area bounds for camera (auto-calculated from level content if not set)
 ## Format: Rect2(left_x, top_y, width, height)
 ## Example: Rect2(-200, 200, 2000, 800) means playable area from (-200,200) to (1800,1000)
-@export var camera_bounds: Rect2 = Rect2(0, 0, 0, 0)  # Zero rect = auto-calculate
+@export var camera_bounds: Rect2 = Rect2(0, 0, 0, 0) # Zero rect = auto-calculate
 
 ## Should camera bounds be auto-calculated from tower spots and paths?
 @export var auto_calculate_bounds: bool = true

@@ -19,6 +19,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/menu_layer.tscn" id="10_menu_layer"]
 [ext_resource type="PackedScene" uid="uid://levelbg001" path="res://scenes/levels/visuals/level_background.tscn" id="11_background"]
 
+[ext_resource type="Resource" path="res://data/level_configs/level_03_config.tres" id="15_config"]
+
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
 "points": PackedVector2Array(0, 0, 0, 0, -100, 200, 0, 0, 0, 0, 300, 200, 0, 0, 0, 0, 300, 700, 0, 0, 0, 0, 800, 700, 0, 0, 0, 0, 800, 300, 0, 0, 0, 0, 1300, 300, 0, 0, 0, 0, 1300, 800, 0, 0, 0, 0, 1800, 800, 0, 0, 0, 0, 1800, 400, 0, 0, 0, 0, 2200, 400)
@@ -33,6 +35,7 @@ point_count = 2
 
 [node name="TestLevel" type="Node2D"]
 script = ExtResource("1_level_controller")
+level_config = ExtResource("15_config")
 
 [node name="TileMap" type="TileMap" parent="."]
 tile_set = ExtResource("2_dscar")

@@ -273,7 +273,7 @@ const TOWERS = {
 				"damage": 20, # Very high damage per shot
 				"attack_speed": 0.4, # Very slow
 				"range": 350, # Longest range
-				"splash_radius": 0, # No splash at L1 (single target)
+				"splash_radius": 50, # Small splash at L1 (User request)
 				"dps": 8.0, # Lower DPS due to slow speed, but powerful hits
 				"cost_to_next": 90
 			},

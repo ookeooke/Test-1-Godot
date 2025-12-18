@@ -14,48 +14,48 @@ const ITEM_PICKUP_SCENE = preload("res://scenes/items/item_pickup.tscn")
 # Steep rarity curve - bosses drop best loot
 var loot_tables: Dictionary = {
 	"tier1": {
-		"drop_chance": 0.015,  # 1.5% - Very rare drops
+		"drop_chance": 0.015, # 1.5% - Very rare drops
 		"gold_range": [5, 15],
 		"rarity_weights": {
-			ItemData.Rarity.NORMAL: 0.85,   # 85% normal (white) items
-			ItemData.Rarity.MAGIC: 0.14,    # 14% magic (blue) items
-			ItemData.Rarity.RARE: 0.01,     # 1% rare (yellow) items
-			ItemData.Rarity.SET: 0.0,       # No set items from trash mobs
-			ItemData.Rarity.UNIQUE: 0.0     # No unique items from trash mobs
+			ItemData.Rarity.NORMAL: 0.85, # 85% normal (white) items
+			ItemData.Rarity.MAGIC: 0.14, # 14% magic (blue) items
+			ItemData.Rarity.RARE: 0.01, # 1% rare (yellow) items
+			ItemData.Rarity.SET: 0.0, # No set items from trash mobs
+			ItemData.Rarity.UNIQUE: 0.0 # No unique items from trash mobs
 		}
 	},
 	"tier2": {
-		"drop_chance": 0.04,  # 4% - Rare drops
+		"drop_chance": 0.04, # 4% - Rare drops
 		"gold_range": [15, 40],
 		"rarity_weights": {
-			ItemData.Rarity.NORMAL: 0.70,   # 70% normal items
-			ItemData.Rarity.MAGIC: 0.25,    # 25% magic items
-			ItemData.Rarity.RARE: 0.05,     # 5% rare items
-			ItemData.Rarity.SET: 0.0,       # No set items
-			ItemData.Rarity.UNIQUE: 0.0     # No unique items
+			ItemData.Rarity.NORMAL: 0.70, # 70% normal items
+			ItemData.Rarity.MAGIC: 0.25, # 25% magic items
+			ItemData.Rarity.RARE: 0.05, # 5% rare items
+			ItemData.Rarity.SET: 0.0, # No set items
+			ItemData.Rarity.UNIQUE: 0.0 # No unique items
 		}
 	},
 	"tier3": {
-		"drop_chance": 0.10,  # 10% - Uncommon drops
+		"drop_chance": 0.10, # 10% - Uncommon drops
 		"gold_range": [40, 80],
 		"rarity_weights": {
-			ItemData.Rarity.NORMAL: 0.50,   # 50% normal items
-			ItemData.Rarity.MAGIC: 0.35,    # 35% magic items
-			ItemData.Rarity.RARE: 0.14,     # 14% rare items
-			ItemData.Rarity.SET: 0.0,       # No set items
-			ItemData.Rarity.UNIQUE: 0.01    # 1% unique items (very rare!)
+			ItemData.Rarity.NORMAL: 0.50, # 50% normal items
+			ItemData.Rarity.MAGIC: 0.35, # 35% magic items
+			ItemData.Rarity.RARE: 0.14, # 14% rare items
+			ItemData.Rarity.SET: 0.0, # No set items
+			ItemData.Rarity.UNIQUE: 0.01 # 1% unique items (very rare!)
 		}
 	},
 	"boss": {
-		"drop_chance": 1.0,  # 100% guaranteed drop
+		"drop_chance": 1.0, # 100% guaranteed drop
 		"gold_range": [100, 200],
-		"item_count": 1,  # 1 item per boss
+		"item_count": 1, # 1 item per boss
 		"rarity_weights": {
-			ItemData.Rarity.NORMAL: 0.0,    # Bosses never drop normal items
-			ItemData.Rarity.MAGIC: 0.20,    # 20% magic items
-			ItemData.Rarity.RARE: 0.50,     # 50% rare items (HIGH CHANCE!)
-			ItemData.Rarity.SET: 0.05,      # 5% set items
-			ItemData.Rarity.UNIQUE: 0.25    # 25% unique items (HIGH CHANCE!)
+			ItemData.Rarity.NORMAL: 0.0, # Bosses never drop normal items
+			ItemData.Rarity.MAGIC: 0.20, # 20% magic items
+			ItemData.Rarity.RARE: 0.50, # 50% rare items (HIGH CHANCE!)
+			ItemData.Rarity.SET: 0.05, # 5% set items
+			ItemData.Rarity.UNIQUE: 0.25 # 25% unique items (HIGH CHANCE!)
 		}
 	}
 }
@@ -163,7 +163,7 @@ func _spawn_item_pickup(item_id: String, position: Vector2):
 		# Use call_deferred to avoid physics/tree state issues
 		current_scene.call_deferred("add_child", pickup)
 		loot_spawned.emit(item_id, position)
-		print("[LootManager] Spawned item: ", item_data.item_name, " (", item_data.get_rarity_name(), ")")
+		# print("[LootManager] Spawned item: ", item_data.item_name, " (", item_data.get_rarity_name(), ")")
 	else:
 		print("[LootManager] Error: No current scene to spawn loot")
 
@@ -179,7 +179,7 @@ func _spawn_gold_pickup(amount: int, position: Vector2):
 	pending_wave_gold += amount
 
 	gold_spawned.emit(amount, position)
-	print("[LootManager] Enemy dropped %d mission gold (temporary)" % amount)
+	# print("[LootManager] Enemy dropped %d mission gold (temporary)" % amount)
 
 
 ## REMOVED - Enemy gold now goes directly to mission_gold (not persistent gems)
@@ -195,7 +195,7 @@ func collect_wave_loot() -> void:
 
 	# Items remain in pending_wave_loot for victory screen distribution
 	if items_pending > 0 or gold_collected > 0:
-		print("[LootManager] Wave complete: %d items pending, %d mission gold earned this wave" % [items_pending, gold_collected])
+		pass # print("[LootManager] Wave complete: %d items pending, %d mission gold earned this wave" % [items_pending, gold_collected])
 
 
 ## Add item to pending wave loot (for auto-collect at wave end)
@@ -307,7 +307,7 @@ func distribute_pending_loot_to_inventory(hero_id: String = "") -> Dictionary:
 			uuid = HeroInventoryManager.add_item_instance_to_hero(
 				hero_id,
 				loot_data.item_id,
-				0,  # upgrade_level (default 0 for new loot)
+				0, # upgrade_level (default 0 for new loot)
 				rolled_affixes
 			)
 
@@ -319,7 +319,7 @@ func distribute_pending_loot_to_inventory(hero_id: String = "") -> Dictionary:
 			# 🆕 UUID SYSTEM: Generate UUID for item instance
 			uuid = InventoryManager.add_item_instance(
 				loot_data.item_id,
-				0,  # upgrade_level (default 0 for new loot)
+				0, # upgrade_level (default 0 for new loot)
 				rolled_affixes
 			)
 

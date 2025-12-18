@@ -114,7 +114,7 @@ func load_level_config(level_config: LevelConfig, campaign: CampaignData = null,
 
 	# Note: level_scene is optional in separated architecture
 	# If NULL, caller is responsible for loading the scene separately
-	if not level_config.level_scene:
+	if level_config.level_scene_path.is_empty():
 		print("[LevelManager] Note: Level '%s' uses separated loading (scene path in LevelNodeData)" % level_config.level_id)
 		print("[LevelManager] Initializing game state only - caller must load scene separately")
 		current_level = level_config
@@ -135,7 +135,7 @@ func load_level_config(level_config: LevelConfig, campaign: CampaignData = null,
 	level_loaded.emit(level_config)
 
 	# Load the level scene
-	get_tree().change_scene_to_packed(level_config.level_scene)
+	get_tree().change_scene_to_file(level_config.level_scene_path)
 
 ## Get level by ID from any campaign
 func get_level_by_id(level_id: String) -> LevelConfig:

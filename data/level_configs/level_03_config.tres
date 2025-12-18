@@ -1,18 +1,17 @@
-[gd_resource type="Resource" script_class="LevelConfig" load_steps=14 format=3]
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=13 format=3 uid="uid://bnnyhreth84gc"]
 
 [ext_resource type="Script" uid="uid://tkrhowp0yebt" path="res://scripts/resources/level_config.gd" id="1_config"]
 [ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="2_7psdc"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_01.tres" id="3_w01"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_02.tres" id="4_w02"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_03.tres" id="5_w03"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_04.tres" id="6_w04"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_05.tres" id="7_w05"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_06.tres" id="8_w06"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_07.tres" id="9_w07"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_08.tres" id="10_w08"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_09.tres" id="11_w09"]
-[ext_resource type="Resource" path="res://data/levels/level_03/waves/wave_10.tres" id="12_w10"]
-[ext_resource type="PackedScene" path="res://scenes/levels/level_03.tscn" id="13_scene"]
+[ext_resource type="Resource" uid="uid://c8i1gdganc8ll" path="res://data/levels/level_03/waves/wave_01.tres" id="3_w01"]
+[ext_resource type="Resource" uid="uid://scmkj458x1yk" path="res://data/levels/level_03/waves/wave_02.tres" id="4_w02"]
+[ext_resource type="Resource" uid="uid://sy373nu56jjs" path="res://data/levels/level_03/waves/wave_03.tres" id="5_w03"]
+[ext_resource type="Resource" uid="uid://cfsruu8yoln8d" path="res://data/levels/level_03/waves/wave_04.tres" id="6_w04"]
+[ext_resource type="Resource" uid="uid://bsrmlo7ssq1cl" path="res://data/levels/level_03/waves/wave_05.tres" id="7_w05"]
+[ext_resource type="Resource" uid="uid://cg4uq7yalpjq" path="res://data/levels/level_03/waves/wave_06.tres" id="8_w06"]
+[ext_resource type="Resource" uid="uid://rekoq7r3nf0a" path="res://data/levels/level_03/waves/wave_07.tres" id="9_w07"]
+[ext_resource type="Resource" uid="uid://bcvpmmrdx6rbb" path="res://data/levels/level_03/waves/wave_08.tres" id="10_w08"]
+[ext_resource type="Resource" uid="uid://dxb66ato2abhw" path="res://data/levels/level_03/waves/wave_09.tres" id="11_w09"]
+[ext_resource type="Resource" uid="uid://dlqrflxuppjkt" path="res://data/levels/level_03/waves/wave_10.tres" id="12_w10"]
 
 [resource]
 script = ExtResource("1_config")
@@ -20,9 +19,8 @@ level_id = "level_03"
 level_name = "Troll's Bridge"
 level_description = "A longer, winding path leading to the Troll domains. Heavier resistance expected."
 starting_gold = 600
-starting_lives = 20
 waves = Array[ExtResource("2_7psdc")]([ExtResource("3_w01"), ExtResource("4_w02"), ExtResource("5_w03"), ExtResource("6_w04"), ExtResource("7_w05"), ExtResource("8_w06"), ExtResource("9_w07"), ExtResource("10_w08"), ExtResource("11_w09"), ExtResource("12_w10")])
-level_scene = ExtResource("13_scene")
-camera_bounds = Rect2(-1000, -1000, 4000, 3000)
+level_scene_path = "res://scenes/levels/level_03.tscn"
+camera_bounds = Rect2(-300, -200, 2400, 1400)
 auto_calculate_bounds = false
 bounds_padding = 500.0

@@ -178,6 +178,12 @@ func _on_hero_button_pressed(hero_id: String, _data):
 func _on_deploy_pressed():
 	if selected_hero_id == "": return
 
+	# Capture tree reference EARLY, before any state changes potentially remove us from tree
+	var tree = get_tree()
+	if not tree:
+		push_error("[LevelLoadoutScreen] CRITICAL: No SceneTree found at start of deploy!")
+		return
+
 	print("[LevelLoadoutScreen] Deploying to %s with %s on %s difficulty" % [
 		target_level_id, selected_hero_id, selected_difficulty
 	])
@@ -191,6 +197,11 @@ func _on_deploy_pressed():
 	var level_config = LevelManager.get_level_by_id(target_level_id)
 	if level_config:
 		LevelManager.load_level_config(level_config, null, selected_difficulty)
+		
+		# MANUAL SCENE CHANGE REQUIRED for separated architecture
+		if not level_config.level_scene_path.is_empty():
+			print("[LevelLoadoutScreen] Transitioning to scene: %s" % level_config.level_scene_path)
+			tree.change_scene_to_file(level_config.level_scene_path)
 	else:
 		# Fallback to quick_load_level if available
 		push_warning("[LevelLoadoutScreen] Could not find level config, using fallback")

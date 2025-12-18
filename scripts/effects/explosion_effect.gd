@@ -72,11 +72,13 @@ func _draw():
 	# 1. Central Flash (fades out quickly)
 	if progress < 0.3:
 		var flash_alpha = 1.0 - (progress / 0.3)
-		draw_circle(Vector2.ZERO, radius * 0.8 * ease_out, flash_color * flash_alpha)
+		# Slightly larger flash relative to radius for impact
+		draw_circle(Vector2.ZERO, radius * 0.9 * ease_out, flash_color * flash_alpha)
 	
 	# 2. Expanding Shockwave (Ring)
 	var ring_radius = radius * ease_out
-	var ring_width = radius * 0.2 * (1.0 - progress)
+	# Thicker ring for better visibility on small explosions
+	var ring_width = max(2.0, radius * 0.25) * (1.0 - progress)
 	var ring_color = color
 	ring_color.a = 1.0 - progress # Fade out
 	

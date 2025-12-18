@@ -1,3 +1,4 @@
+@tool
 extends Node2D
 
 # Level Controller - Handles level-specific input like pause
@@ -10,8 +11,8 @@ extends Node2D
 # 4. inventory_panel - Closes inventory (only if visible and not paused)
 
 ## Optional: LevelConfig resource for this level (defines camera bounds, waves, etc.)
-# NOTE: Removed @export to prevent cyclic dependency with LevelConfig (which references this scene)
-var level_config: LevelConfig
+## Cyclic dependency is resolved by using string paths in LevelConfig
+@export var level_config: LevelConfig
 
 @onready var wave_manager = $WaveManager if has_node("WaveManager") else null
 @onready var dual_panel_screen = $DualPanelScreen if has_node("DualPanelScreen") else null
@@ -19,23 +20,37 @@ var level_config: LevelConfig
 
 
 func _ready():
+	# Editor visual debugging
+	if Engine.is_editor_hint():
+		queue_redraw()
+		return
+
 	# Load config dynamically if not set by LevelManager (e.g. F6 testing)
-	if LevelManager.current_level:
+	if LevelManager and LevelManager.current_level:
 		level_config = LevelManager.current_level
 	else:
-		# Fallback: Load default config for this level
-		# Use load() to avoid cyclic dependency at parse time
-		level_config = load("res://data/level_configs/level_01_config.tres")
+		# Auto-detect config based on scene filename (e.g. "level_02.tscn" -> "level_02_config.tres")
+		var scene_filename = scene_file_path.get_file().get_basename()
+		var auto_config_path = "res://data/level_configs/%s_config.tres" % scene_filename
+		
+		if ResourceLoader.exists(auto_config_path):
+			level_config = load(auto_config_path)
+			print("[LevelController] 🔌 Auto-loaded matching config: %s" % auto_config_path)
+		else:
+			# Fallback: Load default config if specific one doesn't exist
+			level_config = load("res://data/level_configs/level_01_config.tres")
+			print("[LevelController] ⚠️ No specific config found for '%s', using default level_01_config" % scene_filename)
 	
 	# Ensure GameState is initialized (fixes 0 gold on restart)
-	if GameStateManager and GameStateManager.current_level_config != level_config:
+	if not Engine.is_editor_hint() and GameStateManager and GameStateManager.current_level_config != level_config:
 		print("[LevelController] Initializing GameState (Restart or Direct Load detected)")
 		GameStateManager.initialize_level(level_config)
 		
 	# Set camera bounds from level config
 	_setup_camera_bounds()
+	
 	# Connect WaveManager to DualPanelScreen for combat lockout
-	if wave_manager and dual_panel_screen:
+	if not Engine.is_editor_hint() and wave_manager and dual_panel_screen:
 		wave_manager.combat_started.connect(_on_combat_started)
 		wave_manager.combat_ended.connect(_on_combat_ended)
 		print("[LevelController] Connected WaveManager to DualPanelScreen")
@@ -43,6 +58,31 @@ func _ready():
 	# DEBUG: Print visual hierarchy
 	# _print_visual_debug()
 
+func _process(_delta):
+	# Redraw in editor to reflect config changes immediately
+	if Engine.is_editor_hint():
+		if level_config:
+			queue_redraw()
+
+func _draw():
+	if Engine.is_editor_hint():
+		if level_config:
+			# Draw camera bounds
+			var rect = level_config.camera_bounds
+			if rect.size != Vector2.ZERO:
+				# Draw yellow border
+				draw_rect(rect, Color.YELLOW, false, 4.0)
+				# Draw transparent fill
+				draw_rect(rect, Color(1, 1, 0, 0.1), true)
+				
+				# Draw "Camera Bounds" label if simple font available (optional, skipping for simplicity)
+			else:
+				# Warn about empty bounds
+				draw_rect(Rect2(-100, -100, 200, 200), Color.RED, false, 2.0)
+		else:
+			# Warn about missing config
+			draw_rect(Rect2(-100, -100, 200, 200), Color.RED, false, 2.0)
+			
 func _print_visual_debug():
 	print("\n=== VISUAL DEBUG: SCENE HIERARCHY & DRAW ORDER ===")
 	print("Level: ", name)

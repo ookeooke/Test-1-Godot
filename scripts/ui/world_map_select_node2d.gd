@@ -14,28 +14,109 @@ class_name WorldMapSelectNode2D
 @export var map_bounds := Rect2(-200, -200, 2200, 1400)
 
 # STAR COLOR CONSTANTS (Kingdom Rush style)
+# STAR COLOR CONSTANTS (Kingdom Rush style)
 const STAR_COLORS = {
 	3: Color("#FFD700"), # Gold - 3 stars
 	2: Color("#C0C0C0"), # Silver - 2 stars
 	1: Color("#CD7F32"), # Bronze - 1 star
-	0: Color("#404040") # Gray - Not completed
+	0: Color("#555555") # Gray - Not completed
 }
 
 # Star display constants
 const STAR_EARNED_COLOR = Color("#FFD700") # Gold for earned stars
-const STAR_UNEARNED_COLOR = Color(0.3, 0.3, 0.3, 0.5) # Gray for unearned stars
-const STAR_SIZE = 10.0 # Size of star polygon (radius) - made bigger
-const STAR_SPACING = 25.0 # Horizontal spacing between stars
-const STAR_OFFSET_Y = 35.0 # Vertical offset BELOW button (outside the button rectangle)
+const STAR_UNEARNED_COLOR = Color(0.2, 0.2, 0.2, 0.8) # Dark background for stars
+const STAR_SIZE = 8.0 # Slightly smaller, crisper stars
+const STAR_SPACING = 20.0 # Tighter spacing
+const STAR_OFFSET_Y = 28.0 # Closer to button
 
 # 5-Star system constants (3 normal + 2 special)
-const STAR_HARD_COLOR = Color("#9B30FF") # Purple for hard difficulty
-const STAR_UNLIMITED_COLOR = Color("#FFA500") # Orange/Gold for unlimited difficulty
-const NORMAL_STAR_SIZE = 10.0 # Size of normal stars
-const SPECIAL_STAR_SIZE = 12.0 # Size of special stars (slightly larger)
-const SPECIAL_STAR_SPACING = 22.0 # Spacing between special stars
-const NORMAL_GROUP_OFFSET_X = -35.0 # X offset for normal stars group
-const SPECIAL_GROUP_OFFSET_X = 35.0 # X offset for special stars group
+const STAR_HARD_COLOR = Color("#B040FF") # Brighter Purple
+const STAR_UNLIMITED_COLOR = Color("#FFAA00") # Brighter Orange
+const NORMAL_STAR_SIZE = 8.0
+const SPECIAL_STAR_SIZE = 10.0
+const SPECIAL_STAR_SPACING = 18.0
+const NORMAL_GROUP_OFFSET_X = -28.0
+const SPECIAL_GROUP_OFFSET_X = 28.0
+
+# ... (Previous code remains roughly same until _create_level_button_style)
+
+func _create_level_button_style(stars: int, is_unlocked: bool, state: String) -> StyleBoxFlat:
+	"""Create a professional StyleBoxFlat for level buttons with shadows, borders, and colors"""
+	var style = StyleBoxFlat.new()
+	var base_color = STAR_COLORS.get(stars, STAR_COLORS[0])
+	
+	# PREMIUM FANTASY CARD STYLE
+	# Dark, rich background (Dark Blue/Grey) for high contrast text
+	var bg_color = Color("#1a1a24")
+	
+	if is_unlocked:
+		if stars > 0:
+			# If completed, subtle tint of the medal color
+			bg_color = bg_color.lerp(base_color, 0.05)
+	
+	style.bg_color = bg_color
+
+	# Border - Refined metallic look
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 4 # 3D ledge effect
+
+	# Corner radius - Soft but structural
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_left = 6
+	style.corner_radius_bottom_right = 6
+
+	# Apply state-specific styling
+	match state:
+		"normal":
+			if is_unlocked:
+				style.border_color = Color("#4a4a5a") # Dark Steel default border
+				if stars >= 3:
+					style.border_color = Color("#ffd700") # Gold border for perfect levels
+				elif stars > 0:
+					style.border_color = base_color.lightened(0.1) # Bronze/Silver
+			else:
+				style.border_color = Color("#2a2a35")
+				
+		"hover":
+			style.bg_color = bg_color.lightened(0.15) # Highlight
+			style.border_color = Color.WHITE # Selection highlight
+			style.border_width_left = 2
+			style.border_width_top = 2
+			style.border_width_right = 2
+			style.border_width_bottom = 4 # Maintain shape
+			
+		"pressed":
+			style.bg_color = bg_color.darkened(0.1)
+			style.border_color = Color("#aaaaaa")
+			style.border_width_bottom = 2 # Push effect
+			style.shadow_offset = Vector2(0, 1) # Reduce shadow
+			
+		"disabled":
+			# Locked levels - faded into map
+			style.bg_color = Color(0.1, 0.1, 0.1, 0.8)
+			style.border_color = Color(0.2, 0.2, 0.2, 0.5)
+			style.border_width_bottom = 2
+
+	# Shadow effect (adds float)
+	if is_unlocked:
+		style.shadow_size = 8
+		style.shadow_color = Color(0, 0, 0, 0.6)
+		style.shadow_offset = Vector2(0, 4)
+	else:
+		style.shadow_size = 2
+		style.shadow_color = Color(0, 0, 0, 0.3)
+		style.shadow_offset = Vector2(0, 2)
+
+	# Padding for text
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 8
+	style.content_margin_bottom = 10
+
+	return style
 
 # References
 @onready var camera: Camera2D = $Camera2D
@@ -572,9 +653,9 @@ func _setup_level_nodes():
 
 		# Create styled Button (UI element in world space)
 		var button = Button.new()
-		button.custom_minimum_size = Vector2(150, 50)
+		button.custom_minimum_size = Vector2(160, 55) # Slightly larger plaque
 		button.text = level_data.level_name
-		button.position = Vector2(-75, -25) # Center in parent Node2D
+		button.position = Vector2(-80, -27) # Center in parent Node2D (half of size)
 		button.disabled = not is_unlocked # Disable if locked
 
 		# Apply professional styling based on stars
@@ -588,11 +669,14 @@ func _setup_level_nodes():
 		button.add_theme_stylebox_override("pressed", style_pressed)
 		button.add_theme_stylebox_override("disabled", style_disabled)
 
-		# Font styling
-		button.add_theme_font_size_override("font_size", 16)
+		# Font styling - High Clarity
+		button.add_theme_font_size_override("font_size", 18) # Larger font
 		button.add_theme_color_override("font_color", Color.WHITE)
-		button.add_theme_constant_override("outline_size", 2)
+		button.add_theme_constant_override("outline_size", 4) # Strong outline
 		button.add_theme_color_override("font_outline_color", Color.BLACK)
+		button.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.5))
+		button.add_theme_constant_override("shadow_offset_x", 1)
+		button.add_theme_constant_override("shadow_offset_y", 1)
 
 		# Connect click signal
 		if is_unlocked:
@@ -622,72 +706,6 @@ func _setup_level_nodes():
 
 		# print("Created button for ", level_data.level_name, " at ", level_data.position, " | Unlocked: ", is_unlocked, " | Stars: ", stars)
 
-func _create_level_button_style(stars: int, is_unlocked: bool, state: String) -> StyleBoxFlat:
-	"""Create a professional StyleBoxFlat for level buttons with shadows, borders, and colors"""
-	var style = StyleBoxFlat.new()
-	var base_color = STAR_COLORS.get(stars, STAR_COLORS[0])
-
-	# Background - dark with subtle tint of star color
-	var bg_color = Color(0.08, 0.08, 0.12, 0.95)
-	if is_unlocked:
-		bg_color = bg_color.lerp(base_color, 0.08) # Subtle tint for unlocked levels
-	style.bg_color = bg_color
-
-	# Border - thicker and colored by stars
-	style.border_width_left = 4
-	style.border_width_top = 4
-	style.border_width_right = 4
-	style.border_width_bottom = 6 # Thicker bottom for 3D effect
-
-	# Apply state-specific styling
-	match state:
-		"normal":
-			style.border_color = base_color
-		"hover":
-			style.border_color = base_color.lightened(0.3)
-			style.border_width_left = 5
-			style.border_width_top = 5
-			style.border_width_right = 5
-			style.border_width_bottom = 7
-			style.bg_color = bg_color.lightened(0.1)
-		"pressed":
-			style.border_color = base_color.darkened(0.2)
-			style.bg_color = bg_color.darkened(0.15)
-			# Pressed appears "pushed in" - thinner bottom border
-			style.border_width_bottom = 4
-		"disabled":
-			# Locked levels - gray and darkened
-			style.bg_color = Color(0.1, 0.1, 0.1, 0.7)
-			style.border_color = Color(0.3, 0.3, 0.3, 0.8)
-			style.border_width_left = 3
-			style.border_width_top = 3
-			style.border_width_right = 3
-			style.border_width_bottom = 5
-
-	# Rounded corners for modern look
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-
-	# Shadow effect (adds depth)
-	if is_unlocked:
-		style.shadow_size = 4
-		style.shadow_color = Color(0, 0, 0, 0.7)
-		style.shadow_offset = Vector2(2, 3)
-	else:
-		# Locked levels have minimal shadow
-		style.shadow_size = 2
-		style.shadow_color = Color(0, 0, 0, 0.5)
-		style.shadow_offset = Vector2(1, 2)
-
-	# Padding for text
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-
-	return style
 
 func _create_glow_material(glow_color: Color) -> ShaderMaterial:
 	"""Create a subtle glow shader effect for unlocked level buttons"""
@@ -841,7 +859,7 @@ func _start_level(level_data: LevelNodeData, _difficulty: String):
 func _direct_load_level(level_data: LevelNodeData):
 	# Fallback: Load level config manually and use direct scene navigation
 	var level_config = _get_level_config_for_level_data(level_data)
-	if level_config and level_config.level_scene:
+	if level_config and not level_config.level_scene_path.is_empty():
 		NavigationManager.load_level(level_config)
 	else:
 		if level_config:

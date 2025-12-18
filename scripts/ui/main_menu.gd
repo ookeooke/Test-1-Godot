@@ -32,10 +32,12 @@ func _update_continue_button():
 		continue_button.tooltip_text = "Continue as: " + last_profile
 
 func _on_new_game_pressed():
+	print("[MainMenu] New Game pressed")
 	# Go to profile selection screen (shows 3 slots)
 	get_tree().change_scene_to_file("res://scenes/ui/profile_select.tscn")
 
 func _on_continue_pressed():
+	print("[MainMenu] Continue pressed")
 	# Load the last played profile and go straight to level select
 	var last_profile = SaveManager.get_last_played_profile()
 

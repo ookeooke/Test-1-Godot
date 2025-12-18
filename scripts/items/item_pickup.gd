@@ -10,13 +10,13 @@ class_name ItemPickup
 signal item_collected(item_id: String)
 
 @export var item_id: String = ""
-var rolled_affixes: Dictionary = {}  # Stores the rolled affixes for this item (Diablo 2 style)
+var rolled_affixes: Dictionary = {} # Stores the rolled affixes for this item (Diablo 2 style)
 
 # Collection behavior based on rarity
 enum CollectionMode {
-	AUTO,      # Auto-collect after delay (Common/Uncommon)
-	MANUAL,    # Requires click (Rare+)
-	INSTANT    # Instant auto-collect (Gold/Currency)
+	AUTO, # Auto-collect after delay (Common/Uncommon)
+	MANUAL, # Requires click (Rare+)
+	INSTANT # Instant auto-collect (Gold/Currency)
 }
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -29,8 +29,8 @@ var auto_collect_timer: Timer = null
 var fallback_collect_timer: Timer = null
 
 # Configuration
-const AUTO_COLLECT_DELAY: float = 2.0  # Seconds before auto-collecting common items
-const FALLBACK_TIMEOUT: float = 15.0   # Seconds before rare items auto-collect anyway
+const AUTO_COLLECT_DELAY: float = 2.0 # Seconds before auto-collecting common items
+const FALLBACK_TIMEOUT: float = 15.0 # Seconds before rare items auto-collect anyway
 
 
 func _ready():
@@ -48,7 +48,7 @@ func _ready():
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 
-	print("[ItemPickup] Ready at ", global_position, " | Item: ", item_id, " | Mode: ", CollectionMode.keys()[collection_mode])
+	# print("[ItemPickup] Ready at ", global_position, " | Item: ", item_id, " | Mode: ", CollectionMode.keys()[collection_mode])
 
 
 func load_item_data():
@@ -63,7 +63,7 @@ func load_item_data():
 	if ground_glow:
 		ground_glow.modulate = item_data.get_rarity_color()
 		# Small, subtle glow - scale slightly based on rarity
-		var glow_scale = 0.6 + (item_data.rarity * 0.1)  # 0.6 to 1.0
+		var glow_scale = 0.6 + (item_data.rarity * 0.1) # 0.6 to 1.0
 		ground_glow.scale = Vector2(glow_scale, glow_scale)
 
 	# Determine collection mode based on rarity
@@ -79,17 +79,17 @@ func _setup_collection_mode():
 		ItemData.Rarity.NORMAL:
 			collection_mode = CollectionMode.AUTO
 			_start_auto_collect_timer(AUTO_COLLECT_DELAY)
-			print("[ItemPickup] Normal item - auto-collecting in ", AUTO_COLLECT_DELAY, "s")
+			# print("[ItemPickup] Normal item - auto-collecting in ", AUTO_COLLECT_DELAY, "s")
 
 		ItemData.Rarity.MAGIC:
 			collection_mode = CollectionMode.AUTO
 			_start_auto_collect_timer(AUTO_COLLECT_DELAY)
-			print("[ItemPickup] Magic item - auto-collecting in ", AUTO_COLLECT_DELAY, "s")
+			# print("[ItemPickup] Magic item - auto-collecting in ", AUTO_COLLECT_DELAY, "s")
 
 		ItemData.Rarity.RARE, ItemData.Rarity.SET, ItemData.Rarity.UNIQUE:
 			collection_mode = CollectionMode.MANUAL
 			_start_fallback_timer(FALLBACK_TIMEOUT)
-			print("[ItemPickup] ", item_data.get_rarity_name(), " item - manual click required (", FALLBACK_TIMEOUT, "s timeout)")
+			# print("[ItemPickup] ", item_data.get_rarity_name(), " item - manual click required (", FALLBACK_TIMEOUT, "s timeout)")
 
 
 func _start_auto_collect_timer(delay: float):
@@ -115,15 +115,15 @@ func _start_fallback_timer(timeout: float):
 func _on_auto_collect_timeout():
 	"""Auto-collect common/uncommon items after delay"""
 	if not is_collected:
-		print("[ItemPickup] Auto-collecting: ", item_data.item_name)
-		collect_item(true)  # true = auto-collected
+		# print("[ItemPickup] Auto-collecting: ", item_data.item_name)
+		collect_item(true) # true = auto-collected
 
 
 func _on_fallback_timeout():
 	"""Fallback auto-collect for rare items that weren't clicked"""
 	if not is_collected:
-		print("[ItemPickup] Fallback timeout - auto-collecting rare item: ", item_data.item_name)
-		collect_item(true)  # Auto-collect with timeout
+		# print("[ItemPickup] Fallback timeout - auto-collecting rare item: ", item_data.item_name)
+		collect_item(true) # Auto-collect with timeout
 
 
 func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int):
@@ -138,8 +138,8 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int):
 
 	if is_interact:
 		if not is_collected:
-			print("[ItemPickup] Clicked/Tapped! Collecting: ", item_data.item_name)
-			collect_item(false)  # false = manually clicked/tapped
+			# print("[ItemPickup] Clicked/Tapped! Collecting: ", item_data.item_name)
+			collect_item(false) # false = manually clicked/tapped
 			get_viewport().set_input_as_handled()
 
 
@@ -188,7 +188,7 @@ func collect_item(was_auto: bool = false):
 
 	# Visual/audio feedback
 	var collection_type = "manually" if not was_auto else "automatically"
-	print("[ItemPickup] Collected ", collection_type, ": ", item_data.item_name)
+	# print("[ItemPickup] Collected ", collection_type, ": ", item_data.item_name)
 
 	# Show click feedback effect
 	if has_node("/root/ClickFeedback"):
@@ -225,7 +225,7 @@ func _add_glow_effect():
 func force_collect():
 	"""Force immediate collection (called by wave end cleanup)"""
 	if not is_collected:
-		print("[ItemPickup] Force collecting: ", item_data.item_name)
+		# print("[ItemPickup] Force collecting: ", item_data.item_name)
 		collect_item(true)
 
 
