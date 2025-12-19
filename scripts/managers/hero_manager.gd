@@ -123,20 +123,11 @@ func _unhandled_input(event):
 				print("[HeroManager DEBUG] Left-click - checking target")
 
 			# Get world position
-			var camera = get_viewport().get_camera_2d()
-			if camera:
-				var click_pos = get_viewport().get_mouse_position()
-
-				# WEB FIX: Correct canvas coordinates for web exports
-				var corrected_pos = click_pos
-				if OS.has_feature("web") or OS.get_name() == "Web":
-					# Apply canvas transform correction
-					var canvas_transform = get_viewport().get_canvas_transform()
-					corrected_pos = canvas_transform.affine_inverse() * click_pos
-					if debug_input:
-						print("[HeroManager WEB] Canvas correction: ", click_pos, " -> ", corrected_pos)
-
-				var click_world_pos = camera.get_screen_center_position() + (corrected_pos - get_viewport().get_visible_rect().size / 2) / camera.zoom
+			# FIX: Use get_global_mouse_position() which handles Canvas/Viewport transforms automatically on all platforms (including Web)
+			# The previous manual calculation was double-applying transforms or using incorrect feedback
+			var click_world_pos = get_global_mouse_position()
+			if debug_input:
+				print("[HeroManager] Click World Pos: ", click_world_pos)
 
 				# RAYCAST: Check if clicking on interactive object (tower/hero/item)
 				# This prevents hero movement from blocking tower/hero clicks
