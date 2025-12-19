@@ -56,11 +56,17 @@ func _load_items_from_directory(path: String):
 			# Recursively load from subdirectories
 			if file_name != "." and file_name != "..":
 				_load_items_from_directory(full_path + "/")
-		elif file_name.ends_with(".tres") or file_name.ends_with(".res"):
-			# Load the resource
-			var item_data = load(full_path) as ItemData
-			if item_data != null:
-				_register_item(item_data)
+		else:
+			# Handle exported resources (.remap) - Critical for Web Export!
+			if file_name.ends_with(".remap"):
+				file_name = file_name.trim_suffix(".remap")
+				full_path = full_path.trim_suffix(".remap")
+				
+			if file_name.ends_with(".tres") or file_name.ends_with(".res"):
+				# Load the resource
+				var item_data = load(full_path) as ItemData
+				if item_data != null:
+					_register_item(item_data)
 			else:
 				print("[ItemDatabase] Warning: Failed to load item from: ", full_path)
 
