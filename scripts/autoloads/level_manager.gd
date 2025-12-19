@@ -109,6 +109,11 @@ func load_level_config(level_config: LevelConfig, campaign: CampaignData = null,
 		push_error("LevelManager: Invalid level config!")
 		return
 
+	# CRITICAL: Always reset time scale when loading a new level!
+	# This prevents 4x/8x speed from persisting into the new level.
+	Engine.time_scale = 1.0
+	print("[LevelManager] 🕒 Time scale reset to 1.0")
+
 	# Store current difficulty
 	current_difficulty = difficulty
 

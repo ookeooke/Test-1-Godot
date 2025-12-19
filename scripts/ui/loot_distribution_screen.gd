@@ -159,7 +159,7 @@ func _create_victory_star_display() -> Control:
 	# Main container
 	var star_panel = PanelContainer.new()
 	star_panel.name = "VictoryStarPanel"
-	star_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Allow input to pass through
+	star_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE # Allow input to pass through
 
 	# Gradient background style
 	var style = StyleBoxFlat.new()
@@ -171,7 +171,7 @@ func _create_victory_star_display() -> Control:
 
 	# Inner margin
 	var margin = MarginContainer.new()
-	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Allow input to pass through
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE # Allow input to pass through
 	margin.add_theme_constant_override("margin_left", 20)
 	margin.add_theme_constant_override("margin_right", 20)
 	margin.add_theme_constant_override("margin_top", 15)
@@ -180,7 +180,7 @@ func _create_victory_star_display() -> Control:
 
 	# Horizontal layout
 	var hbox = HBoxContainer.new()
-	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Allow input to pass through
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE # Allow input to pass through
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	hbox.add_theme_constant_override("separation", 30)
 	margin.add_child(hbox)
@@ -194,25 +194,25 @@ func _create_victory_star_display() -> Control:
 
 	# === CENTER: Star Display ===
 	var stars_container = Control.new()
-	stars_container.mouse_filter = Control.MOUSE_FILTER_IGNORE  # Allow input to pass through
+	stars_container.mouse_filter = Control.MOUSE_FILTER_IGNORE # Allow input to pass through
 	stars_container.custom_minimum_size = Vector2(350, 50)
 	hbox.add_child(stars_container)
 
 	# Get star data for all difficulties
 	var normal_stars = SaveManager.get_level_stars(level_id, "normal") if level_id != "" else stars_earned
 
-	var center_x = 175.0  # Center of container
+	var center_x = 175.0 # Center of container
 	var y_pos = 25.0
 
 	# Normal stars (3x) - Left group
 	for i in range(3):
 		var star = Polygon2D.new()
-		star.polygon = _get_star_polygon(12.0)  # Larger for visibility
+		star.polygon = _get_star_polygon(12.0) # Larger for visibility
 		star.name = "NormalStar%d" % i
-		star.modulate = Color(1, 1, 1, 0)  # Start invisible
+		star.modulate = Color(1, 1, 1, 0) # Start invisible
 
 		# Position calculation
-		var x_offset = (i - 1) * 35.0  # -35, 0, +35
+		var x_offset = (i - 1) * 35.0 # -35, 0, +35
 		star.position = Vector2(center_x - 100 + x_offset, y_pos)
 
 		stars_container.add_child(star)
@@ -220,7 +220,7 @@ func _create_victory_star_display() -> Control:
 
 	# Hard star (1x) - Right group
 	var hard_star = Polygon2D.new()
-	hard_star.polygon = _get_star_polygon(14.0)  # Slightly larger
+	hard_star.polygon = _get_star_polygon(14.0) # Slightly larger
 	hard_star.name = "HardStar"
 	hard_star.modulate = Color(1, 1, 1, 0)
 	hard_star.position = Vector2(center_x + 80, y_pos)
@@ -275,7 +275,7 @@ func _get_star_polygon(star_size: float) -> PackedVector2Array:
 func _animate_star_reveal():
 	"""Sequentially reveal stars with pulse effect + confetti"""
 
-	await get_tree().create_timer(0.3).timeout  # Brief delay
+	await get_tree().create_timer(0.3).timeout # Brief delay
 
 	# Get star counts
 	var normal_stars = SaveManager.get_level_stars(level_id, "normal") if level_id != "" else stars_earned
@@ -285,23 +285,23 @@ func _animate_star_reveal():
 	# Reveal normal stars (indices 0-2)
 	for i in range(3):
 		if i < normal_stars:
-			await _reveal_star(i, Color("#FFD700"), 0.15)  # Gold
+			await _reveal_star(i, Color("#FFD700"), 0.15) # Gold
 		else:
-			await _reveal_star(i, Color(0.3, 0.3, 0.3, 0.5), 0.1)  # Gray
+			await _reveal_star(i, Color(0.3, 0.3, 0.3, 0.5), 0.1) # Gray
 
 	await get_tree().create_timer(0.2).timeout
 
 	# Reveal hard star (index 3)
 	if hard_stars > 0:
-		await _reveal_star(3, Color("#9B30FF"), 0.15)  # Purple
+		await _reveal_star(3, Color("#9B30FF"), 0.15) # Purple
 	else:
-		await _reveal_star(3, Color(0.3, 0.3, 0.3, 0.5), 0.1)  # Gray (locked)
+		await _reveal_star(3, Color(0.3, 0.3, 0.3, 0.5), 0.1) # Gray (locked)
 
 	# Reveal unlimited star (index 4)
 	if unlimited_stars > 0:
-		await _reveal_star(4, Color("#FFA500"), 0.15)  # Orange
+		await _reveal_star(4, Color("#FFA500"), 0.15) # Orange
 	else:
-		await _reveal_star(4, Color(0.3, 0.3, 0.3, 0.5), 0.1)  # Gray (locked)
+		await _reveal_star(4, Color(0.3, 0.3, 0.3, 0.5), 0.1) # Gray (locked)
 
 	# Confetti for 3 stars!
 	if normal_stars == 3:
@@ -415,7 +415,7 @@ func _ready():
 	if main_vbox:
 		var star_display = _create_victory_star_display()
 		main_vbox.add_child(star_display)
-		main_vbox.move_child(star_display, 0)  # Move to top
+		main_vbox.move_child(star_display, 0) # Move to top
 		print("[LootDistScreen] ✓ Victory star display created")
 	else:
 		push_error("[LootDistScreen] CRITICAL: MainPanel VBoxContainer not found!")
@@ -436,12 +436,37 @@ func _ready():
 	take_all_button.pressed.connect(_on_take_all_pressed)
 	take_rare_button.pressed.connect(_on_take_rare_pressed)
 	leave_button.pressed.connect(_on_leave_pressed)
+	
+	# NEW: Add Hero Report Button dynamically
+	_create_hero_report_button()
+	
 	print("[LootDistScreen] ✓ Signals connected")
 
 	print("[LootDistScreen] ========== INITIALIZATION COMPLETE ==========")
 
 	# AI AUTO-SKIP: If AI is active, automatically take all loot and leave
 	_check_ai_auto_skip()
+
+
+func _create_hero_report_button():
+	"""Add Hero Report button to the UI"""
+	var btn = Button.new()
+	btn.text = "📊 Hero Report"
+	btn.custom_minimum_size = Vector2(120, 40)
+	btn.pressed.connect(func():
+		var report = HeroPostGameReport.new()
+		var run_data = BalanceTracker.get_current_run_data()
+		report.populate_report(run_data)
+		add_child(report)
+	)
+	
+	# Add to MiddleButtons container if it exists
+	var mid_btns = $MainPanel/MarginContainer/VBoxContainer/ContentHBox/MiddleButtons
+	if mid_btns:
+		mid_btns.add_child(btn)
+	else:
+		# Fallback to main button box
+		$MainPanel/MarginContainer/VBoxContainer/ButtonsHBox.add_child(btn)
 
 
 func _load_heroes():
@@ -672,7 +697,7 @@ func _on_take_all_pressed():
 
 	if not loot_container or not hero_container:
 		push_warning("[LootDistScreen] Cannot take all - containers not initialized")
-		_is_processing_buttons = false  # Release lock before returning
+		_is_processing_buttons = false # Release lock before returning
 		return
 
 	if loot_container.get_item_count() == 0:
@@ -723,7 +748,7 @@ func _on_take_rare_pressed():
 
 	if not loot_container or not hero_container:
 		push_warning("[LootDistScreen] Cannot take rare - containers not initialized")
-		_is_processing_buttons = false  # Release lock before returning
+		_is_processing_buttons = false # Release lock before returning
 		return
 
 	if loot_container.get_item_count() == 0:

@@ -58,6 +58,10 @@ class_name LevelConfig
 ## Starting lives for this level
 @export_range(1, 100, 1) var starting_lives: int = 20
 
+## TOTAL GOLD BUDGET for the level (Distributed among enemies)
+## If > 0, overrides individual enemy gold rewards.
+@export_range(0, 10000, 50) var total_level_gold: int = 0
+
 ## Wave configurations for this level
 @export var waves: Array[WaveData] = []
 

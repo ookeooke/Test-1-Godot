@@ -92,12 +92,13 @@ func _ready():
 	# VALIDATION: Warn if wave count seems wrong
 	if waves.size() == 0:
 		push_error("[WaveManager] ❌ NO WAVES LOADED! Check level configuration!")
-	elif waves.size() < 5:
-		push_warning("[WaveManager] ⚠️ Only %d waves loaded - expected at least 5!" % waves.size())
-	elif waves.size() != 10:
-		push_warning("[WaveManager] ⚠️ Loaded %d waves - expected 10 for level_01!" % waves.size())
+	elif waves.size() < 3:
+		push_warning("[WaveManager] ⚠️ Only %d waves loaded - Is this intentional?" % waves.size())
 	else:
-		print("[WaveManager] ✅ Wave count validated: 16 waves ready!")
+		print("[WaveManager] ✅ Wave count validated: %d waves ready!" % waves.size())
+
+	# NEW: Calculate level gold budget
+	_calculate_level_gold_distribution()
 
 	# Create the spawn timer
 	spawn_timer = Timer.new()
@@ -653,6 +654,11 @@ func _apply_wave_modifiers(enemy, enemy_type: String):
 	if not current_wave_data:
 		return
 
+	# DYNAMIC GOLD: Override base gold reward if level budget is active
+	if calculated_gold_per_enemy > 0 and "gold_reward" in enemy:
+		enemy.gold_reward = calculated_gold_per_enemy
+		# print("[WaveManager] Applied dynamic gold: %d" % calculated_gold_per_enemy)
+
 	# Get HP multiplier (check custom first, then global)
 	var hp_mult = 1.0
 	if current_wave_data.custom_hp_multipliers.has(enemy_type):
@@ -790,6 +796,42 @@ func _on_call_wave_button_pressed():
 
 	# Start next wave immediately
 	start_next_wave()
+
+# ============================================
+# DYNAMIC GOLD DISTRIBUTION (LEVEL BUDGET)
+# ============================================
+
+var calculated_gold_per_enemy: int = 0 # Calculated average gold per enemy
+
+func _calculate_level_gold_distribution():
+	"""Calculate gold per enemy based on LevelConfig.total_level_gold"""
+	if not LevelManager.current_level or LevelManager.current_level.total_level_gold <= 0:
+		return # Use default per-enemy gold values
+
+	var target_total_gold = LevelManager.current_level.total_level_gold
+	var total_enemy_count = 0
+
+	# Count total enemies across all waves
+	for wave in waves:
+		if wave and wave.enemies:
+			for group in wave.enemies:
+				total_enemy_count += group.count
+
+	if total_enemy_count == 0:
+		print("[WaveManager] Warning: No enemies found in level config!")
+		return
+
+	# Calculate gold per enemy (simple flat distribution for now)
+	# Future enhancement: Weighted distribution based on enemy HP/Type
+	calculated_gold_per_enemy = int(float(target_total_gold) / total_enemy_count)
+	
+	# Clamp minimum gold to 1 to avoid frustration
+	if calculated_gold_per_enemy < 1:
+		calculated_gold_per_enemy = 1
+
+	print("[WaveManager] 💰 LEVEL BUDGET ACTIVE: %d Gold / %d Enemies = ~%d Gold/Kill" %
+		[target_total_gold, total_enemy_count, calculated_gold_per_enemy])
+
 
 # ============================================
 # LOOT SYSTEM INTEGRATION

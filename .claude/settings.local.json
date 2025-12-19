@@ -27,7 +27,13 @@
       "Bash(grep:*)",
       "Bash(Select-Object -First 15 \")",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dir \"%LOCALAPPDATA%\\Godot\\app_userdata\")",
+      "Bash(dir \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\" /b)",
+      "Bash(dir \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\" /b)",
+      "Bash(dir \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\balance_debug\" /s /b)",
+      "Bash(dir \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\" /b)",
+      "Bash(dir \"c:\\Users\\ollil\\AppData\\Local\\Godot\\app_userdata\\Test-1-Godot\\saves\" \")"
     ],
     "deny": [],
     "ask": []

@@ -16,38 +16,39 @@ const TOWERS = {
 	"archer": {
 		"name": "Archer Tower",
 		"icon": "🏹",
-		"build_cost": 70, # BALANCE FIX: Was 100g (50% of start gold), now 70g (28% - matches KR1's 26%)
+		"build_cost": 50, # BALANCE: High-DPS Arcade Mode (50g)
 		"type": "ranged_single",
-		"description": "Fast-attacking ranged tower. Choose Damage path for glass cannon DPS or Range path for extended coverage.",
+		"description": "Rapid-fire physical damage. Shreds light enemies.",
 		"scene_path": "res://scenes/towers/archer_tower.tscn",
 
 		"levels": {
 			1: {
-				"damage": 8, # BALANCE: Lowered from 12 to match Kingdom Rush difficulty (KR = 6.5 DPS)
-				"attack_speed": 1.2, # BALANCE: Increased from 1.0 to compensate slightly
-				"range": 280, # BALANCE: Matches Kingdom Rush range exactly
-				"dps": 9.6, # Was 12.0 - Closer to KR's 6.5 DPS
-				"cost_to_next": 60
+				"damage": 40, # ARCADE: Massive buff from 8 -> 40
+				"attack_speed": 1.0, # 1.0s interval = 40 DPS
+				"range": 280,
+				"dps": 40.0,
+				"cost_to_next": 50
 			},
 			2: {
-				"damage": 12, # BALANCE: Was 17 - More gradual scaling
-				"attack_speed": 1.4, # BALANCE: Was 1.3 - Moderate increase
-				"range": 280, # No range increase until Range Path
-				"dps": 16.8, # Was 22.1 - Linear scaling ~75% increase from L1
-				"cost_to_next": 90
+				"damage": 70, # Scaling up
+				"attack_speed": 0.9, # Slightly faster
+				"range": 290,
+				"dps": 77.7,
+				"cost_to_next": 100
 			},
 			3: {
-				"damage": 18, # BALANCE: Was 27 - More balanced progression
-				"attack_speed": 1.6, # Same as before
-				"range": 280, # No range increase until Range Path
-				"dps": 28.8, # Was 43.2 - ~3x L1 instead of 3.6x
-				"cost_to_next": 150 # Path choice cost
+				"damage": 120,
+				"attack_speed": 0.8,
+				"range": 300,
+				"dps": 150.0,
+				"cost_to_next": 150
 			},
 			# Level 4 - Path choice required
 			4: {
 				"damage_path": {
-					"damage": 28, # BALANCE: Was 36 - Glass cannon but not overpowered
-					"attack_speed": 1.8, # BALANCE: Was 2.0 - Toned down speed
+					"damage": 200,
+					"attack_speed": 0.6,
+
 					"range": 280, # Damage path keeps base range
 					"dps": 50.4, # Was 72.0 - Strong but not melting bosses
 					"cost_to_next": 200,

@@ -13,8 +13,20 @@ func _ready():
 
 	# Connect signals
 	retry_button.pressed.connect(_on_retry_pressed)
-	level_select_button.pressed.connect(_on_main_menu_pressed)  # Swapped: middle button → main menu
-	main_menu_button.pressed.connect(_on_level_select_pressed)  # Swapped: bottom button → world map
+	level_select_button.pressed.connect(_on_main_menu_pressed) # Swapped: middle button → main menu
+	main_menu_button.pressed.connect(_on_level_select_pressed) # Swapped: bottom button → world map
+	
+	# NEW: Add Hero Report Button
+	var btn = Button.new()
+	btn.text = "📊 Hero Report"
+	btn.pressed.connect(func():
+		var report = HeroPostGameReport.new()
+		var run_data = BalanceTracker.get_current_run_data()
+		report.populate_report(run_data)
+		add_child(report)
+	)
+	$Panel/VBoxContainer.add_child(btn)
+	$Panel/VBoxContainer.move_child(btn, 1) # Put under "Retry"
 
 func _close_existing_menus():
 	"""Close tower info menus and other UI that might be open"""

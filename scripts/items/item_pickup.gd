@@ -187,7 +187,7 @@ func collect_item(was_auto: bool = false):
 	item_collected.emit(item_id)
 
 	# Visual/audio feedback
-	var collection_type = "manually" if not was_auto else "automatically"
+	var _collection_type = "manually" if not was_auto else "automatically"
 	# print("[ItemPickup] Collected ", collection_type, ": ", item_data.item_name)
 
 	# Show click feedback effect

@@ -1,26 +1,23 @@
-[gd_resource type="Resource" script_class="LevelConfig" load_steps=13 format=3 uid="uid://dn2nfv7tj8nyw"]
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=11 format=3 uid="uid://hjlwk5knq85s"]
 
 [ext_resource type="Script" uid="uid://tkrhowp0yebt" path="res://scripts/resources/level_config.gd" id="1_config"]
-[ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="2_7psdc"]
-[ext_resource type="Resource" uid="uid://cew3vj76fgf52" path="res://data/levels/level_01/waves/wave_01.tres" id="3_w01"]
-[ext_resource type="Resource" uid="uid://efkt5o3e53ax" path="res://data/levels/level_01/waves/wave_02.tres" id="4_w02"]
-[ext_resource type="Resource" uid="uid://dysnkvjcmhmjc" path="res://data/levels/level_01/waves/wave_03.tres" id="5_w03"]
-[ext_resource type="Resource" uid="uid://dqg3kbr3rndat" path="res://data/levels/level_01/waves/wave_04.tres" id="6_w04"]
-[ext_resource type="Resource" uid="uid://d2745vi4fsyp7" path="res://data/levels/level_01/waves/wave_05.tres" id="7_w05"]
-[ext_resource type="Resource" uid="uid://dl5yjjxryjf6p" path="res://data/levels/level_01/waves/wave_06.tres" id="8_w06"]
-[ext_resource type="Resource" uid="uid://efh56h6pps2b" path="res://data/levels/level_01/waves/wave_07.tres" id="9_w07"]
-[ext_resource type="Resource" uid="uid://b1tc3w5nmcx8w" path="res://data/levels/level_01/waves/wave_08.tres" id="10_w08"]
-[ext_resource type="Resource" uid="uid://dqynsaug13apf" path="res://data/levels/level_01/waves/wave_09.tres" id="11_w09"]
-[ext_resource type="Resource" uid="uid://c56kt27sh5ush" path="res://data/levels/level_01/waves/wave_10.tres" id="12_w10"]
+[ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="2_wave_script"]
+[ext_resource type="Resource" path="res://data/levels/level_02/waves/wave_01.tres" id="3_w1"]
+[ext_resource type="Resource" path="res://data/levels/level_02/waves/wave_02.tres" id="4_w2"]
+[ext_resource type="Resource" path="res://data/levels/level_02/waves/wave_03.tres" id="5_w3"]
+[ext_resource type="Resource" path="res://data/levels/level_02/waves/wave_04.tres" id="6_w4"]
+[ext_resource type="Resource" path="res://data/levels/level_02/waves/wave_05.tres" id="7_w5"]
+[ext_resource type="Resource" path="res://data/levels/level_02/waves/wave_06.tres" id="8_w6"]
+[ext_resource type="Resource" path="res://data/levels/level_02/waves/wave_07.tres" id="9_w7"]
+[ext_resource type="Resource" path="res://data/levels/level_02/waves/wave_08.tres" id="10_w8"]
 
 [resource]
 script = ExtResource("1_config")
 level_id = "level_02"
-level_name = "Forest Path (Path2D)"
-level_description = "The same forest, but using the simplified Path2D system logic."
-starting_gold = 250
-starting_lives = 15
-waves = Array[ExtResource("2_7psdc")]([ExtResource("3_w01"), ExtResource("4_w02"), ExtResource("5_w03"), ExtResource("6_w04"), ExtResource("7_w05"), ExtResource("8_w06"), ExtResource("9_w07"), ExtResource("10_w08"), ExtResource("11_w09"), ExtResource("12_w10")])
+level_name = "Forest Path (Arcade Mode)"
+level_description = "High intensity arcade balancing test."
+waves = Array[ExtResource("2_wave_script")]([ExtResource("3_w1"), ExtResource("4_w2"), ExtResource("5_w3"), ExtResource("6_w4"), ExtResource("7_w5"), ExtResource("8_w6"), ExtResource("9_w7"), ExtResource("10_w8")])
+level_index = 2
 level_scene_path = "res://scenes/levels/level_02.tscn"
 camera_bounds = Rect2(-257, -130, 2117, 1290)
 auto_calculate_bounds = false

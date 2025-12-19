@@ -690,6 +690,15 @@ func start_wave(wave_number: int, enemy_composition: Dictionary = {}):
 		"composition": enemy_composition
 	}
 
+	# Snapshot hero stats at start of wave
+	var hero_snapshots = {}
+	for id in tracked_heroes:
+		hero_snapshots[id] = {
+			"damage": tracked_heroes[id].total_damage,
+			"kills": tracked_heroes[id].kills
+		}
+	wave_data[wave_number]["hero_start_stats"] = hero_snapshots
+
 	# print("[BalanceTracker] Wave %d started" % wave_number)
 
 func end_wave(wave_number: int):
@@ -715,7 +724,35 @@ func end_wave(wave_number: int):
 		wave.enemies_leaked += stats.leaked
 		wave.lives_lost += stats.lives_lost
 
-	print("[BalanceTracker] Wave %d ended (%.1fs, %d spawned, %d killed, %d leaked)" % [wave_number, wave.duration, wave.enemies_spawned, wave.enemies_killed, wave.enemies_leaked])
+	# Calculate Hero Performance & MVP for this wave
+	var max_wave_damage = -1.0
+	var mvp_hero_id = ""
+	wave["hero_performance"] = {} # {instance_id: {damage: float, kills: int}}
+
+	var start_stats = wave.get("hero_start_stats", {})
+	
+	for id in tracked_heroes:
+		var current_hero = tracked_heroes[id]
+		var start_hero = start_stats.get(id, {"damage": 0.0, "kills": 0})
+		
+		var damage_dealt = current_hero.total_damage - start_hero.damage
+		var kills_made = current_hero.kills - start_hero.kills
+		
+		wave["hero_performance"][id] = {
+			"damage": damage_dealt,
+			"kills": kills_made,
+			"hero_id": current_hero.hero_id
+		}
+		
+		if damage_dealt > max_wave_damage:
+			max_wave_damage = damage_dealt
+			mvp_hero_id = current_hero.hero_id
+			
+	wave["mvp_hero"] = mvp_hero_id
+	wave["top_wave_damage"] = max_wave_damage
+
+	print("[BalanceTracker] Wave %d ended (%.1fs, %d spawned, %d killed)" % [wave_number, wave.duration, wave.enemies_spawned, wave.enemies_killed])
+	print("[BalanceTracker] 🏆 Wave MVP: %s (%.0f dmg)" % [mvp_hero_id, max_wave_damage])
 
 # ============================================
 # ECONOMY TRACKING

@@ -238,7 +238,7 @@ func _on_tower_selected(tower_id: String):
 		tower_id: Tower ID string (e.g., "archer", "barracks")
 	"""
 	if current_spot:
-		# Load tower scene from TowerData database
+	# Load tower scene from TowerData database
 		var tower_scene = TowerData.get_tower_scene(tower_id)
 
 		if tower_scene == null:
@@ -247,7 +247,19 @@ func _on_tower_selected(tower_id: String):
 			current_spot = null
 			return
 
+		# VALIDATE COST
+		var build_cost = TowerData.get_build_cost(tower_id)
+		if not GameStateManager.spend_gold(build_cost):
+			print("❌ [PlacementManager] Cannot afford tower! Cost: %d" % build_cost)
+			# TODO: Add UI feedback (flash red, sound)
+			close_current_menu()
+			current_spot = null
+			return
+		
+		print("💰 [PlacementManager] Spent %d gold for tower %s" % [build_cost, tower_id])
+
 		# Check if this is a soldier tower and validate placement
+
 		if _is_soldier_tower(tower_scene):
 			if not _can_place_soldier_tower_here(current_spot.global_position):
 				print("❌ Cannot place soldier tower here - not on road!")
@@ -305,19 +317,44 @@ func _on_tower_upgraded(tower):
 
 	# Standard upgrade (level 1→2→3)
 	if tower.has_method("upgrade_tower"):
-		print("🔧 [PlacementManager] Tower has upgrade_tower() method - calling it now...")
-		var upgrade_result = tower.upgrade_tower()
-		print("🔧 [PlacementManager] upgrade_tower() returned: %s" % str(upgrade_result))
-
-		if upgrade_result:
-			print("✅ [PlacementManager] Tower upgraded successfully to level %d" % tower.tower_level)
-			print("🔧 [PlacementManager] Closing menu after upgrade (Kingdom Rush style)...")
-			close_current_menu()
-			print("=== ✅ UPGRADE SUCCESS ===\n")
+		# CRITICAL: CHECK AFFORDABILITY AND SPEND GOLD BEFORE UPGRADING
+		# Tower.upgrade_tower() calculates cost but doesn't deduct it from GameStateManager
+		# 1. Get upgrade cost
+		var upgrade_cost = 0
+		if tower.has_method("get_upgrade_cost"):
+			upgrade_cost = tower.get_upgrade_cost()
 		else:
-			push_error("[PlacementManager] Tower upgrade failed!")
-			print("❌ [PlacementManager] upgrade_tower() returned false!")
-			print("=== ❌ UPGRADE FAILED ===\n")
+			push_warning("[PlacementManager] Tower missing get_upgrade_cost() - assuming free upgrade")
+			
+		# 2. Check affordability
+		if not GameStateManager.can_afford(upgrade_cost):
+			print("❌ [PlacementManager] Cannot afford upgrade! Cost: %d" % upgrade_cost)
+			# Only show UI feedback if not afford
+			# TODO: Flash red or screen shake
+			return
+
+		# 3. Spend Gold
+		if GameStateManager.spend_gold(upgrade_cost):
+			print("💰 [PlacementManager] Spent %d gold for upgrade" % upgrade_cost)
+			
+			# 4. Perform Upgrade
+			print("🔧 [PlacementManager] Calling tower.upgrade_tower()...")
+			var upgrade_result = tower.upgrade_tower()
+			print("🔧 [PlacementManager] upgrade_tower() returned: %s" % str(upgrade_result))
+
+			if upgrade_result:
+				print("✅ [PlacementManager] Tower upgraded successfully to level %d" % tower.tower_level)
+				print("🔧 [PlacementManager] Closing menu after upgrade (Kingdom Rush style)...")
+				close_current_menu()
+				print("=== ✅ UPGRADE SUCCESS ===\n")
+			else:
+				# Refund if upgrade failed for game logic reasons (e.g. max level)
+				GameStateManager.add_gold(upgrade_cost)
+				push_error("[PlacementManager] Tower upgrade failed after payment! Refunded %d gold." % upgrade_cost)
+				print("=== ❌ UPGRADE FAILED (REFUNDED) ===\n")
+		else:
+			print("❌ [PlacementManager] Failed to spend gold (race condition?)")
+			
 	else:
 		print("⚠️ [PlacementManager] Tower does NOT have upgrade_tower() method!")
 		# Fallback for towers without upgrade system

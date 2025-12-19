@@ -116,9 +116,9 @@ script = ExtResource("1_gndxd")
 
 [node name="HealthBar" parent="." instance=ExtResource("2_healthbar")]
 offset_left = -25.0
-offset_top = -5.0
+offset_top = -23.0
 offset_right = 25.0
-offset_bottom = 0.0
+offset_bottom = -18.0
 
 [node name="Shadow" parent="." instance=ExtResource("4_shadow")]
 position = Vector2(0, 20)
@@ -141,12 +141,11 @@ explosiveness = 1.0
 randomness = 0.5
 lifetime_randomness = 0.3
 emission_shape = 1
-emission_sphere_radius = 8.0
+emission_sphere_radius = 5.59
 direction = Vector2(0, -1)
-spread = 180.0
+spread = 33.28
 gravity = Vector2(0, 200)
-initial_velocity_min = 50.0
-initial_velocity_max = 100.0
-scale_amount_min = 2.0
-scale_amount_max = 4.0
+initial_velocity_min = 23.58
+initial_velocity_max = 100.01
+scale_amount_max = 2.0
 color = Color(0.8, 0.1, 0.1, 1)

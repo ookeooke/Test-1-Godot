@@ -341,6 +341,10 @@ func add_gold(amount: int):
 	gold_changed.emit(gold)
 	# print("[GameStateManager] Gold: %d (+%d)" % [gold, amount])
 
+## Check if player can afford cost
+func can_afford(amount: int) -> bool:
+	return gold >= amount
+
 ## Spend gold (returns true if successful)
 func spend_gold(amount: int) -> bool:
 	if gold >= amount:

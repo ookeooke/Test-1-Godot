@@ -33,6 +33,8 @@ var _auto_save_timer: Timer = null
 func _ready():
 	# Ensure save directory exists
 	_ensure_save_directory()
+	# Clean up orphaned backups on startup (silent, low-priority)
+	_cleanup_orphaned_backups_async()
 	# Initialize auto-save timer
 	_setup_auto_save_timer()
 
@@ -67,6 +69,17 @@ func _ensure_save_directory() -> void:
 		if not dir.dir_exists("saves"):
 			dir.make_dir("saves")
 			print("SaveManager: Created saves directory")
+
+func _cleanup_orphaned_backups_async() -> void:
+	"""Run cleanup asynchronously to not block startup"""
+	# Run on next frame to avoid blocking _ready()
+	await get_tree().process_frame
+
+	var result = cleanup_orphaned_backups()
+
+	# Only log if there were orphaned files
+	if result.deleted_count > 0:
+		print("[SaveManager] Startup cleanup: Removed %d orphaned backup file(s)" % result.deleted_count)
 
 func create_new_profile(profile_name: String) -> bool:
 	if profile_name.is_empty():
@@ -599,6 +612,7 @@ func get_stat(stat_name: String) -> float:
 
 func delete_profile(profile_name: String) -> bool:
 	var save_path = SAVE_DIR + profile_name + SAVE_EXTENSION
+	var backup_path = save_path + ".bak"
 
 	if not FileAccess.file_exists(save_path):
 		push_error("SaveManager: Profile not found: ", profile_name)
@@ -608,6 +622,14 @@ func delete_profile(profile_name: String) -> bool:
 	if dir:
 		var error = dir.remove(save_path)
 		if error == OK:
+			# Also delete backup file if it exists
+			if FileAccess.file_exists(backup_path):
+				var backup_error = dir.remove(backup_path)
+				if backup_error == OK:
+					print("SaveManager: Deleted backup file: ", profile_name + ".bak")
+				else:
+					push_warning("SaveManager: Failed to delete backup file (error %d)" % backup_error)
+
 			print("SaveManager: Profile deleted: ", profile_name)
 
 			# Clear current profile if it was deleted
@@ -621,6 +643,59 @@ func delete_profile(profile_name: String) -> bool:
 			return false
 
 	return false
+
+func cleanup_orphaned_backups() -> Dictionary:
+	"""Clean up orphaned .save.bak files that have no matching .save file
+
+	Returns:
+		Dictionary with {deleted_count: int, deleted_files: Array[String], errors: Array[String]}
+	"""
+	var result = {
+		"deleted_count": 0,
+		"deleted_files": [],
+		"errors": []
+	}
+
+	var dir = DirAccess.open(SAVE_DIR)
+	if not dir:
+		result.errors.append("Failed to open save directory")
+		push_error("[SaveManager] Failed to open save directory for cleanup")
+		return result
+
+	# Scan for all .bak files
+	dir.list_dir_begin()
+	var file_name = dir.get_next()
+
+	while file_name != "":
+		# Check if this is a .save.bak file
+		if not dir.current_is_dir() and file_name.ends_with(SAVE_EXTENSION + ".bak"):
+			# Extract the profile name (remove .save.bak)
+			var profile_name = file_name.trim_suffix(SAVE_EXTENSION + ".bak")
+			var save_path = SAVE_DIR + profile_name + SAVE_EXTENSION
+
+			# Check if corresponding .save file exists
+			if not FileAccess.file_exists(save_path):
+				# This is an orphaned backup - delete it
+				var error = dir.remove(file_name)
+				if error == OK:
+					result.deleted_count += 1
+					result.deleted_files.append(file_name)
+					print("[SaveManager] Cleaned up orphaned backup: ", file_name)
+				else:
+					var error_msg = "Failed to delete %s (error %d)" % [file_name, error]
+					result.errors.append(error_msg)
+					push_warning("[SaveManager] " + error_msg)
+
+		file_name = dir.get_next()
+
+	dir.list_dir_end()
+
+	if result.deleted_count > 0:
+		print("[SaveManager] Cleanup complete: Deleted %d orphaned backup(s)" % result.deleted_count)
+	else:
+		print("[SaveManager] Cleanup complete: No orphaned backups found")
+
+	return result
 
 func save_current_profile() -> bool:
 	if not has_current_profile():

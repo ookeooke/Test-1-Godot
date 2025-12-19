@@ -23,8 +23,8 @@ func _ready():
 	custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
 	size = Vector2(BAR_WIDTH, BAR_HEIGHT)
 
-	# Center the bar above parent
-	position = Vector2(-BAR_WIDTH / 2.0, -30)
+	# Center the bar vertically above parent (respect editor Y, center X)
+	position.x = - BAR_WIDTH / 2.0
 
 	# Set z-index to render on top of enemies/heroes
 	z_index = 100
@@ -58,8 +58,8 @@ func show_regeneration(enabled: bool):
 		regen_tween.set_loops()
 
 		# Pulse between green and white (soft, subtle effect)
-		regen_tween.tween_property(fill, "modulate", Color(0.5, 1.0, 0.5), 0.5)  # Fade to green
-		regen_tween.tween_property(fill, "modulate", Color(1.0, 1.0, 1.0), 0.5)  # Fade to white
+		regen_tween.tween_property(fill, "modulate", Color(0.5, 1.0, 0.5), 0.5) # Fade to green
+		regen_tween.tween_property(fill, "modulate", Color(1.0, 1.0, 1.0), 0.5) # Fade to white
 	else:
 		# Stop pulse, return to normal red color
 		if regen_tween:
@@ -67,4 +67,4 @@ func show_regeneration(enabled: bool):
 			regen_tween = null
 
 		if fill:
-			fill.modulate = Color(1, 1, 1)  # White (normal)
+			fill.modulate = Color(1, 1, 1) # White (normal)

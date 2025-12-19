@@ -681,6 +681,11 @@ func _setup_level_nodes():
 		# Connect click signal
 		if is_unlocked:
 			button.pressed.connect(_on_level_button_pressed.bind(level_data))
+			
+			# Connect hover signals for "Juice"
+			button.pivot_offset = button.custom_minimum_size / 2 # Center pivot for scaling
+			button.mouse_entered.connect(_on_level_button_hover_enter.bind(button_node, button))
+			button.mouse_exited.connect(_on_level_button_hover_exit.bind(button_node, button))
 
 		# Add glow effect for unlocked levels (optional)
 		if is_unlocked and stars > 0:
@@ -705,6 +710,43 @@ func _setup_level_nodes():
 		level_buttons.append(button) # Store button for future updates
 
 		# print("Created button for ", level_data.level_name, " at ", level_data.position, " | Unlocked: ", is_unlocked, " | Stars: ", stars)
+
+
+func _on_level_button_hover_enter(node_container: Node2D, _button: Button):
+	"""Animate level button popping up on hover"""
+	# Bring to front
+	node_container.z_index = 100
+	
+	# Scale up the container (so stats scale with it)
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_BACK)
+	
+	# Calculate target scale (considering camera zoom compensation)
+	var base_scale = Vector2.ONE
+	if camera:
+		base_scale = Vector2.ONE / camera.zoom
+		
+	tween.tween_property(node_container, "scale", base_scale * 1.15, 0.15)
+	
+	# Also slightly brighten the specific button modulation? 
+	# No, StyleBox handles color. Scale is enough.
+
+func _on_level_button_hover_exit(node_container: Node2D, _button: Button):
+	"""Animate level button returning to normal"""
+	# Reset Z index (delayed slightly to stay on top during shrink)
+	get_tree().create_timer(0.2).timeout.connect(func(): if is_instance_valid(node_container): node_container.z_index = 0)
+	
+	var tween = create_tween()
+	tween.set_ease(Tween.EASE_OUT)
+	tween.set_trans(Tween.TRANS_CUBIC)
+	
+	# Return to base scale
+	var base_scale = Vector2.ONE
+	if camera:
+		base_scale = Vector2.ONE / camera.zoom
+		
+	tween.tween_property(node_container, "scale", base_scale, 0.15)
 
 
 func _create_glow_material(glow_color: Color) -> ShaderMaterial:

@@ -13,25 +13,26 @@ extends Node
 ## ============================================
 
 # ============================================
-# BALANCE THRESHOLDS
+# ============================================
+# BALANCE THRESHOLDS (UPDATED: ARCADE MODE)
 # ============================================
 
 ## Economy
-const TARGET_GOLD_PER_HP_MIN = 0.10
-const TARGET_GOLD_PER_HP_MAX = 0.15
-const TARGET_GOLD_EFFICIENCY = 0.75  # 75% of available gold should be spent
-const GOLD_STARVATION_THRESHOLD = 50  # Consider player starved below this amount
+const TARGET_GOLD_PER_HP_MIN = 0.02 # 2% (200 HP = 5g)
+const TARGET_GOLD_PER_HP_MAX = 0.05 # 5%
+const TARGET_GOLD_EFFICIENCY = 0.90 # 90% of gold should be spent (Aggressive play)
+const GOLD_STARVATION_THRESHOLD = 25 # Consider player starved below this
 
 ## Towers
-const MIN_TOWER_UPTIME = 0.30  # 30% minimum uptime (towers idle too often below this)
-const MIN_TOWER_ACCURACY = 0.50  # 50% minimum accuracy
-const TOWER_EFFICIENCY_THRESHOLD = 10.0  # Damage per gold spent threshold
+const MIN_TOWER_UPTIME = 0.50 # 50% minimum uptime (Towers should be busy in Arcade)
+const MIN_TOWER_ACCURACY = 0.60 # 60% minimum accuracy
+const TOWER_EFFICIENCY_THRESHOLD = 30.0 # High DPS = High Efficiency target
 
 ## Waves
-const DIFFICULTY_SPIKE_MULTIPLIER = 2.0  # Wave is a spike if 2x harder than previous
-const MAX_LEAK_RATE = 0.10  # 10% leak rate is acceptable
-const TARGET_WAVE_DURATION_MIN = 15.0  # Seconds
-const TARGET_WAVE_DURATION_MAX = 60.0  # Seconds
+const DIFFICULTY_SPIKE_MULTIPLIER = 3.0 # Spikes are larger in Arcade (Wave 1->8 is 15x)
+const MAX_LEAK_RATE = 0.15 # 15% leak rate is acceptable in chaos
+const TARGET_WAVE_DURATION_MIN = 20.0 # Seconds
+const TARGET_WAVE_DURATION_MAX = 90.0 # Seconds (Wave 8 is long)
 
 ## Balance Ratings
 const DIFFICULTY_BALANCED_MIN = 0.8
@@ -344,7 +345,7 @@ func _analyze_waves(run_data: Dictionary) -> Dictionary:
 		var wave = run_data.waves[wave_num]
 
 		# Calculate wave HP (enemies_spawned is a rough proxy for difficulty)
-		var wave_hp_proxy = wave.enemies_spawned * 100  # Rough estimate
+		var wave_hp_proxy = wave.enemies_spawned * 100 # Rough estimate
 
 		# Check for difficulty spikes
 		if i > 0 and previous_wave_hp > 0:
@@ -355,7 +356,7 @@ func _analyze_waves(run_data: Dictionary) -> Dictionary:
 					"wave": wave_num,
 					"ratio": difficulty_ratio
 				})
-				warnings.append("Wave %d is %.1fx harder than Wave %d - difficulty spike detected" % [wave_num, difficulty_ratio, wave_numbers[i-1]])
+				warnings.append("Wave %d is %.1fx harder than Wave %d - difficulty spike detected" % [wave_num, difficulty_ratio, wave_numbers[i - 1]])
 
 		# Check wave duration
 		if wave.duration < TARGET_WAVE_DURATION_MIN:
@@ -420,7 +421,7 @@ func _calculate_win_rate(session_data: Dictionary) -> float:
 
 func _identify_problematic_waves(session_data: Dictionary) -> Array:
 	"""Find waves that cause failures across multiple runs"""
-	var wave_stats = {}  # {wave_number: {attempts: int, failures: int}}
+	var wave_stats = {} # {wave_number: {attempts: int, failures: int}}
 
 	# Aggregate wave data
 	for run in session_data.runs:
@@ -435,7 +436,7 @@ func _identify_problematic_waves(session_data: Dictionary) -> Array:
 
 			# Consider it a failure if lives were lost
 			var wave = run.waves[wave_num]
-			if wave.lives_lost > 2:  # More than 2 lives lost = problematic
+			if wave.lives_lost > 2: # More than 2 lives lost = problematic
 				wave_stats[wave_num].failures += 1
 
 	# Find waves with high failure rates
@@ -444,7 +445,7 @@ func _identify_problematic_waves(session_data: Dictionary) -> Array:
 		var stats = wave_stats[wave_num]
 		var failure_rate = float(stats.failures) / float(stats.attempts)
 
-		if failure_rate > 0.5 and stats.attempts >= 2:  # 50%+ failure rate
+		if failure_rate > 0.5 and stats.attempts >= 2: # 50%+ failure rate
 			problematic.append({
 				"number": wave_num,
 				"attempts": stats.attempts,
