@@ -67,11 +67,17 @@ func _load_heroes_from_directory(path: String):
 			# Recursively load from subdirectories
 			if file_name != "." and file_name != "..":
 				_load_heroes_from_directory(full_path + "/")
-		elif file_name.ends_with(".tres") or file_name.ends_with(".res"):
-			# Load the resource
-			var hero_data = load(full_path) as HeroData
-			if hero_data != null:
-				print("[HeroDatabase] Loaded hero: %s | Portrait Path: %s" % [hero_data.hero_id, hero_data.portrait.resource_path if hero_data.portrait else "NULL"])
+		else:
+			# Handle exported resources (.remap) - Critical for Web Export!
+			if file_name.ends_with(".remap"):
+				file_name = file_name.trim_suffix(".remap")
+				full_path = full_path.trim_suffix(".remap")
+
+			if file_name.ends_with(".tres") or file_name.ends_with(".res"):
+				# Load the resource
+				var hero_data = load(full_path) as HeroData
+				if hero_data != null:
+					print("[HeroDatabase] Loaded hero: %s | Portrait Path: %s" % [hero_data.hero_id, hero_data.portrait.resource_path if hero_data.portrait else "NULL"])
 				_register_hero(hero_data)
 			else:
 				print("[HeroDatabase] Warning: Failed to load hero from: ", full_path)
