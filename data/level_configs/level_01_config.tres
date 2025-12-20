@@ -21,6 +21,6 @@ starting_gold = 250
 starting_lives = 15
 waves = Array[ExtResource("2_7psdc")]([ExtResource("3_w01"), ExtResource("4_w02"), ExtResource("5_w03"), ExtResource("6_w04"), ExtResource("7_w05"), ExtResource("8_w06"), ExtResource("9_w07"), ExtResource("10_w08"), ExtResource("11_w09"), ExtResource("12_w10")])
 level_scene_path = "res://scenes/levels/level_01.tscn"
-camera_bounds = Rect2(-300, -200, 2400, 1400)
+camera_bounds = Rect2(-100, -200, 1980, 1200)
 auto_calculate_bounds = false
 bounds_padding = 500.0
