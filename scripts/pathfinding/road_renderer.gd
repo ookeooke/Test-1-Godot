@@ -379,6 +379,11 @@ func get_road_segments() -> Array[Dictionary]:
 
 func is_point_on_road(point: Vector2, tolerance: float = 20.0) -> bool:
 	"""Check if a point is on the road (useful for tower placement validation)"""
+	# WEB FIX: Lazy-load waypoints if list is empty (handles race conditions where level loads after renderer)
+	if waypoints.is_empty():
+		_update_waypoints()
+		_build_road_segments()
+		
 	for waypoint in waypoints:
 		if waypoint.is_point_in_road_area(point):
 			return true
