@@ -16,15 +16,35 @@ func setup_input_actions():
 	# ============================================
 
 	# Primary click/tap - Used for selecting, clicking UI, interacting
+	# FORCE INTERACT ACTION: Ensure it exists and has Left Click
 	if not InputMap.has_action("interact"):
 		InputMap.add_action("interact")
-		# Mouse left-click
+	
+	# Verify Left Mouse Button presence
+	var has_left_click = false
+	for event in InputMap.action_get_events("interact"):
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			has_left_click = true
+			break
+	
+	if not has_left_click:
 		var mouse_left = InputEventMouseButton.new()
 		mouse_left.button_index = MOUSE_BUTTON_LEFT
+		mouse_left.pressed = true # Important for action matching
 		InputMap.action_add_event("interact", mouse_left)
-		# Touch tap
+		print("✅ [InputSetup] Added missing MOUSE_BUTTON_LEFT to 'interact'")
+
+	# Verify Touch presence
+	var has_touch = false
+	for event in InputMap.action_get_events("interact"):
+		if event is InputEventScreenTouch:
+			has_touch = true
+			break
+	
+	if not has_touch:
 		var touch = InputEventScreenTouch.new()
 		InputMap.action_add_event("interact", touch)
+
 
 	# Secondary click - Used for deselecting, canceling, context menu
 	if not InputMap.has_action("deselect"):
@@ -112,7 +132,7 @@ func setup_input_actions():
 		if not InputMap.has_action(action_name):
 			InputMap.add_action(action_name)
 			var key = InputEventKey.new()
-			key.keycode = KEY_0 + i  # KEY_1 through KEY_9
+			key.keycode = KEY_0 + i # KEY_1 through KEY_9
 			InputMap.action_add_event(action_name, key)
 
 	# ============================================

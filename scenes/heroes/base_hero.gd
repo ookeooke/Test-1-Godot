@@ -543,7 +543,12 @@ func deselect():
 	# if health_bar: health_bar.visible = false
 
 func move_to_position(pos: Vector2):
+	print("🏃 [Hero] move_to_position called to: ", pos, " (Current: ", global_position, ")")
 	set_target_position(pos)
+	
+	# DEBUG: Check state
+	print("   → State set to: WALKING (", State.WALKING, ")")
+	
 	# Play movement sound if available
 	# AudioManager.play("hero_move")
 
@@ -857,11 +862,14 @@ func handle_walking_state(_delta):
 	if distance < 5:
 		home_position = target_position
 		enter_idle_state()
+		print("✅ [Hero] Reached destination")
 	else:
 		var direction = (target_position - global_position).normalized()
 		velocity = direction * movement_speed
 		move_and_slide()
 		update_sprite_direction(target_position)
+		if Engine.get_physics_frames() % 60 == 0:
+			print("🚶 [Hero] Walking... Dist: %.1f Speed: %.1f Vel: " % [distance, movement_speed], velocity)
 
 # ============================================
 # COMBAT HELPERS
