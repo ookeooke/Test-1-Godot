@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/ui/dual_panel_screen.gd" id="1_dual"]
 [ext_resource type="PackedScene" path="res://scenes/ui/flexible_panel.tscn" id="2_panel"]
-[ext_resource type="Texture2D" path="res://assets/ui/inventory/button_calcel.png" id="back_icon"]
+[ext_resource type="Texture2D" path="res://assets/UI/inventory/button_calcel.png" id="back_icon"]
 
 [node name="GearScreenStandalone" type="Control"]
 process_mode = 3

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://coftotd3eioum" path="res://scripts/ui/views/inventory_view.gd" id="1_inventory"]
 [ext_resource type="Script" uid="uid://wjxvey514yc0" path="res://scripts/ui/inventory_grid_container.gd" id="2_grid"]
-[ext_resource type="Texture2D" path="res://assets/ui/inventory/inventory_grid_tile.png" id="3_bg"]
+[ext_resource type="Texture2D" path="res://assets/UI/inventory/inventory_grid_tile.png" id="3_bg"]
 
 [node name="InventoryView" type="Control"]
 layout_mode = 3

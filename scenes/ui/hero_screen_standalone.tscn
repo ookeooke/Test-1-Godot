@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/ui/hero_management_panel.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hero_command_widget.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/skill_pool_grid.tscn" id="3"]
-[ext_resource type="Texture2D" path="res://assets/ui/inventory/button_calcel.png" id="back_icon"]
+[ext_resource type="Texture2D" path="res://assets/UI/inventory/button_calcel.png" id="back_icon"]
 
 [node name="HeroScreenStandalone" type="Control"]
 layout_mode = 3

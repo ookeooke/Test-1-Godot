@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://towers_screen_standalone"]
 
 [ext_resource type="Script" path="res://scripts/ui/towers_screen.gd" id="1_towers"]
-[ext_resource type="Texture2D" path="res://assets/ui/inventory/button_calcel.png" id="back_icon"]
+[ext_resource type="Texture2D" path="res://assets/UI/inventory/button_calcel.png" id="back_icon"]
 
 [node name="TowersScreenStandalone" type="Control"]
 layout_mode = 3
