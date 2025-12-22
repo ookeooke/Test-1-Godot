@@ -11,7 +11,7 @@ extends CharacterBody2D
 signal soldier_died(respawn_time)
 
 # STATES
-enum State {IDLE, MELEE_COMBAT, RETURNING, WALKING}
+enum State {IDLE, INTERCEPT, MELEE_COMBAT, RETURNING, WALKING}
 var current_state = State.IDLE
 
 # STATS
@@ -22,18 +22,20 @@ var current_health = 100.0
 var melee_damage = 10.0
 var melee_range = 100.0
 var melee_attack_speed = 1.0
-var combat_distance = 50.0 # How close to get before attacking (visual improvement)
+var combat_distance = 10.0 # Close combat range
+var intercept_speed_multiplier = 1.5 # Reduced from 3.0 (Too fast!)
 
 # MOVEMENT
-var movement_speed = 120.0
+var movement_speed = 100.0 # Slightly slower base walk
 var home_position = Vector2.ZERO # Tower spawn location
 var flag_position = Vector2.ZERO # Rally point to march to
 var home_offset = Vector2.ZERO # Unique offset for formation
 
 # ENEMY MANAGEMENT
-var max_melee_enemies = 1 # Block only 1 enemy at a time (Kingdom Rush style)
+var max_melee_enemies = 1
 var enemies_in_melee_range = []
-var current_melee_targets = []
+var target_enemy: Node2D = null
+var current_slot_index: int = -1
 
 # TIMERS
 var melee_timer: Timer
@@ -48,10 +50,13 @@ var regen_rate: float = 5.0 # 5 HP per second
 # REFERENCES
 @onready var melee_detection = $MeleeDetection
 @onready var health_bar = $HealthBar
-@onready var sprite = $Sprite2D
+@onready var sprite = $AnimatedSprite2D
 
 # PARENT TOWER
 var parent_tower = null
+
+# ANIMATION STATE
+var current_anim = ""
 
 # ============================================
 # INITIALIZATION
@@ -66,12 +71,12 @@ func _ready():
 	melee_detection.collision_layer = 0
 	melee_detection.collision_mask = 1
 
-	# NOTE: Soldiers are NOT registered with ClickManager (not clickable)
-	# Only the parent tower is clickable
-
 	# Connect signals
 	melee_detection.body_entered.connect(_on_melee_enemy_entered)
 	melee_detection.body_exited.connect(_on_melee_enemy_exited)
+	
+	# Ensure upright (no rotation)
+	rotation = 0
 
 	# Create melee timer
 	melee_timer = Timer.new()
@@ -90,15 +95,28 @@ func _physics_process(delta):
 	# Update regeneration FIRST (Kingdom Rush style)
 	update_regeneration(delta)
 
+	# Handle Facing (Default Sprite faces LEFT)
+	# flip_h = FALSE -> Left
+	# flip_h = TRUE -> Right
+	if abs(velocity.x) > 1.0:
+		sprite.flip_h = velocity.x > 0
+
 	match current_state:
 		State.IDLE:
 			handle_idle_state()
+			_play_animation("idle")
+		State.INTERCEPT:
+			handle_intercept_state(delta)
+			_play_animation("walk")
 		State.MELEE_COMBAT:
 			handle_melee_combat_state()
+			# Attack animation handled in attack timing, or idle if waiting
 		State.RETURNING:
 			handle_returning_state(delta)
+			_play_animation("walk")
 		State.WALKING:
 			handle_walking_state(delta)
+			_play_animation("walk")
 
 	clean_enemy_lists()
 
@@ -107,56 +125,93 @@ func _physics_process(delta):
 # ============================================
 
 func handle_idle_state():
-	# Check for enemies in melee range
-	if not enemies_in_melee_range.is_empty():
-		enter_melee_combat()
-		return
+	# 1. Look for a target to engage
+	var target = find_best_target()
+	if target:
+		# Try to reserve a slot
+		if try_engage_enemy(target):
+			return
 
-	# If not at flag position, walk there
+	# 2. If no target, go to rally point
 	var target_pos = flag_position if flag_position != Vector2.ZERO else home_position
 	if global_position.distance_to(target_pos) > 5:
 		enter_walking_state(target_pos)
+	else:
+		# We are idle at rally point. 
+		# OPTIONAL: Face heavy traffic direction?
+		pass
 
-func handle_melee_combat_state():
-	current_melee_targets = get_melee_targets()
-
-	if current_melee_targets.is_empty():
-		# Unblock ALL enemies when no targets
-		for enemy in enemies_in_melee_range:
-			if is_instance_valid(enemy) and enemy.has_method("unblock"):
-				if enemy.is_blocked and enemy.blocking_hero == self:
-					enemy.unblock()
-
-		# Return to flag position
-		enter_returning_state()
+func handle_intercept_state(_delta):
+	# We have a target and a slot. Charge there!
+	if not is_instance_valid(target_enemy):
+		_disengage_from_combat()
 		return
 
-	# Unblock enemies NOT in the target list (when soldier switches targets)
-	for enemy in enemies_in_melee_range:
-		if is_instance_valid(enemy) and not current_melee_targets.has(enemy):
-			if enemy.has_method("unblock") and enemy.is_blocked and enemy.blocking_hero == self:
-				enemy.unblock()
+	var slot_pos = target_enemy.get_slot_position(current_slot_index) if target_enemy.has_method("get_slot_position") else target_enemy.global_position
+	
+	# Move towards slot
+	var direction = (slot_pos - global_position).normalized()
+	velocity = direction * (movement_speed * intercept_speed_multiplier)
+	move_and_slide()
+	
+	# Face enemy (Sprite Flip only, no rotation)
+	# Default Left: flip if target is to the RIGHT
+	var x_diff = target_enemy.global_position.x - global_position.x
+	if x_diff != 0:
+		sprite.flip_h = x_diff > 0
+	
+	# Check arrival
+	if global_position.distance_to(slot_pos) < 10.0:
+		enter_melee_combat()
 
-	# Block only the target enemy
-	var closest = current_melee_targets[0]
-	if is_instance_valid(closest):
-		look_at(closest.global_position)
+func handle_melee_combat_state():
+	if not is_instance_valid(target_enemy):
+		_disengage_from_combat()
+		return
+		
+	# PEEL OFF CHECK (Kingdom Rush Style)
+	# If a new UNBLOCKED enemy appears, leave this fight to engage them!
+	var potential_target = find_best_target()
+	if potential_target and potential_target != target_enemy:
+		# Only switch if the new target is UNBLOCKED (Priority target)
+		if "is_blocked" in potential_target and not potential_target.is_blocked:
+			# CRITICAL FIX: Only switch if I am NOT the primary blocker for my current target.
+			# If I am the primary blocker, leaving will unblock them, causing an infinite loop.
+			var am_i_primary_blocker = (target_enemy.has_method("block") and target_enemy.blocking_hero == self)
+			
+			if not am_i_primary_blocker:
+				# print("⚔️ [Soldier] PEEL REQUEST: Switching from %s to UNBLOCKED %s" % [target_enemy.name, potential_target.name])
+				_disengage_from_combat()
+				if try_engage_enemy(potential_target):
+					return
+				else:
+					# print("⚔️ [Soldier] PEEL FAILED: Could not engage new target.")
+					pass
+			else:
+				# I am holding the line. I cannot leave.
+				pass
 
-		# COMBAT POSITIONING: Move to combat distance before attacking
-		var distance_to_enemy = global_position.distance_to(closest.global_position)
-		if distance_to_enemy > combat_distance:
-			# Move closer
-			var direction = (closest.global_position - global_position).normalized()
-			velocity = direction * movement_speed
-			move_and_slide()
-		else:
-			# In position - stop moving
-			velocity = Vector2.ZERO
-
-		for enemy in current_melee_targets:
-			if enemy.has_method("set_blocked_by_hero"):
-				if not enemy.is_blocked or enemy.blocking_hero != self:
-					enemy.set_blocked_by_hero(self)
+	# Ensure we stay at the slot (teleport snapping or micro-adjust)
+	# Kingdom Rush units stick to the slot perfectly
+	var slot_pos = target_enemy.get_slot_position(current_slot_index) if target_enemy.has_method("get_slot_position") else target_enemy.global_position
+	
+	if global_position.distance_to(slot_pos) > 5.0:
+		# Micro-adjust to stay in formation (e.g. if enemy was nudged)
+		var direction = (slot_pos - global_position).normalized()
+		velocity = direction * movement_speed
+		move_and_slide()
+	else:
+		velocity = Vector2.ZERO
+		
+	# Ensure enemy stays blocked
+	if target_enemy.has_method("block") and (not target_enemy.is_blocked or target_enemy.blocking_hero != self):
+		target_enemy.block(self)
+		
+	# Face enemy (Sprite Flip only)
+	# Default Left: flip if target is to the RIGHT
+	var x_diff = target_enemy.global_position.x - global_position.x
+	if x_diff != 0:
+		sprite.flip_h = x_diff > 0
 
 func handle_returning_state(_delta):
 	# Calculate MY formation position at rally flag (spread out, not stacked!)
@@ -169,13 +224,14 @@ func handle_returning_state(_delta):
 	if global_position.distance_to(target_pos) < 5:
 		velocity = Vector2.ZERO
 		current_state = State.IDLE
-
-	# Always prioritize combat
-	if not enemies_in_melee_range.is_empty():
-		enter_melee_combat()
+		
+	# Check for targets while returning
+	var target = find_best_target()
+	if target:
+		try_engage_enemy(target)
 
 func handle_walking_state(_delta):
-	# Calculate MY formation position at rally flag (spread out, not stacked!)
+	# Walking to rally point
 	var target_pos = get_rally_formation_position()
 
 	var direction = (target_pos - global_position).normalized()
@@ -186,13 +242,80 @@ func handle_walking_state(_delta):
 		velocity = Vector2.ZERO
 		current_state = State.IDLE
 
-	# Engage enemies while marching
-	if not enemies_in_melee_range.is_empty():
-		enter_melee_combat()
+	# Check for targets while walking
+	var target = find_best_target()
+	if target:
+		try_engage_enemy(target)
+
+# ============================================
+# TACTICAL LOGIC
+# ============================================
+
+func find_best_target() -> Node2D:
+	"""Find visual best target (Prioritize UNBLOCKED > Closest)"""
+	if enemies_in_melee_range.is_empty():
+		return null
+		
+	var best_target = null
+	var best_score = - INF
+	
+	# Anchor to Flag Position (or Home if no flag)
+	var anchor_pos = flag_position if flag_position != Vector2.ZERO else home_position
+	
+	for enemy in enemies_in_melee_range:
+		if not is_instance_valid(enemy): continue
+		if enemy.current_health <= 0: continue
+		
+		# COMBAT LEASH: Ignore enemies too far from the flag/post
+		if anchor_pos.distance_to(enemy.global_position) > 180.0:
+			continue
+		
+		var score = 0.0
+		
+		# PRIORITY 1: Unblocked Enemies (The "Peel Off" Rule)
+		if "is_blocked" in enemy and not enemy.is_blocked:
+			score += 1000.0
+			
+		# PRIORITY 2: Distance to FLAG (Not distance to Self!)
+		# This prevents "Creep" where soldiers chase enemies further and further away.
+		# They will always prioritize enemies closest to the protection point.
+		var dist_to_flag = anchor_pos.distance_to(enemy.global_position)
+		score -= dist_to_flag
+		
+		# TIE BREAKER: If scores are similar, pick the one closer to self (less travel time)
+		var dist_to_self = global_position.distance_to(enemy.global_position)
+		score -= (dist_to_self * 0.1) # Small weight for travel convenience
+		
+		if score > best_score:
+			best_score = score
+			best_target = enemy
+			
+	return best_target
+
+func try_engage_enemy(enemy: Node2D) -> bool:
+	"""Attempt to reserve a slot and charge"""
+	if not is_instance_valid(enemy): return false
+	if not enemy.has_method("request_engagement_slot"): return false
+	
+	var slot = enemy.request_engagement_slot(self)
+	if slot != -1:
+		# Success! We got a slot.
+		target_enemy = enemy
+		current_slot_index = slot
+		enter_intercept_state()
+		return true
+		
+	return false
 
 # ============================================
 # STATE TRANSITIONS
 # ============================================
+
+func enter_intercept_state():
+	current_state = State.INTERCEPT
+	melee_timer.stop()
+	_set_combat_state_visual(true) # Red tint to show aggression
+	# Play 'charge' sound?
 
 func enter_melee_combat():
 	current_state = State.MELEE_COMBAT
@@ -200,8 +323,13 @@ func enter_melee_combat():
 	melee_timer.start()
 	_set_combat_state_visual(true)
 
-	# NEW: Align to formation position around enemy (isometric-friendly)
-	align_to_formation_position()
+	if is_instance_valid(target_enemy):
+		# BLOCK THE ENEMY
+		if target_enemy.has_method("block"):
+			target_enemy.block(self)
+			
+		# IMPACT FX (The "Weight")
+		_spawn_impact_fx()
 
 func enter_returning_state():
 	current_state = State.RETURNING
@@ -209,6 +337,8 @@ func enter_returning_state():
 	_set_combat_state_visual(false)
 
 func enter_walking_state(destination: Vector2):
+	if current_state != State.WALKING:
+		debug_log("State: WALKING")
 	current_state = State.WALKING
 	flag_position = destination
 	melee_timer.stop()
@@ -218,64 +348,15 @@ func enter_walking_state(destination: Vector2):
 # ============================================
 
 func _on_melee_enemy_entered(body):
-	if body.is_in_group("enemy"):
+	if body.is_in_group("enemies"):
 		enemies_in_melee_range.append(body)
 
 func _on_melee_enemy_exited(body):
-	if body.is_in_group("enemy"):
+	if body.is_in_group("enemies"):
 		enemies_in_melee_range.erase(body)
 
 func clean_enemy_lists():
 	enemies_in_melee_range = enemies_in_melee_range.filter(func(e): return is_instance_valid(e))
-
-func get_melee_targets() -> Array:
-	if enemies_in_melee_range.is_empty():
-		return []
-
-	# SMART ASSIGNMENT SYSTEM (Kingdom Rush + dynamic gang-up)
-	var tower_soldiers = get_tower_soldiers()
-	var available_enemies = enemies_in_melee_range.duplicate()
-
-	var num_soldiers = tower_soldiers.size()
-	var num_enemies = available_enemies.size()
-
-	if num_enemies >= num_soldiers:
-		# MORE ENEMIES THAN SOLDIERS: 1v1 assignment
-		# Each soldier gets unique enemy (no gang-up)
-		return assign_unique_enemy(tower_soldiers, available_enemies)
-	else:
-		# MORE SOLDIERS THAN ENEMIES: Gang-up mode
-		# All soldiers attack same enemies (distribute evenly)
-		return assign_gang_up_targets(tower_soldiers, available_enemies)
-
-func assign_unique_enemy(soldiers: Array, enemies: Array) -> Array:
-	"""Each soldier gets a unique enemy (1v1 mode)"""
-	# Find which enemy THIS soldier should fight
-	var my_index = soldiers.find(self)
-	if my_index < 0 or my_index >= enemies.size():
-		return []
-
-	# Sort enemies by distance to tower (prioritize closest threats)
-	enemies.sort_custom(func(a, b):
-		return home_position.distance_to(a.global_position) < home_position.distance_to(b.global_position)
-	)
-
-	# This soldier fights enemy at their index
-	return [enemies[my_index]]
-
-func assign_gang_up_targets(_soldiers: Array, enemies: Array) -> Array:
-	"""All soldiers gang up on closest enemy (or distribute if multiple enemies)"""
-	# Find closest enemy to tower
-	var closest_enemy = enemies[0]
-	var closest_dist = home_position.distance_to(closest_enemy.global_position)
-
-	for enemy in enemies:
-		var dist = home_position.distance_to(enemy.global_position)
-		if dist < closest_dist:
-			closest_enemy = enemy
-			closest_dist = dist
-
-	return [closest_enemy]
 
 # ============================================
 # COMBAT - MELEE
@@ -286,28 +367,45 @@ func _on_melee_timer_timeout():
 		melee_attack()
 
 func melee_attack():
-	current_melee_targets = get_melee_targets()
-
-	if current_melee_targets.is_empty():
+	if not is_instance_valid(target_enemy):
+		_disengage_from_combat()
 		return
 
-	# ATTACK FLASH: Visual feedback when attacking
+	# LEASH CHECK: If we are dragged too far from post, RETREAT!
+	var anchor_pos = flag_position if flag_position != Vector2.ZERO else home_position
+	if global_position.distance_to(anchor_pos) > 200.0:
+		# print("⚔️ [Soldier] LEASH BROKEN! Too far from post. Retreating!")
+		_disengage_from_combat()
+		return
+
+	# ATTACK FLASH
 	_play_attack_flash()
 
-	for enemy in current_melee_targets:
-		if is_instance_valid(enemy) and enemy.has_method("take_damage"):
-			enemy.take_damage(melee_damage, self, "soldier_melee")
+	# Record damage
+	if BalanceTracker and parent_tower:
+		BalanceTracker.record_damage(parent_tower, target_enemy, melee_damage, "tower")
+	
+	target_enemy.take_damage(melee_damage, self, "soldier_melee")
+	
+	target_enemy.take_damage(melee_damage, self, "soldier_melee")
+	
+	# Play attack animation (handles speed scaling)
+	_play_animation("attack")
+	
+	if target_enemy.current_health <= 0:
+		_disengage_from_combat()
 
 func _play_attack_flash():
-	"""Visual feedback for attack - flash white"""
 	if sprite:
 		var original_modulate = sprite.modulate
-		sprite.modulate = Color(1.5, 1.5, 1.5) # Flash bright white
-
-		# Reset after 0.1 seconds
+		sprite.modulate = Color(1.5, 1.5, 1.5)
 		await get_tree().create_timer(0.1).timeout
 		if is_instance_valid(sprite):
 			sprite.modulate = original_modulate
+
+func _spawn_impact_fx():
+	# Screen shake or dust effect when blocking logic kicks in
+	pass # TODO: Add dust
 
 # ============================================
 # HEALTH & DEATH
@@ -315,76 +413,49 @@ func _play_attack_flash():
 
 func take_damage(amount: float):
 	current_health -= amount
-
-	# CRITICAL: Reset regeneration timer! (Kingdom Rush style)
 	time_since_last_damage = 0.0
-
-	# Stop regeneration visual
 	if is_regenerating:
 		is_regenerating = false
 		show_regen_visual(false)
-
 	update_health_bar()
-
 	if current_health <= 0:
 		die()
 
 func die():
-	# CRITICAL: Unblock all enemies this soldier was fighting
-	for enemy in enemies_in_melee_range:
-		if is_instance_valid(enemy) and enemy.has_method("unblock"):
-			if enemy.is_blocked and enemy.blocking_hero == self:
-				enemy.unblock()
-
-	# Notify tower to respawn
+	_disengage_from_combat()
 	soldier_died.emit(respawn_delay)
 	queue_free()
 
 func update_health_bar():
 	if health_bar:
-		# Use enemy-style health bar's update_health method
 		if health_bar.has_method("update_health"):
 			health_bar.update_health(current_health, max_health)
 		else:
-			# Fallback for ProgressBar
 			health_bar.value = (current_health / max_health) * 100
 
 # ============================================
-# REGENERATION SYSTEM (Kingdom Rush)
+# REGENERATION SYSTEM
 # ============================================
 
 func update_regeneration(delta):
-	"""Kingdom Rush style health regeneration - 5 HP/sec after 1s out of combat"""
-	# Count time since last hit
 	time_since_last_damage += delta
-
-	# Can only regen if not at full health
 	if current_health < max_health:
-		# Check if enough time passed (1 second out of combat)
 		if time_since_last_damage >= regen_delay:
-			# Start regenerating
 			if not is_regenerating:
 				is_regenerating = true
 				show_regen_visual(true)
-
-			# Heal over time
 			current_health += regen_rate * delta
-
-			# Cap at max health
 			if current_health > max_health:
 				current_health = max_health
 				is_regenerating = false
 				show_regen_visual(false)
-
 			update_health_bar()
 	else:
-		# Already at full health
 		if is_regenerating:
 			is_regenerating = false
 			show_regen_visual(false)
 
 func show_regen_visual(enabled: bool):
-	"""Show/hide green pulse on health bar during regeneration"""
 	if health_bar and health_bar.has_method("show_regeneration"):
 		health_bar.show_regeneration(enabled)
 
@@ -393,155 +464,89 @@ func show_regen_visual(enabled: bool):
 # ============================================
 
 func set_home_position(pos: Vector2, offset: Vector2 = Vector2.ZERO):
-	"""Set tower spawn location with unique formation offset"""
 	home_position = pos
 	home_offset = offset
 	global_position = pos + offset
 
-func set_flag_position(pos: Vector2):
-	"""Update rally point - soldier will march here immediately"""
-	print("⚔️ [SoldierUnit] Received new flag position: ", pos)
-	flag_position = pos
+# ============================================
+# DEBUGGING
+# ============================================
 
-	# FORCE MOVE: Always obey rally command (Kingdom Rush style)
-	# If in combat, disengage first
-	if current_state == State.MELEE_COMBAT:
-		print("⚔️ [SoldierUnit] Disengaging from combat to move!")
+func _process(_delta):
+	queue_redraw()
+
+func _draw():
+	# if not visible: return # Always draw debug if enabled
+	# Draw line to current target
+	if is_instance_valid(target_enemy):
+		var color = Color.RED if current_state == State.INTERCEPT else Color.ORANGE
+		# draw_line(Vector2.ZERO, to_local(target_enemy.global_position), color, 2.0)
+		
+		# Draw circle at assigned slot
+		if current_slot_index != -1 and target_enemy.has_method("get_slot_position"):
+			var slot_pos = target_enemy.get_slot_position(current_slot_index)
+			draw_line(Vector2.ZERO, to_local(slot_pos), Color.CYAN, 1.0)
+			draw_circle(to_local(slot_pos), 3.0, Color.CYAN)
+			
+	# Draw state label
+	# var font = ThemeDB.fallback_font
+	# draw_string(font, Vector2(0, -20), State.keys()[current_state], HORIZONTAL_ALIGNMENT_CENTER, -1, 12, Color.WHITE)
+
+func debug_log(msg: String):
+	print("[Soldier %s] %s" % [get_instance_id(), msg])
+
+func set_flag_position(pos: Vector2):
+	# print("⚔️ [SoldierUnit] Received new flag position: ", pos)
+	flag_position = pos
+	if current_state == State.MELEE_COMBAT or current_state == State.INTERCEPT:
 		_disengage_from_combat()
-	
-	print("⚔️ [SoldierUnit] Switching to WALKING state")
 	enter_walking_state(pos)
 
 func _disengage_from_combat():
-	"""Stop fighting and unblock enemies"""
-	for enemy in enemies_in_melee_range:
-		if is_instance_valid(enemy) and enemy.has_method("unblock"):
-			if enemy.is_blocked and enemy.blocking_hero == self:
-				enemy.unblock()
+	if is_instance_valid(target_enemy):
+		if target_enemy.has_method("release_engagement_slot"):
+			target_enemy.release_engagement_slot(self)
+		if target_enemy.has_method("unblock") and target_enemy.blocking_hero == self:
+			target_enemy.unblock()
 	
-	current_melee_targets.clear()
+	target_enemy = null
+	current_slot_index = -1
 	melee_timer.stop()
-	_set_combat_state_visual(false)
+	
+	# If we are alive, return to rally point
+	if current_health > 0:
+		enter_returning_state()
 
 func _set_combat_state_visual(in_combat: bool):
-	"""Visual indicator when soldier is in melee combat"""
 	if sprite:
 		if in_combat:
-			# Reddish tint = in combat
 			sprite.modulate = Color(1.2, 0.8, 0.8)
 		else:
-			# Normal color
 			sprite.modulate = Color(1, 1, 1)
 
 # ============================================
-# FORMATION POSITIONING SYSTEM (Isometric-friendly)
+# FORMATION POSITIONING SYSTEM
 # ============================================
 
-func align_to_formation_position():
-	"""Position soldier in semi-circle formation around enemy (Kingdom Rush style)"""
-	if current_melee_targets.is_empty():
-		return
-
-	var target_enemy = current_melee_targets[0]
-	if not is_instance_valid(target_enemy):
-		return
-
-	# Get all soldiers fighting same enemy
-	var tower_soldiers = get_tower_soldiers()
-	var soldiers_on_this_enemy = []
-
-	for soldier in tower_soldiers:
-		if is_instance_valid(soldier) and soldier.current_melee_targets.size() > 0:
-			if soldier.current_melee_targets[0] == target_enemy:
-				soldiers_on_this_enemy.append(soldier)
-
-	# Find MY position in the formation
-	var my_index = soldiers_on_this_enemy.find(self)
-	if my_index < 0:
-		my_index = 0
-
-	var num_soldiers = soldiers_on_this_enemy.size()
-
-	# Calculate formation position
-	var formation_pos = calculate_formation_position(
-		target_enemy.global_position,
-		my_index,
-		num_soldiers
-	)
-
-	# Move to formation position
-	global_position = formation_pos
-	velocity = Vector2.ZERO
-
-	# Face the enemy
-	look_at(target_enemy.global_position)
-
-func calculate_formation_position(enemy_pos: Vector2, soldier_index: int, total_soldiers: int) -> Vector2:
-	"""Calculate position in semi-circle formation (soldiers spread out, not stacked)"""
-	var formation_radius = 60.0 # Increased from 50 to 60 (more space in combat!)
-
-	if total_soldiers == 1:
-		# Solo soldier: face enemy from tower direction
-		var direction = (home_position - enemy_pos).normalized()
-		return enemy_pos + (direction * formation_radius)
-
-	# Multiple soldiers: spread in semi-circle
-	# Calculate angle for this soldier
-	var arc_width = PI * 0.8 # 144° arc (not full circle, looks better in isometric)
-	var start_angle = - arc_width / 2.0
-
-	# Angle step between soldiers
-	var angle_step = arc_width / max(1, total_soldiers - 1)
-	var my_angle = start_angle + (soldier_index * angle_step)
-
-	# Calculate direction facing toward tower (soldiers attack from tower side)
-	var tower_direction = (home_position - enemy_pos).normalized()
-	var tower_angle = atan2(tower_direction.y, tower_direction.x)
-
-	# Combine formation angle with tower direction
-	var final_angle = tower_angle + my_angle
-
-	# Calculate position on the arc
-	var offset = Vector2(cos(final_angle), sin(final_angle)) * formation_radius
-	return enemy_pos + offset
-
 func get_tower_soldiers() -> Array:
-	"""Get all soldiers from same tower"""
-	if not parent_tower:
-		return [self]
-
+	if not parent_tower: return [self]
 	var soldiers = []
 	for soldier in parent_tower.active_soldiers:
 		if is_instance_valid(soldier):
 			soldiers.append(soldier)
-
 	return soldiers
 
 func get_rally_formation_position() -> Vector2:
-	"""Calculate MY unique position at rally flag (soldiers spread in circle, not stacked)"""
-	# Get rally flag position (or home if no flag set)
 	var rally_pos = flag_position if flag_position != Vector2.ZERO else home_position
-
-	# Get all soldiers from tower
 	var tower_soldiers = get_tower_soldiers()
 	var num_soldiers = tower_soldiers.size()
-
-	# Find my index
 	var my_index = tower_soldiers.find(self)
-	if my_index < 0:
-		return rally_pos # Fallback: just use rally position
+	
+	if my_index < 0: return rally_pos
+	if num_soldiers == 1: return rally_pos
 
-	# Spread soldiers in circle formation (Kingdom Rush style)
-	if num_soldiers == 1:
-		# Solo soldier: stay at flag center
-		return rally_pos
-
-	# Multiple soldiers: spread in ring (INCREASED spacing to prevent shaking)
-	var formation_radius = 40.0 # Increased from 30 to 40 (more space!)
-	var angle_step = TAU / num_soldiers # TAU = 2*PI (full circle)
+	var formation_radius = 40.0
+	var angle_step = TAU / num_soldiers
 	var my_angle = my_index * angle_step
-
-	# Calculate offset from flag center
 	var offset = Vector2(cos(my_angle), sin(my_angle)) * formation_radius
-
 	return rally_pos + offset

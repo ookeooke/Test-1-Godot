@@ -345,6 +345,13 @@ func record_kill(source_instance: Node, _enemy_type: String, _gold_reward: int, 
 
 	var instance_id = source_instance.get_instance_id()
 
+	# MINION RE-MAPPING: If kill source is a minion (Soldier), attribute to parent tower
+	if source_instance.get("parent_tower"):
+		var parent = source_instance.parent_tower
+		if parent:
+			instance_id = parent.get_instance_id()
+
+
 	# Track tower kill
 	if source_type == "tower" and tracked_towers.has(instance_id):
 		tracked_towers[instance_id].kills += 1
