@@ -96,7 +96,7 @@ func create_new_profile(profile_name: String) -> bool:
 		"profile_name": profile_name,
 		"created_at": Time.get_datetime_string_from_system(),
 		"last_played": Time.get_datetime_string_from_system(),
-		"completed_levels": [],
+		"completed_levels": ["level_01", "level_02", "level_03", "level_04", "level_05", "level_06", "level_07", "level_08", "level_09", "level_10", "level_11", "level_12", "level_13", "level_14", "level_15", "level_16", "level_17", "level_18", "level_19", "level_20"],
 		"level_stars": {}, # level_id: stars_earned (1-3)
 		"gems": 1000, # Starting gems for skill purchases / hero unlocks
 		"hero_skills": {}, # hero_id: { skill_id: level }

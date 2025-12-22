@@ -16,334 +16,334 @@ const TOWERS = {
 	"archer": {
 		"name": "Archer Tower",
 		"icon": "🏹",
-		"build_cost": 50, # BALANCE: High-DPS Arcade Mode (50g)
+		"build_cost": 70, # KR1: 70g
 		"type": "ranged_single",
-		"description": "Rapid-fire physical damage. Shreds light enemies.",
+		"description": "Rapid-fire physical damage. The staple of defense.",
 		"scene_path": "res://scenes/towers/archer_tower.tscn",
 
 		"levels": {
 			1: {
-				"damage": 40, # ARCADE: Massive buff from 8 -> 40
-				"attack_speed": 1.0, # 1.0s interval = 40 DPS
+				"damage": 6, # KR1: 5-7
+				"attack_speed": 0.8,
 				"range": 280,
-				"dps": 40.0,
-				"cost_to_next": 50
+				"cost_to_next": 110
 			},
 			2: {
-				"damage": 70, # Scaling up
-				"attack_speed": 0.9, # Slightly faster
-				"range": 290,
-				"dps": 77.7,
-				"cost_to_next": 100
+				"damage": 10, # KR1: 8-12
+				"attack_speed": 0.7,
+				"range": 300,
+				"cost_to_next": 160
 			},
 			3: {
-				"damage": 120,
-				"attack_speed": 0.8,
-				"range": 300,
-				"dps": 150.0,
-				"cost_to_next": 150
+				"damage": 15, # KR1: 12-18
+				"attack_speed": 0.6,
+				"range": 320,
+				"cost_to_next": 230
 			},
 			# Level 4 - Path choice required
 			4: {
-				"damage_path": {
-					"damage": 200,
-					"attack_speed": 0.6,
-
-					"range": 280, # Damage path keeps base range
-					"dps": 50.4, # Was 72.0 - Strong but not melting bosses
-					"cost_to_next": 200,
-					"path_name": "Sharpshooter"
+				"damage_path": { # Mapped to: Ranger's Hideout (Machine Gun)
+					"damage": 18, # Low damage per shot, high fire rate
+					"attack_speed": 0.4, # Machine Gun!
+					"range": 350,
+					"dps": 45.0,
+					"cost_to_next": 350,
+					"path_name": "Rangers Hideout"
 				},
-				"range_path": {
-					"damage": 18, # Same as L3 - trading DPS for coverage
-					"attack_speed": 1.6, # Same as L3
-					"range": 400, # BALANCE: Was 300 - NOW ACTUALLY GIVES RANGE (+43%)
-					"dps": 28.8, # Same as L3 - meaningful tradeoff
-					"cost_to_next": 200,
-					"path_name": "Ranger Tower"
+				"range_path": { # Mapped to: Musketeer Garrison (Sniper)
+					"damage": 50, # Massive single shot
+					"attack_speed": 1.5, # Slow reload
+					"range": 450, # Sniper range
+					"dps": 33.3,
+					"cost_to_next": 350,
+					"path_name": "Musketeer Garrison"
 				}
 			},
-			# Level 5 - Max level
+			# Level 5 - Legendary Tier (Custom Extrapolation)
 			5: {
-				"damage_path": {
-					"damage": 38, # BALANCE: Was 40 - Peak damage for glass cannon
-					"attack_speed": 2.0, # BALANCE: Was 2.5 - Capped at 2.0 for balance
-					"range": 280, # Damage path keeps base range
-					"dps": 76.0, # Was 100.0 - Strong endgame without melting bosses in 4s
-					"cost_to_next": 0, # Max level
-					"path_name": "Elite Sharpshooter"
+				"damage_path": { # Elite Ranger
+					"damage": 24,
+					"attack_speed": 0.3, # 3.3 shots/sec
+					"range": 380,
+					"dps": 80.0,
+					"cost_to_next": 0,
+					"path_name": "Elite Ranger"
 				},
-				"range_path": {
-					"damage": 22, # BALANCE: Was 35 - Moderate damage
-					"attack_speed": 1.8, # Same as before
-					"range": 500, # BALANCE: Was 300 - HUGE range advantage (+78% from base)
-					"dps": 39.6, # Was 63.0 - Lower DPS but covers entire map sections
-					"cost_to_next": 0, # Max level
-					"path_name": "Master Ranger"
+				"range_path": { # Royal Musketeer
+					"damage": 80,
+					"attack_speed": 1.4,
+					"range": 500, # Map presence
+					"dps": 57.0,
+					"cost_to_next": 0,
+					"path_name": "Royal Musketeer"
 				}
 			}
 		},
 
 		"total_costs": {
-			"to_level_3": 150, # 60 + 90
-			"damage_path_full": 500, # 60 + 90 + 150 + 200
-			"range_path_full": 500
+			"to_level_3": 340, # 70 + 110 + 160
+			"damage_path_full": 920, # 340 + 230 + 350
+			"range_path_full": 920
 		}
 	},
 
 	"barracks": {
 		"name": "Barracks",
 		"icon": "🛡️",
-		"build_cost": 70, # BALANCE FIX: Was 120g, now 70g (matches archer tower cost)
+		"build_cost": 70, # KR1: 70g
 		"type": "garrison",
 		"description": "Spawns melee soldiers that block and fight enemies on the path. Soldiers respawn after death.",
 		"scene_path": "res://scenes/towers/soldier_tower.tscn",
 
 		"levels": {
 			1: {
-				"soldier_count": 4,
-				"soldier_health": 100,
-				"soldier_damage": 10,
+				"soldier_count": 3,
+				"soldier_health": 60, # KR1: 60
+				"soldier_damage": 2, # KR1: 1-3
 				"soldier_attack_speed": 1.0,
-				"respawn_time": 5.0,
-				"range": 250, # Rally point range
-				"cost_to_next": 80
+				"respawn_time": 10.0,
+				"range": 250,
+				"cost_to_next": 110
 			},
 			2: {
-				"soldier_count": 4,
-				"soldier_health": 150,
-				"soldier_damage": 15,
-				"soldier_attack_speed": 1.2,
-				"respawn_time": 4.5,
+				"soldier_count": 3,
+				"soldier_health": 100, # KR1: 100
+				"soldier_damage": 4, # KR1: 3-5
+				"soldier_attack_speed": 1.0,
+				"respawn_time": 10.0,
 				"range": 270,
-				"cost_to_next": 120
+				"cost_to_next": 160
 			},
 			3: {
-				"soldier_count": 4,
-				"soldier_health": 200,
-				"soldier_damage": 20,
-				"soldier_attack_speed": 1.4,
-				"respawn_time": 4.0,
+				"soldier_count": 3,
+				"soldier_health": 150, # KR1: 150
+				"soldier_damage": 8, # KR1: 6-10
+				"soldier_attack_speed": 1.0,
+				"respawn_time": 10.0,
 				"range": 300,
-				"cost_to_next": 150 # Path choice upgrade
+				"cost_to_next": 230
 			},
 			4: {
-				"defense_path": {
-					"soldier_count": 4,
-					"soldier_health": 280, # Very tanky
-					"soldier_damage": 28,
-					"soldier_attack_speed": 1.6,
-					"respawn_time": 3.0,
+				"defense_path": { # Mapped to: Holy Order (Paladins)
+					"soldier_count": 3,
+					"soldier_health": 250, # High HP
+					"soldier_damage": 12,
+					"soldier_attack_speed": 1.0,
+					"respawn_time": 8.0, # Faster respawn upgrade
 					"range": 320,
-					"cost_to_next": 200
+					"cost_to_next": 350,
+					"path_name": "Holy Order"
 				},
-				"offense_path": {
-					"soldier_count": 4,
-					"soldier_health": 250, # Less tanky but...
-					"soldier_damage": 35, # Much higher damage
-					"soldier_attack_speed": 1.8,
-					"respawn_time": 3.5,
+				"offense_path": { # Mapped to: Barbarian Mead Hall
+					"soldier_count": 3,
+					"soldier_health": 180, # Lower HP
+					"soldier_damage": 20, # High Damage
+					"soldier_attack_speed": 0.8, # Faster attacks
+					"respawn_time": 10.0,
 					"range": 320,
-					"cost_to_next": 200
+					"cost_to_next": 350,
+					"path_name": "Barbarian Hall"
 				}
 			},
-			5: {
-				"defense_path": {
-					"soldier_count": 4,
-					"soldier_health": 320, # 100 base + 220 delta
-					"soldier_damage": 38, # 10 base + 28 delta
-					"soldier_attack_speed": 2.0,
-					"respawn_time": 2.5,
-					"range": 350
+			5: { # Legendary Tier
+				"defense_path": { # Holy Champion
+					"soldier_count": 3,
+					"soldier_health": 350, # Immortals
+					"soldier_damage": 18,
+					"soldier_attack_speed": 1.0,
+					"respawn_time": 5.0,
+					"range": 350,
+					"path_name": "Holy Champion"
+
 				},
-				"offense_path": {
-					"soldier_count": 4,
-					"soldier_health": 300, # 100 base + 200 delta
-					"soldier_damage": 50, # 10 base + 40 delta
-					"soldier_attack_speed": 2.2,
-					"respawn_time": 3.0
+				"offense_path": { # Warlord
+					"soldier_count": 3,
+					"soldier_health": 250,
+					"soldier_damage": 35,
+					"soldier_attack_speed": 0.6,
+					"respawn_time": 8.0,
+					"path_name": "Warlord"
 				}
 			}
 		},
 
 		"total_costs": {
-			"to_level_3": 200, # 80 + 120
-			"to_level_5_defense": 550, # 80 + 120 + 150 + 200
-			"to_level_5_offense": 550 # 80 + 120 + 150 + 200
+			"to_level_3": 340,
+			"defense_path_full": 920,
+			"offense_path_full": 920
 		}
 	},
 
 	"mage": {
 		"name": "Mage Tower",
 		"icon": "⚡",
-		"build_cost": 75,
+		"build_cost": 100, # KR1: 100g
 		"type": "ranged_aoe",
-		"description": "Magic tower that deals area damage. Choose Inferno path for maximum destruction or Frost path for enemy control.",
+		"description": "Armor piercing magic damage. High burst, slow speed.",
 		"scene_path": "res://scenes/towers/mage_tower.tscn",
 
 		"levels": {
 			1: {
-				"damage": 6, # Lower than archer due to AOE
-				"attack_speed": 0.8, # Slower than archer
-				"range": 300, # Slightly longer range
-				"splash_radius": 80, # AOE damage radius
-				"dps": 4.8, # Lower single-target DPS, but hits multiple
-				"cost_to_next": 70
+				"damage": 15, # KR1: 9-17
+				"attack_speed": 1.5,
+				"range": 280,
+				"splash_radius": 0, # Single target (mostly)
+				"dps": 10.0,
+				"cost_to_next": 160
 			},
 			2: {
-				"damage": 10,
-				"attack_speed": 0.9,
+				"damage": 35, # KR1: 23-43
+				"attack_speed": 1.5,
 				"range": 300,
-				"splash_radius": 90,
-				"dps": 9.0,
-				"cost_to_next": 100
+				"splash_radius": 0,
+				"dps": 23.3,
+				"cost_to_next": 240
 			},
 			3: {
-				"damage": 15,
-				"attack_speed": 1.0,
+				"damage": 60, # KR1: 40-74
+				"attack_speed": 1.5,
 				"range": 320,
-				"splash_radius": 100,
-				"dps": 15.0,
-				"cost_to_next": 150 # Path choice cost
+				"splash_radius": 0,
+				"dps": 40.0,
+				"cost_to_next": 300
 			},
 			# Level 4 - Path choice required
 			4: {
-				"inferno_path": {
-					"damage": 24, # High damage
-					"attack_speed": 1.1,
-					"range": 320,
-					"splash_radius": 120, # Larger explosion
-					"dps": 26.4,
-					"cost_to_next": 200,
-					"path_name": "Inferno Tower"
+				"inferno_path": { # Mapped to: Arcane Wizard (Burst)
+					"damage": 100, # KR1: 70-130
+					"attack_speed": 1.7, # Slower
+					"range": 350,
+					"splash_radius": 0,
+					"dps": 58.8,
+					"cost_to_next": 400,
+					"path_name": "Arcane Wizard"
 				},
-				"frost_path": {
-					"damage": 12, # Lower damage
-					"attack_speed": 1.2,
-					"range": 340, # Longer range
-					"splash_radius": 110,
-					"slow_amount": 0.5, # Slows enemies to 50% speed
-					"slow_duration": 2.0, # Slow lasts 2 seconds
-					"dps": 14.4,
-					"cost_to_next": 200,
-					"path_name": "Frost Tower"
+				"frost_path": { # Mapped to: Sorcerer Mage (Debuff)
+					"damage": 40, # KR1: 30-50
+					"attack_speed": 1.2, # Faster
+					"range": 320,
+					"splash_radius": 0,
+					"slow_amount": 0.5, # Curse
+					"slow_duration": 3.0,
+					"dps": 33.3,
+					"cost_to_next": 400,
+					"path_name": "Sorcerer Mage"
 				}
 			},
-			# Level 5 - Max level
+			# Level 5 - Legendary Tier
 			5: {
-				"inferno_path": {
-					"damage": 32,
-					"attack_speed": 1.3,
-					"range": 320,
-					"splash_radius": 140, # Massive AOE
-					"dps": 41.6,
+				"inferno_path": { # Arch-Wizard
+					"damage": 140,
+					"attack_speed": 1.5,
+					"range": 380,
+					"splash_radius": 0,
+					"dps": 93.3,
 					"cost_to_next": 0,
-					"path_name": "Archmage Inferno"
+					"path_name": "Arch-Wizard"
 				},
-				"frost_path": {
-					"damage": 18,
-					"attack_speed": 1.4,
-					"range": 360,
-					"splash_radius": 130,
-					"slow_amount": 0.3, # Slows to 30% speed (70% reduction)
-					"slow_duration": 3.0,
-					"dps": 25.2,
+				"frost_path": { # High Sorcerer
+					"damage": 60,
+					"attack_speed": 1.0,
+					"range": 350,
+					"splash_radius": 0,
+					"slow_amount": 0.7,
+					"slow_duration": 4.0,
+					"dps": 60.0,
 					"cost_to_next": 0,
-					"path_name": "Archmage Frost"
+					"path_name": "High Sorcerer"
 				}
 			}
 		},
 
 		"total_costs": {
-			"to_level_3": 170, # 70 + 100
-			"inferno_path_full": 520, # 70 + 100 + 150 + 200
-			"frost_path_full": 520
+			"to_level_3": 500, # 100 + 160 + 240
+			"inferno_path_full": 1200, # 500 + 300 + 400
+			"frost_path_full": 1200
 		}
 	},
 
 	"artillery": {
 		"name": "Artillery Tower",
 		"icon": "💣",
-		"build_cost": 100, # Most expensive starting tower
+		"build_cost": 125, # KR1: 125g
 		"type": "ranged_artillery",
-		"description": "Long-range siege tower with devastating power. Choose Cannon for single-target destruction or Mortar for area bombardment.",
+		"description": "Area damage bombardment. Very slow but essential for crowds.",
 		"scene_path": "res://scenes/towers/artillery_tower.tscn",
 
 		"levels": {
 			1: {
-				"damage": 20, # Very high damage per shot
-				"attack_speed": 0.4, # Very slow
-				"range": 350, # Longest range
-				"splash_radius": 50, # Small splash at L1 (User request)
-				"dps": 8.0, # Lower DPS due to slow speed, but powerful hits
-				"cost_to_next": 90
+				"damage": 8, # KR1: 5-9
+				"attack_speed": 3.0,
+				"range": 320,
+				"splash_radius": 80,
+				"cost_to_next": 220
 			},
 			2: {
-				"damage": 30,
-				"attack_speed": 0.5,
-				"range": 370,
-				"splash_radius": 60, # Gains small splash
-				"dps": 15.0,
-				"cost_to_next": 130
+				"damage": 15, # KR1: 10-18
+				"attack_speed": 3.0,
+				"range": 340,
+				"splash_radius": 90,
+				"dps": 5.0,
+				"cost_to_next": 320
 			},
 			3: {
-				"damage": 45,
-				"attack_speed": 0.6,
-				"range": 400,
-				"splash_radius": 80,
-				"dps": 27.0,
-				"cost_to_next": 180 # Path choice cost
+				"damage": 30, # KR1: 20-35
+				"attack_speed": 3.0,
+				"range": 360,
+				"splash_radius": 100,
+				"dps": 10.0,
+				"cost_to_next": 500
 			},
 			# Level 4 - Path choice required
 			4: {
-				"cannon_path": {
-					"damage": 70, # Massive single-shot damage
-					"attack_speed": 0.6,
-					"range": 420,
-					"splash_radius": 50, # Small splash
-					"knockback": 150, # Pushes enemies back
-					"dps": 42.0,
-					"cost_to_next": 250,
-					"path_name": "Heavy Cannon"
+				"cannon_path": { # Mapped to: Big Bertha (Splash)
+					"damage": 70, # KR1: 50-90
+					"attack_speed": 3.0,
+					"range": 400,
+					"splash_radius": 140, # Huge AOE
+					"knockback": 150,
+					"dps": 23.3,
+					"cost_to_next": 600,
+					"path_name": "Big Bertha"
 				},
-				"mortar_path": {
-					"damage": 40, # Lower damage
-					"attack_speed": 0.8, # Faster
-					"range": 450, # Longer range
-					"splash_radius": 140, # Large AOE
-					"dps": 32.0,
-					"cost_to_next": 250,
-					"path_name": "Siege Mortar"
+				"mortar_path": { # Mapped to: Tesla x104 (Chain)
+					"damage": 45, # KR1: 30-60
+					"attack_speed": 2.5,
+					"range": 380,
+					"splash_radius": 120, # Static Field
+					"dps": 18.0,
+					"cost_to_next": 600,
+					"path_name": "Tesla x104"
 				}
 			},
-			# Level 5 - Max level
+			# Level 5 - Legendary Tier
 			5: {
-				"cannon_path": {
-					"damage": 100, # Highest single-shot damage in game
-					"attack_speed": 0.7,
-					"range": 450,
-					"splash_radius": 60,
+				"cannon_path": { # Doomsday Bertha
+					"damage": 110,
+					"attack_speed": 2.8,
+					"range": 420,
+					"splash_radius": 160,
 					"knockback": 200,
-					"dps": 70.0,
+					"dps": 39.2,
 					"cost_to_next": 0,
-					"path_name": "Mega Cannon"
+					"path_name": "Doomsday Bertha"
 				},
-				"mortar_path": {
-					"damage": 55,
-					"attack_speed": 1.0,
-					"range": 500, # Extreme range
-					"splash_radius": 180, # Massive AOE
-					"dps": 55.0,
+				"mortar_path": { # Zeus Coil
+					"damage": 70,
+					"attack_speed": 2.2,
+					"range": 400,
+					"splash_radius": 140,
+					"dps": 31.8,
 					"cost_to_next": 0,
-					"path_name": "Grand Bombard"
+					"path_name": "Zeus Coil"
 				}
 			}
 		},
 
 		"total_costs": {
-			"to_level_3": 220, # 90 + 130
-			"cannon_path_full": 650, # 90 + 130 + 180 + 250
-			"mortar_path_full": 650
+			"to_level_3": 665,
+			"cannon_path_full": 1765,
+			"mortar_path_full": 1765
 		}
 	}
 }

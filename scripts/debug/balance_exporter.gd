@@ -69,6 +69,7 @@ func export_current_run(auto_backup: bool = false) -> String:
 		_backup_current_data()
 
 	# Write JSON file
+	_write_json_file("res://balance_report.json", run_data) # Debug copy for easy access
 	return _write_json_file(filepath, run_data)
 
 func export_session() -> String:

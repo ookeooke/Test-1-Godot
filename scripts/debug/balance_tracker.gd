@@ -47,8 +47,8 @@ var tracked_heroes: Dictionary = {}
 ## Enemy type statistics {enemy_type: stats} - CUMULATIVE across entire run
 var enemy_stats: Dictionary = {}
 
-## Current wave enemy tracking {enemy_type: stats} - RESET each wave
-var current_wave_enemies: Dictionary = {}
+## Active waves tracking {wave_number: {enemy_type: stats}}
+var active_waves_enemies: Dictionary = {}
 
 ## Wave data {wave_number: wave_data}
 var wave_data: Dictionary = {}
@@ -56,7 +56,7 @@ var wave_data: Dictionary = {}
 ## Economy tracking
 var economy_data: Dictionary = {}
 
-## Current wave number
+## Current wave number (for reference, but primary tracking is per-wave)
 var current_wave_number: int = 0
 
 ## Run start time
@@ -135,6 +135,8 @@ func start_run(level_id: String = "unknown"):
 	tracked_heroes.clear()
 	enemy_stats.clear()
 	wave_data.clear()
+	# Clear active waves
+	active_waves_enemies.clear()
 	boss_fights.clear()
 	current_boss_type = ""
 
@@ -191,6 +193,7 @@ func reset_run():
 	tracked_heroes.clear()
 	enemy_stats.clear()
 	wave_data.clear()
+	active_waves_enemies.clear() # Clear active waves
 	boss_fights.clear()
 	current_boss_type = ""
 	current_run.clear()
@@ -468,28 +471,31 @@ func record_hero_equipment(hero_instance: Node, equipped_items: Dictionary, bonu
 # ENEMY TRACKING
 # ============================================
 
-func record_enemy_spawned(enemy_type: String):
+func record_enemy_spawned(enemy_type: String, wave_number: int = -1):
 	"""Record that an enemy was spawned"""
 	if not is_tracking:
 		return
 
 	_ensure_enemy_stats(enemy_type)
-	_ensure_current_wave_stats(enemy_type)
+	if wave_number != -1:
+		_ensure_wave_stats(wave_number, enemy_type)
 
 	# Track cumulative (entire run)
 	enemy_stats[enemy_type].spawned += 1
 	enemy_stats[enemy_type].spawn_times.append(Time.get_ticks_msec() / 1000.0 - run_start_time)
 
 	# Track per-wave
-	current_wave_enemies[enemy_type].spawned += 1
+	if wave_number != -1 and active_waves_enemies.has(wave_number):
+		active_waves_enemies[wave_number][enemy_type].spawned += 1
 
-func record_enemy_killed(enemy_type: String, time_alive: float, gold_reward: int):
+func record_enemy_killed(enemy_type: String, time_alive: float, gold_reward: int, wave_number: int = -1):
 	"""Record that an enemy was killed"""
 	if not is_tracking:
 		return
 
 	_ensure_enemy_stats(enemy_type)
-	_ensure_current_wave_stats(enemy_type)
+	if wave_number != -1:
+		_ensure_wave_stats(wave_number, enemy_type)
 
 	# Track cumulative (entire run)
 	enemy_stats[enemy_type].killed += 1
@@ -497,26 +503,29 @@ func record_enemy_killed(enemy_type: String, time_alive: float, gold_reward: int
 	enemy_stats[enemy_type].gold_rewarded += gold_reward
 
 	# Track per-wave
-	current_wave_enemies[enemy_type].killed += 1
+	if wave_number != -1 and active_waves_enemies.has(wave_number):
+		active_waves_enemies[wave_number][enemy_type].killed += 1
 
 	# Record gold earned
 	_record_gold_earned(gold_reward, "enemy_kill_%s" % enemy_type)
 
-func record_enemy_leaked(enemy_type: String, lives_lost: int):
+func record_enemy_leaked(enemy_type: String, lives_lost: int, wave_number: int = -1):
 	"""Record that an enemy reached the end"""
 	if not is_tracking:
 		return
 
 	_ensure_enemy_stats(enemy_type)
-	_ensure_current_wave_stats(enemy_type)
+	if wave_number != -1:
+		_ensure_wave_stats(wave_number, enemy_type)
 
 	# Track cumulative (entire run)
 	enemy_stats[enemy_type].leaked += 1
 	enemy_stats[enemy_type].lives_lost += lives_lost
 
 	# Track per-wave
-	current_wave_enemies[enemy_type].leaked += 1
-	current_wave_enemies[enemy_type].lives_lost += lives_lost
+	if wave_number != -1 and active_waves_enemies.has(wave_number):
+		active_waves_enemies[wave_number][enemy_type].leaked += 1
+		active_waves_enemies[wave_number][enemy_type].lives_lost += lives_lost
 
 func _ensure_enemy_stats(enemy_type: String):
 	"""Ensure enemy stats dictionary exists (cumulative)"""
@@ -532,10 +541,13 @@ func _ensure_enemy_stats(enemy_type: String):
 			"spawn_times": []
 		}
 
-func _ensure_current_wave_stats(enemy_type: String):
-	"""Ensure current wave enemy stats dictionary exists (per-wave)"""
-	if not current_wave_enemies.has(enemy_type):
-		current_wave_enemies[enemy_type] = {
+func _ensure_wave_stats(wave_number: int, enemy_type: String):
+	"""Ensure stats dictionary exists for specific wave"""
+	if not active_waves_enemies.has(wave_number):
+		active_waves_enemies[wave_number] = {}
+	
+	if not active_waves_enemies[wave_number].has(enemy_type):
+		active_waves_enemies[wave_number][enemy_type] = {
 			"type": enemy_type,
 			"spawned": 0,
 			"killed": 0,
@@ -669,8 +681,9 @@ func start_wave(wave_number: int, enemy_composition: Dictionary = {}):
 
 	current_wave_number = wave_number
 
-	# Reset per-wave enemy tracking
-	current_wave_enemies.clear()
+	# Initialize per-wave enemy tracking for THIS wave (don't clear others!)
+	if not active_waves_enemies.has(wave_number):
+		active_waves_enemies[wave_number] = {}
 
 	wave_data[wave_number] = {
 		"wave_number": wave_number,
@@ -716,13 +729,18 @@ func end_wave(wave_number: int):
 	wave.gold_at_end = GameStateManager.gold if GameStateManager else 0
 	wave.lives_at_end = GameStateManager.lives if GameStateManager else 0
 
-	# Calculate wave totals from CURRENT WAVE enemies (not cumulative!)
-	for enemy_type in current_wave_enemies:
-		var stats = current_wave_enemies[enemy_type]
+	# Calculate wave totals from THIS WAVE's specific enemies
+	var specific_wave_stats = active_waves_enemies.get(wave_number, {})
+	
+	for enemy_type in specific_wave_stats:
+		var stats = specific_wave_stats[enemy_type]
 		wave.enemies_spawned += stats.spawned
 		wave.enemies_killed += stats.killed
 		wave.enemies_leaked += stats.leaked
 		wave.lives_lost += stats.lives_lost
+
+	# Clean up active tracking for this wave
+	active_waves_enemies.erase(wave_number)
 
 	# Calculate Hero Performance & MVP for this wave
 	var max_wave_damage = -1.0
@@ -796,6 +814,13 @@ func record_wave_bonus(wave_number: int, bonus_amount: int):
 	_record_gold_earned(bonus_amount, "wave_%d_bonus" % wave_number)
 
 	print("[BalanceTracker] Wave %d bonus recorded: +%dg" % [wave_number, bonus_amount])
+
+func record_loot_gold(amount: int):
+	"""Record gold found from loot drops (sacks/chests)"""
+	if not is_tracking:
+		return
+		
+	_record_gold_earned(amount, "loot_drop")
 
 # ============================================
 # DATA SERIALIZATION

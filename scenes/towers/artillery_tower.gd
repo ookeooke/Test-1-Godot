@@ -32,6 +32,7 @@ var artillery_weapon: Node2D
 func _ready():
 	# Artillery specific setup
 	tower_id = "artillery"
+	# cost = 200 # Handled by TowerData now
 
 	# Set defaults
 	if not visual_scene_l1:

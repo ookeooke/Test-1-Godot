@@ -41,6 +41,7 @@ var range_radius: float:
 
 @export var targeting_mode: TargetingMode = TargetingMode.FIRST
 var build_cost = 0
+var cost: int = 0 # Public cost variable for UI/Shop
 
 # UPGRADE SYSTEM
 var tower_level = 1
@@ -101,6 +102,10 @@ func _ready():
 		tower_level = 1
 
 	_initialize_stats()
+	
+	# Sync cost vars
+	if build_cost == 0 and cost > 0:
+		build_cost = cost
 
 	# Get references
 	detection_range = $DetectionRange
@@ -243,7 +248,12 @@ func _initialize_stats():
 		stat_range = Stat.new(0.0)
 	else:
 		stat_damage = Stat.new(level_1_stats.get("damage", 0.0))
-		stat_attack_speed = Stat.new(level_1_stats.get("attack_speed", 0.0))
+		
+		# ATTACK SPEED CONVERSION (Data=Cooldown -> Stat=APS)
+		var base_cooldown = level_1_stats.get("attack_speed", 1.0)
+		var base_aps = 1.0 / max(0.01, base_cooldown) # Prevent divide by zero
+		stat_attack_speed = Stat.new(base_aps)
+		
 		stat_range = Stat.new(level_1_stats.get("range", 0.0))
 
 	# print("[%s] Stats initialized - DMG: %.1f, AS: %.1f, Range: %.1f" % [name, stat_damage.get_value(), stat_attack_speed.get_value(), stat_range.get_value()])
@@ -289,7 +299,16 @@ func upgrade_tower():
 		return false
 
 	var damage_delta = target_stats.get("damage", 0.0) - level_1_stats.get("damage", 0.0)
-	var attack_speed_delta = target_stats.get("attack_speed", 0.0) - level_1_stats.get("attack_speed", 0.0)
+	
+	# ATTACK SPEED CONVERSION (Data=Cooldown -> Stat=APS)
+	var target_cooldown = target_stats.get("attack_speed", 1.0)
+	var level_1_cooldown = level_1_stats.get("attack_speed", 1.0)
+	
+	# Convert to APS (higher is better)
+	var target_aps = 1.0 / max(0.01, target_cooldown)
+	var level_1_aps = 1.0 / max(0.01, level_1_cooldown)
+	
+	var attack_speed_delta = target_aps - level_1_aps
 	var range_delta = target_stats.get("range", 0.0) - level_1_stats.get("range", 0.0)
 
 	if damage_delta != 0:

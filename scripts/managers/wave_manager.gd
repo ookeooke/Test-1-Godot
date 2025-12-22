@@ -17,6 +17,8 @@ extends Node2D
 @export var use_waypoint_system: bool = false # Toggle between old Path2D and new waypoint system
 @export var goblin_scene: PackedScene
 @export var wolf_scene: PackedScene
+@export var orc_scene: PackedScene
+@export var ogre_scene: PackedScene
 @export var troll_scene: PackedScene
 @export var wave_label: Label # Reference to the UI label
 
@@ -26,6 +28,8 @@ extends Node2D
 # WAVE SETTINGS
 var current_wave = 0 # Which wave we're on (starts at 0)
 var tracked_enemies: Dictionary = {} # Dictionary of all living enemies (enemy_instance: true)
+var active_waves_enemy_count: Dictionary = {} # Living enemies per wave {wave_num: count}
+var completed_waves: Dictionary = {} # Which waves have fully finished {wave_num: true}
 var is_combat_active: bool = false # Whether a wave is currently active
 var victory_screen_shown: bool = false # Guard to prevent showing victory twice
 
@@ -35,8 +39,40 @@ signal combat_ended()
 
 # Current wave spawn state
 var current_wave_data: WaveData = null
-var current_enemy_groups: Array = [] # Flattened list of enemies to spawn
-var current_spawn_index: int = 0 # Which enemy in the list we're spawning next
+var current_enemy_groups: Array = [] # Flattened list of enemies to spawn (DEPRECATED - REMOVE IF UNUSED)
+var current_spawn_index: int = 0 # Which enemy in the list we're spawning next (DEPRECATED)
+
+# Inner class to manage a single active wave's spawning
+class ActiveWaveSpawner:
+	var wave_number: int
+	var spawn_queue: Array[Dictionary]
+	var current_index: int = 0
+	var timer: Timer
+	var manager: Node # Reference to WaveManager for callbacks
+	
+	func _init(p_wave_number: int, p_queue: Array[Dictionary], p_manager: Node):
+		wave_number = p_wave_number
+		spawn_queue = p_queue
+		manager = p_manager
+		
+		# Create dedicated timer
+		timer = Timer.new()
+		timer.one_shot = true
+		manager.add_child(timer)
+		timer.timeout.connect(_on_timeout)
+		
+	func start(delay: float):
+		timer.wait_time = delay
+		timer.start()
+		
+	func _on_timeout():
+		manager.process_spawner(self)
+		
+	func cleanup():
+		if is_instance_valid(timer):
+			timer.queue_free()
+
+var active_spawners: Array[ActiveWaveSpawner] = [] # List of currently active spawners
 
 # TIMING
 var spawn_delay = 0.5 # Base seconds between each enemy spawn (will be randomized)
@@ -100,17 +136,10 @@ func _ready():
 	# NEW: Calculate level gold budget
 	_calculate_level_gold_distribution()
 
-	# Create the spawn timer
-	spawn_timer = Timer.new()
-	spawn_timer.wait_time = spawn_delay
-	spawn_timer.one_shot = false # Repeats automatically
-	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
-	add_child(spawn_timer)
-
-	# Create the wave break timer
+	# Create the wave interval timer (formerly break timer)
 	wave_break_timer = Timer.new()
-	wave_break_timer.wait_time = wave_break_time
-	wave_break_timer.one_shot = true # Only triggers once
+	wave_break_timer.name = "WaveIntervalTimer"
+	wave_break_timer.one_shot = true # Triggers once per wave
 	wave_break_timer.timeout.connect(_on_wave_break_timer_timeout)
 	add_child(wave_break_timer)
 
@@ -170,18 +199,25 @@ func start_next_wave():
 	if current_wave_data.wave_name and current_wave_data.wave_name != "":
 		print("Wave Name: ", current_wave_data.wave_name)
 
-	# Build flattened list of enemies to spawn from all enemy groups
-	current_enemy_groups.clear()
-	current_spawn_index = 0
+	# Build flattened list of enemies for THIS wave
+	var wave_queue: Array[Dictionary] = []
 
 	for enemy_group in current_wave_data.enemies:
 		for i in enemy_group.count:
-			current_enemy_groups.append({
+			wave_queue.append({
 				"type": enemy_group.enemy_type,
-				"spawn_point": enemy_group.spawn_point_index
+				"spawn_point": enemy_group.spawn_point_index,
+				"delay": enemy_group.spawn_delay # Store custom delay
 			})
 
-	# print("Total enemies to spawn: ", current_enemy_groups.size())
+	# Create and start new spawner for this wave
+	var spawner = ActiveWaveSpawner.new(current_wave, wave_queue, self)
+	active_spawners.append(spawner)
+	
+	# Start first spawn with random small delay
+	spawner.start(randf_range(spawn_delay_min, spawn_delay_max))
+	
+	print("[WaveManager] Started spawner for Wave %d with %d enemies" % [current_wave, wave_queue.size()])
 
 	# Update UI
 	if wave_label:
@@ -202,9 +238,29 @@ func start_next_wave():
 	if BalanceTracker:
 		BalanceTracker.start_wave(current_wave)
 
-	# Start spawn timer with randomized first delay
-	spawn_timer.wait_time = randf_range(spawn_delay_min, spawn_delay_max)
-	spawn_timer.start()
+	# FIXED INTERVAL LOGIC: Start timer for NEXT wave immediately
+	if current_wave < waves.size():
+		var interval = current_wave_data.break_time
+		if interval <= 0: interval = 30.0 # Default fallback
+		
+		print("[WaveManager] Next wave in %.1f seconds (Fixed Interval)" % interval)
+		wave_break_timer.wait_time = interval
+		wave_break_timer.start()
+		
+		
+		# Show Call Wave buttons after a delay (15% of interval)
+		# This prevents "instant" spam at usage and creates a lockout period
+		var button_delay = interval * 0.15
+		
+		# Clamp delay to reasonable limits (e.g., minimum 2s, max 10s)
+		if button_delay < 2.0: button_delay = 2.0
+		
+		print("[WaveManager] Next wave in %.1f seconds. Button appearing in %.1fs." % [interval, button_delay])
+		
+		# Create a one-shot timer for the button appearance
+		get_tree().create_timer(button_delay).timeout.connect(create_call_wave_buttons)
+	else:
+		print("[WaveManager] Final wave started! No next wave timer.")
 
 func wave_completed():
 	# Guard against duplicate calls (can happen when multiple enemies die simultaneously)
@@ -286,18 +342,12 @@ func wave_completed():
 		_show_victory_screen()
 		return
 
-	# If not the last wave, show "Wave Complete!" and start break timer
+	# If not the last wave, just log completion (Timer is already running!)
 	if wave_label:
 		wave_label.text = "Wave Complete!"
 
-	# Use break_time from the current wave data
-	var break_time = current_wave_data.break_time if current_wave_data else wave_break_time
-	print("Next wave in ", break_time, " seconds...")
-	wave_break_timer.wait_time = break_time
-	wave_break_timer.start()
-
-	# Create call wave buttons during break (Kingdom Rush style)
-	create_call_wave_buttons()
+	# DO NOT start timer here. It started at beginning of wave.
+	# DO NOT create buttons here. They exist since start of wave.
 
 
 ## Helper function to check if combat is active
@@ -308,140 +358,103 @@ func is_wave_active() -> bool:
 # SPAWNING FUNCTIONS
 # ============================================
 
-func spawn_enemy():
-	# Check if we have more enemies to spawn
-	if current_spawn_index >= current_enemy_groups.size():
-		spawn_timer.stop()
-		return
-
-	# Get the next enemy to spawn
-	var enemy_info = current_enemy_groups[current_spawn_index]
-	current_spawn_index += 1
-
-	# Decide which enemy scene to use
-	var enemy_scene_to_use: PackedScene
-	var enemy_type = enemy_info["type"]
-
-	if enemy_type == "goblin":
-		enemy_scene_to_use = goblin_scene
-	elif enemy_type == "wolf":
-		enemy_scene_to_use = wolf_scene
-	elif enemy_type == "troll":
-		enemy_scene_to_use = troll_scene
-	else:
-		print("ERROR: Unknown enemy type: ", enemy_type)
-		return
-	
-	# Safety check
-	if enemy_scene_to_use == null:
-		print("ERROR: Enemy scene not assigned for type: ", enemy_type)
-		return
-
-	# Create the enemy based on navigation system
-	var enemy
-
-	if use_waypoint_system:
-		# NEW WAYPOINT SYSTEM
-		if start_waypoint == null:
-			print("ERROR: No start waypoint assigned! Please assign a start_waypoint in inspector.")
-			return
-
-		# Create enemy directly in scene root (no PathFollow2D needed)
-		enemy = enemy_scene_to_use.instantiate()
-		get_tree().root.add_child(enemy)
-
-		# Initialize waypoint navigation
-		if enemy.has_method("set_waypoint_navigation"):
-			enemy.set_waypoint_navigation(start_waypoint)
-		else:
-			print("ERROR: Enemy doesn't support waypoint navigation!")
-			enemy.queue_free()
-			return
-
-		# print("[WaveManager] Spawned ", enemy_type, " using WAYPOINT system")
-
-	else:
-		# OLD PATH2D SYSTEM
-		var selected_path = enemy_path
+func process_spawner(spawner: ActiveWaveSpawner):
+	"""Process the next spawn for a specific active wave"""
+	if spawner.current_index < spawner.spawn_queue.size():
+		# Get enemy data
+		var enemy_data = spawner.spawn_queue[spawner.current_index]
 		
-		# Check for custom spawn point (Multi-Path Support)
-		var spawn_index = enemy_info.get("spawn_point", 0)
-		if spawn_index > 0:
-			if spawn_index <= extra_paths.size():
-				selected_path = extra_paths[spawn_index - 1]
-				# print("Spawning on Extra Path ", spawn_index)
+		# Spawn the enemy
+		spawn_single_enemy(enemy_data, spawner.wave_number)
+		
+		# Increment index
+		spawner.current_index += 1
+		
+		# Schedule next spawn
+		if spawner.current_index < spawner.spawn_queue.size():
+			var next_enemy_data = spawner.spawn_queue[spawner.current_index]
+			var custom_delay = next_enemy_data.get("delay", 0.0)
+			
+			var wait_time = 0.0
+			if custom_delay > 0:
+				wait_time = custom_delay * randf_range(0.9, 1.1)
 			else:
-				print("WARNING: Spawn index ", spawn_index, " requested but only ", extra_paths.size(), " extra paths defined!")
-		
-		# DEBUG
-		# print("Spawn Logic: Index=", spawn_index, " SelectedPath=", selected_path)
-		if selected_path == null:
-			print("ERROR: selected_path is NULL! enemy_path=", enemy_path, " extra_paths=", extra_paths)
-			return
-		if typeof(selected_path) != TYPE_OBJECT or not selected_path is Node:
-			print("ERROR: selected_path is NOT a Node! It is: ", selected_path)
-			return
-
-		if selected_path == null:
-			print("ERROR: No enemy path assigned!")
-			return
-
-		# Create PathFollow2D
-		var path_follower = PathFollow2D.new()
-		path_follower.loop = false
-		path_follower.rotates = false # Don't rotate enemy to follow path direction
-		selected_path.add_child(path_follower)
-
-		# Create the enemy
-		enemy = enemy_scene_to_use.instantiate()
-		path_follower.add_child(enemy)
-
-		# LANE SYSTEM: Assign enemy to a lane (perpendicular offset from path)
-		if use_lane_system:
-			# Pick a random lane and apply h_offset for perpendicular positioning
-			var chosen_lane = lane_offsets[randi() % lane_offsets.size()]
-			path_follower.h_offset = chosen_lane
-
-		# Apply random position offset (makes enemies spread out instead of following in a line)
-		var random_offset = Vector2(
-			randf_range(-position_offset_x, position_offset_x),
-			randf_range(-position_offset_y, position_offset_y)
-		)
-		enemy.position = random_offset
-
-		# Connect to path
-		if enemy.has_method("set_path_follower"):
-			enemy.set_path_follower(path_follower)
+				wait_time = randf_range(spawn_delay_min, spawn_delay_max)
+				
+			spawner.start(wait_time)
 		else:
-			enemy.path_follower = path_follower
+			# This spawner is finished
+			print("[WaveManager] Active Spawner for Wave %d finished spawning." % spawner.wave_number)
+			spawner.cleanup()
+			active_spawners.erase(spawner)
+			
+	else:
+		# Should stick here usually, but just in case
+		spawner.cleanup()
+		active_spawners.erase(spawner)
 
-		# print("[WaveManager] Spawned ", enemy_type, " on ", selected_path.name, " (Index: ", spawn_index, ")")
+func spawn_single_enemy(enemy_data: Dictionary, wave_num: int):
+	var enemy_type = enemy_data.type
+	var spawn_index = enemy_data.spawn_point
 	
+	var scene_to_spawn = null
+	match enemy_type:
+		"goblin": scene_to_spawn = goblin_scene
+		"wolf": scene_to_spawn = wolf_scene
+		"orc": scene_to_spawn = orc_scene
+		"ogre": scene_to_spawn = ogre_scene
+		"troll": scene_to_spawn = troll_scene
+		_:
+			push_error("Unknown enemy type: " + str(enemy_type))
+			return
+
+	if not scene_to_spawn:
+		push_error("Scene for enemy type " + str(enemy_type) + " is not assigned!")
+		return
+
+	var enemy = scene_to_spawn.instantiate()
+	enemy_path.add_child(enemy)
+	
+	# Pass wave number to enemy (for scaling if needed)
+	if "wave_number" in enemy:
+		enemy.wave_number = wave_num
+
+	# Choose spawn path
+	var selected_path = enemy_path
+	if spawn_index > 0 and spawn_index <= extra_paths.size():
+		selected_path = extra_paths[spawn_index - 1]
+
+	var path_follower = PathFollow2D.new()
+	path_follower.loop = false
+	selected_path.add_child(path_follower)
+	# path_follower.add_child(enemy) 	# Add to wave group for easier management
+	enemy.add_to_group("wave_%d_enemies" % wave_num)
+	if "wave_number" in enemy:
+		enemy.wave_number = wave_num
+	else:
+		print("WARNING: Enemy %s missing wave_number property" % enemy.name)
+
+	# Connect to path
+	if enemy.has_method("set_path_follower"):
+		enemy.set_path_follower(path_follower)
+	else:
+		enemy.path_follower = path_follower
+		
 	# Connect death signal with enemy reference binding
 	if enemy.has_signal("enemy_died"):
 		enemy.enemy_died.connect(_on_enemy_died.bind(enemy))
 
-	# Apply per-wave stat modifiers from WaveData
-	if current_wave_data:
+	# Apply per-wave stat modifiers
+	if wave_num > 0 and wave_num <= waves.size():
 		_apply_wave_modifiers(enemy, enemy_type)
 
 	# Add enemy to tracking dictionary
 	tracked_enemies[enemy] = true
-	# print("Enemy spawned. Tracked count: ", tracked_enemies.size())
-
-	# Check if all enemies have been spawned
-	if current_spawn_index >= current_enemy_groups.size():
-		spawn_timer.stop()
-		# print("All enemies spawned for wave ", current_wave)
-
-func _on_spawn_timer_timeout():
-	# This gets called every 'spawn_delay' seconds
-	if current_spawn_index < current_enemy_groups.size():
-		spawn_enemy()
-
-		# Randomize the next spawn delay for more natural timing
-		if current_spawn_index < current_enemy_groups.size(): # Still more to spawn
-			spawn_timer.wait_time = randf_range(spawn_delay_min, spawn_delay_max)
+	
+	# Increment per-wave active count
+	if not active_waves_enemy_count.has(wave_num):
+		active_waves_enemy_count[wave_num] = 0
+	active_waves_enemy_count[wave_num] += 1
 
 func _on_wave_break_timer_timeout():
 	# This gets called after the break between waves
@@ -463,13 +476,46 @@ func _on_enemy_died(enemy):
 	# Remove enemy from tracking dictionary
 	if tracked_enemies.has(enemy):
 		tracked_enemies.erase(enemy)
-		print("Enemy removed. Tracked count: ", tracked_enemies.size())
+		# print("Enemy removed. Tracked count: ", tracked_enemies.size())
 	else:
 		print("WARNING: Enemy died but was not being tracked!")
 
-	# Check if wave is complete (all spawned and all dead)
-	if tracked_enemies.is_empty() and current_spawn_index >= current_enemy_groups.size():
-		wave_completed()
+	# Handle per-wave completion
+	var wave_num = -1
+	if "wave_number" in enemy:
+		wave_num = enemy.wave_number
+		
+	if wave_num != -1:
+		if active_waves_enemy_count.has(wave_num):
+			active_waves_enemy_count[wave_num] -= 1
+			# print("Wave %d enemy count: %d" % [wave_num, active_waves_enemy_count[wave_num]])
+			
+			if active_waves_enemy_count[wave_num] <= 0:
+				# Check if spawning for this wave is also complete
+				var spawner_active = false
+				for spawner in active_spawners:
+					if spawner.wave_number == wave_num:
+						spawner_active = true
+						break
+				
+				if not spawner_active:
+					# Wave fully complete!
+					_mark_wave_as_complete(wave_num)
+
+	# Check for LEVEL completion (all waves done)
+	if completed_waves.size() >= waves.size():
+		wave_completed() # This function name is legacy, implies "Level Completed" now
+	
+func _mark_wave_as_complete(wave_num):
+	"""Mark a specific wave as fully completed (spawned & killed)"""
+	if completed_waves.has(wave_num):
+		return # Already marked
+		
+	print("✅ Wave %d FULLY COMPLETED!" % wave_num)
+	completed_waves[wave_num] = true
+	
+	if BalanceTracker:
+		BalanceTracker.end_wave(wave_num)
 
 # ============================================
 # VICTORY HANDLING
@@ -655,9 +701,10 @@ func _apply_wave_modifiers(enemy, enemy_type: String):
 		return
 
 	# DYNAMIC GOLD: Override base gold reward if level budget is active
-	if calculated_gold_per_enemy > 0 and "gold_reward" in enemy:
-		enemy.gold_reward = calculated_gold_per_enemy
-		# print("[WaveManager] Applied dynamic gold: %d" % calculated_gold_per_enemy)
+	# DISABLED for Kingdom Rush Balance (We want precise 3g/7g values)
+	# if calculated_gold_per_enemy > 0 and "gold_reward" in enemy:
+	# 	enemy.gold_reward = calculated_gold_per_enemy
+	# 	# print("[WaveManager] Applied dynamic gold: %d" % calculated_gold_per_enemy)
 
 	# Get HP multiplier (check custom first, then global)
 	var hp_mult = 1.0
@@ -745,16 +792,16 @@ func create_call_wave_buttons():
 			push_warning("[WaveManager] No UI CanvasLayer found - buttons will not appear!")
 			return
 
-	# Get break time for this wave
-	var break_time = current_wave_data.break_time if current_wave_data else wave_break_time
-
 	# Create button at each spawn point
 	for spawn_pos in spawn_point_positions:
 		var button = call_wave_button_scene.instantiate()
 		ui_layer.add_child(button)
 
 		# Setup button with spawn position and timing
-		button.setup(spawn_pos, break_time, 5) # 5 gold base bonus
+		# Calculate dynamic bonus (1g per second remaining - Pure KR Style)
+		var time_left = wave_break_timer.time_left
+		var bonus = int(time_left * 1.0) # Removed +20g flat bonus to prevent inflation
+		button.setup(spawn_pos, time_left, bonus)
 
 		# Connect signal
 		button.wave_called.connect(_on_call_wave_button_pressed)
@@ -776,25 +823,24 @@ func clear_call_wave_buttons():
 
 func _on_call_wave_button_pressed():
 	"""Handle call wave button click - start wave early"""
-	if not early_call_enabled:
-		print("[WaveManager] Early call not allowed right now")
-		return
-
+	# 1. IMMEDIATE GUARD: Disable early call to prevent spam clicks
+	early_call_enabled = false
+	
 	# Get gold bonus from first button (they should all have same bonus)
 	var gold_bonus = 0
 	if active_call_wave_buttons.size() > 0 and is_instance_valid(active_call_wave_buttons[0]):
 		gold_bonus = active_call_wave_buttons[0].get_current_bonus()
 
 	print("[WaveManager] Wave called early! Bonus: +%dg" % gold_bonus)
-
-	# Award gold bonus
+	
+	# 2. EXECUTE ONCE: Award gold and stop timer
 	GameStateManager.add_gold(gold_bonus)
-
-	# Clear buttons and stop wave break timer
-	clear_call_wave_buttons()
 	wave_break_timer.stop()
-
-	# Start next wave immediately
+	
+	# 3. CLEANUP: Remove buttons
+	clear_call_wave_buttons()
+	
+	# 4. ACTION: Start next wave
 	start_next_wave()
 
 # ============================================

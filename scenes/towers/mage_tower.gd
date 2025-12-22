@@ -25,6 +25,7 @@ var mage_weapon: Node2D
 func _ready():
 	# Mage specific setup (MUST be before super._ready)
 	tower_id = "mage"
+	cost = 130 # Premium Unit (Armor Pen)
 
 	# Set defaults if not set in inspector
 	if not visual_scene_l1:

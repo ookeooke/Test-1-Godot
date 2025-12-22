@@ -5,7 +5,8 @@
 
 [sub_resource type="Resource" id="EnemySpawnData_1"]
 script = ExtResource("2_enemy")
-count = 8
+count = 20
+spawn_delay = 2.5
 
 [resource]
 script = ExtResource("1_wave")

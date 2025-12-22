@@ -18,7 +18,7 @@ const CLASS_TYPE_RANGED: int = 1 # Matches HeroClassConfig.class_type
 func _ready():
 	# Set base stats before calling super._ready()
 	BASE_MAX_HEALTH = 300.0
-	BASE_RANGED_DAMAGE = 0.0
+	BASE_RANGED_DAMAGE = 0.0 # Revert: Back to weak start (Zero to Hero)
 	BASE_MELEE_DAMAGE = 0.0
 	BASE_RANGED_RANGE = 240.0
 	BASE_RANGED_ATTACK_SPEED = 0.55

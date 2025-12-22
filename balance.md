@@ -1,69 +1,60 @@
-# ⚖️ Game Balance Matrix (Arcade Mode)
+# ⚖️ Game Balance: The Kingdom Rush Standard
 
-> **Core Philosophy:** "High Impact & Chaos"
-> We have shifted to an **Arcade-style balance**.
-> *   **Towers:** High Damage (40+ DPS). Strong immediate impact.
-> *   **Enemies:** High HP (200+ base). Numerous but killable.
-> *   **Economy:** Gold is scarce relative to HP (2-5% ratio). rely on defeating mass numbers.
+This document defines the "Source of Truth" for game balance, adopted on 2025-12-21.
+We have moved away from abstract DPG models to a **Kingdom Rush 1 Clone** philosophy.
 
-## 🏹 Towers (High-DPS Standard)
-*Live values from `tower_data.gd`*
+## 1. Core Philosophy
+*   **Decimated Numbers:** Level 1 towers deal ~5-15 damage. Enemies have ~40-60 HP.
+*   **Economy Dictates Survival:** Gold is scarce. You cannot upgrade everything.
+*   **Zero to Hero:** The Hero starts weak (10 dmg) and scales to a God (100+ dmg).
 
-| Tower | Role | Damage | Rate | DPS | Range | Cost | Efficiency |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Archer** | Single Target | **40** | 1.0s | **40** | 280 | **50g** | **0.80** Dmg/Gold |
-| **Mage** | Armor Pierce | **60** | 1.5s | **40** | 300 | **75g** | **0.53** Dmg/Gold |
-| **Artillery**| Area Damage | **30** | 2.0s | **15** | 350 | **120g** | High AoE Value |
+## 2. Tower Stats (The Sacred Tables)
 
-### 📈 Progression Scaling (Archer Example)
-| Level | Dmg | Attack Speed | DPS | Cost | Notes |
+### 🏹 Archer Tower (Physical DPS)
+| Level | Name | Cost | Damage | Speed | Range |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **L1** | 40 | 1.0s | 40 | 50g | Base |
-| **L2** | 60 | 0.9s | 66 | +80g | ~65% DPS increase |
-| **L3** | 90 | 0.8s | 112 | +120g | Massive spike |
+| **1** | Archer | 70g | 6 | 0.8s | 280 |
+| **2** | Marksman | 110g | 10 | 0.7s | 300 |
+| **3** | Sharpshooter | 160g | 15 | 0.6s | 320 |
+| **4A** | **Ranger** | +230g | 18 | 0.4s | 350 |
+| **4B** | **Musketeer** | +230g | 50 | 1.5s | 450 |
+| **5A** | **Elite Ranger** | +350g | 24 | 0.3s | 380 |
+| **5B** | **Royal Musketeer** | +350g | 80 | 1.4s | 500 |
 
-## 👹 Bestiary (Enemies)
-*Live values from `goblin_scout.gd` etc.*
-
-| Enemy | Archetype | Base HP | Speed | Gold | Threat |
+### ⚡ Mage Tower (Armor Piercing)
+| Level | Name | Cost | Damage | Speed | Range |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Goblin** | Swarm | **200** | 45 | **5g** | Low individually, dangerous in groups. |
-| **Wolf** | Runner | **150** | 100 | **8g** | Fast! Requires stalling. |
-| **Troll** | Tank | **800** | 30 | **20g** | Sponges damage. |
+| **1** | Mage | 100g | 15 | 1.5s | 280 |
+| **2** | Adept | 160g | 35 | 1.5s | 300 |
+| **3** | Wizard | 240g | 60 | 1.5s | 320 |
+| **4A** | **Arcane** | +300g | 100 | 1.7s | 350 |
+| **4B** | **Sorcerer** | +300g | 40 | 1.2s | 320 |
 
-> **Wave 8 Scaling:** In Arcade Mode, Wave 8 enemies can have up to **15x Base HP** (e.g., 3000 HP Goblins).
+### 💣 Artillery (Splash)
+| Level | Name | Cost | Damage | Speed | Range |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1** | Bombard | 125g | 8 | 3.0s | 320 |
+| **2** | Artillery | 220g | 15 | 3.0s | 340 |
+| **3** | Howitzer | 320g | 30 | 3.0s | 360 |
+| **4A** | **Big Bertha** | +500g | 70 | 3.0s | 400 |
+| **4B** | **Tesla** | +500g | 45 | 2.5s | 380 |
 
-## 📊 Balance Analyzer Targets
-*Configured in `scripts/debug/balance_analyzer.gd`*
-
-| Metric | Target Range | Description |
+### 🛡️ Barracks (Holding Power)
+| Level | HP | Armor |
 | :--- | :--- | :--- |
-| **Gold / HP** | `0.02 - 0.05` | Enemies drop 2% to 5% of their Max HP in Gold. |
-| **Tower Efficiency** | `30.0` | 1 Gold spent should yield ~30 Damage over time. |
-| **Uptime** | `> 50%` | Towers should be firing constantly in Arcade mode. |
+| **1** | 60 | None |
+| **2** | 100 | None |
+| **3** | 150 | Low |
+| **4** | 250 (Paladin) | High |
 
-## 📂 Project Structure & Data
+## 3. Economy Settings
+*   **Gold Drop Chance:** 20%
+*   **Goblin Gold:** 3g
+*   **Starting Gold (Level 3):** 250g
 
-### 🌊 Wave Configuration
-Waves are now stored as individual Resources (`.tres`) for modularity.
+## 4. Derived Difficulty
+*   **Goblin HP:** 40
+*   **Archer Shots to Kill:** 7 shots (5.6 seconds).
+*   **Conclusion:** One L1 tower cannot hold a lane. You need Barracks + multiple towers.
 
-*   **Location:** `res://data/levels/level_XX/waves/`
-*   **Format:** `wave_01.tres`, `wave_02.tres`...
-*   **Editor:** Editable via Inspector. Contains:
-    *   `wave_number`
-    *   `enemies` (List of scenes + counts)
-    *   `interval` (Spawn rate)
-    *   `hp_multiplier` (Difficulty scaling)
-
-### 🦸 Hero Metrics (Post-Game)
-We track detailed stats to find the MVP:
-1.  **Total Damage:** Raw output.
-2.  **DPM (Damage Per Minute):** Consisteny metric.
-3.  **Kill Count:** Last-hit tracking.
-4.  **Boss Damage:** Specific damage to Boss-type units.
-5.  **MVP Badge:** Given to the hero with highest damage in a specific wave.
-
-## 📝 Future Agenda
-*   **Hero Skills:** Re-balance cooldowns for 20s-90s wave durations.
-*   **Boss Mechanics:** Add unique boss abilities (Stun towers, Summon minions).
-*   **Shop System:** Implement between-level upgrades using Stars.
+This is **HARD MODE**.

@@ -1,18 +1,22 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3 uid="uid://cg4uq7yalpjq"]
+[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3 uid="uid://dnulvoxqbxels"]
 
 [ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="1_wave"]
-[ext_resource type="Script" uid="uid://cmgol7ax0wy0t" path="res://scripts/resources/enemy_spawn_data.gd" id="2_enemy"]
+[ext_resource type="Script" uid="uid://cmgol7ax0wy0t" path="res://scripts/resources/enemy_spawn_data.gd" id="2_spawn"]
 
-[sub_resource type="Resource" id="EnemySpawnData_1"]
-script = ExtResource("2_enemy")
+[sub_resource type="Resource" id="Spawn_1"]
+script = ExtResource("2_spawn")
 count = 10
-spawn_delay = 0.8
+spawn_delay = 2.0
 
-[sub_resource type="Resource" id="EnemySpawnData_2"]
-script = ExtResource("2_enemy")
-enemy_type = "wolf"
-spawn_delay = 1.0
+[sub_resource type="Resource" id="Spawn_2"]
+script = ExtResource("2_spawn")
+enemy_type = "orc"
+count = 2
+spawn_delay = 10.0
 
 [resource]
 script = ExtResource("1_wave")
-enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1"), SubResource("EnemySpawnData_2")])
+wave_number = 6
+break_time = 50.0
+enemies = Array[ExtResource("2_spawn")]([SubResource("Spawn_1"), SubResource("Spawn_2")])
+wave_name = "Combined Arms"

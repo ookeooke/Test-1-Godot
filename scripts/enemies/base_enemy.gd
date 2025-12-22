@@ -76,6 +76,7 @@ var spawn_time: float = 0.0
 var last_damage_source = null
 var last_damage_source_type = "unknown"
 var _has_died: bool = false # Guard to prevent die() from being called multiple times
+var wave_number: int = -1 # Which wave does this enemy belong to?
 
 # ============================================
 # REFERENCES
@@ -130,7 +131,7 @@ func _ready():
 	spawn_time = Time.get_ticks_msec() / 1000.0
 	if BalanceTracker:
 		var enemy_type = get_enemy_name().to_lower().replace(" ", "_")
-		BalanceTracker.record_enemy_spawned(enemy_type)
+		BalanceTracker.record_enemy_spawned(enemy_type, wave_number)
 
 	# Register with EnemyManager for centralized tracking
 	if EnemyManager:
@@ -476,7 +477,7 @@ func die():
 	if BalanceTracker:
 		var enemy_type = get_enemy_name().to_lower().replace(" ", "_")
 		var time_alive = (Time.get_ticks_msec() / 1000.0) - spawn_time
-		BalanceTracker.record_enemy_killed(enemy_type, time_alive, gold_reward)
+		BalanceTracker.record_enemy_killed(enemy_type, time_alive, gold_reward, wave_number)
 
 		# Record kill attribution
 		if last_damage_source and is_instance_valid(last_damage_source):
@@ -529,7 +530,7 @@ func reached_end():
 	# Track enemy leaked
 	if BalanceTracker:
 		var enemy_type = get_enemy_name().to_lower().replace(" ", "_")
-		BalanceTracker.record_enemy_leaked(enemy_type, life_damage)
+		BalanceTracker.record_enemy_leaked(enemy_type, life_damage, wave_number)
 
 	GameStateManager.lose_life(life_damage)
 	enemy_died.emit()

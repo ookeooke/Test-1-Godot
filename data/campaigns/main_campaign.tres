@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://bhr4lqjvfjrx1" path="res://scripts/resources/campaign_data.gd" id="1_campaign"]
 [ext_resource type="Script" uid="uid://tkrhowp0yebt" path="res://scripts/resources/level_config.gd" id="1_suxmv"]
 [ext_resource type="Resource" uid="uid://bam2alcte4wjx" path="res://data/level_configs/level_01_config.tres" id="2_level01"]
-[ext_resource type="Resource" uid="uid://dn2nfv7tj8nyw" path="res://data/level_configs/level_02_config.tres" id="3_level02"]
+[ext_resource type="Resource" path="res://data/level_configs/level_02_config.tres" id="3_level02"]
 [ext_resource type="Resource" path="res://data/level_configs/level_03_config.tres" id="4_level03"]
 
 [resource]

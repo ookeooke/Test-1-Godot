@@ -24,6 +24,7 @@ var archer_body # The archer body (AnimatedSprite2D for L1, ColorRect for L2+) -
 func _ready():
 	# Archer specific setup (MUST be before super._ready)
 	tower_id = "archer"
+	cost = 100 # Base Unit Cost (Standard)
 
 	# Set defaults if not set in inspector
 	if not visual_scene_l1:

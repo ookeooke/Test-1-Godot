@@ -33,7 +33,9 @@
       "Bash(dir \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\" /b)",
       "Bash(dir \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\balance_debug\" /s /b)",
       "Bash(dir \"C:\\Users\\ollil\\AppData\\Roaming\\Godot\\app_userdata\\Test 1\\saves\" /b)",
-      "Bash(dir \"c:\\Users\\ollil\\AppData\\Local\\Godot\\app_userdata\\Test-1-Godot\\saves\" \")"
+      "Bash(dir \"c:\\Users\\ollil\\AppData\\Local\\Godot\\app_userdata\\Test-1-Godot\\saves\" \")",
+      "Bash(dir:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

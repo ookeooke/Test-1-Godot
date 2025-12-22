@@ -52,6 +52,7 @@ var camera: Camera2D = null
 func _ready():
 	# Barracks specific setup
 	tower_id = "barracks"
+	cost = 70 # Stalling Unit (Cheaper)
 	
 	# Set defaults
 	if not visual_scene_l1:

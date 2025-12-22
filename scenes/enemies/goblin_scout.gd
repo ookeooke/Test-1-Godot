@@ -8,11 +8,11 @@ extends "res://scripts/enemies/base_enemy.gd"
 
 func _init():
 	# Set goblin-specific stats
-	speed = 45.0 # PACING FIX: Reduced from 75 (-40% total: -25% KR pacing, -20% strategic slowdown)
-	max_health = 200.0 # BALANCE: Arcade Mode 6x HP Buff (Matches 40 DPS tower)
-	melee_damage = 5.0
+	speed = 90.0 # KR1 "Fast" (1.2)
+	max_health = 20.0 # KR1 Standard (20 HP)
+	melee_damage = 3.0 # Low damage to soldiers
 	attack_cooldown = 1.0
-	gold_reward = 5 # Base gold, scaled by Wave Data
+	gold_reward = 3 # KR1 Standard
 	life_damage = 1
 	can_be_blocked = true
 	melee_detection_range = 100.0

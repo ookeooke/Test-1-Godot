@@ -92,6 +92,7 @@ When checking for errors in the project:
 - **ESC** - Pause / close panels
 
 #### Balance Data Export Location
+**ACTION REQUIRED:** When user asks for balance analysis, you MUST copy the latest `.json` report from this folder:
 ```
 C:\Users\ollil\AppData\Roaming\Godot\app_userdata\Test 1\balance_debug\exports\
 ```

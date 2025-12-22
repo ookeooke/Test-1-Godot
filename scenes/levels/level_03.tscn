@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3 uid="uid://dsfdirv1tbxxv"]
+[gd_scene load_steps=22 format=4 uid="uid://dsfdirv1tbxxv"]
 
 [ext_resource type="Script" uid="uid://mxt3ckx3n6mu" path="res://scripts/managers/wave_manager.gd" id="1_0e48y"]
 [ext_resource type="PackedScene" uid="uid://b6yn3cxqs75wl" path="res://scenes/debug/balance_debug_hud.tscn" id="1_balance_hud"]
@@ -18,8 +18,9 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hero_command_widget.tscn" id="10_hero_widget"]
 [ext_resource type="PackedScene" path="res://scenes/ui/menu_layer.tscn" id="10_menu_layer"]
 [ext_resource type="PackedScene" uid="uid://levelbg001" path="res://scenes/levels/visuals/level_background.tscn" id="11_background"]
-
-[ext_resource type="Resource" path="res://data/level_configs/level_03_config.tres" id="15_config"]
+[ext_resource type="Resource" uid="uid://bnnyhreth84gc" path="res://data/level_configs/level_03_config.tres" id="15_config"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/orc_warrior.tscn" id="16_orc"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/troll_boss.tscn" id="17_ogre"]
 
 [sub_resource type="Curve2D" id="Curve2D_y32ns"]
 _data = {
@@ -37,10 +38,12 @@ point_count = 2
 script = ExtResource("1_level_controller")
 level_config = ExtResource("15_config")
 
-[node name="TileMap" type="TileMap" parent="."]
+[node name="GroundLayer" type="TileMapLayer" parent="."]
+tile_map_data = PackedByteArray("AAD+/wMAAwABAAQAAAD//wMAAwABAAQAAAAAAAMAAwABAAQAAAABAAMAAwABAAQAAAACAAMAAwABAAQAAAADAAMAAwABAAQAAAAEAAMAAwABAAQAAAAEAAQAAwABAAQAAAAEAAUAAwABAAQAAAAEAAYAAwABAAQAAAAEAAcAAwABAAQAAAAEAAgAAwABAAQAAAAEAAkAAwABAAQAAAAEAAoAAwABAAQAAAAFAAoAAwABAAQAAAAGAAoAAwABAAQAAAAHAAoAAwABAAQAAAAIAAoAAwABAAQAAAAJAAoAAwABAAQAAAAKAAoAAwABAAQAAAALAAoAAwABAAQAAAAMAAoAAwABAAQAAAAMAAkAAwABAAQAAAAMAAgAAwABAAQAAAAMAAcAAwABAAQAAAAMAAYAAwABAAQAAAAMAAUAAwABAAQAAAANAAUAAwABAAQAAAANAAQAAwABAAQAAAAMAAQAAwABAAQAAAAOAAQAAwABAAQAAAAPAAQAAwABAAQAAAAQAAQAAwABAAQAAAARAAQAAwABAAQAAAASAAQAAwABAAQAAAASAAMAAwABAAIAAAATAAMAAwABAAIAAAATAAQAAwABAAQAAAAUAAQAAwABAAQAAAAUAAUAAwABAAQAAAAUAAYAAwABAAQAAAAUAAcAAwABAAQAAAAUAAgAAwABAAQAAAAUAAkAAwABAAQAAAAUAAoAAwABAAQAAAAUAAsAAwABAAQAAAAUAAwAAwABAAQAAAAVAAwAAwABAAQAAAAWAAwAAwABAAQAAAAXAAwAAwABAAQAAAAYAAwAAwABAAQAAAAZAAwAAwABAAQAAAAaAAwAAwABAAQAAAAbAAwAAwABAAQAAAAcAAwAAwABAAQAAAAcAAsAAwABAAQAAAAcAAoAAwABAAQAAAAcAAkAAwABAAQAAAAcAAgAAwABAAQAAAAcAAcAAwABAAQAAAAcAAYAAwABAAQAAAAdAAYAAwABAAQAAAAeAAYAAwABAAQAAAAfAAYAAwABAAQAAAAgAAYAAwABAAQAAAAhAAYAAwABAAQAAAAEAAsAAwABAAQAAAAFAAsAAwABAAQAAAAGAAsAAwABAAQAAAAHAAsAAwABAAQAAAAIAAsAAwABAAQAAAAJAAsAAwABAAQAAAAKAAsAAwABAAQAAAALAAsAAwABAAQAAAAMAAsAAwABAAQAAAARAAMAAwABAAIAAAAQAAMAAwABAAIAAAAPAAMAAwABAAIAAAAOAAMAAwABAAIAAAANAAMAAwABAAIAAAAMAAMAAwABAAIAAAAUAAMAAwABAAIAAAA=")
 tile_set = ExtResource("2_dscar")
-format = 2
-layer_0/tile_data = PackedInt32Array()
+
+[node name="EnvironmentLayer" type="TileMapLayer" parent="."]
+tile_set = ExtResource("2_dscar")
 
 [node name="LevelBackground" parent="." instance=ExtResource("11_background")]
 visible = false
@@ -52,13 +55,14 @@ curve = SubResource("Curve2D_y32ns")
 [node name="EnemyPath2" type="Path2D" parent="."]
 curve = SubResource("Curve2D_unique_path2")
 
-[node name="WaveManager" type="Node2D" parent="." node_paths=PackedStringArray("enemy_path", "extra_paths", "wave_label")]
+[node name="WaveManager" type="Node2D" parent="." node_paths=PackedStringArray("enemy_path", "wave_label")]
 script = ExtResource("1_0e48y")
 enemy_path = NodePath("../EnemyPath")
-extra_paths = []
 goblin_scene = ExtResource("1_wtcfe")
 wolf_scene = ExtResource("3_wolf")
 troll_scene = ExtResource("4_troll")
+orc_scene = ExtResource("16_orc")
+ogre_scene = ExtResource("17_ogre")
 wave_label = NodePath("../UI/TopBar/HBoxContainer/WaveLabel")
 
 [node name="Camera2D" type="Camera2D" parent="."]
@@ -163,13 +167,13 @@ script = ExtResource("5_kdubu")
 [node name="TowerSpots" type="Node2D" parent="."]
 
 [node name="TowerSpot1" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(422, 495)
+position = Vector2(409, 592)
 
 [node name="TowerSpot2" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(980, 166)
+position = Vector2(888, 185)
 
 [node name="TowerSpot3" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(1130, 381)
+position = Vector2(1057, 370)
 
 [node name="TowerSpot4" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
 position = Vector2(1485, 310)
@@ -178,22 +182,10 @@ position = Vector2(1485, 310)
 position = Vector2(688, 305)
 
 [node name="TowerSpot6" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(934, 498)
+position = Vector2(897, 453)
 
 [node name="TowerSpot7" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(206, 320)
-
-[node name="TowerSpot8" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(-948, 1937)
-
-[node name="TowerSpot9" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(-923, -963)
-
-[node name="TowerSpot10" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(2950, -936)
-
-[node name="TowerSpot11" parent="TowerSpots" instance=ExtResource("5_q6r6c")]
-position = Vector2(2939, 1920)
+position = Vector2(157, 304)
 
 [node name="HeroManager" type="Node2D" parent="." groups=["hero_manager"]]
 modulate = Color(0.9575384, 0.84961164, 0.8779932, 1)

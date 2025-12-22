@@ -73,9 +73,14 @@ func _ready():
 func roll_loot_for_enemy(enemy_tier: String, position: Vector2, guaranteed_item: String = "") -> void:
 	var table = loot_tables.get(enemy_tier, loot_tables["tier1"])
 
-	# Always drop gold
-	var gold_amount = randi_range(table.gold_range[0], table.gold_range[1])
-	_spawn_gold_pickup(gold_amount, position)
+	# Gold Drop (Economy Nerf: 20% Chance, reduced amounts)
+	# Was 100% chance of 5-15g. Now 20% chance of 2-5g for Tier 1.
+	# Gold Drop (Economy Nerf: REMOVED for standard enemies to prevent double dipping)
+	# Enemies already give bounty gold on death.
+	# Only Bosses or special chests should drop extra gold pickups.
+	if enemy_tier == "boss":
+		var gold_amount = randi_range(table.gold_range[0], table.gold_range[1])
+		_spawn_gold_pickup(gold_amount, position)
 
 	# Guaranteed item (for bosses or special enemies)
 	if guaranteed_item != "":
@@ -177,6 +182,10 @@ func _spawn_gold_pickup(amount: int, position: Vector2):
 
 	# Track for stats/logging
 	pending_wave_gold += amount
+
+	# REPORT TO BALANCE TRACKER (Fix for untracked economy)
+	if BalanceTracker:
+		BalanceTracker.record_loot_gold(amount)
 
 	gold_spawned.emit(amount, position)
 	# print("[LootManager] Enemy dropped %d mission gold (temporary)" % amount)

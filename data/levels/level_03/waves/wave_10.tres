@@ -1,23 +1,25 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=6 format=3 uid="uid://dlqrflxuppjkt"]
+[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3 uid="uid://dyayms4u2uy4e"]
 
 [ext_resource type="Script" uid="uid://bvq38prn6vr24" path="res://scripts/resources/wave_data.gd" id="1_wave"]
-[ext_resource type="Script" uid="uid://cmgol7ax0wy0t" path="res://scripts/resources/enemy_spawn_data.gd" id="2_enemy"]
+[ext_resource type="Script" uid="uid://cmgol7ax0wy0t" path="res://scripts/resources/enemy_spawn_data.gd" id="2_spawn"]
 
-[sub_resource type="Resource" id="EnemySpawnData_1"]
-script = ExtResource("2_enemy")
-count = 10
+[sub_resource type="Resource" id="Spawn_2"]
+script = ExtResource("2_spawn")
+enemy_type = "orc"
+count = 4
+spawn_delay = 5.0
 
-[sub_resource type="Resource" id="EnemySpawnData_2"]
-script = ExtResource("2_enemy")
-enemy_type = "wolf"
-spawn_delay = 0.8
-
-[sub_resource type="Resource" id="EnemySpawnData_3"]
-script = ExtResource("2_enemy")
+[sub_resource type="Resource" id="Spawn_1"]
+script = ExtResource("2_spawn")
 enemy_type = "troll"
-count = 2
-spawn_delay = 4.0
+count = 1
+spawn_delay = 1.0
 
 [resource]
 script = ExtResource("1_wave")
-enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1"), SubResource("EnemySpawnData_2"), SubResource("EnemySpawnData_3")])
+wave_number = 10
+break_time = 5.0
+enemies = Array[ExtResource("2_spawn")]([SubResource("Spawn_2"), SubResource("Spawn_1")])
+wave_name = "The Warlord"
+is_boss_wave = true
+hp_multiplier = 1.2
