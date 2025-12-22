@@ -1,1296 +1,609 @@
 {
 	"balance_metrics": {
-		"avg_enemy_ttk": 6.5203125,
+		"avg_enemy_ttk": 9.79587209302326,
 		"avg_tower_dps": 0.0,
-		"gold_efficiency": 0.624048706240487,
-		"total_dps": 0.0,
-		"total_hero_damage": 0.0,
-		"total_tower_damage": 12777.0
+		"gold_efficiency": 1.94630872483221,
+		"total_dps": 15.4949031203797,
+		"total_hero_damage": 3186.0,
+		"total_tower_damage": 3139.0
 	},
 	"boss_fights": {
-		"troll_boss": {
-			"appear_time": 40.554,
-			"boss_type": "troll_boss",
-			"damage_by_hero": {
 
-			},
-			"damage_by_tower": {
-				"223942282455": 1500.0
-			},
-			"defeat_time": 62.47,
-			"defeated": true,
-			"fight_duration": 21.916,
-			"health_milestones": [
-				{
-					"health_percent": 75.0,
-					"time": 60.586,
-					"time_since_appear": 20.032
-				},
-				{
-					"health_percent": 50.0,
-					"time": 61.149,
-					"time_since_appear": 20.595
-				},
-				{
-					"health_percent": 25.0,
-					"time": 61.817,
-					"time_since_appear": 21.263
-				}
-			],
-			"hits_taken": 50,
-			"leaked": false,
-			"total_damage_taken": 1500.0,
-			"wave_number": 9
-		}
 	},
-	"duration": 67.949,
+	"duration": 205.616,
 	"economy": {
 		"completion_bonus": 0,
-		"ending_gold": 426,
+		"ending_gold": 52,
 		"gold_history": [
+			{
+				"amount": -100,
+				"reason": "tower_archer",
+				"time": 4.579,
+				"type": "spent"
+			},
 			{
 				"amount": 0,
 				"reason": "tower_artillery",
-				"time": 4.613,
+				"time": 7.125,
 				"type": "spent"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 9.097,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 11.35,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 11.468,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 12.198,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 13.11,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 13.861,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 14.799,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 16.482,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 16.482,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 18.012,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 18.583,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 19.18,
+				"type": "earned"
 			},
 			{
 				"amount": -70,
 				"reason": "tower_barracks",
-				"time": 5.817,
+				"time": 19.46,
 				"type": "spent"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 15.533,
+				"time": 19.465,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 15.534,
+				"time": 19.813,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 16.583,
+				"time": 20.467,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 17.188,
+				"time": 21.649,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 17.189,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "loot_drop",
-				"time": 18.537,
+				"time": 23.443,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 18.934,
+				"time": 25.6,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 18.934,
+				"time": 28.498,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.184,
+				"time": 31.203,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.198,
+				"time": 33.831,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.386,
+				"time": 35.368,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.413,
+				"time": 37.705,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.58,
+				"time": 40.382,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.663,
+				"time": 40.799,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.699,
+				"time": 41.098,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.747,
+				"time": 41.286,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.782,
+				"time": 41.585,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.83,
+				"time": 41.884,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 19.886,
-				"type": "earned"
-			},
-			{
-				"amount": 4,
-				"reason": "loot_drop",
-				"time": 19.941,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 19.948,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 19.997,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.164,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.199,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.247,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.415,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.52,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 20.52,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.618,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.666,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.727,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.824,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 20.825,
-				"type": "earned"
-			},
-			{
-				"amount": 4,
-				"reason": "loot_drop",
-				"time": 20.827,
+				"time": 42.183,
 				"type": "earned"
 			},
 			{
 				"amount": 7,
 				"reason": "enemy_kill_wolf",
-				"time": 20.929,
+				"time": 54.248,
 				"type": "earned"
 			},
 			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 20.978,
-				"type": "earned"
-			},
-			{
-				"amount": 2,
-				"reason": "loot_drop",
-				"time": 20.984,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.061,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.062,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 21.132,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 21.193,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.299,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 21.361,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.479,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 21.528,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.612,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.647,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 21.749,
-				"type": "earned"
-			},
-			{
-				"amount": 5,
-				"reason": "loot_drop",
-				"time": 21.77,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.778,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "loot_drop",
-				"time": 21.806,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.861,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 21.875,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.897,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 21.98,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 22.028,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "loot_drop",
-				"time": 22.055,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 22.146,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 22.279,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 22.396,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 23.301,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 23.467,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 23.718,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 23.913,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.045,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.045,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 24.163,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.295,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.296,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.324,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 24.324,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.462,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.463,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.546,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 24.608,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "loot_drop",
-				"time": 24.621,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.74,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.74,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 24.741,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 25.741,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 26.075,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 26.075,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 26.777,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 27.097,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 27.41,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 28.398,
-				"type": "earned"
-			},
-			{
-				"amount": -220,
-				"reason": "tower_upgrade_L2",
-				"time": 29.302,
+				"amount": -70,
+				"reason": "tower_barracks",
+				"time": 56.6,
 				"type": "spent"
 			},
 			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 59.116,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 60.417,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 60.931,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 63.511,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 63.511,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 66.424,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 66.542,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 67.295,
+				"type": "earned"
+			},
+			{
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 68.776,
+				"type": "earned"
+			},
+			{
 				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 29.413,
+				"reason": "enemy_kill_wolf",
+				"time": 70.026,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 29.413,
-				"type": "earned"
-			},
-			{
-				"amount": 2,
-				"reason": "loot_drop",
-				"time": 30.656,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 31.082,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 31.416,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 31.416,
+				"time": 71.827,
 				"type": "earned"
 			},
 			{
 				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 31.416,
+				"reason": "enemy_kill_wolf",
+				"time": 83.078,
 				"type": "earned"
 			},
 			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 31.417,
+				"amount": 7,
+				"reason": "enemy_kill_wolf",
+				"time": 83.593,
 				"type": "earned"
 			},
 			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 31.417,
+				"amount": 7,
+				"reason": "enemy_kill_wolf",
+				"time": 86.215,
 				"type": "earned"
 			},
 			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 31.417,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 32.229,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 32.229,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 32.229,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 32.229,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 32.577,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 33.398,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "loot_drop",
-				"time": 33.591,
-				"type": "earned"
-			},
-			{
-				"amount": 4,
-				"reason": "loot_drop",
-				"time": 33.591,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "loot_drop",
-				"time": 33.938,
-				"type": "earned"
-			},
-			{
-				"amount": -100,
-				"reason": "tower_archer",
-				"time": 39.213,
+				"amount": -130,
+				"reason": "tower_mage",
+				"time": 108.277,
 				"type": "spent"
 			},
 			{
+				"amount": 50,
+				"reason": "enemy_kill_troll",
+				"time": 117.563,
+				"type": "earned"
+			},
+			{
 				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 41.074,
+				"reason": "enemy_kill_wolf",
+				"time": 126.616,
+				"type": "earned"
+			},
+			{
+				"amount": 7,
+				"reason": "enemy_kill_wolf",
+				"time": 130.307,
+				"type": "earned"
+			},
+			{
+				"amount": 7,
+				"reason": "enemy_kill_wolf",
+				"time": 135.265,
+				"type": "earned"
+			},
+			{
+				"amount": 7,
+				"reason": "enemy_kill_wolf",
+				"time": 139.751,
+				"type": "earned"
+			},
+			{
+				"amount": 7,
+				"reason": "enemy_kill_wolf",
+				"time": 148.331,
 				"type": "earned"
 			},
 			{
 				"amount": -110,
 				"reason": "tower_upgrade_L2",
-				"time": 41.854,
+				"time": 155.05,
 				"type": "spent"
 			},
 			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 42.097,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 43.077,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 43.078,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 43.411,
-				"type": "earned"
-			},
-			{
-				"amount": 4,
-				"reason": "loot_drop",
-				"time": 44.022,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 44.065,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 44.149,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 44.15,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 44.315,
-				"type": "earned"
-			},
-			{
-				"amount": 2,
-				"reason": "loot_drop",
-				"time": 44.426,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 44.649,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 44.649,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 44.649,
+				"amount": 3,
+				"reason": "enemy_kill_goblin",
+				"time": 158.581,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 48.667,
+				"time": 162.559,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 48.668,
+				"time": 163.915,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 48.668,
+				"time": 164.895,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 48.668,
-				"type": "earned"
-			},
-			{
-				"amount": 5,
-				"reason": "loot_drop",
-				"time": 48.993,
+				"time": 165.869,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 49.162,
+				"time": 166.717,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 49.162,
+				"time": 168.101,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 49.162,
+				"time": 168.247,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 49.314,
-				"type": "earned"
-			},
-			{
-				"amount": 2,
-				"reason": "loot_drop",
-				"time": 49.487,
+				"time": 168.297,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 49.745,
+				"time": 169.764,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 49.745,
+				"time": 170.167,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 49.746,
+				"time": 170.729,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 49.746,
+				"time": 182.142,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 50.246,
+				"time": 183.629,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 50.246,
+				"time": 184.903,
 				"type": "earned"
 			},
 			{
 				"amount": 3,
 				"reason": "enemy_kill_goblin",
-				"time": 50.246,
+				"time": 185.563,
 				"type": "earned"
 			},
 			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 50.247,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 50.746,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 50.746,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 50.747,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "enemy_kill_goblin",
-				"time": 50.747,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 53.252,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 53.723,
-				"type": "earned"
-			},
-			{
-				"amount": 3,
-				"reason": "loot_drop",
-				"time": 54.028,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 54.376,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 54.606,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 54.606,
-				"type": "earned"
-			},
-			{
-				"amount": 33,
-				"reason": "loot_drop",
-				"time": 54.738,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 54.857,
-				"type": "earned"
-			},
-			{
-				"amount": -320,
-				"reason": "tower_upgrade_L3",
-				"time": 54.898,
+				"amount": -100,
+				"reason": "tower_archer",
+				"time": 190.473,
 				"type": "spent"
 			},
 			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 55.497,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 55.498,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 55.499,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 55.58,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 55.893,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_orc",
-				"time": 56.06,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 56.142,
-				"type": "earned"
-			},
-			{
-				"amount": 50,
-				"reason": "enemy_kill_troll",
-				"time": 56.275,
-				"type": "earned"
-			},
-			{
-				"amount": 50,
-				"reason": "enemy_kill_troll",
-				"time": 56.414,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 56.415,
-				"type": "earned"
-			},
-			{
-				"amount": 7,
-				"reason": "enemy_kill_wolf",
-				"time": 56.497,
-				"type": "earned"
-			},
-			{
 				"amount": 3,
-				"reason": "loot_drop",
-				"time": 56.767,
+				"reason": "enemy_kill_goblin",
+				"time": 192.099,
 				"type": "earned"
 			},
 			{
-				"amount": 50,
-				"reason": "enemy_kill_troll_boss",
-				"time": 62.47,
-				"type": "earned"
-			},
-			{
-				"amount": 140,
-				"reason": "loot_drop",
-				"time": 62.776,
-				"type": "earned"
-			},
-			{
-				"amount": 50,
-				"reason": "enemy_kill_troll",
-				"time": 67.449,
-				"type": "earned"
-			},
-			{
-				"amount": 13,
-				"reason": "wave_10_bonus",
-				"time": 67.942,
+				"amount": 7,
+				"reason": "enemy_kill_wolf",
+				"time": 197.836,
 				"type": "earned"
 			}
 		],
-		"starting_gold": 250,
-		"total_earned": 1064,
-		"total_spent": 820,
-		"total_wave_bonus": 13,
+		"starting_gold": 0,
+		"total_earned": 298,
+		"total_spent": 580,
+		"total_wave_bonus": 0,
 		"wave_bonuses": {
-			"10": 13
+
 		}
 	},
 	"enemies": {
 		"goblin": {
-			"avg_ttk": 5.23804444444444,
-			"gold_rewarded": 270,
-			"killed": 90,
-			"leak_rate": 0.0,
-			"leaked": 0,
-			"lives_lost": 0,
+			"avg_ttk": 9.58540350877193,
+			"gold_rewarded": 171,
+			"killed": 57,
+			"leak_rate": 0.0338983050847458,
+			"leaked": 2,
+			"lives_lost": 2,
 			"spawn_times": [
-				2.452,
-				3.239,
-				4.024,
-				4.79,
-				5.582,
-				6.347,
-				7.189,
-				7.933,
-				8.759,
-				9.58,
-				10.311,
-				11.083,
-				11.937,
-				12.661,
-				12.744,
-				13.294,
-				13.586,
-				13.891,
-				14.107,
-				14.232,
-				14.308,
-				14.58,
-				15.199,
-				15.741,
-				16.332,
-				16.98,
-				17.563,
-				18.21,
-				18.801,
-				18.996,
-				19.101,
-				19.176,
-				19.252,
-				19.336,
-				19.415,
-				19.489,
-				19.572,
-				19.65,
-				19.719,
-				19.803,
-				22.055,
-				22.118,
-				22.188,
-				22.251,
-				22.319,
-				22.383,
-				22.451,
-				22.514,
-				22.584,
-				22.646,
-				22.709,
-				22.771,
-				22.834,
-				22.897,
-				22.967,
-				23.03,
-				23.092,
-				23.153,
-				23.217,
-				23.28,
-				23.35,
-				23.418,
-				23.482,
-				23.551,
-				23.613,
-				23.683,
-				23.747,
-				23.808,
-				23.877,
-				23.949,
-				44.905,
-				45.045,
-				45.184,
-				45.309,
-				45.447,
-				45.573,
-				45.698,
-				45.83,
-				45.97,
-				46.094,
-				46.213,
-				46.344,
-				46.47,
-				46.608,
-				46.74,
-				46.866,
-				46.991,
-				47.117,
-				47.235,
-				47.367
+				2.317,
+				4.653,
+				5.343,
+				5.85,
+				6.358,
+				6.859,
+				7.031,
+				7.394,
+				7.909,
+				8.43,
+				8.979,
+				9.458,
+				9.521,
+				10.07,
+				12.038,
+				14.347,
+				16.794,
+				19.279,
+				21.788,
+				24.493,
+				27.114,
+				29.576,
+				32.072,
+				34.555,
+				36.871,
+				39.451,
+				40.59,
+				40.875,
+				41.203,
+				41.529,
+				47.092,
+				47.315,
+				47.559,
+				48.072,
+				48.114,
+				48.588,
+				48.802,
+				49.095,
+				49.575,
+				49.665,
+				50.124,
+				50.667,
+				151.301,
+				151.766,
+				152.302,
+				152.789,
+				153.241,
+				153.777,
+				154.264,
+				154.791,
+				155.293,
+				155.793,
+				156.316,
+				156.829,
+				174.916,
+				175.465,
+				176.016,
+				176.473,
+				176.96
 			],
-			"spawned": 90,
-			"total_time_alive": 471.424,
+			"spawned": 59,
+			"total_time_alive": 546.368,
 			"type": "goblin"
 		},
-		"orc": {
-			"avg_ttk": 8.01195454545454,
-			"gold_rewarded": 154,
-			"killed": 22,
-			"leak_rate": 0.0,
-			"leaked": 0,
-			"lives_lost": 0,
-			"spawn_times": [
-				9.31,
-				11.381,
-				13.544,
-				20.191,
-				20.394,
-				20.582,
-				20.776,
-				20.979,
-				21.16,
-				21.332,
-				21.534,
-				21.743,
-				21.945,
-				23.954,
-				24.191,
-				24.455,
-				24.726,
-				47.895,
-				48.382,
-				48.931,
-				49.384,
-				49.912
-			],
-			"spawned": 22,
-			"total_time_alive": 176.263,
-			"type": "orc"
-		},
 		"troll": {
-			"avg_ttk": 21.4826666666667,
-			"gold_rewarded": 150,
-			"killed": 3,
-			"leak_rate": 0.0,
-			"leaked": 0,
-			"lives_lost": 0,
-			"spawn_times": [
-				29.641,
-				32.938,
-				53.111
-			],
-			"spawned": 3,
-			"total_time_alive": 64.448,
-			"type": "troll"
-		},
-		"troll_boss": {
-			"avg_ttk": 21.916,
+			"avg_ttk": 36.356,
 			"gold_rewarded": 50,
 			"killed": 1,
 			"leak_rate": 0.0,
 			"leaked": 0,
 			"lives_lost": 0,
 			"spawn_times": [
-				40.554
+				81.207
 			],
 			"spawned": 1,
-			"total_time_alive": 21.916,
-			"type": "troll_boss"
+			"total_time_alive": 36.356,
+			"type": "troll"
 		},
 		"wolf": {
-			"avg_ttk": 7.31692857142857,
-			"gold_rewarded": 196,
-			"killed": 28,
-			"leak_rate": 0.0,
-			"leaked": 0,
-			"lives_lost": 0,
+			"avg_ttk": 23.611,
+			"gold_rewarded": 77,
+			"killed": 11,
+			"leak_rate": 0.5,
+			"leaked": 13,
+			"lives_lost": 13,
 			"spawn_times": [
-				16.527,
-				17.542,
-				18.474,
-				18.974,
-				19.135,
-				19.253,
-				19.388,
-				19.524,
-				19.656,
-				19.795,
-				24.829,
-				25.43,
-				26.304,
-				27.034,
-				27.868,
-				28.682,
-				29.46,
-				30.268,
-				50.127,
-				50.316,
-				50.502,
-				50.719,
-				50.927,
-				51.128,
-				51.323,
-				51.525,
-				51.734,
-				51.942
+				44.012,
+				44.534,
+				45.007,
+				45.5,
+				46.035,
+				46.565,
+				51.126,
+				51.641,
+				52.155,
+				52.683,
+				115.024,
+				115.143,
+				115.28,
+				115.413,
+				115.531,
+				115.649,
+				169.896,
+				170.438,
+				170.966,
+				171.425,
+				171.904,
+				172.447,
+				172.906,
+				173.399,
+				173.893,
+				174.388
 			],
-			"spawned": 28,
-			"total_time_alive": 204.874,
+			"spawned": 26,
+			"total_time_alive": 259.721,
 			"type": "wolf"
 		}
 	},
@@ -1308,14 +621,14 @@
 
 			},
 			"hero_id": "ranger",
-			"instance_id": 195840444444,
-			"kills": 0,
+			"instance_id": 561583754017,
+			"kills": 25,
 			"last_state": "idle",
 			"last_state_change_time": 0.0,
 			"melee_damage": 0.0,
 			"melee_dps": 0.0,
-			"placement_time": 0.0499999999999998,
-			"ranged_damage": 0.0,
+			"placement_time": 0.0309999999999988,
+			"ranged_damage": 3186.0,
 			"ranged_dps": 0.0,
 			"skill_damage": 0.0,
 			"skill_dps": 0.0,
@@ -1329,54 +642,17 @@
 				"returning": 0.0,
 				"walking": 0.0
 			},
-			"total_damage": 0.0
+			"total_damage": 3186.0
 		}
 	},
-	"level_id": "level_03",
-	"lives_remaining": 20,
-	"result": "victory",
-	"run_id": 1,
-	"stars": 3,
-	"start_time": "2025-12-21T00:39:23",
+	"level_id": "level_01",
+	"lives_remaining": 0,
+	"result": "defeat",
+	"run_id": 2,
+	"stars": 0,
+	"start_time": "2025-12-22T19:32:55",
 	"towers": {
-		"223942282455": {
-			"accuracy": 0.0,
-			"active_time": 0.0,
-			"actual_dps": 0.0,
-			"assists": 0,
-			"damage_per_gold": 23.5685185185185,
-			"gold_spent": 540,
-			"idle_time": 0.0,
-			"instance_id": 223942282455,
-			"kills": 141,
-			"last_shot_time": 0.0,
-			"last_state": "idle",
-			"last_state_change_time": 4.613,
-			"placement_time": 4.613,
-			"position": "(897.0, 453.0)",
-			"shots_fired": 0,
-			"shots_hit": 915,
-			"total_damage": 12727.0,
-			"tower_level": 3,
-			"type": "artillery",
-			"upgrade_history": [
-				{
-					"cost": 220,
-					"level": 2,
-					"path": "",
-					"time": 29.302
-				},
-				{
-					"cost": 320,
-					"level": 3,
-					"path": "",
-					"time": 54.898
-				}
-			],
-			"upgrade_path": "",
-			"uptime_percent": 0.0
-		},
-		"233706622285": {
+		"1078540110984": {
 			"accuracy": 0.0,
 			"active_time": 0.0,
 			"actual_dps": 0.0,
@@ -1384,13 +660,13 @@
 			"damage_per_gold": 0.0,
 			"gold_spent": 70,
 			"idle_time": 0.0,
-			"instance_id": 233706622285,
+			"instance_id": 1078540110984,
 			"kills": 0,
 			"last_shot_time": 0.0,
 			"last_state": "idle",
-			"last_state_change_time": 5.817,
-			"placement_time": 5.817,
-			"position": "(888.0, 185.0)",
+			"last_state_change_time": 56.6,
+			"placement_time": 56.6,
+			"position": "(846.0, 542.0)",
 			"shots_fired": 0,
 			"shots_hit": 0,
 			"total_damage": 0.0,
@@ -1400,24 +676,72 @@
 			"upgrade_path": "",
 			"uptime_percent": 0.0
 		},
-		"645721492727": {
+		"1598684138497": {
 			"accuracy": 0.0,
 			"active_time": 0.0,
 			"actual_dps": 0.0,
 			"assists": 0,
-			"damage_per_gold": 0.238095238095238,
-			"gold_spent": 210,
+			"damage_per_gold": 5.19230769230769,
+			"gold_spent": 130,
 			"idle_time": 0.0,
-			"instance_id": 645721492727,
-			"kills": 1,
+			"instance_id": 1598684138497,
+			"kills": 7,
 			"last_shot_time": 0.0,
 			"last_state": "idle",
-			"last_state_change_time": 39.213,
-			"placement_time": 39.213,
-			"position": "(688.0, 305.0)",
+			"last_state_change_time": 108.277,
+			"placement_time": 108.277,
+			"position": "(720.0, 286.0)",
 			"shots_fired": 0,
-			"shots_hit": 5,
-			"total_damage": 50.0,
+			"shots_hit": 45,
+			"total_damage": 675.0,
+			"tower_level": 1,
+			"type": "mage",
+			"upgrade_history": [],
+			"upgrade_path": "",
+			"uptime_percent": 0.0
+		},
+		"2521162582925": {
+			"accuracy": 0.0,
+			"active_time": 0.0,
+			"actual_dps": 0.0,
+			"assists": 0,
+			"damage_per_gold": 0.78,
+			"gold_spent": 100,
+			"idle_time": 0.0,
+			"instance_id": 2521162582925,
+			"kills": 0,
+			"last_shot_time": 0.0,
+			"last_state": "idle",
+			"last_state_change_time": 190.473,
+			"placement_time": 190.473,
+			"position": "(1485.0, 310.0)",
+			"shots_fired": 0,
+			"shots_hit": 13,
+			"total_damage": 78.0,
+			"tower_level": 1,
+			"type": "archer",
+			"upgrade_history": [],
+			"upgrade_path": "",
+			"uptime_percent": 0.0
+		},
+		"585306737614": {
+			"accuracy": 0.0,
+			"active_time": 0.0,
+			"actual_dps": 0.0,
+			"assists": 0,
+			"damage_per_gold": 6.02857142857143,
+			"gold_spent": 210,
+			"idle_time": 0.0,
+			"instance_id": 585306737614,
+			"kills": 13,
+			"last_shot_time": 0.0,
+			"last_state": "idle",
+			"last_state_change_time": 4.579,
+			"placement_time": 4.579,
+			"position": "(281.0, 312.0)",
+			"shots_fired": 0,
+			"shots_hit": 189,
+			"total_damage": 1266.0,
 			"tower_level": 2,
 			"type": "archer",
 			"upgrade_history": [
@@ -1425,9 +749,57 @@
 					"cost": 110,
 					"level": 2,
 					"path": "",
-					"time": 41.854
+					"time": 155.05
 				}
 			],
+			"upgrade_path": "",
+			"uptime_percent": 0.0
+		},
+		"600758553937": {
+			"accuracy": 0.0,
+			"active_time": 0.0,
+			"actual_dps": 0.0,
+			"assists": 0,
+			"damage_per_gold": 0.0,
+			"gold_spent": 0,
+			"idle_time": 0.0,
+			"instance_id": 600758553937,
+			"kills": 13,
+			"last_shot_time": 0.0,
+			"last_state": "idle",
+			"last_state_change_time": 7.125,
+			"placement_time": 7.125,
+			"position": "(483.0, 447.0)",
+			"shots_fired": 0,
+			"shots_hit": 140,
+			"total_damage": 1120.0,
+			"tower_level": 1,
+			"type": "artillery",
+			"upgrade_history": [],
+			"upgrade_path": "",
+			"uptime_percent": 0.0
+		},
+		"737274760726": {
+			"accuracy": 0.0,
+			"active_time": 0.0,
+			"actual_dps": 0.0,
+			"assists": 0,
+			"damage_per_gold": 0.0,
+			"gold_spent": 70,
+			"idle_time": 0.0,
+			"instance_id": 737274760726,
+			"kills": 0,
+			"last_shot_time": 0.0,
+			"last_state": "idle",
+			"last_state_change_time": 19.46,
+			"placement_time": 19.46,
+			"position": "(941.0, 131.0)",
+			"shots_fired": 0,
+			"shots_hit": 0,
+			"total_damage": 0.0,
+			"tower_level": 1,
+			"type": "barracks",
+			"upgrade_history": [],
 			"upgrade_path": "",
 			"uptime_percent": 0.0
 		}
@@ -1437,341 +809,264 @@
 			"composition": {
 
 			},
-			"duration": 18.198,
-			"end_time": 19.99,
-			"enemies_killed": 15,
+			"duration": 40.653,
+			"end_time": 42.608,
+			"enemies_killed": 20,
 			"enemies_leaked": 0,
 			"enemies_spawned": 0,
-			"gold_at_end": 136,
+			"gold_at_end": 75,
 			"gold_at_start": 250,
 			"gold_earned": 0,
 			"gold_spent": 0,
 			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
+				"561583754017": {
+					"damage": 260.0,
 					"hero_id": "ranger",
-					"kills": 0
+					"kills": 11
 				}
 			},
 			"hero_start_stats": {
-				"195840444444": {
+				"561583754017": {
 					"damage": 0.0,
 					"kills": 0
 				}
 			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
+			"lives_at_end": 15,
+			"lives_at_start": 15,
 			"lives_lost": 0,
 			"mvp_hero": "ranger",
-			"start_time": 1.792,
-			"top_wave_damage": 0.0,
+			"start_time": 1.955,
+			"top_wave_damage": 260.0,
 			"wave_number": 1
 		},
 		"2": {
 			"composition": {
 
 			},
-			"duration": 12.287,
-			"end_time": 21.283,
-			"enemies_killed": 3,
+			"duration": 15.868,
+			"end_time": 20.828,
+			"enemies_killed": 10,
 			"enemies_leaked": 0,
 			"enemies_spawned": 0,
-			"gold_at_end": 216,
-			"gold_at_start": 57,
+			"gold_at_end": 30,
+			"gold_at_start": 180,
 			"gold_earned": 0,
 			"gold_spent": 0,
 			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
+				"561583754017": {
+					"damage": 170.0,
 					"hero_id": "ranger",
-					"kills": 0
+					"kills": 7
 				}
 			},
 			"hero_start_stats": {
-				"195840444444": {
+				"561583754017": {
 					"damage": 0.0,
 					"kills": 0
 				}
 			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
+			"lives_at_end": 15,
+			"lives_at_start": 15,
 			"lives_lost": 0,
 			"mvp_hero": "ranger",
-			"start_time": 8.996,
-			"top_wave_damage": 0.0,
+			"start_time": 4.96,
+			"top_wave_damage": 170.0,
 			"wave_number": 2
 		},
 		"3": {
 			"composition": {
 
 			},
-			"duration": 9.909,
-			"end_time": 22.139,
-			"enemies_killed": 25,
-			"enemies_leaked": 0,
+			"duration": 38.191,
+			"end_time": 81.688,
+			"enemies_killed": 6,
+			"enemies_leaked": 4,
 			"enemies_spawned": 0,
-			"gold_at_end": 286,
-			"gold_at_start": 64,
+			"gold_at_end": 82,
+			"gold_at_start": 83,
 			"gold_earned": 0,
 			"gold_spent": 0,
 			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
+				"561583754017": {
+					"damage": 455.0,
 					"hero_id": "ranger",
-					"kills": 0
+					"kills": 3
 				}
 			},
 			"hero_start_stats": {
-				"195840444444": {
-					"damage": 0.0,
-					"kills": 0
+				"561583754017": {
+					"damage": 260.0,
+					"kills": 11
 				}
 			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
-			"lives_lost": 0,
+			"lives_at_end": 9,
+			"lives_at_start": 15,
+			"lives_lost": 4,
 			"mvp_hero": "ranger",
-			"start_time": 12.23,
-			"top_wave_damage": 0.0,
+			"start_time": 43.497,
+			"top_wave_damage": 455.0,
 			"wave_number": 3
 		},
 		"4": {
 			"composition": {
 
 			},
-			"duration": 6.481,
-			"end_time": 22.549,
-			"enemies_killed": 10,
-			"enemies_leaked": 0,
+			"duration": 41.028,
+			"end_time": 87.522,
+			"enemies_killed": 9,
+			"enemies_leaked": 3,
 			"enemies_spawned": 0,
-			"gold_at_end": 307,
-			"gold_at_start": 78,
+			"gold_at_end": 103,
+			"gold_at_start": 83,
 			"gold_earned": 0,
 			"gold_spent": 0,
 			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
+				"561583754017": {
+					"damage": 545.0,
 					"hero_id": "ranger",
-					"kills": 0
+					"kills": 5
 				}
 			},
 			"hero_start_stats": {
-				"195840444444": {
-					"damage": 0.0,
-					"kills": 0
+				"561583754017": {
+					"damage": 260.0,
+					"kills": 11
 				}
 			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
-			"lives_lost": 0,
+			"lives_at_end": 8,
+			"lives_at_start": 15,
+			"lives_lost": 3,
 			"mvp_hero": "ranger",
-			"start_time": 16.068,
-			"top_wave_damage": 0.0,
+			"start_time": 46.494,
+			"top_wave_damage": 545.0,
 			"wave_number": 4
 		},
 		"5": {
 			"composition": {
 
 			},
-			"duration": 12.56,
-			"end_time": 32.661,
-			"enemies_killed": 10,
+			"duration": 41.299,
+			"end_time": 122.047,
+			"enemies_killed": 1,
 			"enemies_leaked": 0,
 			"enemies_spawned": 0,
-			"gold_at_end": 249,
-			"gold_at_start": 139,
+			"gold_at_end": 53,
+			"gold_at_start": 82,
 			"gold_earned": 0,
 			"gold_spent": 0,
 			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
+				"561583754017": {
+					"damage": 1411.0,
 					"hero_id": "ranger",
-					"kills": 0
+					"kills": 2
 				}
 			},
 			"hero_start_stats": {
-				"195840444444": {
-					"damage": 0.0,
-					"kills": 0
+				"561583754017": {
+					"damage": 695.0,
+					"kills": 14
 				}
 			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
+			"lives_at_end": 8,
+			"lives_at_start": 10,
 			"lives_lost": 0,
 			"mvp_hero": "ranger",
-			"start_time": 20.101,
-			"top_wave_damage": 0.0,
+			"start_time": 80.748,
+			"top_wave_damage": 1411.0,
 			"wave_number": 5
 		},
 		"6": {
 			"composition": {
 
 			},
-			"duration": 12.778,
-			"end_time": 34.759,
-			"enemies_killed": 30,
-			"enemies_leaked": 0,
+			"duration": 34.727,
+			"end_time": 149.646,
+			"enemies_killed": 5,
+			"enemies_leaked": 1,
 			"enemies_spawned": 0,
-			"gold_at_end": 262,
-			"gold_at_start": 276,
+			"gold_at_end": 88,
+			"gold_at_start": 3,
 			"gold_earned": 0,
 			"gold_spent": 0,
 			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
+				"561583754017": {
+					"damage": 615.0,
 					"hero_id": "ranger",
-					"kills": 0
+					"kills": 3
 				}
 			},
 			"hero_start_stats": {
-				"195840444444": {
-					"damage": 0.0,
-					"kills": 0
+				"561583754017": {
+					"damage": 1846.0,
+					"kills": 16
 				}
 			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
-			"lives_lost": 0,
+			"lives_at_end": 7,
+			"lives_at_start": 8,
+			"lives_lost": 1,
 			"mvp_hero": "ranger",
-			"start_time": 21.981,
-			"top_wave_damage": 0.0,
+			"start_time": 114.919,
+			"top_wave_damage": 615.0,
 			"wave_number": 6
 		},
 		"7": {
 			"composition": {
 
 			},
-			"duration": 21.144,
-			"end_time": 45.009,
+			"duration": 21.118,
+			"end_time": 172.092,
 			"enemies_killed": 12,
 			"enemies_leaked": 0,
 			"enemies_spawned": 0,
-			"gold_at_end": 182,
-			"gold_at_start": 328,
+			"gold_at_end": 100,
+			"gold_at_start": 119,
 			"gold_earned": 0,
 			"gold_spent": 0,
 			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
+				"561583754017": {
+					"damage": 210.0,
 					"hero_id": "ranger",
-					"kills": 0
+					"kills": 4
 				}
 			},
 			"hero_start_stats": {
-				"195840444444": {
-					"damage": 0.0,
-					"kills": 0
+				"561583754017": {
+					"damage": 2461.0,
+					"kills": 19
 				}
 			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
+			"lives_at_end": 7,
+			"lives_at_start": 7,
 			"lives_lost": 0,
 			"mvp_hero": "ranger",
-			"start_time": 23.865,
-			"top_wave_damage": 0.0,
+			"start_time": 150.974,
+			"top_wave_damage": 210.0,
 			"wave_number": 7
 		},
 		"8": {
 			"composition": {
 
 			},
-			"duration": 28.037,
-			"end_time": 56.907,
-			"enemies_killed": 2,
+			"duration": 0.0,
+			"end_time": 0.0,
+			"enemies_killed": 0,
 			"enemies_leaked": 0,
 			"enemies_spawned": 0,
-			"gold_at_end": 173,
-			"gold_at_start": 417,
+			"gold_at_end": 0,
+			"gold_at_start": 91,
 			"gold_earned": 0,
 			"gold_spent": 0,
-			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
-					"hero_id": "ranger",
-					"kills": 0
-				}
-			},
 			"hero_start_stats": {
-				"195840444444": {
-					"damage": 0.0,
-					"kills": 0
+				"561583754017": {
+					"damage": 2641.0,
+					"kills": 21
 				}
 			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
+			"lives_at_end": 0,
+			"lives_at_start": 7,
 			"lives_lost": 0,
-			"mvp_hero": "ranger",
-			"start_time": 28.87,
-			"top_wave_damage": 0.0,
+			"start_time": 169.395,
 			"wave_number": 8
-		},
-		"9": {
-			"composition": {
-
-			},
-			"duration": 22.822,
-			"end_time": 62.776,
-			"enemies_killed": 1,
-			"enemies_leaked": 0,
-			"enemies_spawned": 0,
-			"gold_at_end": 363,
-			"gold_at_start": 195,
-			"gold_earned": 0,
-			"gold_spent": 0,
-			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
-					"hero_id": "ranger",
-					"kills": 0
-				}
-			},
-			"hero_start_stats": {
-				"195840444444": {
-					"damage": 0.0,
-					"kills": 0
-				}
-			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
-			"lives_lost": 0,
-			"mvp_hero": "ranger",
-			"start_time": 39.954,
-			"top_wave_damage": 0.0,
-			"wave_number": 9
-		},
-		"10": {
-			"composition": {
-
-			},
-			"duration": 23.141,
-			"end_time": 67.942,
-			"enemies_killed": 36,
-			"enemies_leaked": 0,
-			"enemies_spawned": 0,
-			"gold_at_end": 413,
-			"gold_at_start": 182,
-			"gold_earned": 0,
-			"gold_spent": 0,
-			"hero_performance": {
-				"195840444444": {
-					"damage": 0.0,
-					"hero_id": "ranger",
-					"kills": 0
-				}
-			},
-			"hero_start_stats": {
-				"195840444444": {
-					"damage": 0.0,
-					"kills": 0
-				}
-			},
-			"lives_at_end": 20,
-			"lives_at_start": 20,
-			"lives_lost": 0,
-			"mvp_hero": "ranger",
-			"start_time": 44.801,
-			"top_wave_damage": 0.0,
-			"wave_number": 10
 		}
 	}
 }

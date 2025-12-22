@@ -6,12 +6,12 @@
 [sub_resource type="Resource" id="EnemySpawnData_1"]
 script = ExtResource("2_enemy")
 enemy_type = "wolf"
-count = 12
+count = 6
 
 [resource]
 script = ExtResource("1_wave")
 wave_number = 6
-break_time = 4.0
+break_time = 75.0
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
 wave_name = "Wolf Pack"
 hp_multiplier = 2.1

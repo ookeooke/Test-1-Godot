@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://xddmv1eligyi"]
+[gd_scene load_steps=2 format=3 uid="uid://bydsvhd31fsrw"]
 
 [ext_resource type="Script" path="res://test_dps_benchmark.gd" id="1_dps"]
 

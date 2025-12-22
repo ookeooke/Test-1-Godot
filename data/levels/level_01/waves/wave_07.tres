@@ -10,7 +10,7 @@ count = 12
 [resource]
 script = ExtResource("1_wave")
 wave_number = 7
-break_time = 4.0
+break_time = 75.0
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1")])
 wave_name = "Goblin Horde"
 hp_multiplier = 2.3

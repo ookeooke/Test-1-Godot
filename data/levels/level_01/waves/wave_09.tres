@@ -15,7 +15,7 @@ count = 8
 [resource]
 script = ExtResource("1_wave")
 wave_number = 9
-break_time = 6.0
+break_time = 90.0
 enemies = Array[ExtResource("2_enemy")]([SubResource("EnemySpawnData_1"), SubResource("EnemySpawnData_2")])
 wave_name = "Enemy Army"
 hp_multiplier = 3.2
